@@ -7,15 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import {
-  KPI_DATA,
-  LOCATION_TREE,
-  TOTAL_NODES,
+  KPI_META,
   TYPE_CONFIG,
   TYPE_OPTIONS,
+  countNodes,
   getParentOptions,
   nodeMatchesSearch,
   type LocationNode,
 } from "./data";
+import { useProperties } from "../_shared/properties-store";
 
 interface DDOption {
   value: string;
@@ -388,16 +388,16 @@ function TreeNode({
   );
 }
 
-function TreePanel({ expandedIds, selectedId, onToggle, onSelect, searchQuery }: { expandedIds: Set<string>; selectedId: string | undefined; onToggle: (id: string) => void; onSelect: (n: LocationNode) => void; searchQuery: string }) {
-  const hasAnyMatch = LOCATION_TREE.some((n) => nodeMatchesSearch(n, searchQuery));
+function TreePanel({ tree, expandedIds, selectedId, onToggle, onSelect, searchQuery }: { tree: LocationNode[]; expandedIds: Set<string>; selectedId: string | undefined; onToggle: (id: string) => void; onSelect: (n: LocationNode) => void; searchQuery: string }) {
+  const hasAnyMatch = tree.some((n) => nodeMatchesSearch(n, searchQuery));
   return (
     <div className="lc-treepanel" role="tree" aria-label="Location hierarchy">
       <div className="lc-treepanel__head">
         <h2 className="lc-treepanel__title">Location hierarchy</h2>
-        <span className="lc-treepanel__badge">{TOTAL_NODES}</span>
+        <span className="lc-treepanel__badge">{countNodes(tree)}</span>
       </div>
       <div className="lc-tree">
-        {LOCATION_TREE.map((node) => (
+        {tree.map((node) => (
           <TreeNode key={node.id} node={node} depth={0} expandedIds={expandedIds} selectedId={selectedId} onToggle={onToggle} onSelect={onSelect} searchQuery={searchQuery} />
         ))}
         {searchQuery && !hasAnyMatch && <div className="lc-tree-empty">No locations match your search.</div>}
@@ -495,6 +495,7 @@ interface ToastItem {
 }
 
 export function LocationsApp() {
+  const { locationTree, locationCounts } = useProperties();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(["erbil", "100-meter", "duhok", "sulaymaniyah"]));
   const [selectedNode, setSelectedNode] = useState<LocationNode | null>(null);
   const [modal, setModal] = useState<null | "add" | "edit">(null);
@@ -548,13 +549,13 @@ export function LocationsApp() {
       </header>
 
       <div className="lc-kpis">
-        {KPI_DATA.map((k) => (
-          <StatCard key={k.key} label={k.label} value={k.value} icon={k.icon} tone={k.tone} sub={k.sub} />
+        {KPI_META.map((k) => (
+          <StatCard key={k.key} label={k.label} value={locationCounts[k.field].toLocaleString("en-US")} icon={k.icon} tone={k.tone} sub={k.sub} />
         ))}
       </div>
 
       <div className="lc-split">
-        <TreePanel expandedIds={expandedIds} selectedId={selectedNode?.id} onToggle={toggleExpanded} onSelect={setSelectedNode} searchQuery="" />
+        <TreePanel tree={locationTree} expandedIds={expandedIds} selectedId={selectedNode?.id} onToggle={toggleExpanded} onSelect={setSelectedNode} searchQuery="" />
         <DetailPanel location={selectedNode} onEdit={() => setModal("edit")} onDelete={handleDelete} />
       </div>
 

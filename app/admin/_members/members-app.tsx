@@ -14,18 +14,17 @@ import {
   ITEMS_PER_PAGE,
   KPI_CARDS,
   MEMBER_STATUS,
-  MEMBERS,
   MP_MONTHS,
   MP_TODAY,
   MP_WD,
   ROLE_META,
   ROLE_TABS,
-  TOTAL_MEMBERS,
   fmtDate,
   sameDay,
   type MemberFilters,
   type MemberRecord,
 } from "./data";
+import { useProperties } from "../_shared/properties-store";
 
 type SelectOption = { value: string; label: string };
 
@@ -603,6 +602,7 @@ function MembersTableCard(props: {
   hasActive: boolean;
   rows: MemberRecord[];
   totalRows: number;
+  totalCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;
   openMenu: string | null;
@@ -613,7 +613,7 @@ function MembersTableCard(props: {
   onDeleteRequest: (m: MemberRecord) => void;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const shown = props.hasActive ? props.rows.length : TOTAL_MEMBERS;
+  const shown = props.hasActive ? props.totalRows : props.totalCount;
   const opt = (arr: string[]): SelectOption[] => arr.map((v) => ({ value: v, label: v }));
   const activeAdvCount = [props.filters.status, props.filters.date].filter(Boolean).length;
   return (
@@ -627,7 +627,7 @@ function MembersTableCard(props: {
           {props.hasActive && (
             <div className="mp-tablecard__resultnote">
               <span>
-                <b>{props.rows.length}</b> of {TOTAL_MEMBERS.toLocaleString("en-US")} shown
+                <b>{props.totalRows.toLocaleString("en-US")}</b> of {props.totalCount.toLocaleString("en-US")} shown
               </span>
             </div>
           )}
@@ -723,13 +723,13 @@ function MembersTableCard(props: {
 
 export function MembersApp() {
   const router = useRouter();
+  const { members, memberCounts, addMember, removeMember, updateMember } = useProperties();
   const [filters, setFilters] = useState<MemberFilters>(EMPTY_FILTERS);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<MemberRecord | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [members, setMembers] = useState<MemberRecord[]>(MEMBERS);
   const [deleteTarget, setDeleteTarget] = useState<MemberRecord | null>(null);
   const [statusTarget, setStatusTarget] = useState<MemberRecord | null>(null);
 
@@ -746,35 +746,39 @@ export function MembersApp() {
   const viewMember = (m: MemberRecord) => router.push(`/admin/members/${encodeURIComponent(m.id)}`);
   const viewProfile = () => router.push("/admin/members");
 
-  const handleAddMember = () => {
+  const handleAddMember = (v: { name: string; phone: string; email: string; agentId: string; notes: string }) => {
     setAddOpen(false);
+    const now = new Date();
+    const joined = `${MP_MONTHS[now.getMonth()].slice(0, 3)} ${now.getDate()}, ${now.getFullYear()}`;
+    addMember({
+      id: "M-" + (6000 + Math.floor(Math.random() * 9000)),
+      name: v.name.trim() || "New member",
+      roles: ["Buyer"],
+      phone: v.phone.trim(),
+      email: v.email.trim(),
+      properties: 0,
+      joined,
+      daysAgo: 0,
+      status: "Active",
+      img: null,
+    });
     setToast({ title: "Member added successfully", message: "The member profile has been created and is now available in the Members directory." });
   };
-  const handleEditMember = () => {
+  const handleEditMember = (v: { name: string; phone: string; email: string }) => {
+    if (editTarget) updateMember(editTarget.id, { name: v.name.trim(), phone: v.phone.trim(), email: v.email.trim() });
     setEditTarget(null);
     setToast({ title: "Member updated successfully", message: "The member information has been updated successfully." });
   };
 
   const handleDeleteConfirm = () => {
     const target = deleteTarget!;
-    let removedIndex = -1;
-    setMembers((prev) => {
-      removedIndex = prev.findIndex((m) => m.id === target.id);
-      return prev.filter((m) => m.id !== target.id);
-    });
+    removeMember(target.id);
     setDeleteTarget(null);
     setToast({
       variant: "danger",
       title: "Member deleted",
       message: `${target.name} has been permanently removed from the Members directory.`,
-      onUndo: () => {
-        setMembers((prev) => {
-          if (prev.some((m) => m.id === target.id)) return prev;
-          const next = prev.slice();
-          next.splice(removedIndex < 0 ? next.length : removedIndex, 0, target);
-          return next;
-        });
-      },
+      onUndo: () => addMember(target),
     });
   };
 
@@ -782,7 +786,7 @@ export function MembersApp() {
     const target = statusTarget!;
     const suspending = target.status === "Active";
     const next = suspending ? "Suspended" : "Active";
-    setMembers((prev) => prev.map((m) => (m.id === target.id ? { ...m, status: next } : m)));
+    updateMember(target.id, { status: next });
     setStatusTarget(null);
     setToast(
       suspending
@@ -812,8 +816,7 @@ export function MembersApp() {
     });
   }, [filters, members]);
 
-  const baseTotal = TOTAL_MEMBERS - (MEMBERS.length - members.length);
-  const totalRows = hasActive ? rows.length : baseTotal;
+  const totalRows = hasActive ? rows.length : members.length;
   const pagedRows = rows.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
@@ -832,7 +835,7 @@ export function MembersApp() {
 
       <div className="mp-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={c.value} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard key={c.key} label={c.label} value={memberCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
         ))}
       </div>
 
@@ -843,6 +846,7 @@ export function MembersApp() {
         hasActive={hasActive}
         rows={pagedRows}
         totalRows={totalRows}
+        totalCount={members.length}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         openMenu={openMenu}

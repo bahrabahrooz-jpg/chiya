@@ -28,8 +28,46 @@ import {
   type ApAgent,
   type ApForm,
 } from "./data";
+import { useProperties } from "../_shared/properties-store";
+import type { PropertyRecord } from "../_data/catalog";
 
 export type Opt = { value: string; label: string };
+
+const MONTHS_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function todayLabel(): string {
+  const d = new Date();
+  return `${MONTHS_ABBR[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+let addedSeq = 0;
+function formToProperty(f: ApForm, agent: ApAgent | null): PropertyRecord {
+  const listing: "sale" | "rent" = f.listing === "rent" ? "rent" : "sale";
+  const area = f.district || "Ankawa";
+  const date = todayLabel();
+  return {
+    id: "CH-" + (3400 + addedSeq++),
+    title: f.title || "Untitled property",
+    area,
+    district: area,
+    city: f.city || "Erbil",
+    type: f.type || "Villa",
+    img: COVER_IMG,
+    owner: { name: f.ownerName || "New owner", phone: f.ownerPhone || "", type: "Individual owner" },
+    agent: agent ? { name: agent.name, verified: true, img: agent.avatar } : null,
+    listing,
+    status: "Published",
+    price: Number(String(f.price).replace(/[^0-9.]/g, "")) || 0,
+    per: listing === "rent" ? "/mo" : undefined,
+    date,
+    daysAgo: 0,
+    beds: f.beds,
+    baths: f.baths,
+    size: Number(String(f.area).replace(/[^0-9.]/g, "")) || 0,
+    featured: false,
+    published: true,
+    listingDate: date,
+    updated: date,
+  };
+}
 
 export function ProgressStepper({ active }: { active: number }) {
   const nextLabel = STEPS[active + 1];
@@ -741,6 +779,7 @@ function PublishedSuccess() {
 }
 
 export function AddPropertyApp() {
+  const { addProperty } = useProperties();
   const [f, setF] = useState<ApForm>(EMPTY_FORM);
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
   const [step, setStep] = useState(0);
@@ -1237,7 +1276,14 @@ export function AddPropertyApp() {
               <Button hierarchy="tertiary" size="lg" iconLeading="save">
                 Save draft
               </Button>
-              <Button hierarchy="primary" size="lg" onClick={() => goTo(6)}>
+              <Button
+                hierarchy="primary"
+                size="lg"
+                onClick={() => {
+                  addProperty(formToProperty(f, f.agent ? revAgent : null));
+                  goTo(6);
+                }}
+              >
                 Publish property
               </Button>
             </div>

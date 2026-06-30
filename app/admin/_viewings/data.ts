@@ -1,24 +1,10 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
+import { PROPERTIES as CAT_PROPS, MEMBERS as CAT_MEMBERS, AGENTS as CAT_AGENTS } from "../_data/catalog";
 
-export const TOTAL_VIEWINGS = 248;
-
-export interface KpiCard {
-  key: string;
-  label: string;
-  icon: IconName;
-  tone: StatTone;
-  value: string;
-  sub: string;
-}
-export const KPI_CARDS: KpiCard[] = [
-  { key: "total", label: "Total viewings", icon: "calendar", tone: "brand", value: "248", sub: "All time" },
-  { key: "today", label: "Scheduled today", icon: "calendar-check", tone: "info", value: "12", sub: "3 confirmed, 9 pending" },
-  { key: "upcoming", label: "Upcoming", icon: "clock", tone: "gold", value: "34", sub: "Next 7 days" },
-  { key: "completed", label: "Completed", icon: "circle-check", tone: "success", value: "186", sub: "Successfully conducted" },
-  { key: "cancelled", label: "Cancelled", icon: "circle-x", tone: "brand", value: "28", sub: "Including no-shows" },
-];
+export const VIEWINGS_PER_PAGE = 10;
+const FALLBACK_PORTRAIT = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=96&q=80";
 
 export const VIEWING_STATUS: Record<string, { variant: BadgeVariant; icon: IconName; cls: string }> = {
   Scheduled: { variant: "info", icon: "clock", cls: "vw-st--scheduled" },
@@ -29,9 +15,20 @@ export const VIEWING_STATUS: Record<string, { variant: BadgeVariant; icon: IconN
 };
 export const STATUSES = Object.keys(VIEWING_STATUS);
 export const STATUS_TABS = [{ id: "", label: "All" }, ...STATUSES.map((s) => ({ id: s, label: s }))];
-export const AGENTS_LIST = ["Lana Aziz", "Karwan Mahmoud", "Dashne Salar", "Berivan Khalid", "Diyar Salih", "Sirwan Tofiq"];
-export const PROPS_LIST = ["Marble Hill Villa", "Olive Grove Estate", "Citadel View Apartment", "Italian Village Duplex", "Ankawa Garden Villa", "Gulan Tower Penthouse", "Dream City Villa", "Sulaymaniyah Heights", "Masike Premium Apartment", "Ranya Riverside Villa", "Downtown Erbil Loft", "Ankawa Luxury Compound"];
 
+/* ---------------- combo picker sources (drawn from the shared catalog) ---------------- */
+export interface ComboProperty { id: string; title: string; location: string; img: string }
+export const PROPERTIES: ComboProperty[] = CAT_PROPS.map((p) => ({ id: p.id, title: p.title, location: `${p.area}, ${p.city}`, img: p.img }));
+
+export interface ComboMember { id: string; name: string; phone: string; email: string }
+export const MEMBERS: ComboMember[] = CAT_MEMBERS.map((m) => ({ id: m.id, name: m.name, phone: m.phone, email: m.email }));
+
+export interface ComboAgent { id: string; name: string; phone: string; img: string }
+export const AGENTS: ComboAgent[] = CAT_AGENTS.map((a) => ({ id: a.id, name: a.name, phone: a.phone, img: a.img || FALLBACK_PORTRAIT }));
+
+export const AGENT_IMG: Record<string, string> = Object.fromEntries(AGENTS.map((a) => [a.name, a.img]));
+
+/* ---------------- viewings (generated from real properties / members / agents) ---------------- */
 export interface ViewingRecord {
   id: string;
   property: { title: string; location: string; img: string };
@@ -41,58 +38,93 @@ export interface ViewingRecord {
   time: string;
   status: string;
 }
-export const VIEWINGS: ViewingRecord[] = [
-  { id: "VW-1025", property: { title: "Marble Hill Villa", location: "Ankawa, Erbil", img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=130&q=72" }, member: "Sara Hassan", agent: "Lana Aziz", date: "Jun 16, 2026", time: "10:00 AM", status: "Scheduled" },
-  { id: "VW-1024", property: { title: "Olive Grove Estate", location: "Barzangarty, Erbil", img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=130&q=72" }, member: "Ahmad Karimi", agent: "Karwan Mahmoud", date: "Jun 16, 2026", time: "2:30 PM", status: "Confirmed" },
-  { id: "VW-1023", property: { title: "Citadel View Apartment", location: "Downtown, Erbil", img: "https://images.unsplash.com/photo-1613977257592-4871e5fcd7c4?auto=format&fit=crop&w=130&q=72" }, member: "Nadia Farid", agent: "Berivan Khalid", date: "Jun 15, 2026", time: "11:00 AM", status: "Completed" },
-  { id: "VW-1022", property: { title: "Italian Village Duplex", location: "Italian Village, Erbil", img: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=130&q=72" }, member: "Zana Rashid", agent: "Sirwan Tofiq", date: "Jun 15, 2026", time: "3:00 PM", status: "Cancelled" },
-  { id: "VW-1021", property: { title: "Ankawa Garden Villa", location: "Ankawa, Erbil", img: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=130&q=72" }, member: "Hana Bakr", agent: "Diyar Salih", date: "Jun 14, 2026", time: "10:30 AM", status: "No Show" },
-  { id: "VW-1020", property: { title: "Gulan Tower Penthouse", location: "Gulan St, Erbil", img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=130&q=72" }, member: "Rawa Ahmad", agent: "Lana Aziz", date: "Jun 17, 2026", time: "9:00 AM", status: "Scheduled" },
-  { id: "VW-1019", property: { title: "Dream City Villa", location: "Dream City, Erbil", img: "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&w=130&q=72" }, member: "Karzan Omar", agent: "Berivan Khalid", date: "Jun 17, 2026", time: "1:00 PM", status: "Confirmed" },
-  { id: "VW-1018", property: { title: "Sulaymaniyah Heights", location: "Bakhtiari, Sulaymaniyah", img: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=130&q=72" }, member: "Vian Mustafa", agent: "Dashne Salar", date: "Jun 13, 2026", time: "2:00 PM", status: "Completed" },
-  { id: "VW-1017", property: { title: "Masike Premium Apartment", location: "Masike, Duhok", img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=130&q=72" }, member: "Dara Karim", agent: "Diyar Salih", date: "Jun 12, 2026", time: "11:30 AM", status: "Completed" },
-  { id: "VW-1016", property: { title: "Ranya Riverside Villa", location: "Ranya, Sulaymaniyah", img: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=130&q=72" }, member: "Shno Jamal", agent: "Sirwan Tofiq", date: "Jun 18, 2026", time: "3:30 PM", status: "Scheduled" },
-  { id: "VW-1015", property: { title: "Downtown Erbil Loft", location: "Downtown, Erbil", img: "https://images.unsplash.com/photo-1576941089067-2de3c901e126?auto=format&fit=crop&w=130&q=72" }, member: "Bnar Salih", agent: "Karwan Mahmoud", date: "Jun 11, 2026", time: "4:00 PM", status: "Cancelled" },
-  { id: "VW-1014", property: { title: "Ankawa Luxury Compound", location: "Ankawa, Erbil", img: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=130&q=72" }, member: "Peshawa Omer", agent: "Lana Aziz", date: "Jun 10, 2026", time: "10:00 AM", status: "Completed" },
-];
 
-export interface ComboProperty { id: string; title: string; location: string; img: string }
-export const PROPERTIES: ComboProperty[] = [
-  { id: "p1", title: "Marble Hill Villa", location: "Ankawa, Erbil", img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=130&q=72" },
-  { id: "p2", title: "Olive Grove Estate", location: "Barzangarty, Erbil", img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=130&q=72" },
-  { id: "p3", title: "Citadel View Apartment", location: "Downtown, Erbil", img: "https://images.unsplash.com/photo-1613977257592-4871e5fcd7c4?auto=format&fit=crop&w=130&q=72" },
-  { id: "p4", title: "Italian Village Duplex", location: "Italian Village, Erbil", img: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=130&q=72" },
-  { id: "p5", title: "Ankawa Garden Villa", location: "Ankawa, Erbil", img: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=130&q=72" },
-  { id: "p6", title: "Gulan Tower Penthouse", location: "Gulan St, Erbil", img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=130&q=72" },
-  { id: "p7", title: "Dream City Villa", location: "Dream City, Erbil", img: "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&w=130&q=72" },
-  { id: "p8", title: "Sulaymaniyah Heights", location: "Bakhtiari, Sulaymaniyah", img: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=130&q=72" },
-  { id: "p9", title: "Masike Premium Apartment", location: "Masike, Duhok", img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=130&q=72" },
-  { id: "p10", title: "Ranya Riverside Villa", location: "Ranya, Sulaymaniyah", img: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=130&q=72" },
-];
+const GEN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const GEN_TIMES = ["9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM"];
+const GEN_STATUS = ["Scheduled", "Scheduled", "Confirmed", "Confirmed", "Completed", "Completed", "Completed", "Cancelled", "No Show"];
+const GEN_TODAY = new Date(2026, 5, 30);
+function gvRng(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+function gvDate(offset: number): string {
+  const d = new Date(GEN_TODAY);
+  d.setDate(d.getDate() + offset);
+  return `${GEN_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
 
-export interface ComboMember { id: string; name: string; phone: string; email: string }
-export const MEMBERS: ComboMember[] = [
-  { id: "m1", name: "Sara Hassan", phone: "+964 750 112 4408", email: "sara.hassan@gmail.com" },
-  { id: "m2", name: "Ahmad Karimi", phone: "+964 751 339 7720", email: "a.karimi@outlook.com" },
-  { id: "m3", name: "Nadia Farid", phone: "+964 770 884 1196", email: "nadia.farid@gmail.com" },
-  { id: "m4", name: "Zana Rashid", phone: "+964 750 226 5531", email: "zana.rashid@yahoo.com" },
-  { id: "m5", name: "Hana Bakr", phone: "+964 751 447 9082", email: "hana.bakr@gmail.com" },
-  { id: "m6", name: "Rawa Ahmad", phone: "+964 770 559 3317", email: "rawa.ahmad@gmail.com" },
-  { id: "m7", name: "Karzan Omar", phone: "+964 750 663 2204", email: "karzan.omar@outlook.com" },
-  { id: "m8", name: "Vian Mustafa", phone: "+964 751 778 6649", email: "vian.m@gmail.com" },
-];
+const VIEWING_COUNT = 96;
+function buildViewings(): ViewingRecord[] {
+  const r = gvRng(606060);
+  const list: ViewingRecord[] = [];
+  for (let n = 0; n < VIEWING_COUNT; n++) {
+    const p = CAT_PROPS[(n * 7 + 3) % CAT_PROPS.length];
+    const m = CAT_MEMBERS[(n * 5 + 1) % CAT_MEMBERS.length];
+    const agent = p.agent ? p.agent.name : CAT_AGENTS[(n * 3) % CAT_AGENTS.length].name;
+    const status = GEN_STATUS[Math.floor(r() * GEN_STATUS.length)];
+    const offset = Math.floor(r() * 43) - 14; // -14 … +28 days around "today"
+    list.push({
+      id: "VW-" + (1100 - n),
+      property: { title: p.title, location: `${p.area}, ${p.city}`, img: p.img },
+      member: m.name,
+      agent,
+      date: gvDate(offset),
+      time: GEN_TIMES[Math.floor(r() * GEN_TIMES.length)],
+      status,
+    });
+  }
+  return list;
+}
+export const VIEWINGS: ViewingRecord[] = buildViewings();
+export const TOTAL_VIEWINGS = VIEWINGS.length;
 
-export interface ComboAgent { id: string; name: string; phone: string; img: string }
-export const AGENTS: ComboAgent[] = [
-  { id: "a1", name: "Lana Aziz", phone: "+964 750 901 1245", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=96&q=80" },
-  { id: "a2", name: "Karwan Mahmoud", phone: "+964 751 233 7781", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=96&q=80" },
-  { id: "a3", name: "Dashne Salar", phone: "+964 770 556 2290", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=96&q=80" },
-  { id: "a4", name: "Berivan Khalid", phone: "+964 750 442 8813", img: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=96&q=80" },
-  { id: "a5", name: "Diyar Salih", phone: "+964 751 667 3398", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80" },
-  { id: "a6", name: "Sirwan Tofiq", phone: "+964 770 119 4426", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=96&q=80" },
-];
+/* Filter option lists — the agents and properties that actually appear in viewings. */
+export const AGENTS_LIST: string[] = [...new Set(VIEWINGS.map((v) => v.agent))].sort();
+export const PROPS_LIST: string[] = [...new Set(VIEWINGS.map((v) => v.property.title))].sort();
 
-export const AGENT_IMG: Record<string, string> = Object.fromEntries(AGENTS.map((a) => [a.name, a.img]));
+/* Live KPI counts derived from a viewings list — so add / delete / status
+   changes update the cards (see ViewingsApp). */
+export interface ViewKpiCounts { total: number; today: number; upcoming: number; completed: number; cancelled: number }
+function parseViewDate(s: string): Date | null {
+  const m = /^([A-Za-z]+)\s+(\d+),\s*(\d+)$/.exec(s);
+  if (!m) return null;
+  const mi = GEN_MONTHS.indexOf(m[1].slice(0, 3));
+  if (mi < 0) return null;
+  return new Date(Number(m[3]), mi, Number(m[2]));
+}
+export function computeViewingKpis(list: ViewingRecord[]): ViewKpiCounts {
+  const c: ViewKpiCounts = { total: list.length, today: 0, upcoming: 0, completed: 0, cancelled: 0 };
+  for (const v of list) {
+    const d = parseViewDate(v.date);
+    if (d) {
+      const diff = Math.round((d.getTime() - GEN_TODAY.getTime()) / 86400000);
+      if (diff === 0) c.today++;
+      if (diff >= 1 && diff <= 7 && (v.status === "Scheduled" || v.status === "Confirmed")) c.upcoming++;
+    }
+    if (v.status === "Completed") c.completed++;
+    if (v.status === "Cancelled" || v.status === "No Show") c.cancelled++;
+  }
+  return c;
+}
+
+export interface KpiCard {
+  key: string;
+  field: keyof ViewKpiCounts;
+  label: string;
+  icon: IconName;
+  tone: StatTone;
+  sub: string;
+}
+export const KPI_CARDS: KpiCard[] = [
+  { key: "total", field: "total", label: "Total viewings", icon: "calendar", tone: "brand", sub: "All time" },
+  { key: "today", field: "today", label: "Scheduled today", icon: "calendar-check", tone: "info", sub: "Appointments today" },
+  { key: "upcoming", field: "upcoming", label: "Upcoming", icon: "clock", tone: "gold", sub: "Next 7 days" },
+  { key: "completed", field: "completed", label: "Completed", icon: "circle-check", tone: "success", sub: "Successfully conducted" },
+  { key: "cancelled", field: "cancelled", label: "Cancelled", icon: "circle-x", tone: "brand", sub: "Including no-shows" },
+];
 
 export const DURATIONS = [
   { value: "30", label: "30 min" },

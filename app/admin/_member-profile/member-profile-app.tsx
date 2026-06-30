@@ -1,8 +1,9 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
@@ -20,6 +21,8 @@ import {
   TIMELINE,
   VIEWINGS,
   VIEW_STATUS_META,
+  buildPortfolio,
+  toDetailMember,
   type MemberAgent,
   type MemberRecord,
   type NoteItem,
@@ -27,6 +30,7 @@ import {
   type MpfViewing,
 } from "./data";
 import { AddMemberModal } from "../_members/add-member-modal";
+import { useProperties } from "../_shared/properties-store";
 
 const NOTE_MAX = 500;
 function noteRoleLabel(role: string) {
@@ -667,9 +671,24 @@ function Timeline() {
 }
 
 export function MemberProfileApp() {
-  const [m, setM] = useState<MemberRecord>(MEMBER);
-  const [status, setStatus] = useState(m.status);
-  const [, setAgent] = useState<MemberAgent>(m.agent);
+  const { members, properties } = useProperties();
+  const params = useParams();
+  const id = String((params?.id as string) ?? "");
+  const catalogMember = useMemo(() => members.find((mm) => mm.id === id), [members, id]);
+  const resolved = useMemo(() => (catalogMember ? toDetailMember(catalogMember, properties) : MEMBER), [catalogMember, properties]);
+  const portfolio = useMemo(() => (catalogMember ? buildPortfolio(properties, catalogMember.name) : PORTFOLIO), [catalogMember, properties]);
+
+  const [m, setM] = useState<MemberRecord>(resolved);
+  const [status, setStatus] = useState(resolved.status);
+  const [, setAgent] = useState<MemberAgent>(resolved.agent);
+  // reset editable state when navigating to a different member
+  const [prevId, setPrevId] = useState(id);
+  if (prevId !== id) {
+    setPrevId(id);
+    setM(resolved);
+    setStatus(resolved.status);
+    setAgent(resolved.agent);
+  }
   const [notes, setNotes] = useState<NoteItem[]>(INIT_NOTES);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
   const [modal, setModal] = useState<"status" | "assign" | "delete" | "edit" | null>(null);
@@ -798,8 +817,17 @@ export function MemberProfileApp() {
             <BasicInfo member={m} pushToast={pushToast} />
           </SectionCard>
 
-          <SectionCard title="Real estate portfolio" count={PORTFOLIO.length} desc="Every property connected to this member as buyer, seller, landlord, or tenant." flush>
-            <PortfolioTable rows={PORTFOLIO} />
+          <SectionCard title="Real estate portfolio" count={portfolio.length} desc="Every property connected to this member as buyer, seller, landlord, or tenant." flush>
+            {portfolio.length > 0 ? (
+              <PortfolioTable rows={portfolio} />
+            ) : (
+              <div className="pd-noagent">
+                <span className="pd-noagent__art">
+                  <Icon name="building-2" size={24} strokeWidth={1.6} />
+                </span>
+                <p>No properties are linked to this member yet.</p>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard title="Viewing requests" count={VIEWINGS.length} desc="Scheduled and past property viewings." flush>

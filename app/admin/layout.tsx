@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AdminSidebar, AdminTopbar, activeNavId, type MenuId } from "@/components/admin";
+import { PropertiesProvider } from "./_shared/properties-store";
 import "@/components/admin/admin-shell.css";
 
 function categoryFor(w: number) {
@@ -67,23 +68,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <div className="ax-app" data-layout="B">
-      <AdminSidebar
-        collapsed={collapsed}
-        drawerOpen={drawerOpen}
-        active={active}
-        onToggleCollapse={() => setCollapsed((c) => !c)}
-        onNavigate={onNavigate}
-      />
+    <PropertiesProvider>
+      <div className="ax-app" data-layout="B">
+        <AdminSidebar
+          collapsed={collapsed}
+          drawerOpen={drawerOpen}
+          active={active}
+          onToggleCollapse={() => setCollapsed((c) => !c)}
+          onNavigate={onNavigate}
+        />
 
-      {drawerOpen && <div className="ax-backdrop" onClick={() => setDrawerOpen(false)} />}
+        {drawerOpen && <div className="ax-backdrop" onClick={() => setDrawerOpen(false)} />}
 
-      <div className="ax-main">
-        <AdminTopbar openMenu={openMenu} setOpenMenu={setOpenMenu} onHamburger={() => setDrawerOpen(true)} />
-        <main className="ax-content">{children}</main>
+        <div className="ax-main">
+          <AdminTopbar openMenu={openMenu} setOpenMenu={setOpenMenu} onHamburger={() => setDrawerOpen(true)} />
+          <main className="ax-content">{children}</main>
+        </div>
+
+        {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}
       </div>
-
-      {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}
-    </div>
+    </PropertiesProvider>
   );
 }

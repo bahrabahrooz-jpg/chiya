@@ -16,18 +16,17 @@ import {
   ITEMS_PER_PAGE,
   KPI_CARDS,
   PRICE_RANGES,
-  PROPERTIES,
   STATUS_DOT_COLOR,
   STATUS_META,
   STATUS_OPTIONS,
   STATUS_TABS,
-  TOTAL_PROPERTIES,
   TYPE_OPTIONS,
   type AdvFilters,
   type AgentRef,
   type PropertyRecord,
   fmtUSD,
 } from "./data";
+import { useProperties } from "../_shared/properties-store";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_ABBR = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -825,6 +824,7 @@ function PropertiesTableCard(props: {
   onClearFilters: () => void;
   rows: PropertyRecord[];
   totalRows: number;
+  totalCount: number;
   currentPage: number;
   onPageChange: (p: number) => void;
   openMenu: string | null;
@@ -836,7 +836,7 @@ function PropertiesTableCard(props: {
   const opt = (arr: string[]): SelectOption[] => arr.map((v) => ({ value: v, label: v }));
   const activeAdvCount = Object.values(props.advFilters).filter(Boolean).length;
   const isFiltered = props.activeTab !== "all" || !!props.q || activeAdvCount > 0;
-  const shown = isFiltered ? props.rows.length : TOTAL_PROPERTIES;
+  const shown = isFiltered ? props.totalRows : props.totalCount;
 
   return (
     <section className="pp-tablecard">
@@ -849,7 +849,7 @@ function PropertiesTableCard(props: {
           {isFiltered && (
             <div className="pp-tablecard__resultnote">
               <span>
-                <b>{props.rows.length}</b> of {TOTAL_PROPERTIES.toLocaleString("en-US")} shown
+                <b>{props.totalRows.toLocaleString("en-US")}</b> of {props.totalCount.toLocaleString("en-US")} shown
               </span>
             </div>
           )}
@@ -951,7 +951,7 @@ function PropertiesTableCard(props: {
 /* ---------------- Page ---------------- */
 export function PropertiesApp() {
   const searchParams = useSearchParams();
-  const [properties, setProperties] = useState<PropertyRecord[]>(PROPERTIES);
+  const { properties, setProperties, counts } = useProperties();
   const [activeTab, setActiveTab] = useState("all");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -1075,7 +1075,7 @@ export function PropertiesApp() {
   }, [properties, activeTab, q, advFilters]);
 
   const isFiltered = activeTab !== "all" || !!q.trim() || Object.values(advFilters).some(Boolean);
-  const totalRows = isFiltered ? rows.length : TOTAL_PROPERTIES;
+  const totalRows = isFiltered ? rows.length : counts.total;
   const pagedRows = rows.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
@@ -1094,7 +1094,7 @@ export function PropertiesApp() {
 
       <div className="pp-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={c.value} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard key={c.key} label={c.label} value={counts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
         ))}
       </div>
 
@@ -1110,6 +1110,7 @@ export function PropertiesApp() {
         onClearFilters={clearFilters}
         rows={pagedRows}
         totalRows={totalRows}
+        totalCount={counts.total}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         openMenu={openMenu}

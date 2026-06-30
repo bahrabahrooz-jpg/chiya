@@ -8,7 +8,9 @@
       "Bash(grep -cE '\\\\.am-' __TRACKED_VAR__/members-style.css)",
       "PowerShell(npx eslint app/admin/_shared/agent-edit-modal.tsx app/admin/_agents-admin/agents-app.tsx app/admin/_agent-detail/agent-detail-app.tsx)",
       "PowerShell(npx tsc --noEmit)",
-      "PowerShell(npx eslint app/admin/_member-profile/member-profile-app.tsx app/admin/_viewing-detail/viewing-detail-app.tsx app/admin/_viewings/viewings-app.tsx app/admin/viewings/[id]/page.tsx)"
+      "PowerShell(npx eslint app/admin/_member-profile/member-profile-app.tsx app/admin/_viewing-detail/viewing-detail-app.tsx app/admin/_viewings/viewings-app.tsx app/admin/viewings/[id]/page.tsx)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json)",
+      "PowerShell(npx eslint app/admin/_properties/properties-app.tsx app/admin/_dashboard/kpi-section.tsx app/admin/_dashboard/data.ts app/admin/_properties/data.ts app/admin/_shared/properties-store.tsx app/admin/layout.tsx)"
     ]
   }
 }

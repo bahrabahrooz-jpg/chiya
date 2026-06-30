@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/choice";
 import { StatCard } from "@/components/data/stat-card";
 import {
-  AGENTS,
   AGENTS_PER_PAGE,
   AGENT_STATUS,
   CITIES,
@@ -20,13 +19,13 @@ import {
   KPI_CARDS,
   LANGUAGE_OPTIONS,
   SERVICE_AREA_OPTIONS,
-  TOTAL_AGENTS,
   VERIFICATION,
   VERIFICATION_TABS,
   deriveAreas,
   type AgentFilters,
   type AgentRecord,
 } from "./data";
+import { useProperties } from "../_shared/properties-store";
 import { AvatarUpload, CustomSelect, EditAgentModal, Field, MultiSelect, type AgentEditSeed, type SelectOption } from "../_shared/agent-edit-modal";
 
 function ActionMenu({
@@ -420,6 +419,7 @@ function AgentsPanel({
   view,
   setView,
   rows,
+  totalCount,
   filtersOpen,
   onToggleFilters,
 }: {
@@ -430,11 +430,12 @@ function AgentsPanel({
   view: string;
   setView: (v: string) => void;
   rows: AgentRecord[];
+  totalCount: number;
   filtersOpen: boolean;
   onToggleFilters: () => void;
 }) {
   const opt = (arr: string[]): SelectOption[] => arr.map((v) => ({ value: v, label: v }));
-  const shown = hasActive ? rows.length : TOTAL_AGENTS;
+  const shown = hasActive ? rows.length : totalCount;
   const activeAdvCount = (["city", "listings", "status"] as const).filter((k) => filters[k]).length;
   return (
     <section className={"ap-panel" + (view === "table" ? " ap-panel--joined" : "")}>
@@ -447,7 +448,7 @@ function AgentsPanel({
           {hasActive && (
             <div className="ap-resultnote">
               <span>
-                <b>{rows.length}</b> of {TOTAL_AGENTS.toLocaleString("en-US")} agents shown
+                <b>{rows.length}</b> of {totalCount.toLocaleString("en-US")} agents shown
               </span>
             </div>
           )}
@@ -775,12 +776,12 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
 
 export function AgentsApp() {
   const router = useRouter();
+  const { agents, agentCounts, addAgent, removeAgent, updateAgent } = useProperties();
   const [filters, setFilters] = useState<AgentFilters>(EMPTY_FILTERS);
   const [view, setView] = useState("table");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [toast, setToast] = useState<AgToast | null>(null);
-  const [agents, setAgents] = useState<AgentRecord[]>(() => AGENTS.map((a) => ({ ...a, status: a.status || "Active" })));
   const [statusTarget, setStatusTarget] = useState<AgentRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AgentRecord | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -797,20 +798,40 @@ export function AgentsApp() {
 
   const viewProfile = (a?: AgentRecord) => router.push(a ? `/admin/agents/${encodeURIComponent(a.id)}` : "/admin/agents");
 
-  const handleCreate = () => {
+  const handleCreate = (values: Partial<AgentRecord>) => {
     setAddOpen(false);
+    addAgent({
+      id: "A-" + (3000 + Math.floor(Math.random() * 9000)),
+      name: values.name || "New agent",
+      agency: values.agency || "Chiya Prime",
+      phone: values.phone || "",
+      email: values.email || "",
+      city: values.city || "Erbil",
+      area: values.area || "Ankawa",
+      verification: "Pending",
+      listings: 0,
+      sold: 0,
+      rented: 0,
+      members: 0,
+      status: values.status || "Active",
+      img: values.img ?? null,
+    });
     setToast({ variant: "success", icon: "badge-check", title: "Agent Created Successfully", message: "The agent profile has been created and an invitation email has been sent." });
   };
 
   const handleSaveEdit = (values: AgentEditSeed) => {
-    const id = editTarget?.id;
-    setAgents((prev) =>
-      prev.map((a) =>
-        a.id === id
-          ? { ...a, name: values.name, email: values.email, phone: values.phone || a.phone, img: values.img, status: values.status, experience: values.experience, languages: values.languages, areas: values.areas }
-          : a,
-      ),
-    );
+    if (editTarget) {
+      updateAgent(editTarget.id, {
+        name: values.name,
+        email: values.email,
+        phone: values.phone || editTarget.phone,
+        img: values.img,
+        status: values.status,
+        experience: values.experience,
+        languages: values.languages,
+        areas: values.areas,
+      });
+    }
     setEditTarget(null);
     setToast({ variant: "success", icon: "badge-check", title: "Agent Updated Successfully", message: "The agent profile has been updated." });
   };
@@ -819,7 +840,7 @@ export function AgentsApp() {
     const target = statusTarget!;
     const suspending = target.status !== "Suspended";
     const next = suspending ? "Suspended" : "Active";
-    setAgents((prev) => prev.map((a) => (a.id === target.id ? { ...a, status: next } : a)));
+    updateAgent(target.id, { status: next });
     setStatusTarget(null);
     setToast(
       suspending
@@ -831,18 +852,14 @@ export function AgentsApp() {
     const target = deleteTarget!;
     const index = agents.findIndex((a) => a.id === target.id);
     lastDeleted.current = { agent: target, index };
-    setAgents((prev) => prev.filter((a) => a.id !== target.id));
+    removeAgent(target.id);
     setDeleteTarget(null);
     setToast({ variant: "danger", undo: true, title: "Agent deleted", message: target.name + " has been permanently removed from the Agents directory." });
   };
   const handleUndo = () => {
     const d = lastDeleted.current;
     if (d) {
-      setAgents((prev) => {
-        const next = prev.slice();
-        next.splice(Math.min(d.index, next.length), 0, d.agent);
-        return next;
-      });
+      addAgent(d.agent);
       lastDeleted.current = null;
     }
     setToast({ variant: "success", icon: "rotate-ccw", title: "Deletion undone", message: (d ? d.agent.name : "The agent") + " has been restored to the Agents directory." });
@@ -909,11 +926,11 @@ export function AgentsApp() {
 
       <div className="ap-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={c.value} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard key={c.key} label={c.label} value={agentCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
         ))}
       </div>
 
-      <AgentsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} view={view} setView={setView} rows={rows} filtersOpen={filtersOpen} onToggleFilters={() => setFiltersOpen((o) => !o)} />
+      <AgentsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} view={view} setView={setView} rows={rows} totalCount={agents.length} filtersOpen={filtersOpen} onToggleFilters={() => setFiltersOpen((o) => !o)} />
 
       {view === "cards" ? <AgentGrid rows={rows} {...handlers} /> : <AgentTable rows={pagedRows} currentPage={page} totalItems={rows.length} onPageChange={setCurrentPage} {...handlers} />}
 

@@ -1,9 +1,9 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
@@ -12,11 +12,10 @@ import { Textarea } from "@/components/ui/input";
 import {
   INIT_NOTES,
   NOTE_KIND,
-  ROLE_META,
   TIMELINE,
-  VIEWING,
   VIEW_STATUS_DOT,
   VIEW_STATUS_META,
+  getViewingDetail,
   noteRoleLabel,
   type NoteItem,
   type ViewingDetail,
@@ -373,78 +372,98 @@ function PropertyInfo({ p, onView }: { p: ViewingDetail["property"]; onView: () 
   );
 }
 
-function ContactList({ phone, email }: { phone: string; email: string }) {
+function ContactRow({ icon, label, value, href }: { icon: IconName; label: string; value: string; href: string }) {
   return (
-    <div className="pd-contactlist vwd-person__contacts">
-      <a className="pd-contact" href={"tel:" + phone.replace(/\s/g, "")}>
-        <span className="pd-contact__icon">
-          <Icon name="phone" size={16} />
-        </span>
-        <span className="pd-contact__text">
-          <span className="pd-contact__label">Phone number</span>
-          <span className="pd-contact__value">{phone}</span>
-        </span>
-        <Icon name="arrow-up-right" size={16} className="pd-contact__go" />
-      </a>
-      <a className="pd-contact" href={"mailto:" + email}>
-        <span className="pd-contact__icon">
-          <Icon name="mail" size={16} />
-        </span>
-        <span className="pd-contact__text">
-          <span className="pd-contact__label">Email address</span>
-          <span className="pd-contact__value">{email}</span>
-        </span>
-        <Icon name="arrow-up-right" size={16} className="pd-contact__go" />
-      </a>
-    </div>
+    <a className="pd-contact" href={href}>
+      <span className="pd-contact__icon">
+        <Icon name={icon} size={16} />
+      </span>
+      <div className="pd-contact__text">
+        <span className="pd-contact__label">{label}</span>
+        <span className="pd-contact__value">{value}</span>
+      </div>
+      <Icon name="external-link" size={15} className="pd-contact__go" />
+    </a>
   );
 }
 
-function MemberCard({ m, href }: { m: ViewingDetail["member"]; href: string }) {
+function MemberCard({ m }: { m: ViewingDetail["member"] }) {
   return (
     <SectionCard title="Member information" desc="The member who requested this viewing.">
-      <div className="vwd-person">
-        <Avatar name={m.name} size="xl" />
-        <div className="vwd-person__id">
-          <span className="vwd-person__name">{m.name}</span>
-          <span className="vwd-person__sub">{m.id}</span>
-          <div className="vwd-person__badges">
-            <Badge variant={(ROLE_META[m.role] || {}).variant} size="sm">
-              {m.role}
-            </Badge>
-          </div>
+      <div className="pd-owner">
+        <Avatar name={m.name} size="lg" />
+        <div className="pd-owner__id">
+          <span className="pd-owner__name">{m.name}</span>
+          <span className="pd-owner__type">
+            <Icon name="user" size={13} />
+            {m.role}
+          </span>
         </div>
-        <ContactList phone={m.phone} email={m.email} />
-        <Link className="vwd-personlink" href={href}>
-          <Icon name="user" size={17} />
-          View member
-          <Icon name="arrow-right" size={17} className="vwd-personlink__arrow" />
-        </Link>
+      </div>
+      <div className="pd-contactlist">
+        <ContactRow icon="phone" label="Phone" value={m.phone} href={"tel:" + m.phone.replace(/\s/g, "")} />
+        <ContactRow icon="mail" label="Email" value={m.email} href={"mailto:" + m.email} />
       </div>
     </SectionCard>
   );
 }
 
-function AgentCard({ a, href }: { a: ViewingDetail["agent"]; href: string }) {
+function AgentCard({ a, href, onReassign }: { a: ViewingDetail["agent"]; href: string; onReassign: () => void }) {
+  const phoneHref = "tel:" + a.phone.replace(/\s/g, "");
+  const waHref = "https://wa.me/" + a.phone.replace(/[^\d]/g, "");
   return (
-    <SectionCard title="Assigned agent" desc="The agent hosting this viewing.">
-      <div className="vwd-person">
-        <Avatar src={a.img} name={a.name} size="xl" verified />
-        <div className="vwd-person__id">
-          <span className="vwd-person__name">{a.name}</span>
-          <span className="vwd-person__sub">{a.id}</span>
-          <span className="vwd-agent__exp">
-            <Icon name="award" size={13} />
-            {a.experience} years experience
+    <SectionCard
+      title="Assigned agent"
+      desc="Manages viewings and enquiries."
+      action={
+        <Button hierarchy="tertiary" size="sm" iconLeading="user-cog" onClick={onReassign}>
+          Reassign
+        </Button>
+      }
+    >
+      <Link className="pd-agent pd-agent--link" href={href} title={"View " + a.name + "’s details"}>
+        <Avatar src={a.img} name={a.name} size="xl" verified={a.verified} />
+        <div className="pd-agent__id">
+          <span className="pd-agent__nrow">
+            <span className="pd-agent__name">{a.name}</span>
+            {a.verified ? (
+              <Badge variant="brand" size="sm" icon="badge-check">
+                Verified
+              </Badge>
+            ) : (
+              <Badge variant="warning" size="sm" icon="clock">
+                Pending
+              </Badge>
+            )}
+          </span>
+          <span className="pd-agent__meta">
+            <span className="pd-agent__broker">
+              <Icon name="building-2" size={15} />
+              {a.agency}
+            </span>
+            <span className="pd-agent__rate">
+              <Icon name="star" size={15} />
+              {a.rating}
+            </span>
+            <span className="pd-agent__reviews">({a.reviews} reviews)</span>
           </span>
         </div>
-        <ContactList phone={a.phone} email={a.email} />
-        <Link className="vwd-personlink" href={href}>
-          <Icon name="badge-check" size={17} />
-          View agent
-          <Icon name="arrow-right" size={17} className="vwd-personlink__arrow" />
-        </Link>
+        <Icon name="chevron-right" size={18} className="pd-agent__go" />
+      </Link>
+      <div className="pd-agent__actions">
+        <a className="pd-agentbtn" href={phoneHref}>
+          <Icon name="phone" size={18} />
+          Call
+        </a>
+        <a className="pd-agentbtn" href={waHref} target="_blank" rel="noopener noreferrer">
+          <Icon name="message-circle" size={18} />
+          WhatsApp
+        </a>
       </div>
+      <p className="pd-agent__trust">
+        <Icon name="shield-check" size={15} />
+        Verified agent · no obligation · ID-checked
+      </p>
     </SectionCard>
   );
 }
@@ -657,8 +676,18 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
 
 export function ViewingDetailApp() {
   const router = useRouter();
-  const v = VIEWING;
-  const [status, setStatus] = useState(v.status);
+  const params = useParams();
+  const id = String((params?.id as string) ?? "");
+  const base = useMemo(() => getViewingDetail(id), [id]);
+  const [v, setV] = useState<ViewingDetail>(base);
+  const [status, setStatus] = useState(base.status);
+  // reset when navigating to a different viewing
+  const [prevId, setPrevId] = useState(id);
+  if (prevId !== id) {
+    setPrevId(id);
+    setV(base);
+    setStatus(base.status);
+  }
   const [modal, setModal] = useState<"status" | "cancel" | "delete" | "edit" | null>(null);
   const [notes, setNotes] = useState<NoteItem[]>(INIT_NOTES);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
@@ -824,8 +853,8 @@ export function ViewingDetailApp() {
         </div>
 
         <aside className="pd-grid__aside">
-          <MemberCard m={v.member} href={`/admin/members/${v.member.id}`} />
-          <AgentCard a={v.agent} href={`/admin/agents/${v.agent.id}`} />
+          <MemberCard m={v.member} />
+          <AgentCard a={v.agent} href={`/admin/agents/${v.agent.id}`} onReassign={() => pushToast({ tone: "default", icon: "user-cog", title: "Reassign agent", msg: "Use the property page to reassign the agent for this listing." })} />
         </aside>
       </div>
 
@@ -833,7 +862,17 @@ export function ViewingDetailApp() {
         open={modal === "edit"}
         editViewing={editRecord}
         onClose={() => setModal(null)}
-        onSuccess={() => pushToast({ tone: "brand", icon: "badge-check", title: "Viewing updated", msg: v.id + "’s details have been updated." })}
+        onSuccess={(rec) => {
+          setV((prev) => ({
+            ...prev,
+            date: rec.date,
+            time: rec.time,
+            property: { ...prev.property, name: rec.property.title, location: rec.property.location, img: rec.property.img },
+            member: { ...prev.member, name: rec.member },
+            agent: { ...prev.agent, name: rec.agent },
+          }));
+          pushToast({ tone: "brand", icon: "badge-check", title: "Viewing updated", msg: v.id + "’s details have been updated." });
+        }}
       />
       {modal === "status" && (
         <ViewingStatusModal

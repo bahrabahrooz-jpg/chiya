@@ -1,8 +1,9 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
@@ -26,6 +27,10 @@ import {
   TIMELINE,
   VIEWINGS,
   VIEW_STATUS_META,
+  buildAgentMembers,
+  buildKpis,
+  buildListings,
+  toDetailAgent,
   type AgentDetail,
   type ListingRow,
   type MemberRow,
@@ -33,6 +38,7 @@ import {
   type AvViewing,
 } from "./data";
 import { EditAgentModal, type AgentEditSeed } from "../_shared/agent-edit-modal";
+import { useProperties } from "../_shared/properties-store";
 
 const EXPERIENCE_BUCKETS: { max: number; value: string }[] = [
   { max: 1, value: "<1" },
@@ -718,9 +724,25 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
 }
 
 export function AgentDetailApp() {
-  const [a, setA] = useState<AgentDetail>(AGENT);
-  const [status, setStatus] = useState(a.status);
+  const { agents, members, properties } = useProperties();
+  const params = useParams();
+  const id = String((params?.id as string) ?? "");
+  const catalogAgent = useMemo(() => agents.find((ag) => ag.id === id), [agents, id]);
+  const resolved = useMemo(() => (catalogAgent ? toDetailAgent(catalogAgent) : AGENT), [catalogAgent]);
+  const kpis = useMemo(() => (catalogAgent ? buildKpis(catalogAgent) : KPIS), [catalogAgent]);
+  const listings = useMemo(() => (catalogAgent ? buildListings(properties, catalogAgent.name) : LISTINGS), [catalogAgent, properties]);
+  const agentMembers = useMemo(() => (catalogAgent ? buildAgentMembers(properties, members, catalogAgent.name) : MEMBERS), [catalogAgent, properties, members]);
+
+  const [a, setA] = useState<AgentDetail>(resolved);
+  const [status, setStatus] = useState(resolved.status);
   const [modal, setModal] = useState<"status" | "delete" | "edit" | null>(null);
+  // reset editable state when navigating to a different agent
+  const [prevId, setPrevId] = useState(id);
+  if (prevId !== id) {
+    setPrevId(id);
+    setA(resolved);
+    setStatus(resolved.status);
+  }
   const [moreOpen, setMoreOpen] = useState(false);
   const [notes, setNotes] = useState<NoteItem[]>(INIT_NOTES);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
@@ -858,7 +880,7 @@ export function AgentDetailApp() {
 
       <SectionCard title="Performance summary" desc="Listing, transaction, and conversion metrics for this agent.">
         <div className="adk">
-          {KPIS.map((k) => (
+          {kpis.map((k) => (
             <StatCard key={k.key} label={k.label} value={k.value} icon={k.icon} tone={k.tone} sub={k.sub} />
           ))}
         </div>
@@ -869,7 +891,7 @@ export function AgentDetailApp() {
       <div className="pd-grid__main">
         <SectionCard
           title="Assigned listings"
-          count={LISTINGS.length}
+          count={listings.length}
           desc="Properties currently managed by this agent."
           action={
             <Button hierarchy="secondary" size="sm" iconTrailing="arrow-right" href="/admin/properties">
@@ -878,12 +900,21 @@ export function AgentDetailApp() {
           }
           flush
         >
-          <ListingsTable rows={LISTINGS} />
+          {listings.length > 0 ? (
+            <ListingsTable rows={listings} />
+          ) : (
+            <div className="pd-noagent">
+              <span className="pd-noagent__art">
+                <Icon name="building-2" size={24} strokeWidth={1.6} />
+              </span>
+              <p>No listings are assigned to this agent yet.</p>
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard
           title="Assigned members"
-          count={MEMBERS.length}
+          count={agentMembers.length}
           desc="Clients this agent manages across buying, selling, and renting."
           action={
             <Button hierarchy="secondary" size="sm" iconTrailing="arrow-right" href="/admin/members">
@@ -892,7 +923,16 @@ export function AgentDetailApp() {
           }
           flush
         >
-          <MembersTable rows={MEMBERS} />
+          {agentMembers.length > 0 ? (
+            <MembersTable rows={agentMembers} />
+          ) : (
+            <div className="pd-noagent">
+              <span className="pd-noagent__art">
+                <Icon name="users" size={24} strokeWidth={1.6} />
+              </span>
+              <p>No members are linked to this agent yet.</p>
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard title="Viewings" count={VIEWINGS.length} desc="Scheduled and completed property viewings hosted by this agent." flush>

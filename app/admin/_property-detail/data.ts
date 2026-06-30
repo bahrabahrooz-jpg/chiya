@@ -1,5 +1,6 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
+import { PROPERTIES as CATALOG_PROPERTIES, getAgentByName, type PropertyRecord } from "../_data/catalog";
 
 export const STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean; icon?: IconName }> = {
   Draft: { variant: "neutral", dot: true },
@@ -70,19 +71,35 @@ interface BaseProperty {
   published: boolean; featured: boolean; listingDate: string; updated: string;
 }
 
-const BASE: BaseProperty[] = [
-  { id: "CH-2041", title: "Olive Grove Estate", area: "Ankawa", city: "Erbil", type: "Villa", img: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=240&q=70", owner: { name: "Karwan Mahmoud", phone: "+964 750 118 4420", type: "Individual owner" }, agent: { name: "Daban Ali", verified: true, listings: 31, phone: "+964 751 880 2200", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=70" }, listing: "sale", status: "Pending", price: 1200000, date: "Jun 12, 2026", beds: 5, baths: 4, size: 480, published: false, featured: true, listingDate: "Jun 12, 2026", updated: "Jun 14, 2026" },
-  { id: "CH-2038", title: "Marble Hill Villa", area: "Empire World", city: "Erbil", type: "Villa", img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=240&q=70", owner: { name: "Sirwan Tofiq", phone: "+964 750 234 5678", type: "Individual owner" }, agent: { name: "Ahmed Karim", verified: true, phone: "+964 750 441 7788", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=70" }, listing: "sale", status: "Published", price: 620000, date: "Jun 9, 2026", beds: 4, baths: 3, size: 420, published: true, featured: true, listingDate: "Jun 9, 2026", updated: "Jun 11, 2026" },
-  { id: "CH-2035", title: "Cedar Court Residence", area: "Italian Village", city: "Erbil", type: "Townhouse", img: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=240&q=70", owner: { name: "Dashne Salar", phone: "+964 770 552 1190", type: "Individual owner" }, agent: { name: "Sara Hama", verified: true, phone: "+964 770 220 9911", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=70" }, listing: "sale", status: "Sold", price: 845000, date: "Jun 6, 2026", beds: 3, baths: 3, size: 265, published: true, featured: false, listingDate: "Jun 6, 2026", updated: "Jun 10, 2026" },
-  { id: "CH-2031", title: "Tigris View Apartment", area: "Dream City", city: "Erbil", type: "Apartment", img: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=240&q=70", owner: { name: "Awat Rashid", phone: "+964 751 904 7782", type: "Individual owner" }, agent: { name: "Rawa Jalal", verified: true, phone: "+964 751 330 6655", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=70" }, listing: "rent", status: "Rented", price: 1800, per: "/mo", date: "Jun 4, 2026", beds: 3, baths: 2, size: 160, published: true, featured: false, listingDate: "Jun 4, 2026", updated: "Jun 5, 2026" },
-  { id: "CH-2029", title: "Naz City Penthouse", area: "Naz City", city: "Erbil", type: "Penthouse", img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=240&q=70", owner: { name: "Hewa Botan", phone: "+964 751 345 6789", type: "Individual owner" }, agent: { name: "Diyar Salih", verified: false, phone: "+964 751 770 4321", img: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=160&q=70" }, listing: "sale", status: "Published", price: 980000, date: "Jun 2, 2026", beds: 4, baths: 3, size: 300, published: true, featured: true, listingDate: "Jun 2, 2026", updated: "Jun 8, 2026" },
-  { id: "CH-2026", title: "Goizha Mountain House", area: "Goizha", city: "Sulaymaniyah", type: "Villa", img: "https://images.unsplash.com/photo-1599809275671-b5942cabc7a2?auto=format&fit=crop&w=240&q=70", owner: { name: "Nyan Faraj", phone: "+964 773 220 5567", type: "Individual owner" }, agent: null, listing: "sale", status: "Draft", price: 540000, date: "Jun 1, 2026", beds: 4, baths: 3, size: 390, published: false, featured: false, listingDate: "—", updated: "Jun 1, 2026" },
-  { id: "CH-2022", title: "Park View Loft", area: "Salim Street", city: "Sulaymaniyah", type: "Apartment", img: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=240&q=70", owner: { name: "Shilan Aram", phone: "+964 770 456 7890", type: "Individual owner" }, agent: { name: "Hawre Ako", verified: true, phone: "+964 770 118 9090", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=70" }, listing: "rent", status: "Published", price: 1100, per: "/mo", date: "May 28, 2026", beds: 2, baths: 2, size: 135, published: true, featured: false, listingDate: "May 28, 2026", updated: "Jun 1, 2026" },
-  { id: "CH-2018", title: "Family Mall Office Suite", area: "100m Road", city: "Erbil", type: "Office", img: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=240&q=70", owner: { name: "Rebwar Group", phone: "+964 750 600 1234", type: "Company owner" }, agent: { name: "Ahmed Karim", verified: true, phone: "+964 750 441 7788", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=70" }, listing: "rent", status: "Pending", price: 3200, per: "/mo", date: "May 26, 2026", beds: 0, baths: 2, size: 220, published: false, featured: false, listingDate: "May 26, 2026", updated: "May 27, 2026" },
-  { id: "CH-2014", title: "Zagros Garden Townhouse", area: "Masif", city: "Duhok", type: "Townhouse", img: "https://images.unsplash.com/photo-1576941089067-2de3c901e126?auto=format&fit=crop&w=240&q=70", owner: { name: "Berivan Khalid", phone: "+964 773 567 8901", type: "Individual owner" }, agent: { name: "Sara Hama", verified: true, phone: "+964 770 220 9911", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=70" }, listing: "sale", status: "Published", price: 410000, date: "May 22, 2026", beds: 3, baths: 2, size: 240, published: true, featured: false, listingDate: "May 22, 2026", updated: "May 30, 2026" },
-  { id: "CH-2009", title: "Citadel Heights Land", area: "Qalat", city: "Erbil", type: "Land", img: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=240&q=70", owner: { name: "Aland Property Co.", phone: "+964 751 778 9012", type: "Company owner" }, agent: { name: "Diyar Salih", verified: false, phone: "+964 751 770 4321", img: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=160&q=70" }, listing: "sale", status: "Draft", price: 290000, date: "May 18, 2026", beds: 0, baths: 0, size: 1200, published: false, featured: false, listingDate: "—", updated: "May 18, 2026" },
-  { id: "CH-2004", title: "Lakeside Apartment", area: "Dukan", city: "Sulaymaniyah", type: "Apartment", img: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=240&q=70", owner: { name: "Tara Jamal", phone: "+964 751 678 9012", type: "Individual owner" }, agent: { name: "Rawa Jalal", verified: true, phone: "+964 751 330 6655", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=70" }, listing: "sale", status: "Sold", price: 365000, date: "May 14, 2026", beds: 2, baths: 2, size: 150, published: true, featured: false, listingDate: "May 14, 2026", updated: "May 26, 2026" },
-];
+/* Adapt the shared catalog records into the richer detail-page shape. */
+function toBase(p: PropertyRecord): BaseProperty {
+  const roster = p.agent ? getAgentByName(p.agent.name) : undefined;
+  return {
+    id: p.id,
+    title: p.title,
+    area: p.area,
+    city: p.city,
+    type: p.type,
+    img: p.img,
+    owner: { name: p.owner.name, phone: p.owner.phone, type: p.owner.type },
+    agent: p.agent
+      ? { name: p.agent.name, verified: p.agent.verified, phone: roster?.phone || "+964 750 000 0000", img: p.agent.img, agency: roster?.agency, listings: roster?.listings }
+      : null,
+    listing: p.listing,
+    status: p.status,
+    price: p.price,
+    per: p.per,
+    date: p.date,
+    beds: p.beds,
+    baths: p.baths,
+    size: p.size,
+    published: p.published,
+    featured: p.featured,
+    listingDate: p.listingDate,
+    updated: p.updated,
+  };
+}
+const BASE: BaseProperty[] = CATALOG_PROPERTIES.map(toBase);
 
 function emailFromName(name: string) {
   return name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@mail.chiya.estate";

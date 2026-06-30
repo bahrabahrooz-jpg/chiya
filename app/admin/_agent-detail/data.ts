@@ -1,6 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
+import { fmtUSD, type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
 
 export const ROLE_META: Record<string, { variant: BadgeVariant }> = {
   Buyer: { variant: "info" },
@@ -142,3 +143,83 @@ export const NOTE_KIND: Record<string, { icon: IconName; cls: string }> = {
   note: { icon: "message-square", cls: "is-note" },
 };
 export const STATUS_DOT: Record<string, string> = { Active: "var(--success-500)", Suspended: "var(--error-500)" };
+
+/* ---------------- catalog resolvers (real, per-id data) ---------------- */
+function hash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+export function toDetailAgent(a: AgentRecord): AgentDetail {
+  const h = hash(a.id);
+  return {
+    id: a.id,
+    name: a.name,
+    title: a.verification === "Verified" ? "Senior Property Consultant" : "Property Consultant",
+    agency: a.agency,
+    status: a.status,
+    verification: a.verification,
+    joinedShort: "Mar 2023",
+    joinedFull: "March 12, 2023",
+    phone: a.phone,
+    email: a.email,
+    experience: a.experience ? Number(String(a.experience).replace(/\D/g, "")) || 5 : 3 + (h % 8),
+    languages: a.languages && a.languages.length ? a.languages : ["Kurdish", "English"],
+    areas: a.areas && a.areas.length ? a.areas : [a.area, a.city].filter((x, i, arr) => x && arr.indexOf(x) === i),
+    rating: Number((4.4 + (h % 6) / 10).toFixed(1)),
+    reviews: 20 + (h % 80),
+    img: a.img || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=75",
+  };
+}
+
+/** KPI tiles computed from the agent's live property stats. */
+export function buildKpis(a: AgentRecord): KpiCard[] {
+  const deals = a.sold + a.rented;
+  const viewings = deals * 4 + a.listings * 2;
+  const conv = viewings ? Math.round((deals / viewings) * 100) : 0;
+  return [
+    { key: "active", label: "Active listings", value: String(a.listings), icon: "building-2", tone: "brand", sub: "Currently published" },
+    { key: "sold", label: "Sold properties", value: String(a.sold), icon: "badge-check", tone: "success", sub: "All-time closed sales" },
+    { key: "rented", label: "Rented properties", value: String(a.rented), icon: "key-round", tone: "gold", sub: "All-time rentals" },
+    { key: "viewings", label: "Total viewings", value: String(viewings), icon: "calendar-check", tone: "info", sub: "Hosted to date" },
+    { key: "conv", label: "Conversion rate", value: conv + "%", icon: "trending-up", tone: "brand", sub: "Viewings to deals" },
+  ];
+}
+
+/** Listings assigned to this agent. */
+export function buildListings(properties: PropertyRecord[], name: string): ListingRow[] {
+  return properties
+    .filter((p) => p.agent?.name === name)
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      loc: `${p.area}, ${p.city}`,
+      img: p.img,
+      type: p.listing === "rent" ? "For rent" : "For sale",
+      status: p.status,
+      price: fmtUSD(p.price),
+      per: p.per,
+      date: p.date,
+    }));
+}
+
+/** Members this agent works with = owners of the listings they handle. */
+export function buildAgentMembers(properties: PropertyRecord[], members: CatalogMember[], name: string): MemberRow[] {
+  const owners = new Set<string>();
+  for (const p of properties) if (p.agent?.name === name) owners.add(p.owner.name);
+  const byName: Record<string, CatalogMember> = {};
+  for (const m of members) byName[m.name] = m;
+  return [...owners].map((owner, i) => {
+    const m = byName[owner];
+    return {
+      id: m?.id || "M-" + i,
+      name: owner,
+      phone: m?.phone || "—",
+      img: m?.img || TH("photo-1507003211169-0a1dd7228f2d"),
+      roles: m?.roles || ["Seller"],
+      status: m?.status === "Suspended" ? "Inactive" : "Active",
+      activity: m?.joined || "—",
+    };
+  });
+}

@@ -1,6 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
+import type { PropertyCounts } from "../_properties/data";
 
 /* KPI periods + cards (Section 2) */
 export interface KpiPeriod {
@@ -17,6 +18,9 @@ export const KPI_PERIODS: KpiPeriod[] = [
 
 export interface KpiCard {
   key: string;
+  /** When set, the value is read live from the shared property counts so the
+      dashboard always matches the Properties page (incl. sold/rented changes). */
+  field?: keyof PropertyCounts;
   label: string;
   icon: IconName;
   tone: StatTone;
@@ -24,9 +28,9 @@ export interface KpiCard {
   delta: Record<string, string>;
 }
 export const KPI_CARDS: KpiCard[] = [
-  { key: "available", label: "Available properties", icon: "building-2", tone: "brand", values: { week: "1,284", month: "1,284", year: "1,284" }, delta: { week: "+1.8%", month: "+5.2%", year: "+14.0%" } },
-  { key: "sold", label: "Properties sold", icon: "key", tone: "gold", values: { week: "18", month: "84", year: "1,042" }, delta: { week: "+6.0%", month: "+12.0%", year: "+21.0%" } },
-  { key: "rented", label: "Properties rented", icon: "home", tone: "info", values: { week: "27", month: "132", year: "1,560" }, delta: { week: "+4.0%", month: "+8.0%", year: "+11.0%" } },
+  { key: "available", field: "available", label: "Available properties", icon: "building-2", tone: "brand", values: { week: "1,284", month: "1,284", year: "1,284" }, delta: { week: "+1.8%", month: "+5.2%", year: "+14.0%" } },
+  { key: "sold", field: "sold", label: "Properties sold", icon: "key", tone: "gold", values: { week: "18", month: "84", year: "1,042" }, delta: { week: "+6.0%", month: "+12.0%", year: "+21.0%" } },
+  { key: "rented", field: "rented", label: "Properties rented", icon: "home", tone: "info", values: { week: "27", month: "132", year: "1,560" }, delta: { week: "+4.0%", month: "+8.0%", year: "+11.0%" } },
   { key: "members", label: "New members", icon: "users", tone: "success", values: { week: "21", month: "96", year: "1,180" }, delta: { week: "+9.0%", month: "+15.0%", year: "+18.0%" } },
 ];
 

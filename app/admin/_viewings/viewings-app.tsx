@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/choice";
 import { StatCard } from "@/components/data/stat-card";
 import {
   AGENTS,
@@ -27,11 +26,12 @@ import {
   MONTHS_FULL,
   PROPERTIES,
   PROPS_LIST,
-  RESCHED_DURATIONS,
+  STATUSES,
   STATUS_TABS,
-  TOTAL_VIEWINGS,
   VIEWINGS,
+  VIEWINGS_PER_PAGE,
   VIEWING_STATUS,
+  computeViewingKpis,
   composeTime,
   fmtDateLabel,
   fmtDateShort,
@@ -40,7 +40,6 @@ import {
   splitTime,
   toISODate,
   viewingToForm,
-  viewingToReschedule,
   type ScheduleForm,
   type ViewingFilters,
   type ViewingRecord,
@@ -491,31 +490,94 @@ function TimePicker({ id, value, onChange, placeholder }: { id?: string; value: 
   );
 }
 
+/* ---------------- Discard-changes confirmation ---------------- */
+function DiscardDialog({ onCancel, onDiscard }: { onCancel: () => void; onDiscard: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onCancel();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [onCancel]);
+  return createPortal(
+    <div className="vw-confirm-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="vw-confirm" role="alertdialog" aria-modal="true" aria-labelledby="vw-discard-ttl">
+        <span className="vw-confirm__icon">
+          <Icon name="triangle-alert" size={22} strokeWidth={1.9} />
+        </span>
+        <h3 id="vw-discard-ttl" className="vw-confirm__title">
+          Discard changes?
+        </h3>
+        <p className="vw-confirm__msg">You have unsaved changes. Are you sure you want to leave without saving?</p>
+        <div className="vw-confirm__actions">
+          <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
+            Continue editing
+          </Button>
+          <Button hierarchy="destructive" size="md" type="button" iconLeading="trash-2" onClick={onDiscard}>
+            Discard changes
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 /* ---------------- Schedule modal ---------------- */
-export function ScheduleModal({ open, editViewing, onClose, onSuccess }: { open: boolean; editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (isEdit: boolean) => void }) {
+export function ScheduleModal({ open, editViewing, onClose, onSuccess }: { open: boolean; editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void }) {
   if (!open) return null;
   return <ScheduleModalInner key={editViewing?.id || "new"} editViewing={editViewing} onClose={onClose} onSuccess={onSuccess} />;
 }
 
-function ScheduleModalInner({ editViewing, onClose, onSuccess }: { editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (isEdit: boolean) => void }) {
+function ScheduleModalInner({ editViewing, onClose, onSuccess }: { editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void }) {
   const isEdit = !!editViewing;
-  const [form, setForm] = useState<ScheduleForm>(editViewing ? viewingToForm(editViewing) : EMPTY_FORM);
+  const initial = useMemo(() => (editViewing ? viewingToForm(editViewing) : EMPTY_FORM), [editViewing]);
+  const [form, setForm] = useState<ScheduleForm>(initial);
+  const [confirm, setConfirm] = useState(false);
   const set = (k: keyof ScheduleForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   // mandatory: property, member, agent, date, time (duration has a default; notes is optional)
   const isValid = !!form.property && !!form.member && !!form.agent && !!form.date && !!form.time;
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+  // editing requires an actual change before saving; scheduling just needs the required fields
+  const canSubmit = isValid && (!isEdit || dirty);
+
+  const attemptClose = useCallback(() => {
+    if (dirty) setConfirm(true);
+    else onClose();
+  }, [dirty, onClose]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (confirm) {
+        setConfirm(false);
+        return;
+      }
+      attemptClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [confirm, attemptClose]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSuccess(isEdit);
+    const prop = PROPERTIES.find((p) => p.id === form.property);
+    const mem = MEMBERS.find((m) => m.id === form.member);
+    const agt = AGENTS.find((a) => a.id === form.agent);
+    const record: ViewingRecord = {
+      id: editViewing ? editViewing.id : "VW-" + (Date.now() % 1000000),
+      property: prop ? { title: prop.title, location: prop.location, img: prop.img } : (editViewing?.property ?? { title: "", location: "", img: "" }),
+      member: mem?.name ?? editViewing?.member ?? "",
+      agent: agt?.name ?? editViewing?.agent ?? "",
+      date: fmtDateShort(form.date) ?? editViewing?.date ?? "",
+      time: fmtTimeLabel(form.time) ?? editViewing?.time ?? "",
+      status: editViewing ? editViewing.status : "Scheduled",
+    };
+    onSuccess(record, isEdit);
     onClose();
   };
 
@@ -523,7 +585,7 @@ function ScheduleModalInner({ editViewing, onClose, onSuccess }: { editViewing: 
     <div
       className="vw-overlay"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) attemptClose();
       }}
     >
       <div className="vw-modal" role="dialog" aria-modal="true" aria-labelledby="vw-modal-ttl">
@@ -539,7 +601,7 @@ function ScheduleModalInner({ editViewing, onClose, onSuccess }: { editViewing: 
               <p className="vw-modal__desc">{isEdit ? "Update this viewing's details, agent assignment, or schedule." : "Create a property viewing appointment and assign it to an agent."}</p>
             </div>
           </div>
-          <button type="button" className="vw-modal__close" aria-label="Close" onClick={onClose}>
+          <button type="button" className="vw-modal__close" aria-label="Close" onClick={attemptClose}>
             <Icon name="x" size={20} />
           </button>
         </header>
@@ -713,268 +775,12 @@ function ScheduleModalInner({ editViewing, onClose, onSuccess }: { editViewing: 
             </section>
           </div>
           <footer className="vw-modal__foot">
-            <Button hierarchy="secondary" size="md" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-            <div className="vw-modal__foot-right">
-              <Button hierarchy="primary" size="md" type="submit" disabled={!isValid}>
-                {isEdit ? "Save changes" : "Schedule viewing"}
-              </Button>
-            </div>
-          </footer>
-        </form>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-function DiscardDialog({ onCancel, onDiscard }: { onCancel: () => void; onDiscard: () => void }) {
-  return createPortal(
-    <div
-      className="vw-confirm-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
-    >
-      <div className="vw-confirm" role="alertdialog" aria-modal="true" aria-labelledby="vw-discard-ttl">
-        <span className="vw-confirm__icon">
-          <Icon name="triangle-alert" size={22} strokeWidth={1.9} />
-        </span>
-        <h3 id="vw-discard-ttl" className="vw-confirm__title">
-          Discard changes?
-        </h3>
-        <p className="vw-confirm__msg">You have unsaved changes. Are you sure you want to leave without saving?</p>
-        <div className="vw-confirm__actions">
-          <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
-            Continue editing
-          </Button>
-          <Button hierarchy="destructive" size="md" type="button" iconLeading="trash-2" onClick={onDiscard}>
-            Discard changes
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-/* ---------------- Reschedule modal ---------------- */
-function RescheduleModal({ open, viewing, onClose, onSuccess }: { open: boolean; viewing: ViewingRecord | null; onClose: () => void; onSuccess: () => void }) {
-  if (!open || !viewing) return null;
-  return <RescheduleModalInner key={viewing.id} viewing={viewing} onClose={onClose} onSuccess={onSuccess} />;
-}
-
-function RescheduleModalInner({ viewing, onClose, onSuccess }: { viewing: ViewingRecord; onClose: () => void; onSuccess: () => void }) {
-  const initial = useMemo(() => viewingToReschedule(viewing), [viewing]);
-  const [form, setForm] = useState(initial);
-  const [confirm, setConfirm] = useState(false);
-  const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
-
-  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
-  // mandatory: date, time, agent — and only enable once something actually changed
-  const canSave = dirty && !!form.date && !!form.time && !!form.agent;
-  const attemptClose = useCallback(() => {
-    if (dirty) setConfirm(true);
-    else onClose();
-  }, [dirty, onClose]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (confirm) {
-        setConfirm(false);
-        return;
-      }
-      attemptClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [confirm, attemptClose]);
-
-  const agentImg = AGENT_IMG[viewing.agent];
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSuccess();
-    onClose();
-  };
-
-  return createPortal(
-    <div
-      className="vw-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) attemptClose();
-      }}
-    >
-      <div className="vw-modal" role="dialog" aria-modal="true" aria-labelledby="vw-resched-ttl">
-        <header className="vw-modal__head">
-          <div className="vw-modal__headmain">
-            <span className="vw-modal__icon">
-              <Icon name="calendar-clock" size={22} strokeWidth={1.9} />
-            </span>
-            <div className="vw-modal__heading">
-              <h2 id="vw-resched-ttl" className="vw-modal__title">
-                Reschedule viewing
-              </h2>
-              <p className="vw-modal__desc">Update the viewing appointment by selecting a new date, time, or assigned agent.</p>
-            </div>
-          </div>
-          <button type="button" className="vw-modal__close" aria-label="Close" onClick={attemptClose}>
-            <Icon name="x" size={20} />
-          </button>
-        </header>
-
-        <form className="vw-modal__form" onSubmit={submit}>
-          <div className="vw-modal__body">
-            <section className="vw-section">
-              <p className="vw-section__label">Current appointment</p>
-              <div className="vw-summary">
-                <div className="vw-summary__top">
-                  <img src={viewing.property.img} alt="" className="vw-summary__thumb" />
-                  <div className="vw-summary__head">
-                    <span className="vw-summary__name">{viewing.property.title}</span>
-                    <span className="vw-summary__loc">
-                      <Icon name="map-pin" size={12} />
-                      {viewing.property.location}
-                    </span>
-                  </div>
-                  <span className="vw-summary__tag">
-                    <Icon name="lock" size={12} />
-                    {viewing.id}
-                  </span>
-                </div>
-                <div className="vw-summary__grid">
-                  <div className="vw-summary__cell">
-                    <span className="vw-summary__k">Member</span>
-                    <span className="vw-summary__v">
-                      <Avatar name={viewing.member} size="xs" />
-                      <span className="vw-summary__vtxt">{viewing.member}</span>
-                    </span>
-                  </div>
-                  <div className="vw-summary__cell">
-                    <span className="vw-summary__k">Assigned agent</span>
-                    <span className="vw-summary__v">
-                      <Avatar src={agentImg || undefined} name={viewing.agent} size="xs" verified />
-                      <span className="vw-summary__vtxt">{viewing.agent}</span>
-                    </span>
-                  </div>
-                  <div className="vw-summary__cell">
-                    <span className="vw-summary__k">Current date</span>
-                    <span className="vw-summary__v">
-                      <Icon name="calendar" size={14} />
-                      {viewing.date}
-                    </span>
-                  </div>
-                  <div className="vw-summary__cell">
-                    <span className="vw-summary__k">Current time</span>
-                    <span className="vw-summary__v">
-                      <Icon name="clock" size={14} />
-                      {viewing.time}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="vw-section">
-              <p className="vw-section__label">Reschedule details</p>
-              <div className="vw-fields">
-                <div className="vw-field-row">
-                  <div className="vw-field">
-                    <label className="vw-field__label" htmlFor="rs-date">
-                      Viewing date
-                    </label>
-                    <DatePicker id="rs-date" value={form.date} onChange={(v) => set("date", v)} placeholder="Select date" />
-                  </div>
-                  <div className="vw-field">
-                    <label className="vw-field__label" htmlFor="rs-time">
-                      Viewing time
-                    </label>
-                    <TimePicker id="rs-time" value={form.time} onChange={(v) => set("time", v)} placeholder="Select time" />
-                  </div>
-                </div>
-
-                <div className="vw-field">
-                  <label className="vw-field__label" htmlFor="rs-duration">
-                    Duration
-                  </label>
-                  <Select id="rs-duration" size="md" value={form.duration} onChange={(e) => set("duration", e.target.value)} options={RESCHED_DURATIONS} />
-                </div>
-
-                <div className="vw-field">
-                  <label className="vw-field__label" htmlFor="rs-agent">
-                    Assigned agent
-                  </label>
-                  <Combobox
-                    id="rs-agent"
-                    items={AGENTS}
-                    value={form.agent}
-                    onSelect={(v) => set("agent", v)}
-                    placeholder="Assign an agent"
-                    searchPlaceholder="Search agents by name or phone…"
-                    filterKeys={["name", "phone"]}
-                    renderValue={(a) => (
-                      <span className="vw-combo__person">
-                        <Avatar src={a.img} name={a.name} size="sm" />
-                        <span className="vw-combo__person-body">
-                          <span className="vw-combo__person-name">{a.name}</span>
-                          <span className="vw-combo__person-meta">
-                            <Icon name="phone" size={11} />
-                            {a.phone}
-                          </span>
-                        </span>
-                      </span>
-                    )}
-                    renderOption={(a) => (
-                      <>
-                        <Avatar src={a.img} name={a.name} size="sm" />
-                        <span className="vw-combo__opt-body">
-                          <span className="vw-combo__opt-title">{a.name}</span>
-                          <span className="vw-combo__opt-meta">
-                            <span>
-                              <Icon name="phone" size={11} />
-                              {a.phone}
-                            </span>
-                          </span>
-                        </span>
-                      </>
-                    )}
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section className="vw-section">
-              <p className="vw-section__label">Notification</p>
-              <div className={"vw-notify" + (form.notify ? " is-on" : "")}>
-                <Checkbox
-                  id="rs-notify"
-                  checked={form.notify}
-                  onChange={(e) => set("notify", e.target.checked)}
-                  label="Notify member"
-                  description="Send an email and SMS/WhatsApp notification informing the member about the updated viewing schedule."
-                />
-              </div>
-            </section>
-
-            <section className="vw-section">
-              <p className="vw-section__label">Reason</p>
-              <div className="vw-field">
-                <label className="vw-field__label" htmlFor="rs-reason">
-                  Reason for rescheduling <span className="vw-optional">(Optional)</span>
-                </label>
-                <textarea id="rs-reason" className="vw-textarea" rows={3} placeholder="e.g. Member requested a different time." value={form.reason} onChange={(e) => set("reason", e.target.value)} />
-              </div>
-            </section>
-          </div>
-
-          <footer className="vw-modal__foot">
             <Button hierarchy="secondary" size="md" type="button" onClick={attemptClose}>
               Cancel
             </Button>
             <div className="vw-modal__foot-right">
-              <Button hierarchy="primary" size="md" type="submit" disabled={!canSave}>
-                Save changes
+              <Button hierarchy="primary" size="md" type="submit" disabled={!canSubmit}>
+                {isEdit ? "Save changes" : "Schedule viewing"}
               </Button>
             </div>
           </footer>
@@ -987,8 +793,9 @@ function RescheduleModalInner({ viewing, onClose, onSuccess }: { viewing: Viewin
   );
 }
 
+
 /* ---------------- Row action menu ---------------- */
-function RowActionMenu({ open, onToggle, onClose, onEdit, onView, onReschedule }: { open: boolean; onToggle: () => void; onClose: () => void; onEdit: () => void; onView: () => void; onReschedule: () => void }) {
+function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelete }: { open: boolean; onToggle: () => void; onEdit: () => void; onView: () => void; onChangeStatus: () => void; onDelete: () => void }) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   useEffect(() => {
@@ -1017,15 +824,15 @@ function RowActionMenu({ open, onToggle, onClose, onEdit, onView, onReschedule }
             <Icon name="pencil" size={16} />
             Edit viewing
           </button>
-          <button type="button" className="vw-aitem" role="menuitem" onClick={onReschedule}>
-            <Icon name="calendar-clock" size={16} />
-            Reschedule
+          <button type="button" className="vw-aitem" role="menuitem" onClick={onChangeStatus}>
+            <Icon name="refresh-cw" size={16} />
+            Change status
           </button>
         </div>
         <div className="vw-amenu__sect">
-          <button type="button" className="vw-aitem vw-aitem--danger" role="menuitem" onClick={onClose}>
-            <Icon name="circle-x" size={16} />
-            Cancel viewing
+          <button type="button" className="vw-aitem vw-aitem--danger" role="menuitem" onClick={onDelete}>
+            <Icon name="trash-2" size={16} />
+            Delete viewing
           </button>
         </div>
       </div>,
@@ -1042,7 +849,7 @@ function RowActionMenu({ open, onToggle, onClose, onEdit, onView, onReschedule }
   );
 }
 
-function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onReschedule }: { v: ViewingRecord; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onReschedule: (v: ViewingRecord) => void }) {
+function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, onDelete }: { v: ViewingRecord; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onChangeStatus: (v: ViewingRecord) => void; onDelete: (v: ViewingRecord) => void }) {
   const st = VIEWING_STATUS[v.status] || { variant: "neutral" as const, icon: "circle" as const, cls: "" };
   const city = v.property.location.split(",").pop()?.trim();
   return (
@@ -1112,8 +919,8 @@ function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onReschedule }: 
             onToggle={() => setOpenMenu(openMenu === v.id ? null : v.id)}
             onEdit={() => onEdit(v)}
             onView={() => onView(v)}
-            onReschedule={() => onReschedule(v)}
-            onClose={() => setOpenMenu(null)}
+            onChangeStatus={() => onChangeStatus(v)}
+            onDelete={() => onDelete(v)}
           />
         </div>
       </div>
@@ -1133,7 +940,7 @@ function NoResults() {
   );
 }
 
-function ViewingsTable({ rows, openMenu, setOpenMenu, onEdit, onView, onReschedule }: { rows: ViewingRecord[]; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onReschedule: (v: ViewingRecord) => void }) {
+function ViewingsTable({ rows, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, onDelete }: { rows: ViewingRecord[]; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onChangeStatus: (v: ViewingRecord) => void; onDelete: (v: ViewingRecord) => void }) {
   return (
     <div className="vw-table">
       <div className="vw-thead" role="row">
@@ -1145,14 +952,61 @@ function ViewingsTable({ rows, openMenu, setOpenMenu, onEdit, onView, onReschedu
         <span className="vw-th vw-col--status">Status</span>
         <span className="vw-th vw-col--acts">Actions</span>
       </div>
-      {rows.length > 0 ? rows.map((v) => <ViewingRow key={v.id} v={v} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={onEdit} onView={onView} onReschedule={onReschedule} />) : <NoResults />}
+      {rows.length > 0 ? rows.map((v) => <ViewingRow key={v.id} v={v} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={onEdit} onView={onView} onChangeStatus={onChangeStatus} onDelete={onDelete} />) : <NoResults />}
     </div>
   );
 }
 
-function ViewingsPanel({ filters, setFilter, onClear, hasActive, rows }: { filters: ViewingFilters; setFilter: (k: keyof ViewingFilters, v: string) => void; onClear: () => void; hasActive: boolean; rows: ViewingRecord[] }) {
+function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPage: number; totalItems: number; onPageChange: (p: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / VIEWINGS_PER_PAGE));
+  const start = Math.min((currentPage - 1) * VIEWINGS_PER_PAGE + 1, totalItems);
+  const end = Math.min(currentPage * VIEWINGS_PER_PAGE, totalItems);
+
+  const getPages = (): (number | "…")[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentPage <= 4) return [1, 2, 3, 4, 5, "…", totalPages];
+    if (currentPage >= totalPages - 3) return [1, "…", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [1, "…", currentPage - 1, currentPage, currentPage + 1, "…", totalPages];
+  };
+
+  if (totalItems === 0) return null;
+  return (
+    <div className="vw-tablefooter">
+      <span className="vw-pagination__info">
+        Showing{" "}
+        <b>
+          {start.toLocaleString("en-US")}–{end.toLocaleString("en-US")}
+        </b>{" "}
+        of <b>{totalItems.toLocaleString("en-US")}</b> viewings
+      </span>
+      <div className="vw-pagination">
+        <button type="button" className="vw-page-btn vw-page-btn--nav" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>
+          <Icon name="chevron-left" size={15} />
+          Previous
+        </button>
+        {getPages().map((p, i) =>
+          p === "…" ? (
+            <span key={"e" + i} className="vw-page-ellipsis">
+              …
+            </span>
+          ) : (
+            <button key={p} type="button" className={"vw-page-btn" + (p === currentPage ? " is-active" : "")} onClick={() => onPageChange(p)}>
+              {p}
+            </button>
+          ),
+        )}
+        <button type="button" className="vw-page-btn vw-page-btn--nav" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)}>
+          Next
+          <Icon name="chevron-right" size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ViewingsPanel({ filters, setFilter, onClear, hasActive, filteredCount, totalAll }: { filters: ViewingFilters; setFilter: (k: keyof ViewingFilters, v: string) => void; onClear: () => void; hasActive: boolean; filteredCount: number; totalAll: number }) {
   const opt = (arr: string[]) => arr.map((v) => ({ value: v, label: v }));
-  const shown = hasActive ? rows.length : TOTAL_VIEWINGS;
+  const shown = hasActive ? filteredCount : totalAll;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeAdvCount = [filters.agent, filters.property, filters.dateRange].filter(Boolean).length;
   return (
@@ -1164,7 +1018,7 @@ function ViewingsPanel({ filters, setFilter, onClear, hasActive, rows }: { filte
         </div>
         {hasActive && (
           <div className="vw-tablecard__resultnote">
-            Showing <b>{rows.length}</b> of {TOTAL_VIEWINGS.toLocaleString("en-US")} viewings
+            Showing <b>{filteredCount.toLocaleString("en-US")}</b> of {totalAll.toLocaleString("en-US")} viewings
           </div>
         )}
       </div>
@@ -1266,14 +1120,143 @@ function Toast({ toast, onDismiss }: { toast: { title: string; message: string }
   );
 }
 
+/* ---------------- Change status modal ---------------- */
+function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingRecord; onCancel: () => void; onConfirm: (status: string) => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const fieldRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (open) setOpen(false);
+      else onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!fieldRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const canConfirm = selected && selected !== viewing.status;
+  const selMeta = selected ? VIEWING_STATUS[selected] : null;
+
+  return createPortal(
+    <div className="vw-confirm-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="vw-confirm vw-confirm--status" role="dialog" aria-modal="true" aria-labelledby="vw-status-ttl">
+        <span className="vw-confirm__icon vw-confirm__icon--brand">
+          <Icon name="refresh-cw" size={22} strokeWidth={1.9} />
+        </span>
+        <h3 id="vw-status-ttl" className="vw-confirm__title">
+          Change viewing status
+        </h3>
+        <p className="vw-confirm__msg">Select a new status for {viewing.id}.</p>
+
+        <div className="vw-statusfield" ref={fieldRef}>
+          <button type="button" className={"vw-statustrigger" + (open ? " is-open" : "")} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {selected && selMeta ? (
+              <Badge variant={selMeta.variant} size="sm" icon={selMeta.icon} className={selMeta.cls}>
+                {selected}
+              </Badge>
+            ) : (
+              <span className="vw-statustrigger__placeholder">Choose a status…</span>
+            )}
+            <Icon name="chevron-down" size={16} className="vw-statustrigger__chev" />
+          </button>
+          {open && (
+            <div className="vw-statusdrop" role="listbox" aria-label="Viewing status">
+              {STATUSES.map((s) => {
+                const meta = VIEWING_STATUS[s];
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    role="option"
+                    aria-selected={selected === s}
+                    className={"vw-statopt" + (selected === s ? " is-selected" : "")}
+                    onClick={() => {
+                      setSelected(s);
+                      setOpen(false);
+                    }}
+                  >
+                    <Badge variant={meta.variant} size="sm" icon={meta.icon} className={meta.cls}>
+                      {s}
+                    </Badge>
+                    <span className="vw-statopt__spacer" />
+                    {viewing.status === s && <span className="vw-statopt__current">Current</span>}
+                    {selected === s && <Icon name="check" size={16} strokeWidth={2.5} className="vw-statopt__check" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="vw-confirm__actions">
+          <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button hierarchy="primary" size="md" type="button" iconLeading="refresh-cw" disabled={!canConfirm} onClick={() => selected && onConfirm(selected)}>
+            Change status
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/* ---------------- Delete viewing modal ---------------- */
+function DeleteViewingModal({ viewing, onCancel, onConfirm }: { viewing: ViewingRecord; onCancel: () => void; onConfirm: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return createPortal(
+    <div className="vw-confirm-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="vw-confirm" role="alertdialog" aria-modal="true" aria-labelledby="vw-del-ttl">
+        <span className="vw-confirm__icon vw-confirm__icon--danger">
+          <Icon name="trash-2" size={22} strokeWidth={1.9} />
+        </span>
+        <h3 id="vw-del-ttl" className="vw-confirm__title">
+          Delete viewing?
+        </h3>
+        <p className="vw-confirm__msg">
+          Are you sure you want to delete the viewing for <strong>{viewing.property.title}</strong> ({viewing.id})? This action cannot be undone.
+        </p>
+        <div className="vw-confirm__actions">
+          <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button hierarchy="destructive" size="md" type="button" iconLeading="trash-2" onClick={onConfirm}>
+            Delete viewing
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function ViewingsApp() {
   const router = useRouter();
+  const [viewings, setViewings] = useState<ViewingRecord[]>(VIEWINGS);
   const [filters, setFilters] = useState<ViewingFilters>(EMPTY_FILTERS);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [statusTarget, setStatusTarget] = useState<ViewingRecord | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ViewingRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editViewing, setEditViewing] = useState<ViewingRecord | null>(null);
-  const [reschedOpen, setReschedOpen] = useState(false);
-  const [reschedView, setReschedView] = useState<ViewingRecord | null>(null);
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
 
   const openView = (v: ViewingRecord) => {
@@ -1293,27 +1276,39 @@ export function ViewingsApp() {
     setModalOpen(false);
     setTimeout(() => setEditViewing(null), 300);
   };
-  const openReschedule = (v: ViewingRecord) => {
-    setOpenMenu(null);
-    setReschedView(v);
-    setReschedOpen(true);
-  };
-  const closeReschedule = () => {
-    setReschedOpen(false);
-    setTimeout(() => setReschedView(null), 300);
-  };
 
-  const setFilter = (k: keyof ViewingFilters, v: string) => setFilters((f) => ({ ...f, [k]: v }));
-  const clear = () => setFilters(EMPTY_FILTERS);
+  const [currentPage, setCurrentPage] = useState(1);
+  const setFilter = (k: keyof ViewingFilters, v: string) => {
+    setFilters((f) => ({ ...f, [k]: v }));
+    setCurrentPage(1);
+  };
+  const clear = () => {
+    setFilters(EMPTY_FILTERS);
+    setCurrentPage(1);
+  };
   const hasActive = Object.values(filters).some(Boolean);
 
-  const handleScheduled = (isEdit: boolean) =>
-    setToast(
-      isEdit
-        ? { title: "Viewing Updated Successfully", message: "The viewing details have been saved and the schedule refreshed." }
-        : { title: "Viewing Scheduled Successfully", message: "The viewing appointment has been created and added to the schedule." },
-    );
-  const handleRescheduled = () => setToast({ title: "Viewing Rescheduled Successfully", message: "The viewing has been updated and the participant has been notified." });
+  const handleScheduled = (record: ViewingRecord, isEdit: boolean) => {
+    if (isEdit) {
+      setViewings((prev) => prev.map((v) => (v.id === record.id ? record : v)));
+      setToast({ title: "Viewing Updated Successfully", message: "The viewing details have been saved and the schedule refreshed." });
+    } else {
+      setViewings((prev) => [record, ...prev]);
+      setToast({ title: "Viewing Scheduled Successfully", message: "The viewing appointment has been created and added to the schedule." });
+    }
+  };
+  const handleStatusConfirm = (status: string) => {
+    const target = statusTarget!;
+    setViewings((prev) => prev.map((v) => (v.id === target.id ? { ...v, status } : v)));
+    setStatusTarget(null);
+    setToast({ title: "Status updated", message: `“${target.property.title}” (${target.id}) is now marked as ${status}.` });
+  };
+  const handleDeleteConfirm = () => {
+    const target = deleteTarget!;
+    setViewings((prev) => prev.filter((v) => v.id !== target.id));
+    setDeleteTarget(null);
+    setToast({ title: "Viewing deleted", message: `The viewing for “${target.property.title}” (${target.id}) has been removed.` });
+  };
 
   useEffect(() => {
     if (!openMenu) return;
@@ -1324,7 +1319,7 @@ export function ViewingsApp() {
 
   const rows = useMemo(() => {
     const q = filters.q.trim().toLowerCase();
-    return VIEWINGS.filter((v) => {
+    return viewings.filter((v) => {
       if (filters.status && v.status !== filters.status) return false;
       if (filters.agent && v.agent !== filters.agent) return false;
       if (filters.property && v.property.title !== filters.property) return false;
@@ -1335,7 +1330,13 @@ export function ViewingsApp() {
       }
       return true;
     });
-  }, [filters]);
+  }, [filters, viewings]);
+
+  const kpiCounts = useMemo(() => computeViewingKpis(viewings), [viewings]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / VIEWINGS_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const pagedRows = rows.slice((page - 1) * VIEWINGS_PER_PAGE, page * VIEWINGS_PER_PAGE);
 
   return (
     <>
@@ -1353,18 +1354,20 @@ export function ViewingsApp() {
 
       <div className="vw-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={c.value} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard key={c.key} label={c.label} value={kpiCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
         ))}
       </div>
 
       <section className="vw-tablecard">
-        <ViewingsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} rows={rows} />
-        <ViewingsTable rows={rows} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={openEdit} onView={openView} onReschedule={openReschedule} />
+        <ViewingsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} filteredCount={rows.length} totalAll={viewings.length} />
+        <ViewingsTable rows={pagedRows} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={openEdit} onView={openView} onChangeStatus={(v) => { setOpenMenu(null); setStatusTarget(v); }} onDelete={(v) => { setOpenMenu(null); setDeleteTarget(v); }} />
+        <PaginationFooter currentPage={page} totalItems={rows.length} onPageChange={setCurrentPage} />
       </section>
 
       {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}
       <ScheduleModal open={modalOpen} editViewing={editViewing} onClose={closeModal} onSuccess={handleScheduled} />
-      <RescheduleModal open={reschedOpen} viewing={reschedView} onClose={closeReschedule} onSuccess={handleRescheduled} />
+      {statusTarget && <ChangeStatusModal viewing={statusTarget} onCancel={() => setStatusTarget(null)} onConfirm={handleStatusConfirm} />}
+      {deleteTarget && <DeleteViewingModal viewing={deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
       {toast && <Toast toast={toast} onDismiss={() => setToast(null)} />}
     </>
   );

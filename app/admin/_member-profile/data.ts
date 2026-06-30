@@ -1,5 +1,6 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
+import { fmtUSD, getAgentByName, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
 
 export const ROLE_META: Record<string, { variant: BadgeVariant }> = {
   Buyer: { variant: "info" },
@@ -102,3 +103,68 @@ export const NOTE_KIND: Record<string, { icon: IconName; cls: string }> = {
   note: { icon: "message-square", cls: "is-note" },
 };
 export const STATUS_DOT: Record<string, string> = { Active: "var(--success-500)", Suspended: "var(--error-500)" };
+
+/* ---------------- catalog resolvers (real, per-id data) ---------------- */
+const FULL_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const ABBR_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function parseJoined(s: string): { short: string; full: string } {
+  const m = /^([A-Za-z]+)\s+(\d+),\s*(\d+)$/.exec(s);
+  if (!m) return { short: s, full: s };
+  const mi = ABBR_MONTHS.indexOf(m[1].slice(0, 3));
+  const full = mi >= 0 ? `${FULL_MONTHS[mi]} ${Number(m[2])}, ${m[3]}` : s;
+  const short = mi >= 0 ? `${ABBR_MONTHS[mi]} ${m[3]}` : s;
+  return { short, full };
+}
+
+/** The relationship agent for a member = the agent on one of their listings. */
+export function memberAgentFor(properties: PropertyRecord[], name: string): MemberAgent {
+  const owned = properties.find((p) => p.owner.name === name && p.agent);
+  if (owned && owned.agent) {
+    const roster = getAgentByName(owned.agent.name);
+    return {
+      name: owned.agent.name,
+      verified: owned.agent.verified,
+      phone: roster?.phone || "+964 750 000 0000",
+      email: (roster?.email as string) || owned.agent.name.toLowerCase().replace(/\s+/g, ".") + "@chiya.estate",
+      img: owned.agent.img,
+      agency: roster?.agency,
+    };
+  }
+  return AGENT;
+}
+
+export function toDetailMember(m: CatalogMember, properties: PropertyRecord[]): MemberRecord {
+  const { short, full } = parseJoined(m.joined);
+  return {
+    id: m.id,
+    name: m.name,
+    status: m.status,
+    types: m.roles,
+    joinedShort: short,
+    joinedFull: full,
+    email: m.email,
+    phone: m.phone,
+    language: "Kurdish (Sorani)",
+    contactMethod: "Phone call",
+    img: m.img ?? "",
+    agent: memberAgentFor(properties, m.name),
+  };
+}
+
+/** Every property connected to this member as owner (seller / landlord). */
+export function buildPortfolio(properties: PropertyRecord[], name: string): PortfolioRow[] {
+  return properties
+    .filter((p) => p.owner.name === name)
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      loc: `${p.area}, ${p.city}`,
+      img: p.img,
+      rel: p.listing === "rent" ? "Landlord" : "Seller",
+      status: p.status,
+      price: fmtUSD(p.price),
+      per: p.per,
+      agent: p.agent?.name || "Unassigned",
+      date: p.date,
+    }));
+}

@@ -251,20 +251,47 @@
   .pd-contact__go { flex: none; color: var(--text-disabled); transition: color .14s; }
   .pd-contact:hover .pd-contact__go { color: var(--green-700); }
 
+  /* ---------- OWNERSHIP / MEMBER (owner-style card) ---------- */
+  .pd-owner { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .pd-owner__id { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .pd-owner__name { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -.01em; }
+  .pd-owner__type { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-tertiary); }
+  .pd-owner__type svg { color: var(--text-tertiary); }
+
   /* ---------- ASSIGNED AGENT ---------- */
   .pd-agent { display: flex; align-items: center; gap: 15px; margin-bottom: 16px; }
-  .pd-agent__id { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-  .pd-agent__name { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -.01em; }
-  .pd-agentlink {
-    display: flex; align-items: center; gap: 9px; margin-top: 14px;
-    padding: 12px 14px; border-radius: var(--radius-md);
-    background: var(--green-700); color: #fff; text-decoration: none;
-    font-size: 14px; font-weight: 600; transition: background-color .15s;
+  .pd-agent--link {
+    margin: -10px -12px 16px; padding: 10px 12px; border-radius: var(--radius-md);
+    text-decoration: none; cursor: pointer; outline: none; transition: background-color .15s;
   }
-  .pd-agentlink:hover { background: var(--brand-primary-hover); color: #fff; }
-  .pd-agentlink svg { color: var(--gold-400); flex: none; }
-  .pd-agentlink__arrow { color: rgba(255,255,255,.7); margin-left: auto; transition: transform .15s; }
-  .pd-agentlink:hover .pd-agentlink__arrow { transform: translateX(3px); color: #fff; }
+  .pd-agent--link:hover { background: var(--gray-50); }
+  .pd-agent--link:focus-visible { box-shadow: var(--shadow-focus-brand); }
+  .pd-agent__id { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; }
+  .pd-agent__go { flex: none; color: var(--text-tertiary); transition: transform .15s, color .15s; }
+  .pd-agent--link:hover .pd-agent__go { color: var(--green-700); transform: translateX(2px); }
+  .pd-agent__nrow { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .pd-agent__name { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text-primary); letter-spacing: -.01em; line-height: 1.05; }
+  .pd-agent__meta { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .pd-agent__broker { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+  .pd-agent__broker svg { color: var(--text-tertiary); flex: none; }
+  .pd-agent__rate { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--text-primary); }
+  .pd-agent__rate svg { color: var(--gold-500); fill: var(--gold-500); flex: none; }
+  .pd-agent__reviews { color: var(--text-tertiary); }
+  .pd-agent__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pd-agentbtn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    height: 52px; border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-primary); text-decoration: none;
+    font-size: 15px; font-weight: 600; transition: background-color .14s, border-color .14s;
+  }
+  .pd-agentbtn:hover { background: var(--gray-50); border-color: var(--border-strong); }
+  .pd-agentbtn:active { transform: translateY(.5px); }
+  .pd-agentbtn svg { color: var(--green-700); flex: none; }
+  .pd-agent__trust {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    margin: 16px 0 2px; font-size: 13px; color: var(--text-tertiary); text-align: center; text-wrap: pretty;
+  }
+  .pd-agent__trust svg { flex: none; color: var(--green-600); }
 
   @media (max-width: 900px) {
     .pd-head__main { flex-direction: column; align-items: stretch; gap: 18px; }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { StatCard } from "@/components/data/stat-card";
 import { KPI_CARDS, KPI_PERIODS } from "./data";
+import { useProperties } from "../_shared/properties-store";
 
 function PeriodSelector({ period, onChange }: { period: string; onChange: (id: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -56,6 +57,7 @@ function PeriodSelector({ period, onChange }: { period: string; onChange: (id: s
 
 export function KpiSection() {
   const [period, setPeriod] = useState("month");
+  const { counts } = useProperties();
   const meta = KPI_PERIODS.find((p) => p.id === period) || KPI_PERIODS[1];
   return (
     <section className="ax-section" aria-label="Key performance indicators">
@@ -70,12 +72,12 @@ export function KpiSection() {
           <StatCard
             key={c.key}
             label={c.label}
-            value={c.values[period]}
+            value={c.field ? counts[c.field].toLocaleString("en-US") : c.values[period]}
             icon={c.icon}
             tone={c.tone}
             delta={c.delta[period]}
             deltaDir="up"
-            sub={meta.compare}
+            sub={c.field ? "Live from listings" : meta.compare}
           />
         ))}
       </div>
