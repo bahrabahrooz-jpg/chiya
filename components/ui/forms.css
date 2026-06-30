@@ -1,0 +1,61 @@
+/* Form fields (Input / Textarea / Select) — ported from the Chiya Estate design system. */
+.cx-field { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-sans); }
+.cx-field__label { font-size: 14px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.005em; }
+.cx-field__req { color: var(--brand-accent); margin-left: 2px; }
+.cx-field__hint { font-size: 13px; line-height: 18px; color: var(--text-tertiary); }
+.cx-field__hint--error { color: var(--text-error); }
+
+.cx-inputwrap { position: relative; display: flex; align-items: center; }
+.cx-input {
+  width: 100%;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  transition: border-color .15s ease, box-shadow .15s ease;
+  outline: none;
+  appearance: none;
+}
+.cx-input::placeholder { color: var(--text-placeholder); }
+.cx-input:hover { border-color: var(--border-strong); }
+.cx-input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+.cx-input--sm { height: 36px; font-size: 14px; padding: 0 12px; }
+.cx-input--md { height: 42px; font-size: 15px; padding: 0 14px; }
+.cx-input--lg { height: 48px; font-size: 16px; padding: 0 16px; }
+.cx-input--haslead.cx-input--sm { padding-left: 36px; }
+.cx-input--haslead.cx-input--md { padding-left: 42px; }
+.cx-input--haslead.cx-input--lg { padding-left: 46px; }
+.cx-input--hastrail { padding-right: 42px; }
+.cx-input--error { border-color: var(--error-500); box-shadow: var(--shadow-focus-error); }
+.cx-input--error:focus { border-color: var(--error-500); box-shadow: var(--shadow-focus-error); }
+.cx-input:disabled { background: var(--gray-50); color: var(--text-disabled); cursor: not-allowed; }
+.cx-input__icon { position: absolute; color: var(--text-tertiary); pointer-events: none; display: flex; }
+.cx-input__icon--lead { left: 13px; }
+.cx-input__icon--trail { right: 13px; }
+.cx-textarea { min-height: 96px; padding: 10px 14px; line-height: 22px; resize: vertical; }
+
+/* Select */
+.cx-selectwrap { position: relative; display: flex; align-items: center; }
+.cx-select {
+  width: 100%;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.cx-select:hover { border-color: var(--border-strong); }
+.cx-select:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+.cx-select--sm { height: 36px; font-size: 14px; padding: 0 36px 0 12px; }
+.cx-select--md { height: 42px; font-size: 15px; padding: 0 40px 0 14px; }
+.cx-select--lg { height: 48px; font-size: 16px; padding: 0 42px 0 16px; }
+.cx-select--placeholder { color: var(--text-placeholder); }
+.cx-select--error { border-color: var(--error-500); box-shadow: var(--shadow-focus-error); }
+.cx-select--error:focus { border-color: var(--error-500); box-shadow: var(--shadow-focus-error); }
+.cx-select:disabled { background: var(--gray-50); color: var(--text-disabled); cursor: not-allowed; }
+.cx-select__chev { position: absolute; right: 13px; color: var(--text-tertiary); pointer-events: none; display: flex; }

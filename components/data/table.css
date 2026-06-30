@@ -1,0 +1,27 @@
+/* Table — ported from the design system (cx-table). */
+.cx-tablewrap { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; font-family: var(--font-sans); }
+.cx-table { width: 100%; border-collapse: collapse; }
+.cx-table th {
+  text-align: start;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 16px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.cx-table th.cx-th--sort { cursor: pointer; user-select: none; }
+.cx-table th.cx-th--sort:hover { color: var(--text-secondary); }
+.cx-th__inner { display: inline-flex; align-items: center; gap: 5px; }
+.cx-table td { padding: 14px 16px; font-size: 14px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.cx-table tr:last-child td { border-bottom: none; }
+.cx-table tbody tr { transition: background-color .12s ease; }
+.cx-table--hover tbody tr:hover { background: var(--gray-25); }
+.cx-table td.cx-td--num { font-variant-numeric: tabular-nums; text-align: end; color: var(--text-primary); font-weight: 600; }
+.cx-table th.cx-th--num { text-align: end; }
+.cx-table__primary { color: var(--text-primary); font-weight: 600; }
+.cx-table__cellflex { display: flex; align-items: center; gap: 10px; }
+.cx-table__sub { font-size: 12px; color: var(--text-tertiary); font-weight: 400; margin-top: 1px; }

@@ -1,0 +1,48 @@
+/* Navbar / Wordmark / Breadcrumb — ported from the design system. */
+.cx-navbar {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 72px;
+  padding: 0 32px;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-sans);
+}
+.cx-navbar--transparent { background: transparent; border-bottom-color: transparent; }
+.cx-navbar--dark { background: var(--surface-brand-deep); border-bottom-color: rgba(255, 255, 255, .08); }
+.cx-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; flex: none; }
+.cx-brand__mark { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--brand-primary); color: var(--brand-accent); }
+.cx-brand__mark img { width: 34px; height: 34px; }
+.cx-brand__name { font-family: var(--font-display); font-weight: 600; font-size: 23px; letter-spacing: -0.01em; color: var(--text-primary); line-height: 1; }
+.cx-navbar--dark .cx-brand__name { color: #fff; }
+.cx-brand__tld { color: var(--brand-accent); }
+.cx-navlinks { display: flex; align-items: center; gap: 4px; }
+.cx-navlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: color .14s, background-color .14s;
+}
+.cx-navlink:hover { color: var(--text-primary); background: var(--gray-50); }
+.cx-navlink--active { color: var(--brand-primary); font-weight: 600; }
+.cx-navbar--dark .cx-navlink { color: rgba(255, 255, 255, .72); }
+.cx-navbar--dark .cx-navlink:hover { color: #fff; background: rgba(255, 255, 255, .08); }
+.cx-navbar--dark .cx-navlink--active { color: var(--brand-accent); }
+.cx-navbar__spacer { flex: 1; }
+.cx-navbar__actions { display: flex; align-items: center; gap: 12px; flex: none; }
+
+/* Breadcrumb */
+.cx-breadcrumb { display: flex; align-items: center; gap: 8px; font-family: var(--font-sans); font-size: 14px; flex-wrap: wrap; }
+.cx-breadcrumb a, .cx-breadcrumb span { color: var(--text-tertiary); text-decoration: none; font-weight: 500; }
+.cx-breadcrumb a:hover { color: var(--text-secondary); }
+.cx-breadcrumb__sep { color: var(--border-strong); display: flex; }
+.cx-breadcrumb__sep svg { transform: scaleX(1); }
+[dir="rtl"] .cx-breadcrumb__sep svg { transform: scaleX(-1); }
+.cx-breadcrumb__cur { color: var(--text-primary); font-weight: 600; }

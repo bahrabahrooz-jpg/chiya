@@ -1,0 +1,55 @@
+/* Hero wrapper — full-bleed photographic banner with a legibility scrim. */
+.cx-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--cx-hero-h, 640px);
+  overflow: hidden;
+}
+.cx-hero__media { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.cx-hero__bg {
+  position: absolute;
+  inset: -2%;
+  background-size: cover;
+  background-position: 50% 42%;
+  transform: scale(1.04);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cx-hero--animate .cx-hero__bg {
+    animation: cx-hero-push 52s cubic-bezier(.45, .05, .55, .95) infinite alternate;
+  }
+}
+@keyframes cx-hero-push {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to { transform: scale(1.10) translate3d(0, -1%, 0); }
+}
+/* Light, airy scrim for legibility (luxury daytime mood). */
+.cx-hero__grad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(247, 245, 241, .26) 0%,
+    rgba(247, 245, 241, .05) 12%,
+    rgba(247, 245, 241, 0) 30%,
+    rgba(247, 245, 241, .10) 62%,
+    rgba(247, 245, 241, .72) 100%
+  );
+}
+.cx-hero__grad--dark {
+  background: linear-gradient(to top, rgba(11, 32, 24, .72), rgba(11, 32, 24, .28) 55%, rgba(11, 32, 24, .35) 100%);
+}
+.cx-hero__inner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.cx-hero__inner--center { align-items: center; text-align: center; }
+
+@media (max-width: 680px) {
+  .cx-hero { min-height: var(--cx-hero-h-mobile, 520px); }
+}

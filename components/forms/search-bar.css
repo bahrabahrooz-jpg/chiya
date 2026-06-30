@@ -1,0 +1,70 @@
+/* SearchBar — marquee location/type/price pill search (ported from the DS). */
+.cx-searchbar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  font-family: var(--font-sans);
+}
+.cx-searchbar__seg {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 18px;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  transition: background-color .14s;
+  border: none;
+  background: none;
+  text-align: start;
+}
+.cx-searchbar__seg:hover { background: var(--gray-50); }
+.cx-searchbar__seg + .cx-searchbar__seg::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 18%;
+  height: 64%;
+  width: 1px;
+  background: var(--border-subtle);
+}
+.cx-searchbar__seg:hover + .cx-searchbar__seg::before,
+.cx-searchbar__seg:hover::before { opacity: 0; }
+.cx-searchbar__lbl { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-tertiary); }
+.cx-searchbar__val { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 500; color: var(--text-primary); }
+.cx-searchbar__val svg { color: var(--green-500); }
+.cx-searchbar__val--ph { color: var(--text-placeholder); font-weight: 400; }
+.cx-searchbar__go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: center;
+  height: 56px;
+  padding: 0 28px;
+  margin-inline-start: 4px;
+  background: var(--brand-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .15s;
+}
+.cx-searchbar__go:hover { background: var(--brand-primary-hover); }
+
+@media (max-width: 760px) {
+  .cx-searchbar { flex-direction: column; border-radius: var(--radius-card-lg); }
+  .cx-searchbar__seg + .cx-searchbar__seg::before { display: none; }
+  .cx-searchbar__go { align-self: stretch; margin: 6px 0 0; }
+}

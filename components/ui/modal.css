@@ -1,0 +1,73 @@
+/* Modal — ported from the Chiya Estate design system (cx-overlay / cx-modal). */
+.cx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--surface-overlay);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: cx-fade .18s ease;
+}
+@keyframes cx-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cx-rise { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+.cx-modal {
+  position: relative;
+  width: 100%;
+  background: var(--surface-card);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-2xl);
+  animation: cx-rise .22s cubic-bezier(.2, .7, .2, 1);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+}
+.cx-modal--sm { max-width: 400px; }
+.cx-modal--md { max-width: 512px; }
+.cx-modal--lg { max-width: 680px; }
+.cx-modal--xl { max-width: 880px; }
+.cx-modal__head { display: flex; align-items: flex-start; gap: 16px; padding: 24px 24px 0; }
+.cx-modal__headicon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--brand-subtle);
+  color: var(--green-700);
+}
+.cx-modal__titles { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.cx-modal__title { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 28px; color: var(--text-primary); }
+.cx-modal__sub { font-family: var(--font-sans); font-size: 14px; line-height: 20px; color: var(--text-tertiary); }
+.cx-modal__close {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color .14s, color .14s;
+}
+.cx-modal__close:hover { background: var(--gray-100); color: var(--gray-700); }
+.cx-modal__body { padding: 18px 24px; overflow: auto; font-family: var(--font-sans); font-size: 15px; line-height: 22px; color: var(--text-secondary); }
+.cx-modal__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 24px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: auto;
+}
+.cx-modal__foot--spread { justify-content: space-between; }

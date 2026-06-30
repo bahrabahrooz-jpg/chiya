@@ -1,0 +1,27 @@
+/* AppointmentWidget — ported from the design system (cx-appt). */
+.cx-appt { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); box-shadow: var(--shadow-lg); font-family: var(--font-sans); overflow: hidden; }
+.cx-appt__head { padding: 20px 22px; border-bottom: 1px solid var(--border-subtle); }
+.cx-appt__priceln { display: flex; align-items: baseline; gap: 6px; }
+.cx-appt__price { font-weight: 700; font-size: 26px; letter-spacing: -0.01em; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.cx-appt__per { font-size: 14px; color: var(--text-tertiary); font-weight: 500; }
+.cx-appt__est { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-tertiary); margin-top: 4px; }
+.cx-appt__body { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+.cx-appt__seclbl { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 9px; }
+.cx-appt__dates { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.cx-appt__date { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px; border-radius: var(--radius-md); border: 1px solid var(--border-default); cursor: pointer; background: var(--surface-card); transition: border-color .14s, background-color .14s; }
+.cx-appt__date:hover { border-color: var(--border-strong); }
+.cx-appt__date--active { background: var(--brand-primary); border-color: var(--brand-primary); }
+.cx-appt__date--active .cx-appt__dow, .cx-appt__date--active .cx-appt__dnum { color: #fff; }
+.cx-appt__dow { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-tertiary); }
+.cx-appt__dnum { font-size: 17px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.cx-appt__slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cx-appt__slot { padding: 9px 4px; text-align: center; border-radius: var(--radius-md); border: 1px solid var(--border-default); font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; background: var(--surface-card); transition: all .14s; }
+.cx-appt__slot:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.cx-appt__slot--active { background: var(--brand-subtle); border-color: var(--green-300); color: var(--green-800); }
+.cx-appt__slot--off { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
+.cx-appt__agentrow { display: flex; align-items: center; gap: 11px; padding: 12px; background: var(--gray-50); border-radius: var(--radius-md); }
+.cx-appt__agentrow b { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; line-height: 1.3; }
+.cx-appt__agentrow span { font-size: 12px; color: var(--text-tertiary); }
+.cx-appt__cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 50px; border: none; background: var(--brand-primary); color: #fff; border-radius: var(--radius-control); font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color .15s; }
+.cx-appt__cta:hover { background: var(--brand-primary-hover); }
+.cx-appt__note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--text-tertiary); }

@@ -1,0 +1,12 @@
+/* ============================================================
+   CHIYA ESTATE — WEBFONTS
+   Loaded from Google Fonts for V1. For production, self-host
+   the .woff2 binaries and replace these @import lines with
+   local @font-face rules.
+
+   - Cormorant Garamond  →  luxury serif display
+   - Hanken Grotesk      →  premium UI / body sans
+   - IBM Plex Mono       →  tabular figures (prices, stats, IDs)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');

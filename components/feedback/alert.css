@@ -1,0 +1,41 @@
+/* Alert — inline contextual banner. */
+.cx-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  font-family: var(--font-sans);
+}
+.cx-alert__icon { flex: none; display: flex; margin-top: 1px; }
+.cx-alert__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cx-alert__title { font-size: 14px; font-weight: 700; }
+.cx-alert__desc { font-size: 14px; line-height: 20px; color: var(--text-secondary); }
+.cx-alert__close {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: -4px -4px 0 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  transition: background-color .14s, color .14s;
+}
+.cx-alert__close:hover { background: var(--gray-100); color: var(--text-secondary); }
+
+.cx-alert--brand { background: var(--brand-subtle); border-color: var(--green-100); }
+.cx-alert--brand .cx-alert__icon, .cx-alert--brand .cx-alert__title { color: var(--green-700); }
+.cx-alert--info { background: var(--info-50); border-color: var(--info-100); }
+.cx-alert--info .cx-alert__icon, .cx-alert--info .cx-alert__title { color: var(--info-700); }
+.cx-alert--success { background: var(--success-50); border-color: var(--success-100); }
+.cx-alert--success .cx-alert__icon, .cx-alert--success .cx-alert__title { color: var(--success-700); }
+.cx-alert--warning { background: var(--warning-50); border-color: var(--warning-100); }
+.cx-alert--warning .cx-alert__icon, .cx-alert--warning .cx-alert__title { color: var(--warning-700); }
+.cx-alert--error { background: var(--error-50); border-color: var(--error-100); }
+.cx-alert--error .cx-alert__icon, .cx-alert--error .cx-alert__title { color: var(--error-700); }

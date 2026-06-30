@@ -1,0 +1,52 @@
+/* ============================================================
+   CHIYA ESTATE — GRID & LAYOUT TOKENS
+   Responsive 12-column grid. Web breakpoints + mobile.
+   ============================================================ */
+
+:root {
+  /* Container max-widths */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1440px;
+  --container-max: 1280px;   /* default content container */
+
+  /* Grid */
+  --grid-columns: 12;  /* @kind other */
+  --grid-gutter: 32px;
+  --grid-gutter-mobile: 16px;
+  --grid-margin: 80px;       /* desktop page margin */
+  --grid-margin-mobile: 20px;
+
+  /* Breakpoints (reference — use in @media) */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  --bp-2xl: 1440px;
+}
+
+/* Container helper */
+.cx-container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--grid-margin-mobile);
+}
+@media (min-width: 768px) {
+  .cx-container { padding-inline: 48px; }
+}
+@media (min-width: 1024px) {
+  .cx-container { padding-inline: var(--grid-margin); }
+}
+
+/* 12-col grid helper */
+.cx-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  gap: var(--grid-gutter-mobile);
+}
+@media (min-width: 768px) {
+  .cx-grid { gap: var(--grid-gutter); }
+}

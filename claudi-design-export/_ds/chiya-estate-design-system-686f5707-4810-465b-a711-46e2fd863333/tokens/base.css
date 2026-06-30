@@ -1,0 +1,38 @@
+/* ============================================================
+   CHIYA ESTATE — BASE / RESET
+   Light, minimal normalize + brand defaults.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md-size);
+  line-height: var(--text-md-line);
+  color: var(--text-primary);
+  background-color: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv01";
+}
+
+h1, h2, h3, h4, h5, h6 { margin: 0; font-family: var(--font-display); color: var(--text-primary); }
+p { margin: 0; }
+
+a { color: var(--text-brand); text-decoration: none; }
+a:hover { color: var(--brand-primary-hover); }
+
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
+
+img, svg, video { display: block; max-width: 100%; }
+
+::selection { background: var(--brand-accent-subtle); color: var(--green-900); }
+
+:focus-visible { outline: none; }
+
+/* Tabular numerals for prices & data */
+.cx-tnum { font-variant-numeric: tabular-nums; }
+.cx-mono { font-family: var(--font-mono); }

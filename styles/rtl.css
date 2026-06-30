@@ -1,0 +1,78 @@
+/* ============================================================
+   RTL / ARABIC + KURDISH SUPPORT
+   Direction is set on <html dir> by the i18n engine. Logical
+   CSS properties (margin-inline, inset-inline, text-align:start)
+   handle most flipping automatically; this file covers the font
+   swap and the few things that need explicit RTL treatment.
+   ============================================================ */
+
+/* Arabic-script font swap — Cairo display + Noto Sans Arabic UI */
+html[dir="rtl"] {
+  --font-sans: var(--font-noto-arabic), "Hanken Grotesk", sans-serif;
+  --font-display: var(--font-cairo), "Noto Sans Arabic", sans-serif;
+}
+
+/* Arabic script never takes letter-spacing (breaks ligatures) or uppercase. */
+[dir="rtl"] .cx-eyebrow,
+[dir="rtl"] .cx-field__label,
+[dir="rtl"] .cx-searchbar__lbl,
+[dir="rtl"] .cx-appt__seclbl {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* The brand lockup is an asset — never mirror it; keep [mark] Chiya L→R. */
+[dir="rtl"] .cx-brand {
+  direction: ltr;
+}
+
+/* ============================================================
+   ARABIC LABELS INSIDE THE DESIGN-SYSTEM CARDS
+   The card components hardcode English micro-labels; swap them
+   in RTL via ::after, keyed on stable classes so brand colors
+   and icons are preserved. (Ported from the homepage kit.)
+   ============================================================ */
+
+/* Property + featured card status / Featured badges (keyed on variant) */
+[dir="rtl"] .cx-prop__badges .cx-badge,
+[dir="rtl"] .cx-feat__badges .cx-badge { font-size: 0 !important; }
+[dir="rtl"] .cx-prop__badges .cx-badge::after,
+[dir="rtl"] .cx-feat__badges .cx-badge::after { font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0; }
+[dir="rtl"] .cx-prop__badges .cx-badge--gold::after,
+[dir="rtl"] .cx-feat__badges .cx-badge--gold::after { content: "مميز"; }
+[dir="rtl"] .cx-prop__badges .cx-badge--success::after { content: "للبيع"; }
+[dir="rtl"] .cx-prop__badges .cx-badge--info::after { content: "للإيجار"; }
+[dir="rtl"] .cx-prop__badges .cx-badge--solid::after { content: "جديد"; }
+[dir="rtl"] .cx-prop__badges .cx-badge--warning::after { content: "قيد الانتظار"; }
+[dir="rtl"] .cx-prop__badges .cx-badge--error::after { content: "مُباع"; }
+[dir="rtl"] .cx-feat__badges .cx-badge--solid::after { content: "للبيع"; }
+
+/* Property card spec labels (Beds / Baths / area) — guarded on sibling count */
+[dir="rtl"] .cx-prop__spec { font-size: 0; }
+[dir="rtl"] .cx-prop__spec b { font-size: 15px; }
+[dir="rtl"] .cx-prop__spec svg { width: 17px; height: 17px; }
+[dir="rtl"] .cx-prop__spec:nth-child(1):nth-last-child(3)::after { content: "غرف"; font-size: 13.5px; }
+[dir="rtl"] .cx-prop__spec:nth-child(2):nth-last-child(2)::after { content: "حمام"; font-size: 13.5px; }
+[dir="rtl"] .cx-prop__spec:nth-child(3):nth-last-child(1)::after { content: "م²"; font-size: 13.5px; }
+[dir="rtl"] .cx-prop__spec:nth-child(1):nth-last-child(1)::after { content: "م²"; font-size: 13.5px; }
+
+/* Featured hero card spec labels */
+[dir="rtl"] .cx-feat__spec { font-size: 0; }
+[dir="rtl"] .cx-feat__spec b { font-size: 13px; }
+[dir="rtl"] .cx-feat__spec:nth-child(1)::after { content: "غرف نوم"; font-size: 13px; }
+[dir="rtl"] .cx-feat__spec:nth-child(2)::after { content: "حمّامات"; font-size: 13px; }
+[dir="rtl"] .cx-feat__spec:nth-child(3)::after { content: "م²"; font-size: 13px; }
+
+/* Agent card: verified badge, stat labels, action buttons */
+[dir="rtl"] .cx-agent .cx-badge--brand { font-size: 0; }
+[dir="rtl"] .cx-agent .cx-badge--brand::after { content: "وكيل موثّق"; font-size: 11px; font-weight: 600; }
+[dir="rtl"] .cx-agent__stat span { font-size: 0; }
+[dir="rtl"] .cx-agent__stat span::after { font-size: 11px; font-weight: 600; }
+[dir="rtl"] .cx-agent__stats .cx-agent__stat:nth-child(1) span::after { content: "قوائم"; }
+[dir="rtl"] .cx-agent__stats .cx-agent__stat:nth-child(2) span::after { content: "مبيعات"; }
+[dir="rtl"] .cx-agent__stats .cx-agent__stat:nth-child(3) span::after { content: "سنوات"; }
+[dir="rtl"] .cx-agent__btn--ghost { font-size: 0; }
+[dir="rtl"] .cx-agent__btn--ghost::after { content: "مراسلة"; font-size: 14px; font-weight: 600; }
+[dir="rtl"] .cx-agent__btn--primary { font-size: 0; }
+[dir="rtl"] .cx-agent__btn--primary::after { content: "اتصال"; font-size: 14px; font-weight: 600; }
+[dir="rtl"] .cx-agent__rating span { display: none; }

@@ -1,0 +1,37 @@
+/* ============================================================
+   DARK-MODE COMPONENT REFINEMENTS
+   Token overrides live in tokens.css. These are the few
+   component-level dark tweaks (ported from the export's
+   theme.css) that the token system alone can't express —
+   keyed on the design system's stable cx-* classes.
+   ============================================================ */
+
+/* Glass icon buttons over photography stay light, but soften the hard white. */
+:root[data-theme="dark"] .cx-iconbtn--glass {
+  background: rgba(20, 26, 36, 0.55);
+  color: #f1f4f9;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+:root[data-theme="dark"] .cx-iconbtn--glass:hover {
+  background: rgba(28, 36, 50, 0.78);
+}
+
+/* Brand-green used as a FOREGROUND on dark subtle surfaces would be
+   near-invisible; lift these specific foregrounds to a luminous green. */
+:root[data-theme="dark"] .cx-badge--brand {
+  color: #8fcbab;
+  border-color: rgba(127, 185, 155, 0.22);
+}
+:root[data-theme="dark"] .cx-stat__icon--brand,
+:root[data-theme="dark"] .cx-modal__headicon {
+  color: #8fcbab;
+}
+:root[data-theme="dark"] .cx-stat__icon--gold {
+  color: var(--gold-300);
+}
+
+/* Text selection on dark. */
+:root[data-theme="dark"] ::selection {
+  background: rgba(70, 128, 98, 0.45);
+  color: #fff;
+}

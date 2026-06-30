@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chiya Estate — Luxury Real Estate in Kurdistan</title>
+<script src="assets/theme.js"></script>
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/styles.css">
+<link rel="stylesheet" href="assets/theme.css">
+<!-- Arabic webfonts: Cairo (display) · Noto Sans Arabic (UI) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap">
+<!-- Prevent flash of wrong direction when Arabic is stored in localStorage -->
+<script>
+  (function() {
+    try {
+      var l = localStorage.getItem("cx-lang");
+      if (l === "ar") {
+        document.documentElement.dir  = "rtl";
+        document.documentElement.lang = "ar";
+      }
+    } catch(e) {}
+  })();
+</script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/_ds_bundle.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface-page); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  ::selection { background: var(--green-100); }
+
+  .cxk-container { width: 100%; max-width: 1320px; margin-inline: auto; padding-inline: 56px; }
+  .cxk-section { padding: 92px 0; }
+  .cxk-section + .cxk-section { padding-top: 0; }
+
+  /* ---- Section heads ---- */
+  .cxk-sechead { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 40px; }
+  .cxk-sechead--center { flex-direction: column; align-items: center; text-align: center; }
+  .cxk-sechead--center .cxk-sechead__text { max-width: 640px; }
+  .cxk-sectitle { font-family: var(--font-display); font-weight: 600; font-size: 42px; line-height: 1.08; letter-spacing: -0.02em; color: var(--text-primary); margin: 8px 0 0; }
+  .cxk-secsub { font-family: var(--font-sans); font-size: 17px; line-height: 26px; color: var(--text-secondary); margin: 12px 0 0; max-width: 560px; text-wrap: pretty; }
+  .cxk-sechead--center .cxk-secsub { margin-inline: auto; }
+
+  .cxk-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .cxk-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+
+  /* ============ HEADER ============ */
+  /* Base header bar. */
+  .cxh { position: relative; z-index: 1200; border-bottom: 1px solid transparent; }
+  /* Initial bar: transparent, overlaid on the hero, scrolls away naturally with the page (NOT sticky). */
+  .cxh--static { position: absolute; top: 0; left: 0; right: 0; }
+  /* Sticky reveal bar: fixed, hidden above the viewport, slides in when Featured is reached. */
+  .cxh--sticky { position: fixed; top: 0; left: 0; right: 0; transform: translateY(-100%); transition: transform .32s cubic-bezier(.2,.7,.2,1); will-change: transform; }
+  .cxh--sticky.cxh--show { transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .cxh--sticky { transition: none; } }
+  .cxh__inner { max-width: 1320px; margin-inline: auto; padding: 0 56px; height: 84px; display: flex; align-items: center; gap: 32px; }
+  .cxh__brand { flex: none; }
+  .cxh__nav { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .cxh__link { display: inline-flex; align-items: center; padding: 9px 16px; font-family: var(--font-sans); font-size: 15px; font-weight: 500; text-decoration: none; border-radius: var(--radius-control); transition: color .16s, background-color .16s; }
+  .cxh__actions { flex: none; display: flex; align-items: center; gap: 12px; }
+  .cxh__lang { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; font-weight: 600; padding: 6px 8px; border-radius: var(--radius-control); transition: color .16s, background-color .16s; }
+  .cxh__divider { width: 1px; height: 22px; }
+
+  /* transparent over the now-bright hero — dark text for legibility */
+  .cxh:not(.cxh--solid) { background: transparent; }
+  .cxh:not(.cxh--solid) .cx-brand__name { color: #fff; }
+  .cxh:not(.cxh--solid) .cx-brand__mark img { filter: brightness(0) invert(1); }
+  .cxh:not(.cxh--solid) .cx-brand__mark::before { filter: brightness(0) invert(1); }
+  .cxh:not(.cxh--solid) .cxh__link { color: #fff; font-weight: 600; }
+  .cxh:not(.cxh--solid) .cxh__link:hover { color: #fff; background: rgba(255,255,255,.16); }
+  .cxh:not(.cxh--solid) .cxh__link--active { color: #fff; }
+  .cxh:not(.cxh--solid) .cxh__lang { color: #fff; }
+  .cxh:not(.cxh--solid) .cxh__lang:hover { background: rgba(255,255,255,.16); }
+  .cxh:not(.cxh--solid) .cxh__divider { background: rgba(255,255,255,.4); }
+
+  /* solid on scroll */
+  .cxh--solid { background: var(--surface-card); border-bottom-color: var(--border-subtle); box-shadow: var(--shadow-sm); }
+  .cxh--solid .cxh__link { color: var(--text-secondary); }
+  .cxh--solid .cxh__link:hover { color: var(--text-primary); background: var(--gray-50); }
+  .cxh--solid .cxh__link--active { color: var(--brand-primary); font-weight: 600; }
+  .cxh--solid .cxh__lang { color: var(--text-secondary); }
+  .cxh--solid .cxh__lang:hover { background: var(--gray-50); }
+  .cxh--solid .cxh__divider { background: var(--border-subtle); }
+
+  /* ============ HERO ============ */
+  .cxhero { position: relative; min-height: 720px; display: flex; align-items: center; }
+  /* Background wrapper clips the scaling photo — the hero itself stays overflow-visible
+     so open search dropdowns can extend past its bottom edge without being cropped. */
+  .cxhero__media { position: absolute; inset: 0; overflow: hidden; z-index: 0; }
+  /* Background photograph — bright modern luxury villa, soft blue sky, daytime.
+     Balanced composition: architecture occupies part of the frame, calm sky through the centre
+     so centred content reads equally well in English (LTR) and Arabic (RTL). */
+  .cxhero__bg { position: absolute; inset: -2%; background-image: url("assets/hero-villa-bright.png"); background-size: cover; background-position: 50% 42%; transform: scale(1.04); transform-origin: 50% 50%; will-change: transform; }
+  /* Light, airy scrim: gentle top wash for header legibility, soft floor that seats the search card
+     and blends into the page. Neutral — no orange cast, no dark mood. */
+  .cxhero__grad { position: absolute; inset: 0; background:
+      linear-gradient(to bottom, rgba(247,245,241,.26) 0%, rgba(247,245,241,.05) 12%, rgba(247,245,241,0) 30%, rgba(247,245,241,.10) 62%, rgba(247,245,241,.72) 100%); }
+  /* Soft light bloom centred behind the headline so the dark display type stays crisp — kept gentle so the sky stays vivid. */
+  .cxhero__grad::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(54% 52% at 50% 50%, rgba(255,255,255,.40) 0%, rgba(255,255,255,.13) 48%, rgba(255,255,255,0) 76%); }
+  @media (prefers-reduced-motion: no-preference) {
+    .cxhero__bg { animation: cxhero-push 52s cubic-bezier(.45,.05,.55,.95) infinite alternate; }
+  }
+  @keyframes cxhero-push { from { transform: scale(1.04) translate3d(0,0,0); } to { transform: scale(1.10) translate3d(0, -1%, 0); } }
+  .cxhero__inner { position: relative; z-index: 2; width: 100%; max-width: 1320px; margin-inline: auto; padding: 104px 56px 78px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .cxhero__title { font-family: var(--font-display); font-weight: 600; font-size: 64px; line-height: 1.04; letter-spacing: -0.025em; color: var(--text-primary); white-space: pre-line; margin: 24px auto 18px; max-width: 900px; }
+  .cxhero__sub { font-family: var(--font-sans); font-size: 19px; line-height: 29px; color: var(--text-secondary); max-width: 600px; margin: 0 auto 34px; text-wrap: pretty; }
+  .cxhero__trust { display: flex; gap: 30px; margin-top: 28px; flex-wrap: wrap; }
+  .cxhero__trustitem { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-sans); font-size: 14.5px; font-weight: 500; color: rgba(255,255,255,.92); }
+  .cxhero__trustitem svg { color: var(--brand-accent); }
+
+  /* ---- Hero search: single unified bar, dropped down to straddle the seam between the hero and the Featured section ---- */
+  .cxsearch { width: 100%; position: relative; display: flex; justify-content: center; --cxsearch-drop: 112px; transform: translateY(var(--cxsearch-drop)); }
+  /* lift the whole hero above the page so panels float over every card below — no page overlay */
+  body.cx-pop-open .cxhero { z-index: 1000; }
+
+  /* The one integrated container: Buy/Rent · Location · Type · Price · Search.
+     Hugs its content — the bar is only as wide as the fields + button need. */
+  .cxbar { position: relative; z-index: 2; display: inline-flex; align-items: stretch;
+    width: fit-content; max-width: 100%;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: 16px; box-shadow: var(--shadow-2xl); padding: 6px; }
+
+  /* clean dividers between fields */
+  .cxbar__sep { width: 1px; align-self: center; height: 40px; background: var(--border-subtle); flex: none; }
+
+  /* a field cell (label + value) — sized to its content, never stretched, never truncated */
+  .cxpop { position: relative; flex: 0 0 auto; display: flex; }
+  .cxfield { display: flex; flex-direction: column; justify-content: center;
+    align-items: flex-start; gap: 3px; text-align: left; cursor: pointer; background: none; border: none;
+    padding: 11px 16px; border-radius: 10px; transition: background-color .15s ease; white-space: nowrap; }
+  .cxfield:hover { background: var(--gray-50); }
+  .cxfield--open { background: var(--gray-50); }
+  .cxfield__label { font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; }
+  .cxfield__val { display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text-primary); line-height: 22px; }
+  .cxfield__val > svg { color: var(--green-600); flex: none; }
+  .cxfield--empty .cxfield__val { color: var(--text-placeholder); font-weight: 500; }
+  .cxfield--empty .cxfield__val > svg { color: var(--text-tertiary); }
+  .cxfield__txt { white-space: nowrap; }
+  .cxfield__chev { color: var(--text-tertiary); flex: none; transition: transform .2s ease; }
+  .cxfield--open .cxfield__chev { transform: rotate(180deg); }
+
+  /* compact, fixed-width action button — sits inside the bar with breathing room, separated from Price */
+  .cxbar__go { flex: none; align-self: center; display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; border: none; cursor: pointer; padding: 0 20px; margin-left: 10px; height: 50px;
+    background: var(--brand-primary); color: #fff; border-radius: 10px;
+    font-family: var(--font-sans); font-size: 15px; font-weight: 600; white-space: nowrap;
+    transition: background-color .16s ease, transform .12s ease; }
+  .cxbar__go:hover { background: var(--brand-primary-hover); }
+  .cxbar__go:active { background: var(--brand-primary-active); transform: translateY(.5px); }
+  .cxbar__go svg { flex: none; }
+
+  /* ---- Floating dropdown panels ---- */
+  .cxpanel { position: absolute; top: calc(100% + 12px); left: 0; z-index: 80; min-width: 280px; width: 100%; max-width: 340px;
+    background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card-lg);
+    box-shadow: var(--shadow-2xl); overflow: hidden; transform-origin: top left;
+    animation: cxpanel-in .16s cubic-bezier(.2,.7,.2,1); }
+  .cxpanel--right { left: auto; right: 0; transform-origin: top right; }
+  @keyframes cxpanel-in { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  .cxpanel__scroll { max-height: 360px; overflow-y: auto; padding: 8px; }
+  .cxpanel__scroll--pad { padding: 10px; }
+  .cxpanel__label { font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text-tertiary); padding: 8px 10px 6px; }
+
+  .cxrow { display: flex; align-items: center; gap: 13px; width: 100%; text-align: start; cursor: pointer;
+    background: none; border: none; padding: 11px 12px; border-radius: var(--radius-md);
+    font-family: var(--font-sans); transition: background-color .14s ease; }
+  .cxrow:hover { background: var(--gray-50); }
+  .cxrow--sel { background: var(--green-50); }
+  .cxrow--sel:hover { background: var(--green-50); }
+  .cxrow__ic { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 38px; height: 38px;
+    border-radius: 50%; background: var(--gray-100); color: var(--green-700); }
+  .cxrow__ic--tile { border-radius: var(--radius-md); background: var(--green-50); }
+  .cxrow__body { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+  .cxrow__title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .cxrow__sub { font-size: 12.5px; color: var(--text-tertiary); }
+  .cxrow__check { color: var(--brand-primary); flex: none; }
+
+  /* stack the bar on small screens */
+  @media (max-width: 880px) {
+    .cxsearch { --cxsearch-drop: 56px; }
+    .cxbar { flex-direction: column; align-items: stretch; width: 100%; }
+    .cxpop { flex: 1 1 auto; }
+    .cxfield { width: 100%; }
+    .cxbar__deal { padding: 14px 16px; justify-content: center; }
+    .cxbar__sep { width: auto; align-self: stretch; height: 1px; }
+    .cxbar__go { align-self: stretch; margin: 8px 0 0; height: 52px; border-radius: 10px; }
+    .cxpanel { width: 100%; max-width: none; left: 0; right: 0; }
+  }
+
+  /* ============ CATEGORIES ============ */
+  .cxk-cats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; }
+  .cxcat { position: relative; display: block; aspect-ratio: 3/4.2; border-radius: var(--radius-card); overflow: hidden; text-decoration: none; box-shadow: var(--shadow-card); transition: transform .25s ease, box-shadow .25s ease; }
+  .cxcat:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
+  .cxcat__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+  .cxcat:hover .cxcat__img { transform: scale(1.06); }
+  .cxcat__grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(11,32,24,.82) 0%, rgba(11,32,24,.28) 46%, rgba(11,32,24,.06) 100%); }
+  .cxcat__body { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px; display: flex; flex-direction: column; gap: 4px; }
+  .cxcat__ic { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--radius-md); background: rgba(255,255,255,.16); backdrop-filter: blur(6px); color: var(--brand-accent); margin-bottom: 8px; }
+  .cxcat__name { font-family: var(--font-display); font-weight: 600; font-size: 23px; line-height: 1.1; color: #fff; }
+  .cxcat__count { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: rgba(255,255,255,.82); }
+
+  /* ============ LOCATIONS ============ */
+  .cxloc { display: flex; flex-direction: column; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); overflow: hidden; text-decoration: none; box-shadow: var(--shadow-card); transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+  .cxloc:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); border-color: var(--border-default); }
+  .cxloc__media { position: relative; aspect-ratio: 16/11; overflow: hidden; background: var(--gray-100); }
+  .cxloc__media img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+  .cxloc:hover .cxloc__media img { transform: scale(1.05); }
+  .cxloc__grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(11,32,24,.34), transparent 46%); }
+  .cxloc__count { position: absolute; left: 14px; bottom: 14px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill); font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; color: #fff; background: rgba(11,32,24,.62); backdrop-filter: blur(4px); }
+  .cxloc__body { padding: 22px 22px 24px; }
+  .cxloc__head { display: flex; align-items: center; justify-content: space-between; }
+  .cxloc__city { font-family: var(--font-display); font-weight: 600; font-size: 26px; margin: 0; color: var(--text-primary); }
+  .cxloc__head svg { color: var(--green-500); transition: transform .2s ease; }
+  .cxloc:hover .cxloc__head svg { transform: translate(3px, -3px); }
+  .cxloc__blurb { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: var(--text-secondary); margin: 8px 0 0; text-wrap: pretty; }
+
+  /* ============ WHY CHIYA (dark band) ============ */
+  .cxk-whyband { background: var(--surface-brand-deep); padding: 96px 0; position: relative; }
+  .cxk-whyband .cxk-sectitle { color: #fff; }
+  .cxk-whyband .cxk-secsub { color: rgba(255,255,255,.72); }
+  .cxpillar { display: flex; flex-direction: column; gap: 14px; padding: 30px 26px; background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.10); border-radius: var(--radius-card); transition: background-color .2s ease, transform .2s ease; }
+  .cxpillar:hover { background: rgba(255,255,255,.07); transform: translateY(-3px); }
+  .cxpillar__ic { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-lg); background: rgba(201,162,75,.16); color: var(--brand-accent); }
+  .cxpillar__title { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; color: #fff; }
+  .cxpillar__desc { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: rgba(255,255,255,.70); margin: 0; text-wrap: pretty; }
+
+  /* ============ TESTIMONIALS ============ */
+  .cxtest { display: flex; flex-direction: column; gap: 18px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: 30px 28px; box-shadow: var(--shadow-card); margin: 0; }
+  .cxtest__stars { display: flex; gap: 3px; color: var(--brand-accent); }
+  .cxtest__quote { font-family: var(--font-display); font-weight: 500; font-size: 21px; line-height: 30px; letter-spacing: -0.01em; color: var(--text-primary); margin: 0; flex: 1; text-wrap: pretty; }
+  .cxtest__by { display: flex; align-items: center; gap: 12px; padding-top: 18px; border-top: 1px solid var(--border-subtle); }
+  .cxtest__name { font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .cxtest__loc { font-family: var(--font-sans); font-size: 13px; color: var(--text-tertiary); margin-top: 1px; }
+
+  /* ============ PREMIUM CTA (dark band) ============ */
+  .cxk-cta { background: var(--surface-brand-deep); position: relative; overflow: hidden; padding: 100px 0; }
+  .cxk-cta::after { content: ""; position: absolute; top: -120px; right: -80px; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(201,162,75,.16), transparent 70%); pointer-events: none; }
+  .cxk-cta__inner { max-width: 1320px; margin-inline: auto; padding: 0 56px; text-align: center; position: relative; z-index: 2; }
+  .cxk-cta__eyebrow { color: var(--brand-accent); }
+  .cxk-cta__title { font-family: var(--font-display); font-weight: 600; font-size: 48px; line-height: 1.06; letter-spacing: -0.02em; color: #fff; margin: 12px 0 14px; }
+  .cxk-cta__sub { font-family: var(--font-sans); font-size: 18px; line-height: 27px; color: rgba(255,255,255,.76); margin: 0 auto 48px; max-width: 560px; }
+  .cxk-cta__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; text-align: left; }
+  .cxcta-card { display: flex; flex-direction: column; gap: 12px; padding: 32px 28px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.11); border-radius: var(--radius-card-lg); transition: background-color .2s ease, transform .2s ease, border-color .2s ease; }
+  .cxcta-card:hover { background: rgba(255,255,255,.08); border-color: rgba(201,162,75,.4); transform: translateY(-4px); }
+  .cxcta-card__ic { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: var(--radius-lg); background: var(--brand-accent); color: var(--green-900); }
+  .cxcta-card__title { font-family: var(--font-display); font-weight: 600; font-size: 25px; margin: 4px 0 0; color: #fff; }
+  .cxcta-card__desc { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: rgba(255,255,255,.70); margin: 0; flex: 1; }
+  .cxcta-card__btn { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 6px 0 0; font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--brand-accent); transition: gap .18s ease; }
+  .cxcta-card__btn:hover { gap: 12px; }
+
+  /* ============ FOOTER ============ */
+  .cxk-footer { background: var(--gray-950); color: rgba(255,255,255,.66); }
+  .cxk-footer__inner { max-width: 1320px; margin-inline: auto; padding: 72px 56px 48px; display: grid; grid-template-columns: 1.5fr 2fr; gap: 56px; }
+  .cxk-footer__brand p { font-family: var(--font-sans); font-size: 14.5px; line-height: 23px; margin: 18px 0 22px; max-width: 340px; }
+  .cxk-footer__brand .cx-brand__name { color: #fff; }
+  /* === Brand lockup → DS primary horizontal lockup: arch symbol + CHIYA === */
+  .cx-brand__mark { background: transparent !important; width: 34px; height: 34px; border-radius: 0; }
+  .cx-brand__mark img { display: none; }
+  .cx-brand__mark::before { content: ""; display: block; width: 34px; height: 34px;
+    background: url("assets/chiya-symbol.svg") center / contain no-repeat; }
+  .cx-brand__name { font-family: var(--font-display); font-size: 22px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 600; color: var(--green-700); }
+  .cx-brand__tld { display: none; }
+  .cxh:not(.cxh--solid) .cx-brand__mark::before { background-image: url("assets/chiya-symbol.svg"); }
+  .cxk-footer__brand .cx-brand__mark::before { background-image: url("assets/chiya-symbol-white.svg"); }
+  .cxk-footer__contact { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 11px; }
+  .cxk-footer__contact li { display: flex; align-items: center; gap: 11px; font-family: var(--font-sans); font-size: 14px; color: rgba(255,255,255,.74); }
+  .cxk-footer__contact svg { color: var(--brand-accent); flex: none; }
+  .cxk-footer__social { display: flex; gap: 10px; }
+  .cxk-footer__social a { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.08); color: rgba(255,255,255,.8); transition: background-color .15s, color .15s; }
+  .cxk-footer__social a:hover { background: var(--brand-primary); color: #fff; }
+  .cxk-footer__cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; }
+  .cxk-footer__col h4 { font-family: var(--font-sans); font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #fff; margin: 0 0 18px; }
+  .cxk-footer__col a { display: block; font-family: var(--font-sans); font-size: 14.5px; color: rgba(255,255,255,.66); padding: 7px 0; text-decoration: none; transition: color .14s; }
+  .cxk-footer__col a:hover { color: var(--brand-accent); }
+  .cxk-footer__bar { max-width: 1320px; margin-inline: auto; padding: 24px 56px; border-top: 1px solid rgba(255,255,255,.10); display: flex; justify-content: space-between; align-items: center; gap: 20px; font-family: var(--font-sans); font-size: 13.5px; }
+  .cxk-footer__right { display: flex; align-items: center; gap: 24px; }
+  .cxk-footer__lang { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.82); cursor: pointer; font-family: var(--font-sans); font-size: 13px; font-weight: 600; padding: 7px 13px; border-radius: var(--radius-pill); }
+  .cxk-footer__lang:hover { background: rgba(255,255,255,.12); }
+  .cxk-footer__legal { display: flex; gap: 22px; }
+  .cxk-footer__legal a { color: rgba(255,255,255,.66); text-decoration: none; }
+  .cxk-footer__legal a:hover { color: #fff; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1200px) {
+    .cxh__nav { gap: 0; }
+    .cxk-cats { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 980px) {
+    .cxk-container, .cxhero__inner, .cxh__inner, .cxk-cta__inner, .cxk-footer__inner, .cxk-footer__bar { padding-inline: 32px; }
+    .cxh__nav { display: none; }
+    .cxk-grid3, .cxk-grid4 { grid-template-columns: repeat(2, 1fr); }
+    .cxhero__title { font-size: 50px; }
+    .cxk-sectitle { font-size: 34px; }
+    .cxk-cta__grid { grid-template-columns: 1fr; }
+    .cxk-footer__inner { grid-template-columns: 1fr; gap: 40px; }
+  }
+  @media (max-width: 680px) {
+    .cxk-cats, .cxk-grid3, .cxk-grid4 { grid-template-columns: 1fr; }
+    .cxhero { min-height: 0; }
+    .cxsearch { --cxsearch-drop: 28px; }
+    .cxhero__inner { padding-top: 56px; }
+    .cxhero__title { font-size: 40px; }
+    .cxk-footer__bar { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* ================================================================
+     ARABIC / RTL SUPPORT
+     ================================================================ */
+
+  /* Arabic font swap — Cairo for display headings, Noto Sans Arabic for UI */
+  html[dir="rtl"] {
+    --font-sans:    'Noto Sans Arabic', 'Hanken Grotesk', sans-serif;
+    --font-display: 'Cairo', 'Noto Sans Arabic', sans-serif;
+  }
+
+  /* Arabic text never has letter-spacing (breaks ligatures) or uppercase */
+  [dir="rtl"] .cxfield__label,
+  [dir="rtl"] .cxpanel__label,
+  [dir="rtl"] .cxk-footer__col h4,
+  [dir="rtl"] .cx-eyebrow {
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* Logo is a brand asset — never mirror it. Keep [icon] Chiya Estate L→R. */
+  [dir="rtl"] .cx-brand { direction: ltr; }
+
+  /* Premium CTA cards: grid hardcodes text-align:left — flip to right in RTL */
+  [dir="rtl"] .cxk-cta__grid { text-align: right; }
+
+  /* ---- Header language switcher ---- */
+  .cxh__langsw { position: relative; }
+  .cxh__langdrop {
+    position: absolute; top: calc(100% + 8px); right: 0; z-index: 1300;
+    min-width: 152px;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-2xl);
+    overflow: hidden;
+    animation: cxpanel-in .16s cubic-bezier(.2,.7,.2,1);
+  }
+  .cxh__langopt {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 11px 16px;
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+    color: var(--text-primary); text-align: start;
+    transition: background-color .14s;
+  }
+  .cxh__langopt:hover { background: var(--gray-50); }
+  .cxh__langopt--sel  { color: var(--brand-primary); font-weight: 600; }
+
+  /* ---- Footer language switcher ---- */
+  .cxft__langsw { position: relative; }
+  .cxft__langdrop {
+    position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 10;
+    min-width: 152px;
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-2xl);
+    overflow: hidden;
+    animation: cxpanel-in .16s cubic-bezier(.2,.7,.2,1);
+  }
+  [dir="rtl"] .cxft__langdrop { left: auto; right: 0; }
+  .cxft__langopt {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 10px 14px;
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500;
+    color: rgba(255,255,255,.82); text-align: start;
+    transition: background-color .14s;
+  }
+  .cxft__langopt:hover { background: rgba(255,255,255,.08); }
+  .cxft__langopt--sel  { color: var(--brand-accent); font-weight: 600; }
+
+  /* ---- Search bar: flip go-button margin ---- */
+  [dir="rtl"] .cxbar__go { margin-left: 0; margin-right: 10px; }
+
+  /* ---- Dropdown panels: default opens left-aligned; RTL flips to right-aligned ---- */
+  [dir="rtl"] .cxpanel          { left: auto; right: 0; transform-origin: top right; }
+  [dir="rtl"] .cxpanel--right   { right: auto; left: 0; transform-origin: top left; }
+
+  /* ---- Location property-count badge sits bottom-left in LTR; flip for RTL ---- */
+  [dir="rtl"] .cxloc__count { left: auto; right: 14px; }
+
+  /* ---- Location arrow: flip horizontal direction, preserve hover animation ---- */
+  [dir="rtl"] .cxloc__head svg                  { transform: scaleX(-1) translate(0, 0); }
+  [dir="rtl"] .cxloc:hover .cxloc__head svg     { transform: scaleX(-1) translate(3px, -3px); }
+
+  /* ---- Mobile RTL: footer bar stack aligns to end ---- */
+  @media (max-width: 680px) {
+    [dir="rtl"] .cxk-footer__bar { align-items: flex-end; }
+  }
+
+  /* ================================================================
+     ARABIC LABELS INSIDE LOCKED DESIGN-SYSTEM CARDS
+     The DS components hardcode English micro-labels; swap them in RTL,
+     keyed on stable classes so brand colors / icons are preserved.
+     ================================================================ */
+
+  /* Property + featured card status & Featured badges (keyed on variant) */
+  [dir="rtl"] .cx-prop__badges .cx-badge,
+  [dir="rtl"] .cx-feat__badges .cx-badge { font-size: 0 !important; }
+  [dir="rtl"] .cx-prop__badges .cx-badge::after,
+  [dir="rtl"] .cx-feat__badges .cx-badge::after {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0;
+  }
+  [dir="rtl"] .cx-prop__badges .cx-badge--gold::after,
+  [dir="rtl"] .cx-feat__badges .cx-badge--gold::after    { content: "مميز"; }
+  [dir="rtl"] .cx-prop__badges .cx-badge--success::after { content: "للبيع"; }
+  [dir="rtl"] .cx-prop__badges .cx-badge--info::after     { content: "للإيجار"; }
+  [dir="rtl"] .cx-prop__badges .cx-badge--solid::after    { content: "جديد"; }
+  /* FeaturedPropertyCard hardcodes its status badge as --solid; the homepage
+     featured listing is For Sale, so map that card's solid badge to "للبيع". */
+  [dir="rtl"] .cx-feat__badges .cx-badge--solid::after    { content: "للبيع"; }
+
+  /* Property card spec labels — guard on sibling count so land/commercial
+     cards (area only) aren't mislabeled as bedrooms. */
+  [dir="rtl"] .cx-prop__spec { font-size: 0; }
+  [dir="rtl"] .cx-prop__spec b { font-size: 15px; }
+  [dir="rtl"] .cx-prop__spec svg { width: 17px; height: 17px; }
+  [dir="rtl"] .cx-prop__spec:nth-child(1):nth-last-child(3)::after { content: "غرف"; font-size: 13.5px; }
+  [dir="rtl"] .cx-prop__spec:nth-child(2):nth-last-child(2)::after { content: "حمام"; font-size: 13.5px; }
+  [dir="rtl"] .cx-prop__spec:nth-child(3):nth-last-child(1)::after { content: "م²"; font-size: 13.5px; }
+  [dir="rtl"] .cx-prop__spec:nth-child(1):nth-last-child(1)::after { content: "م²"; font-size: 13.5px; }
+
+  /* Featured hero card spec labels */
+  [dir="rtl"] .cx-feat__spec { font-size: 0; }
+  [dir="rtl"] .cx-feat__spec b { font-size: 13px; }
+  [dir="rtl"] .cx-feat__spec:nth-child(1)::after { content: "غرف نوم"; font-size: 13px; }
+  [dir="rtl"] .cx-feat__spec:nth-child(2)::after { content: "حمّامات"; font-size: 13px; }
+  [dir="rtl"] .cx-feat__spec:nth-child(3)::after { content: "م²"; font-size: 13px; }
+
+  /* Agent card: verified badge, stat labels, action buttons */
+  [dir="rtl"] .cx-agent .cx-badge--brand { font-size: 0; }
+  [dir="rtl"] .cx-agent .cx-badge--brand::after { content: "وكيل موثّق"; font-size: 11px; font-weight: 600; }
+  [dir="rtl"] .cx-agent__stat span { font-size: 0; }
+  [dir="rtl"] .cx-agent__stat span::after { font-size: 12px; }
+  [dir="rtl"] .cx-agent__stats .cx-agent__stat:nth-child(1) span::after { content: "قوائم"; }
+  [dir="rtl"] .cx-agent__stats .cx-agent__stat:nth-child(2) span::after { content: "مبيعات"; }
+  [dir="rtl"] .cx-agent__stats .cx-agent__stat:nth-child(3) span::after { content: "سنوات"; }
+  [dir="rtl"] .cx-agent__btn--ghost { font-size: 0; }
+  [dir="rtl"] .cx-agent__btn--ghost::after { content: "مراسلة"; font-size: 14px; font-weight: 600; }
+  [dir="rtl"] .cx-agent__btn--primary { font-size: 0; }
+  [dir="rtl"] .cx-agent__btn--primary::after { content: "اتصال"; font-size: 14px; font-weight: 600; }
+  /* Review-count parenthetical embeds a dynamic number with the English word
+     "reviews"; can't be cleanly swapped via CSS, so hide it — the star rating stays. */
+  [dir="rtl"] .cx-agent__rating span { display: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="app/data.js" data-presets="env,react"></script>
+<script type="text/babel" src="app/LangContext.jsx"></script>
+<script type="text/babel" src="app/Header.jsx"></script>
+<script type="text/babel" src="app/Hero.jsx"></script>
+<script type="text/babel" src="app/Sections.jsx"></script>
+<script type="text/babel" src="app/Footer.jsx"></script>
+<script type="text/babel">
+  function App() {
+    const scrollTo = (id) => {
+      const el = document.getElementById(id);
+      if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: "smooth" });
+    };
+    const SRP = "Website-Search Results page.html";
+    const onSearch = (params) => {
+      const p = params && typeof params === "object" && !params.nativeEvent ? params : {};
+      const u = new URLSearchParams();
+      if (p.q) u.set("q", p.q);
+      if (p.deal) u.set("deal", p.deal);
+      if (p.type) u.set("type", p.type);
+      if (p.price) u.set("price", p.price);
+      if (p.size) u.set("size", p.size);
+      if (p.beds) u.set("beds", p.beds);
+      const qs = u.toString();
+      window.location.href = SRP + (qs ? "?" + qs : "");
+    };
+    const onContact = () => scrollTo("agents");
+    const PDP = "Website-Property Detail.html";
+    const onOpen = (id) => { window.location.href = PDP + (id ? "?id=" + encodeURIComponent(id) : ""); };
+    return (
+      <window.CxLang.LangProvider>
+        <window.SiteHeader onSearch={onSearch} />
+        <main>
+          <window.Hero onSearch={onSearch} onContact={onContact} />
+          <div className="cxk-container" id="properties"><window.CxFeaturedProperties onOpen={onOpen} onSearch={onSearch} /></div>
+          <div className="cxk-container"><window.CxCategories onSearch={onSearch} /></div>
+          <div className="cxk-container"><window.CxLocations onSearch={onSearch} /></div>
+          <window.CxWhyChiya />
+          <div className="cxk-container" id="agents"><window.CxFeaturedAgents /></div>
+          <div className="cxk-container"><window.CxTestimonials /></div>
+          <window.CxPremiumCTA onSearch={onSearch} onContact={onContact} />
+        </main>
+        <window.SiteFooter />
+      </window.CxLang.LangProvider>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+<script src="auth/auth-modal.js"></script>
+</body>
+</html>

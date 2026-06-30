@@ -1,0 +1,55 @@
+/* Checkbox / Radio / Switch — ported from the Chiya Estate design system. */
+.cx-choice { display: inline-flex; align-items: flex-start; gap: 10px; font-family: var(--font-sans); cursor: pointer; user-select: none; }
+.cx-choice--disabled { cursor: not-allowed; opacity: .55; }
+.cx-choice__box {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-strong);
+  transition: background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+  color: #fff;
+}
+.cx-choice__box--check { border-radius: 6px; }
+.cx-choice__box--radio { border-radius: var(--radius-full); }
+.cx-choice input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.cx-choice input:focus-visible + .cx-choice__box { box-shadow: var(--shadow-focus-brand); border-color: var(--border-focus); }
+.cx-choice input:checked + .cx-choice__box--check { background: var(--brand-primary); border-color: var(--brand-primary); }
+.cx-choice input:checked + .cx-choice__box--radio { border-color: var(--brand-primary); border-width: 6px; }
+.cx-choice__tick { opacity: 0; transition: opacity .12s ease; }
+.cx-choice input:checked + .cx-choice__box .cx-choice__tick { opacity: 1; }
+.cx-choice__text { display: flex; flex-direction: column; gap: 2px; padding-top: 1px; }
+.cx-choice__label { font-size: 15px; font-weight: 500; color: var(--text-primary); line-height: 20px; }
+.cx-choice__desc { font-size: 13px; color: var(--text-tertiary); line-height: 18px; }
+
+/* Switch */
+.cx-switch { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-sans); cursor: pointer; user-select: none; }
+.cx-switch--disabled { cursor: not-allowed; opacity: .55; }
+.cx-switch__track {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--gray-300);
+  transition: background-color .18s ease, box-shadow .18s ease;
+}
+.cx-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform .18s cubic-bezier(.4, 0, .2, 1);
+}
+.cx-switch input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.cx-switch input:checked + .cx-switch__track { background: var(--brand-primary); }
+.cx-switch input:checked + .cx-switch__track .cx-switch__thumb { transform: translateX(18px); }
+.cx-switch input:focus-visible + .cx-switch__track { box-shadow: var(--shadow-focus-brand); }

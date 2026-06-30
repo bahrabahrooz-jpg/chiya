@@ -1,0 +1,32 @@
+/* ============================================================
+   CHIYA ESTATE — SPACING TOKENS
+   4px base unit. Consistent rhythm across web + mobile.
+   ============================================================ */
+
+:root {
+  --space-0: 0px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-32: 128px;
+  --space-40: 160px;
+
+  /* Semantic spacing */
+  --gap-inline: var(--space-2);     /* icon ↔ label */
+  --gap-control: var(--space-3);    /* between controls */
+  --gap-card: var(--space-6);       /* card inner padding step */
+  --pad-card: var(--space-6);       /* card padding */
+  --pad-section: var(--space-24);   /* page section vertical rhythm */
+  --container-pad: var(--space-8);  /* page gutter on desktop */
+}

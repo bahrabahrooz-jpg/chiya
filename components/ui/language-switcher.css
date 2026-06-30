@@ -1,0 +1,84 @@
+/* Language switcher — globe trigger + dropdown (header & footer variants). */
+.cx-langsw { position: relative; display: inline-flex; }
+.cx-langsw__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 6px 8px;
+  border-radius: var(--radius-control);
+  transition: color .16s, background-color .16s;
+}
+.cx-langsw__trigger:hover { color: var(--text-primary); background: var(--gray-50); }
+.cx-langsw__trigger:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+.cx-langsw__drop {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 1300;
+  min-width: 156px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+  padding: 4px;
+  animation: cx-langsw-in .16s cubic-bezier(.2, .7, .2, 1);
+}
+@keyframes cx-langsw-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.cx-langsw__opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: start;
+  border-radius: var(--radius-md);
+  transition: background-color .14s;
+}
+.cx-langsw__opt:hover { background: var(--gray-50); }
+.cx-langsw__opt--sel { color: var(--brand-primary); font-weight: 600; }
+.cx-langsw__check { margin-inline-start: auto; color: var(--brand-primary); }
+
+/* Footer (dark band) variant */
+.cx-langsw--footer .cx-langsw__trigger {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.82);
+  padding: 7px 13px;
+  border-radius: var(--radius-pill);
+}
+.cx-langsw--footer .cx-langsw__trigger:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.cx-langsw--footer .cx-langsw__drop {
+  top: auto;
+  bottom: calc(100% + 8px);
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  background: #1a1a1a;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.cx-langsw--footer .cx-langsw__opt { color: rgba(255, 255, 255, 0.82); }
+.cx-langsw--footer .cx-langsw__opt:hover { background: rgba(255, 255, 255, 0.08); }
+.cx-langsw--footer .cx-langsw__opt--sel { color: var(--brand-accent); }
+.cx-langsw--footer .cx-langsw__check { color: var(--brand-accent); }
+
+/* Glass variant — over hero photography */
+.cx-langsw--glass .cx-langsw__trigger { color: #fff; }
+.cx-langsw--glass .cx-langsw__trigger:hover { background: rgba(255, 255, 255, 0.16); }

@@ -1,0 +1,89 @@
+/* SiteHeader — dual transparent/sticky luxury header (ported from the homepage kit). */
+.cxh { position: relative; z-index: 1200; border-bottom: 1px solid transparent; }
+/* Initial bar: transparent, overlaid on the hero, scrolls away with the page. */
+.cxh--static { position: absolute; top: 0; left: 0; right: 0; }
+/* Sticky reveal bar: fixed, hidden above the viewport, slides in on scroll. */
+.cxh--sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: translateY(-100%);
+  transition: transform .32s cubic-bezier(.2, .7, .2, 1);
+  will-change: transform;
+}
+.cxh--sticky.cxh--show { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .cxh--sticky { transition: none; } }
+
+.cxh__inner { max-width: 1320px; margin-inline: auto; padding: 0 56px; height: 84px; display: flex; align-items: center; gap: 32px; }
+.cxh__brand { flex: none; }
+.cxh__nav { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.cxh__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 16px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--radius-control);
+  transition: color .16s, background-color .16s;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.cxh__actions { flex: none; display: flex; align-items: center; gap: 12px; }
+.cxh__divider { width: 1px; height: 22px; }
+
+/* Brand lockup — arch symbol + CHIYA wordmark. */
+.cxh-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.cxh-brand__mark { width: 34px; height: 34px; background: url("/brand/chiya-symbol.svg") center / contain no-repeat; }
+.cxh-brand__name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-weight: 600;
+  color: var(--green-700);
+  line-height: 1;
+}
+
+/* Transparent over the bright hero — white text for legibility. */
+.cxh:not(.cxh--solid) { background: transparent; }
+.cxh:not(.cxh--solid) .cxh-brand__name { color: #fff; }
+.cxh:not(.cxh--solid) .cxh-brand__mark { filter: brightness(0) invert(1); }
+.cxh:not(.cxh--solid) .cxh__link { color: #fff; font-weight: 600; }
+.cxh:not(.cxh--solid) .cxh__link:hover { color: #fff; background: rgba(255, 255, 255, .16); }
+.cxh:not(.cxh--solid) .cxh__link--active { color: #fff; }
+.cxh:not(.cxh--solid) .cxh__divider { background: rgba(255, 255, 255, .4); }
+
+/* Solid on scroll. */
+.cxh--solid { background: var(--surface-card); border-bottom-color: var(--border-subtle); box-shadow: var(--shadow-sm); }
+.cxh--solid .cxh__link { color: var(--text-secondary); }
+.cxh--solid .cxh__link:hover { color: var(--text-primary); background: var(--gray-50); }
+.cxh--solid .cxh__link--active { color: var(--brand-primary); font-weight: 600; }
+.cxh--solid .cxh__divider { background: var(--border-subtle); }
+
+/* Dark theme: solid bar becomes translucent glass with gold active link. */
+:root[data-theme="dark"] .cxh--solid {
+  background: rgba(17, 21, 30, 0.72);
+  -webkit-backdrop-filter: saturate(1.4) blur(20px);
+  backdrop-filter: saturate(1.4) blur(20px);
+  border-bottom-color: var(--border-subtle);
+}
+:root[data-theme="dark"] .cxh--solid .cxh__link--active { color: var(--brand-accent); }
+:root[data-theme="dark"] .cxh .cxh-brand__name { color: #fff; }
+:root[data-theme="dark"] .cxh .cxh-brand__mark { background-image: url("/brand/chiya-symbol-white.svg"); filter: none; }
+
+.cxh__menu { display: none; }
+
+@media (max-width: 980px) {
+  .cxh__inner { padding-inline: 32px; }
+  .cxh__nav { display: none; }
+  .cxh__menu { display: inline-flex; }
+}
+
+/* Interior header — solid, non-sticky, wider gutters (search/detail/agents). */
+.cxh--interior .cxh__inner { max-width: 1440px; padding: 0 48px; }
+@media (max-width: 1024px) { .cxh--interior .cxh__nav { display: none; } }
+@media (max-width: 860px) { .cxh--interior .cxh__inner { padding-inline: 24px; } }

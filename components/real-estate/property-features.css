@@ -1,0 +1,29 @@
+/* PropertyFeatures — amenities / features grid + key facts. */
+.cx-feats { font-family: var(--font-sans); display: flex; flex-direction: column; gap: 16px; }
+.cx-feats__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.cx-feats__fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+.cx-feats__fact svg { color: var(--green-500); }
+.cx-feats__factval { font-size: 18px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.cx-feats__factlbl { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-tertiary); }
+.cx-feats__grid { display: grid; gap: 12px 24px; grid-template-columns: repeat(var(--cx-feat-cols, 2), minmax(0, 1fr)); }
+.cx-feats__item { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--text-secondary); }
+.cx-feats__check {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--brand-subtle);
+  color: var(--green-700);
+}
+@media (max-width: 560px) { .cx-feats__grid { grid-template-columns: 1fr; } }

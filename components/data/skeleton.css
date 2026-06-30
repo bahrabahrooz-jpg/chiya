@@ -1,0 +1,28 @@
+/* Skeleton — shimmering placeholder while content loads. */
+.cx-skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+}
+.cx-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--surface-card) 60%, transparent),
+    transparent
+  );
+  animation: cx-skel 1.4s ease-in-out infinite;
+}
+[dir="rtl"] .cx-skel::after { animation-name: cx-skel-rtl; }
+@keyframes cx-skel { 100% { transform: translateX(100%); } }
+@keyframes cx-skel-rtl { 100% { transform: translateX(-200%); } }
+@media (prefers-reduced-motion: reduce) {
+  .cx-skel::after { animation: none; }
+}
+.cx-skel--text { border-radius: var(--radius-sm); }
+.cx-skel--circle { border-radius: var(--radius-full); }

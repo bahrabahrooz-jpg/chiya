@@ -1,0 +1,334 @@
+  /* ============================================================
+     ROLES & PERMISSIONS  —  flat / minimal  (rb- namespace)
+     ============================================================ */
+
+  /* ---------- PAGE HEADER ---------- */
+  .rb-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 24px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .rb-head__intro { min-width: 0; }
+  .rb-head__title {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(26px, 3vw, 32px); line-height: 1.08; letter-spacing: -.018em;
+    color: var(--text-primary); margin: 0;
+  }
+  .rb-head__sub {
+    font-size: 15px; line-height: 1.5; color: var(--text-tertiary);
+    margin: 8px 0 0; max-width: 560px; text-wrap: pretty;
+  }
+
+  /* segmented Detail / Role matrix toggle */
+  .rb-seg {
+    display: inline-flex; flex: none; padding: 3px; gap: 2px;
+    background: var(--gray-100); border-radius: var(--radius-control);
+  }
+  .rb-seg__btn {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    height: 34px; padding: 0 16px; border: none; background: transparent;
+    border-radius: 6px; font-family: var(--font-sans); font-size: 13.5px; font-weight: 600;
+    color: var(--text-tertiary); transition: background-color .15s, color .15s, box-shadow .15s;
+  }
+  .rb-seg__btn svg { color: currentColor; }
+  .rb-seg__btn:hover { color: var(--text-secondary); }
+  .rb-seg__btn.is-active {
+    background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs);
+  }
+  @media (max-width: 720px) {
+    .rb-head { gap: 16px; }
+    .rb-seg { width: 100%; }
+    .rb-seg__btn { flex: 1 1 0; justify-content: center; }
+  }
+
+  /* ---------- TWO-PANEL SPLIT ---------- */
+  .rb-split {
+    display: grid; grid-template-columns: 280px minmax(0, 1fr);
+    gap: 28px; align-items: start;
+  }
+  @media (max-width: 1080px) { .rb-split { grid-template-columns: 1fr; gap: 22px; } }
+
+  /* ============================================================
+     LEFT PANEL — ROLE LIST  (flat, dot + member count)
+     ============================================================ */
+  .rb-list {
+    position: sticky; top: 16px; display: flex; flex-direction: column;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
+    padding: 16px 14px;
+  }
+  @media (max-width: 1080px) { .rb-list { position: static; } }
+  .rb-list__eyebrow {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--text-tertiary);
+    padding: 2px 6px 12px;
+  }
+  .rb-list__items { display: flex; flex-direction: column; gap: 6px; }
+
+  .rb-roleitem {
+    display: flex; align-items: center; gap: 11px; text-align: left;
+    padding: 12px 14px; border: 1px solid transparent; background: transparent;
+    border-radius: var(--radius-md); cursor: pointer; width: 100%;
+    transition: background-color .14s, border-color .14s, box-shadow .14s;
+  }
+  .rb-roleitem:hover { background: var(--gray-50); }
+  .rb-roleitem:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .rb-roleitem.is-selected {
+    background: var(--brand-subtle); border-color: var(--green-100);
+  }
+  .rb-roleitem.is-selected:hover { background: var(--brand-subtle-hover); }
+  .rb-roleitem.is-selected .rb-roleitem__name { color: var(--green-800); }
+
+  .rb-roleicon {
+    flex: none; width: 34px; height: 34px; border-radius: 9px;
+    display: grid; place-items: center;
+    background: var(--gray-100); color: var(--gray-500);
+  }
+  .rb-roleicon--gold  { background: var(--gold-50);  color: var(--gold-600); }
+  .rb-roleicon--brand { background: var(--green-50); color: var(--green-600); }
+  .rb-roleicon--info  { background: var(--info-50);  color: var(--info-500); }
+  .rb-roleicon--amber { background: var(--gold-50);  color: var(--gold-600); }
+
+  .rb-roleitem__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .rb-roleitem__name {
+    font-family: var(--font-sans); font-size: 14.5px; font-weight: 600;
+    color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .rb-roleitem__meta {
+    font-family: var(--font-sans); font-size: 12.5px; color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+  .rb-roleitem__chev { flex: none; color: var(--text-placeholder); opacity: 0; transition: opacity .14s; }
+  .rb-roleitem.is-selected .rb-roleitem__chev { opacity: 1; color: var(--green-700); }
+
+  .rb-list__create {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 42px; margin-top: 12px;
+    border: 1px dashed var(--border-default); background: transparent;
+    border-radius: var(--radius-control); cursor: pointer;
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text-secondary);
+    transition: border-color .15s, background-color .15s, color .15s;
+  }
+  .rb-list__create svg { color: var(--green-600); }
+  .rb-list__create:hover { border-color: var(--brand-primary); background: var(--brand-subtle); color: var(--green-700); }
+  .rb-list__create:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ============================================================
+     RIGHT PANEL — ROLE DETAIL  (single flat white panel)
+     ============================================================ */
+  .rb-detail {
+    display: flex; flex-direction: column; min-width: 0;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-xs); overflow: hidden;
+  }
+  .rb-detail__head { padding: 24px 28px 18px; }
+  .rb-detail__name {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    font-family: var(--font-display); font-weight: 600; font-size: 23px;
+    letter-spacing: -.015em; line-height: 1.1; color: var(--text-primary); margin: 0;
+  }
+  .rb-grantbadge {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 24px; padding: 0 10px; border-radius: var(--radius-pill);
+    background: var(--gray-100); color: var(--text-secondary);
+    font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .rb-detail__desc {
+    font-family: var(--font-sans); font-size: 14px; line-height: 1.5;
+    color: var(--text-tertiary); margin: 8px 0 0; max-width: 70ch; text-wrap: pretty;
+  }
+
+  .rb-detail__tabs { padding: 0 28px; border-bottom: 1px solid var(--border-subtle); }
+  .rb-detail__tabs .cx-tabs--line .cx-tab--active { color: var(--text-primary); border-bottom-color: var(--brand-primary); }
+  .rb-detail__body { padding: 4px 28px 26px; }
+
+  .rb-locknote {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; margin: 20px 0 4px;
+    background: var(--gold-50); border: 1px solid var(--gold-200); border-radius: var(--radius-md);
+    font-family: var(--font-sans); font-size: 13px; line-height: 1.5; color: var(--gold-800);
+  }
+  .rb-locknote svg { flex: none; color: var(--gold-600); margin-top: 1px; }
+
+  /* ---------- CATEGORY NAV (underline text tabs) ---------- */
+  .rb-catnav {
+    display: flex; gap: 4px; margin: 18px 0 6px;
+    overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .rb-catnav::-webkit-scrollbar { height: 0; width: 0; display: none; }
+  .rb-cat {
+    display: inline-flex; align-items: center; gap: 7px; flex: none;
+    height: 40px; padding: 0 12px; margin-bottom: -1px;
+    border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer;
+    font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text-tertiary);
+    white-space: nowrap; transition: color .14s, border-color .14s;
+  }
+  .rb-cat:hover { color: var(--text-secondary); }
+  .rb-cat__badge {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700; color: var(--text-tertiary);
+    background: var(--gray-100); border-radius: var(--radius-pill); padding: 1px 7px;
+    font-variant-numeric: tabular-nums; transition: background-color .14s, color .14s;
+  }
+  .rb-cat.is-active { color: var(--text-primary); border-bottom-color: var(--brand-primary); }
+  .rb-cat.is-active .rb-cat__badge { background: var(--brand-subtle); color: var(--green-700); }
+
+  /* ---------- PERMISSION SUBGROUPS ---------- */
+  .rb-groups { display: flex; flex-direction: column; padding-top: 6px; }
+  .rb-group { padding: 22px 0; }
+  .rb-group + .rb-group { border-top: 1px solid var(--border-subtle); }
+  .rb-group.is-off { opacity: .55; }
+
+  .rb-group__head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .rb-group__label {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary);
+  }
+  .rb-group__count {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700; color: var(--text-tertiary);
+    background: var(--gray-100); border-radius: var(--radius-pill); padding: 1px 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .rb-group__ctrl { flex: 1 1 auto; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+
+  /* scope select (compact pill) */
+  .rb-scope { position: relative; display: inline-flex; align-items: center; }
+  .rb-scope select {
+    appearance: none; -webkit-appearance: none;
+    height: 32px; padding: 0 30px 0 12px; cursor: pointer;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-secondary);
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    transition: border-color .14s, box-shadow .14s;
+  }
+  .rb-scope select:hover { border-color: var(--border-strong); }
+  .rb-scope select:focus-visible { outline: none; border-color: var(--border-brand); box-shadow: var(--shadow-focus-brand); }
+  .rb-scope select:disabled { cursor: not-allowed; background: var(--gray-50); color: var(--text-disabled); }
+  .rb-scope__chev { position: absolute; right: 10px; color: var(--text-tertiary); pointer-events: none; display: flex; }
+
+  .rb-rows { display: flex; flex-direction: column; }
+  .rb-row {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 12px 0;
+  }
+  .rb-row__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .rb-row__label { font-family: var(--font-sans); font-size: 14.5px; font-weight: 600; color: var(--text-primary); }
+  .rb-row__desc { font-family: var(--font-sans); font-size: 13px; line-height: 1.45; color: var(--text-tertiary); text-wrap: pretty; }
+  .rb-row__sw { flex: none; padding-top: 1px; }
+
+  /* ============================================================
+     ROLE SETTINGS
+     ============================================================ */
+  .rb-settings { display: flex; flex-direction: column; }
+  .rb-setblock { padding: 24px 0; }
+  .rb-setblock + .rb-setblock { border-top: 1px solid var(--border-subtle); }
+  .rb-setblock__title {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 16px;
+  }
+  .rb-setgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: end; }
+  @media (max-width: 620px) { .rb-setgrid { grid-template-columns: 1fr; } }
+  .rb-setfield { display: flex; flex-direction: column; gap: 6px; }
+  .rb-setfield__label { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .rb-statuspill {
+    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+    height: 42px; padding: 0 16px; border-radius: var(--radius-control);
+    background: var(--success-50); border: 1px solid var(--success-100);
+    font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--success-700);
+  }
+  .rb-statusdot { width: 8px; height: 8px; border-radius: 50%; background: var(--success-500); }
+
+  .rb-assigned { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .rb-assigned__meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .rb-assigned__count {
+    font-family: var(--font-sans); font-weight: 700; font-size: 20px; line-height: 1;
+    letter-spacing: -.02em; color: var(--text-primary); font-variant-numeric: tabular-nums;
+  }
+  .rb-assigned__lbl { font-family: var(--font-sans); font-size: 13px; color: var(--text-tertiary); }
+
+  .rb-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .rb-delbtn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 42px; padding: 0 16px; border-radius: var(--radius-control); cursor: pointer;
+    border: 1px solid var(--error-200); background: var(--surface-card); color: var(--error-600);
+    font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    transition: background-color .15s, border-color .15s, opacity .15s;
+  }
+  .rb-delbtn:hover { background: var(--error-50); border-color: var(--error-300); }
+  .rb-delbtn:disabled { opacity: .45; cursor: not-allowed; }
+  .rb-delbtn:disabled:hover { background: var(--surface-card); border-color: var(--error-200); }
+  .rb-actions__note {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-sans); font-size: 12.5px; color: var(--text-tertiary); margin: 14px 0 0;
+  }
+  .rb-actions__note svg { color: var(--text-tertiary); }
+
+  /* ============================================================
+     ROLE MATRIX  (three-state)
+     ============================================================ */
+  .rb-matrixcard {
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-xs); overflow: hidden;
+  }
+  .rb-matrixcard__head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 18px; padding: 22px 24px 18px; flex-wrap: wrap;
+  }
+  .rb-matrixcard__title {
+    font-family: var(--font-display); font-weight: 600; font-size: 21px;
+    letter-spacing: -.015em; color: var(--text-primary); margin: 0;
+  }
+  .rb-matrixcard__desc { font-family: var(--font-sans); font-size: 13.5px; line-height: 1.5; color: var(--text-tertiary); margin: 5px 0 0; }
+  .rb-legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .rb-legend__item {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
+  }
+
+  .rb-matrix-wrap { overflow-x: auto; border-top: 1px solid var(--border-subtle); }
+  .rb-matrix-wrap::-webkit-scrollbar { height: 9px; }
+  .rb-matrix-wrap::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+  .rb-matrix { width: 100%; border-collapse: collapse; min-width: 640px; }
+  .rb-matrix__th {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text-tertiary);
+    padding: 14px 16px; border-bottom: 1px solid var(--border-subtle);
+    background: var(--gray-25); white-space: nowrap; position: sticky; top: 0; z-index: 2;
+  }
+  .rb-matrix__th--perm { text-align: left; position: sticky; left: 0; z-index: 3; min-width: 240px; }
+  .rb-matrix__th--role { text-align: center; width: 150px; }
+  .rb-matrix__roledot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle; background: var(--gray-400); }
+  .rb-matrix__roledot--gold { background: var(--gold-400); }
+  .rb-matrix__roledot--brand { background: var(--green-600); }
+  .rb-matrix__roledot--info { background: var(--info-500); }
+  .rb-matrix__roledot--amber { background: var(--gold-600); }
+
+  .rb-matrix__grouprow td {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-tertiary);
+    padding: 14px 16px 6px; background: var(--surface-card);
+    position: sticky; left: 0;
+  }
+  .rb-matrix__tr:hover { background: var(--gray-25); }
+  .rb-matrix__td {
+    padding: 12px 16px; border-bottom: 1px solid var(--border-subtle);
+    font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
+  }
+  .rb-matrix__td--perm {
+    font-weight: 500; position: sticky; left: 0; background: var(--surface-card); white-space: nowrap;
+  }
+  .rb-matrix__tr:hover .rb-matrix__td--perm { background: var(--gray-25); }
+  .rb-matrix__td--cell { text-align: center; }
+
+  .rb-cell {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: var(--radius-pill);
+    font-family: var(--font-mono, monospace); font-size: 15px; font-weight: 700; line-height: 1;
+  }
+  .rb-cell--full { background: var(--success-50); color: var(--success-600); }
+  .rb-cell--scoped { background: var(--gold-50); color: var(--gold-600); }
+  .rb-cell--none { color: var(--gray-400); }
+
+  @media (max-width: 560px) {
+    .rb-row__desc { display: none; }
+  }

@@ -1,26 +1,290 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
+@import "../styles/rtl.css";
+@import "../styles/dark-refinements.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ============================================================
+   TAILWIND THEME BRIDGE
+   Map the raw design tokens into Tailwind's theme namespaces so
+   utilities (bg-green-700, text-ink-secondary, rounded-card,
+   shadow-card, font-display, tracking-tight ...) resolve to the
+   exact same CSS variables. `inline` means Tailwind references
+   the vars in-place instead of re-declaring them, so dark-mode
+   overrides in tokens.css flow through automatically.
+   ============================================================ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Fonts (provided by next/font in layout.tsx) */
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Color ramps — Forest Green */
+  --color-green-25: var(--green-25);
+  --color-green-50: var(--green-50);
+  --color-green-100: var(--green-100);
+  --color-green-200: var(--green-200);
+  --color-green-300: var(--green-300);
+  --color-green-400: var(--green-400);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
+  --color-green-700: var(--green-700);
+  --color-green-800: var(--green-800);
+  --color-green-900: var(--green-900);
+  --color-green-950: var(--green-950);
+
+  /* Color ramps — Warm Gold */
+  --color-gold-25: var(--gold-25);
+  --color-gold-50: var(--gold-50);
+  --color-gold-100: var(--gold-100);
+  --color-gold-200: var(--gold-200);
+  --color-gold-300: var(--gold-300);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-gold-700: var(--gold-700);
+  --color-gold-800: var(--gold-800);
+  --color-gold-900: var(--gold-900);
+
+  /* Color ramps — Warm Gray */
+  --color-gray-25: var(--gray-25);
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
+  --color-gray-950: var(--gray-950);
+
+  /* Status */
+  --color-success-50: var(--success-50);
+  --color-success-100: var(--success-100);
+  --color-success-500: var(--success-500);
+  --color-success-600: var(--success-600);
+  --color-success-700: var(--success-700);
+  --color-warning-50: var(--warning-50);
+  --color-warning-100: var(--warning-100);
+  --color-warning-500: var(--warning-500);
+  --color-warning-600: var(--warning-600);
+  --color-warning-700: var(--warning-700);
+  --color-error-50: var(--error-50);
+  --color-error-100: var(--error-100);
+  --color-error-500: var(--error-500);
+  --color-error-600: var(--error-600);
+  --color-error-700: var(--error-700);
+  --color-info-50: var(--info-50);
+  --color-info-100: var(--info-100);
+  --color-info-500: var(--info-500);
+  --color-info-600: var(--info-600);
+  --color-info-700: var(--info-700);
+
+  /* Brand + accent semantic */
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-primary-hover);
+  --color-brand-active: var(--brand-primary-active);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-subtle-hover: var(--brand-subtle-hover);
+  --color-accent: var(--brand-accent);
+  --color-accent-hover: var(--brand-accent-hover);
+  --color-accent-subtle: var(--brand-accent-subtle);
+
+  /* Surfaces */
+  --color-page: var(--surface-page);
+  --color-card: var(--surface-card);
+  --color-raised: var(--surface-raised);
+  --color-sunken: var(--surface-sunken);
+  --color-surface-brand: var(--surface-brand);
+  --color-surface-brand-deep: var(--surface-brand-deep);
+  --color-inverse: var(--surface-inverse);
+
+  /* Text (named "ink" to avoid text-text-* collisions) */
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-tertiary: var(--text-tertiary);
+  --color-ink-placeholder: var(--text-placeholder);
+  --color-ink-disabled: var(--text-disabled);
+  --color-ink-brand: var(--text-brand);
+  --color-ink-accent: var(--text-accent);
+  --color-ink-error: var(--text-error);
+  --color-ink-success: var(--text-success);
+  --color-on-brand: var(--text-on-brand);
+  --color-on-accent: var(--text-on-accent);
+
+  /* Borders */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-brand: var(--border-brand);
+  --color-border-accent: var(--border-accent);
+  --color-border-focus: var(--border-focus);
+
+  /* Radius — scale + semantic */
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-3xl: var(--radius-3xl);
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+  --radius-card-lg: var(--radius-card-lg);
+  --radius-pill: var(--radius-pill);
+  --radius-modal: var(--radius-modal);
+  --radius-image: var(--radius-image);
+
+  /* Shadows */
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+  --shadow-3xl: var(--shadow-3xl);
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-inner: var(--shadow-inner);
+
+  /* Letter spacing */
+  --tracking-tight: var(--tracking-tight);
+  --tracking-snug: var(--tracking-snug);
+  --tracking-normal: var(--tracking-normal);
+  --tracking-wide: var(--tracking-wide);
+  --tracking-wider: var(--tracking-wider);
+
+  /* Font weights */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Body text scale (matches design line-heights) */
+  --text-xs: 12px;       --text-xs--line-height: 18px;
+  --text-sm: 14px;       --text-sm--line-height: 20px;
+  --text-base: 16px;     --text-base--line-height: 24px;
+  --text-lg: 18px;       --text-lg--line-height: 28px;
+  --text-xl: 20px;       --text-xl--line-height: 30px;
+
+  /* Display scale (serif) */
+  --text-display-xs: 24px;   --text-display-xs--line-height: 32px;
+  --text-display-sm: 30px;   --text-display-sm--line-height: 38px;
+  --text-display-md: 38px;   --text-display-md--line-height: 46px;
+  --text-display-lg: 48px;   --text-display-lg--line-height: 56px;
+  --text-display-xl: 60px;   --text-display-xl--line-height: 66px;
+  --text-display-2xl: 76px;  --text-display-2xl--line-height: 80px;
+
+  /* Align 2xl breakpoint with the design grid (1440, not 1536) */
+  --breakpoint-2xl: 1440px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ============================================================
+   BASE — brand defaults layered on top of Tailwind's preflight
+   ============================================================ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-md-size);
+    line-height: var(--text-md-line);
+    color: var(--text-primary);
+    background-color: var(--surface-page);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv01";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    color: var(--text-primary);
+  }
+
+  a {
+    color: var(--text-brand);
+    text-decoration: none;
+  }
+  a:hover { color: var(--brand-primary-hover); }
+
+  button, input, select, textarea {
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  img, svg, video { display: block; max-width: 100%; }
+
+  ::selection { background: var(--brand-accent-subtle); color: var(--green-900); }
+
+  :focus-visible { outline: none; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ============================================================
+   DESIGN-SYSTEM HELPER CLASSES (ported from token specimens)
+   ============================================================ */
+
+/* Type — display (serif) */
+.cx-display-2xl, .cx-display-xl, .cx-display-lg,
+.cx-display-md, .cx-display-sm, .cx-display-xs {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin: 0;
 }
+.cx-display-2xl { font-size: var(--display-2xl-size); line-height: var(--display-2xl-line); }
+.cx-display-xl  { font-size: var(--display-xl-size);  line-height: var(--display-xl-line); }
+.cx-display-lg  { font-size: var(--display-lg-size);  line-height: var(--display-lg-line); }
+.cx-display-md  { font-size: var(--display-md-size);  line-height: var(--display-md-line); }
+.cx-display-sm  { font-size: var(--display-sm-size);  line-height: var(--display-sm-line); }
+.cx-display-xs  { font-size: var(--display-xs-size);  line-height: var(--display-xs-line); }
+
+/* Type — text (sans) */
+.cx-text-xl, .cx-text-lg, .cx-text-md, .cx-text-sm, .cx-text-xs {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-normal);
+  color: var(--text-secondary);
+  margin: 0;
+}
+.cx-text-xl { font-size: var(--text-xl-size); line-height: var(--text-xl-line); }
+.cx-text-lg { font-size: var(--text-lg-size); line-height: var(--text-lg-line); }
+.cx-text-md { font-size: var(--text-md-size); line-height: var(--text-md-line); }
+.cx-text-sm { font-size: var(--text-sm-size); line-height: var(--text-sm-line); }
+.cx-text-xs { font-size: var(--text-xs-size); line-height: var(--text-xs-line); }
+
+/* Eyebrow / overline */
+.cx-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--eyebrow-size);
+  line-height: var(--eyebrow-line);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
+/* Numerics / mono */
+.cx-tnum { font-variant-numeric: tabular-nums; }
+.cx-mono { font-family: var(--font-mono); }
+
+/* Layout containers */
+.cx-container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--grid-margin-mobile);
+}
+@media (min-width: 768px) { .cx-container { padding-inline: 48px; } }
+@media (min-width: 1024px) { .cx-container { padding-inline: var(--grid-margin); } }
+
+.cx-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  gap: var(--grid-gutter-mobile);
+}
+@media (min-width: 768px) { .cx-grid { gap: var(--grid-gutter); } }

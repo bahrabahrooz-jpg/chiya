@@ -1,0 +1,6 @@
+/* Card hover lift (opt-in via the `hoverable` prop). */
+.cx-card--hover:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-3px);
+  border-color: var(--border-default);
+}

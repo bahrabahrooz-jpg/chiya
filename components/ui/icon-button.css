@@ -1,0 +1,35 @@
+/* IconButton — ported from the Chiya Estate design system (cx-iconbtn). */
+.cx-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  flex: none;
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .06s ease;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--gray-600);
+  background: transparent;
+}
+.cx-iconbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+.cx-iconbtn:active { transform: translateY(0.5px); }
+.cx-iconbtn[disabled] { cursor: not-allowed; opacity: .45; }
+.cx-iconbtn--sm { width: 32px; height: 32px; border-radius: var(--radius-sm); }
+.cx-iconbtn--md { width: 40px; height: 40px; }
+.cx-iconbtn--lg { width: 44px; height: 44px; }
+.cx-iconbtn--default { background: var(--surface-card); border-color: var(--border-default); color: var(--gray-700); box-shadow: var(--shadow-xs); }
+.cx-iconbtn--default:hover { background: var(--gray-50); border-color: var(--border-strong); }
+.cx-iconbtn--ghost:hover { background: var(--gray-100); color: var(--gray-800); }
+.cx-iconbtn--brand { background: var(--brand-primary); color: #fff; }
+.cx-iconbtn--brand:hover { background: var(--brand-primary-hover); }
+.cx-iconbtn--glass {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--green-800);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+}
+.cx-iconbtn--glass:hover { background: #fff; }
+.cx-iconbtn--glass.cx-iconbtn--active { color: var(--error-500); }

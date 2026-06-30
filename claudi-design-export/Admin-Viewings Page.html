@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chiya Estate · Viewings</title>
+
+<!-- Design system tokens -->
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/tokens/fonts.css" />
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/tokens/colors.css" />
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/tokens/spacing.css" />
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/tokens/radius.css" />
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/tokens/shadows.css" />
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/tokens/typography.css" />
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/tokens/grid.css" />
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/tokens/base.css" />
+<link rel="stylesheet" href="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/styles.css" />
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Lucide + Chiya design-system bundle -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="_ds/chiya-estate-design-system-686f5707-4810-465b-a711-46e2fd863333/_ds_bundle.js"></script>
+
+<!-- Approved Chiya Estate admin shell -->
+<link rel="stylesheet" href="admin-shell.css" />
+
+<style>
+  /* ============================================================
+     VIEWINGS PAGE  (vw- namespace)
+     Same visual language as Properties, Members, and Agents pages.
+     ============================================================ */
+
+  /* ── STATUS BADGES — Untitled UI palette, colored by the action ──
+     Scheduled = blue (upcoming) · Confirmed = green (good to go) ·
+     Completed = gray (done/archived) · Cancelled = red (cancelled) ·
+     No Show = amber (warning). Higher specificity overrides the DS variant. */
+  .cx-badge.vw-st--scheduled { background: #EFF8FF; color: #175CD3; border-color: #B2DDFF; }
+  .cx-badge.vw-st--confirmed { background: #ECFDF3; color: #067647; border-color: #ABEFC6; }
+  .cx-badge.vw-st--completed { background: #F9FAFB; color: #344054; border-color: #EAECF0; }
+  .cx-badge.vw-st--cancelled { background: #FEF3F2; color: #B42318; border-color: #FECDCA; }
+  .cx-badge.vw-st--noshow    { background: #FFFAEB; color: #B54708; border-color: #FEDF89; }
+
+  /* ── PAGE HEADER ── */
+  .vw-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 28px; margin-bottom: 28px;
+  }
+  .vw-head__intro { min-width: 0; }
+  .vw-head__title {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(30px, 3.6vw, 40px); line-height: 1.05; letter-spacing: -.018em;
+    color: var(--text-primary); margin: 0;
+  }
+  .vw-head__sub {
+    font-size: 16px; line-height: 1.55; color: var(--text-secondary);
+    margin: 12px 0 0; max-width: 560px; text-wrap: pretty;
+  }
+  .vw-head__action { flex: none; }
+  @media (max-width: 767px) {
+    .vw-head { flex-direction: column; align-items: stretch; gap: 18px; }
+    .vw-head__sub { font-size: 15px; }
+    .vw-head__action, .vw-head__action .cx-btn { width: 100%; }
+  }
+
+  /* ── KPI GRID — 5 cards ── */
+  .vw-kpis {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 18px; margin-bottom: 30px;
+  }
+  .vw-kpis > .cx-stat { padding: 20px; gap: 12px; }
+  @media (max-width: 1320px) { .vw-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 860px)  { .vw-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 540px)  { .vw-kpis { grid-template-columns: 1fr; gap: 14px; } }
+
+  /* ── TABLE CARD (wraps head + table) ── */
+  .vw-tablecard {
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .vw-tablecard__head {
+    padding: 18px 20px 16px; border-bottom: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column; gap: 15px;
+  }
+  .vw-tablecard__titlerow {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap; min-height: 30px;
+  }
+  .vw-tablecard__heading { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .vw-tablecard__title {
+    font-family: var(--font-display); font-weight: 600; font-size: 22px;
+    letter-spacing: -.015em; line-height: 1.1; color: var(--text-primary); margin: 0;
+    white-space: nowrap;
+  }
+  .vw-tablecard__count {
+    display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+    border-radius: var(--radius-pill); background: var(--brand-subtle);
+    color: var(--green-700); font-family: var(--font-sans);
+    font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; flex: none;
+  }
+  .vw-tablecard__resultnote {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
+  }
+  .vw-tablecard__resultnote b { color: var(--text-secondary); font-weight: 700; }
+
+  /* ---------- STATUS TABS ROW (matches Members / Properties) ---------- */
+  .vw-tabrow {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; min-width: 0; flex-wrap: wrap;
+  }
+  .vw-tabs {
+    display: inline-flex; align-items: center;
+    background: var(--gray-100); border: 1px solid var(--border-subtle);
+    border-radius: 10px; padding: 3px; gap: 2px;
+    overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+    flex: none; max-width: 100%;
+  }
+  .vw-tabs::-webkit-scrollbar { display: none; }
+  .vw-tab {
+    display: inline-flex; align-items: center;
+    height: 30px; padding: 0 14px; flex: none; white-space: nowrap;
+    border: none; background: transparent; border-radius: 8px; cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    color: var(--text-secondary);
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+  }
+  .vw-tab:hover { background: rgba(255,255,255,.55); color: var(--text-primary); }
+  .vw-tab:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: 8px; }
+  .vw-tab.is-active {
+    background: var(--surface-card);
+    box-shadow: 0 1px 3px rgba(11,32,24,.10), 0 0 0 1px rgba(11,32,24,.06);
+    color: var(--text-primary); font-weight: 600;
+  }
+
+  /* ---------- RIGHT SIDE: SEARCH + FILTERS BUTTON ---------- */
+  .vw-tabrow__right { display: flex; align-items: center; gap: 8px; flex: none; }
+  .vw-tabsearch { position: relative; }
+  .vw-tabsearch input {
+    width: 240px; height: 38px; padding: 0 14px 0 38px;
+    font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-xs);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .vw-tabsearch input::placeholder { color: var(--text-placeholder); }
+  .vw-tabsearch input:hover { border-color: var(--border-strong); }
+  .vw-tabsearch input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .vw-tabsearch__lead {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--green-600); display: flex; pointer-events: none;
+  }
+  .vw-filterbtn {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 38px; padding: 0 14px;
+    border: 1px solid var(--border-default); background: var(--surface-card);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-xs); cursor: pointer;
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600;
+    color: var(--text-secondary); white-space: nowrap;
+    transition: border-color .15s, background-color .15s, color .15s;
+  }
+  .vw-filterbtn svg { flex: none; }
+  .vw-filterbtn:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--gray-25); }
+  .vw-filterbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vw-filterbtn.is-open  { border-color: var(--brand-primary); color: var(--green-700); background: var(--brand-subtle); }
+  .vw-filterbtn.has-active { border-color: var(--brand-primary); color: var(--green-700); }
+  .vw-filterbtn__badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 10px;
+    background: var(--brand-primary); color: #fff;
+    font-size: 10.5px; font-weight: 700;
+  }
+
+  /* ---------- EXPANDABLE FILTER PANEL ---------- */
+  .vw-filterbar {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 0.24s cubic-bezier(.4,0,.2,1);
+    margin-left: -20px; margin-right: -20px; margin-top: 16px;
+    border-top: 1px solid transparent;
+  }
+  .vw-filterbar.is-open { grid-template-rows: 1fr; border-top-color: var(--border-subtle); }
+  .vw-filterbar__inner { min-height: 0; overflow: hidden; }
+  .vw-filterbar__row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 20px; flex-wrap: nowrap; min-width: 0;
+  }
+  .vw-filterbar__row .cx-selectwrap { flex: 0 1 220px; min-width: 150px; }
+  .vw-filterbar__row .cx-select { min-width: 0; width: 100%; }
+  .vw-filterbar__row .vw-filterdate-wrap { flex: 0 1 220px; min-width: 150px; }
+
+  /* Filter calendar trigger — mirrors the Properties page .pp-datebtn */
+  .vw-filterdate-wrap { position: relative; }
+  .vw-filterdate {
+    display: flex; align-items: center; gap: 7px;
+    width: 100%; height: 42px; padding: 0 14px;
+    border: 1px solid var(--border-default); background: var(--surface-card);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-xs); cursor: pointer;
+    font-family: var(--font-sans); font-size: 15px; color: var(--text-secondary);
+    text-align: left; transition: border-color .15s, background-color .15s, color .15s;
+  }
+  .vw-filterdate__icon { flex: none; color: var(--text-tertiary); display: flex; }
+  .vw-filterdate:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--gray-25); }
+  .vw-filterdate:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vw-filterdate.is-open { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .vw-filterdate:not(.is-placeholder) .vw-filterdate__label { font-weight: 600; color: var(--text-primary); }
+  .vw-filterdate__label {
+    flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .vw-filterdate__clear {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%; flex: none; border: none; cursor: pointer;
+    background: var(--green-100); color: var(--green-700);
+    transition: background-color .13s, color .13s;
+  }
+  .vw-filterdate__clear:hover { background: var(--brand-primary); color: #fff; }
+  .vw-filterbar__actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+  .vw-clearbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 38px; padding: 0 13px;
+    border: none; background: transparent; cursor: pointer;
+    border-radius: var(--radius-control);
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    color: var(--text-tertiary); white-space: nowrap;
+    transition: color .15s, background-color .15s;
+  }
+  .vw-clearbtn:hover { color: var(--text-primary); background: var(--gray-100); }
+  .vw-clearbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-control); }
+  @media (max-width: 767px) {
+    .vw-tabrow { flex-direction: column; align-items: stretch; gap: 10px; }
+    .vw-tabs { width: 100%; }
+    .vw-tabrow__right { width: 100%; }
+    .vw-tabsearch { flex: 1 1 auto; }
+    .vw-tabsearch input { width: 100%; }
+    .vw-filterbar__row { flex-wrap: wrap; }
+    .vw-filterbar__row .cx-selectwrap { flex: 1 1 100%; }
+    .vw-filterbar__row .vw-filterdate-wrap { flex: 1 1 100%; }
+  }
+
+  /* ── TABLE: scroll + column template ── */
+  .vw-table { overflow-x: auto; overflow-y: visible; }
+  .vw-table::-webkit-scrollbar { height: 9px; }
+  .vw-table::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+
+  .vw-thead, .vw-row {
+    display: grid;
+    grid-template-columns:
+      minmax(210px, 2fr)     /* Property */
+      minmax(108px, 1fr)     /* Location */
+      minmax(126px, 1.1fr)   /* Member */
+      minmax(126px, 1.1fr)   /* Agent */
+      148px                  /* Date & Time */
+      122px                  /* Status */
+      64px;                  /* Actions */
+    align-items: center; gap: 14px; padding: 0 20px; min-width: 1004px;
+  }
+  .vw-thead {
+    height: 46px; background: var(--gray-50); border-bottom: 1px solid var(--border-subtle);
+  }
+  .vw-th {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-tertiary); white-space: nowrap;
+  }
+  .vw-row {
+    min-height: 78px; border-bottom: 1px solid var(--border-subtle);
+    transition: background-color .14s ease;
+  }
+  .vw-row:last-child { border-bottom: none; }
+  .vw-row:hover { background: var(--gray-25); }
+
+  /* Viewing ID */
+  .vw-vid {
+    font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
+    color: var(--text-tertiary); letter-spacing: .02em; white-space: nowrap;
+  }
+
+  /* Property cell */
+  .vw-prop { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .vw-prop__thumb {
+    width: 62px; height: 50px; flex: none; border-radius: 10px; object-fit: cover;
+    background: var(--gray-100); box-shadow: inset 0 0 0 1px rgba(11,32,24,.06);
+  }
+  .vw-prop__body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .vw-prop__title {
+    font-size: 14px; font-weight: 600; letter-spacing: -.005em; color: var(--text-primary);
+    line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-prop__loc {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--text-tertiary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-prop__loc svg { flex: none; color: var(--gold-500); }
+  .vw-prop__vid {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    color: var(--text-tertiary); letter-spacing: .02em; white-space: nowrap;
+  }
+
+  /* Location cell */
+  .vw-loc {
+    display: inline-flex; align-items: center; gap: 7px; min-width: 0;
+    font-size: 13.5px; color: var(--text-secondary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-loc svg { flex: none; color: var(--text-tertiary); }
+
+  /* Member / Agent */
+  .vw-person { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .vw-person__name {
+    font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Date & Time */
+  .vw-dt { display: flex; flex-direction: column; gap: 3px; }
+  .vw-dt__date {
+    font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .vw-dt__time {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
+  }
+  .vw-dt__time svg { flex: none; }
+
+  /* Actions cell */
+  .vw-col--acts { justify-content: center; }
+  .vw-th.vw-col--acts { text-align: center; }
+  .vw-acts { display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .vw-act-view {
+    display: inline-flex; align-items: center; height: 30px; padding: 0 10px;
+    font-family: var(--font-sans); font-size: 12.5px; font-weight: 600;
+    color: var(--brand-primary); background: transparent; border: 1px solid transparent;
+    border-radius: var(--radius-md); cursor: pointer; white-space: nowrap;
+    transition: background-color .14s, color .14s, border-color .14s;
+  }
+  .vw-act-view:hover { background: var(--brand-subtle); border-color: var(--green-100); color: var(--green-800); }
+  .vw-act-view:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vw-act-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border: 1px solid transparent; background: transparent;
+    border-radius: var(--radius-md); color: var(--gray-500); cursor: pointer;
+    transition: background-color .14s, color .14s, border-color .14s;
+  }
+  .vw-act-icon:hover { background: var(--gray-100); color: var(--gray-800); }
+  .vw-act-icon.is-open { background: var(--gray-100); color: var(--gray-900); border-color: var(--border-subtle); }
+  .vw-act-icon:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* Row action dropdown */
+  .vw-amenu {
+    position: fixed; z-index: 120; width: 204px; padding: 6px;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
+    transform-origin: top right; animation: vw-pop .14s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes vw-pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+  .vw-amenu__sect + .vw-amenu__sect { border-top: 1px solid var(--border-subtle); margin-top: 6px; padding-top: 6px; }
+  .vw-aitem {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 10px; border: none; background: transparent; cursor: pointer;
+    border-radius: var(--radius-md); color: var(--gray-700);
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; text-align: left;
+    transition: background-color .13s, color .13s;
+  }
+  .vw-aitem svg { flex: none; color: var(--text-tertiary); }
+  .vw-aitem:hover { background: var(--gray-50); color: var(--text-primary); }
+  .vw-aitem:hover svg { color: var(--text-secondary); }
+  .vw-aitem:focus-visible { outline: none; background: var(--gray-50); box-shadow: var(--shadow-focus-brand); }
+  .vw-aitem--danger { color: var(--error-600); }
+  .vw-aitem--danger svg { color: var(--error-500); }
+  .vw-aitem--danger:hover { background: var(--error-50); }
+
+  /* No results */
+  .vw-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 64px 24px; gap: 6px;
+  }
+  .vw-empty__art {
+    width: 60px; height: 60px; border-radius: var(--radius-2xl); margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--green-50), var(--gray-50));
+    border: 1px solid var(--border-subtle); color: var(--green-700);
+  }
+  .vw-empty h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--text-primary); margin: 0; }
+  .vw-empty p { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 360px; }
+
+  /* Mobile label (hidden on desktop) */
+  .vw-celllabel { display: none; }
+
+  /* Mobile: reflow to stacked cards */
+  @media (max-width: 767px) {
+    .vw-tablecard { background: transparent; border: none; box-shadow: none; overflow: visible; }
+    .vw-tablecard__head {
+      background: var(--surface-card); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
+      margin-bottom: 14px; padding: 16px;
+    }
+    .vw-table { overflow: visible; }
+    .vw-thead { display: none; }
+    .vw-row {
+      display: block; position: relative; min-height: 0; min-width: 0;
+      background: var(--surface-card); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
+      padding: 16px; margin-bottom: 14px;
+    }
+    .vw-row:last-child { margin-bottom: 0; }
+    .vw-row:hover { background: var(--surface-card); }
+    .vw-col--prop { margin-bottom: 12px; }
+    .vw-col--acts { position: absolute; top: 12px; right: 12px; }
+    .vw-col--loc, .vw-col--member, .vw-col--agent, .vw-col--dt, .vw-col--status {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 9px 0; border-top: 1px solid var(--border-subtle); text-align: right;
+    }
+    .vw-celllabel {
+      display: block; flex: none;
+      font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+  }
+
+  /* ============================================================
+     SCHEDULE VIEWING MODAL  (vw-modal)
+     ============================================================ */
+  .vw-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(11, 32, 24, .44);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    animation: vw-fade .18s ease;
+  }
+  @keyframes vw-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .vw-modal {
+    width: 100%; max-width: 540px; max-height: calc(100vh - 48px);
+    display: flex; flex-direction: column;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl); box-shadow: var(--shadow-2xl);
+    overflow: hidden;
+    animation: vw-modal-up .22s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes vw-modal-up { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  .vw-modal__head {
+    flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 22px 24px 20px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .vw-modal__headmain { display: flex; align-items: flex-start; gap: 14px; min-width: 0; }
+  .vw-modal__icon {
+    flex: none; width: 48px; height: 48px; border-radius: var(--radius-lg);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--brand-subtle); border: 1px solid var(--green-100); color: var(--green-700);
+  }
+  .vw-modal__title {
+    font-family: var(--font-display); font-weight: 600; font-size: 22px;
+    letter-spacing: -.015em; color: var(--text-primary); margin: 0;
+  }
+  .vw-modal__close {
+    width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; background: transparent; cursor: pointer; flex: none;
+    border-radius: var(--radius-md); color: var(--text-tertiary);
+    transition: background-color .14s, color .14s;
+  }
+  .vw-modal__close:hover { background: var(--gray-100); color: var(--gray-900); }
+  .vw-modal__close:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  .vw-modal__form { flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; }
+  .vw-modal__body { flex: 1 1 auto; overflow-y: auto; padding: 22px 24px; }
+  .vw-modal__body::-webkit-scrollbar { width: 8px; }
+  .vw-modal__body::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+
+  .vw-fields { display: flex; flex-direction: column; gap: 18px; }
+  .vw-field { display: flex; flex-direction: column; gap: 7px; }
+  .vw-field__label {
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600;
+    color: var(--text-primary); line-height: 1.3; display: flex; align-items: center; gap: 6px;
+  }
+  .vw-optional { font-size: 12px; font-weight: 500; color: var(--text-tertiary); }
+  .vw-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Full-width select inside modal */
+  .vw-fields .cx-selectwrap { width: 100%; }
+  .vw-fields .cx-select { width: 100%; }
+
+  /* Native date / time inputs — match DS input visual */
+  .vw-input {
+    width: 100%; height: 44px; padding: 0 14px;
+    font-family: var(--font-sans); font-size: 14.5px; color: var(--text-primary);
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-xs);
+    outline: none; transition: border-color .15s, box-shadow .15s; -webkit-appearance: none;
+  }
+  .vw-input:hover { border-color: var(--border-strong); }
+  .vw-input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+
+  .vw-textarea {
+    width: 100%; padding: 12px 14px; resize: vertical; min-height: 90px;
+    font-family: var(--font-sans); font-size: 14.5px; line-height: 1.55; color: var(--text-primary);
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-xs);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .vw-textarea::placeholder { color: var(--text-placeholder); }
+  .vw-textarea:hover { border-color: var(--border-strong); }
+  .vw-textarea:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+
+  .vw-modal__foot {
+    flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 16px 24px; border-top: 1px solid var(--border-subtle); background: var(--gray-25);
+  }
+  .vw-modal__foot-right { display: flex; align-items: center; gap: 10px; }
+
+  /* Header title + description stack */
+  .vw-modal__heading { min-width: 0; }
+  .vw-modal__desc {
+    font-size: 13.5px; line-height: 1.5; color: var(--text-secondary);
+    margin: 5px 0 0; text-wrap: pretty; max-width: 420px;
+  }
+
+  /* ── SECTIONED FORM ── */
+  .vw-section + .vw-section { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--border-subtle); }
+  .vw-section__label {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-tertiary); margin: 0 0 14px;
+  }
+  .vw-section .vw-fields { gap: 16px; }
+
+  /* ── SEARCHABLE COMBOBOX ── */
+  .vw-combo { position: relative; }
+  .vw-combo__trigger {
+    width: 100%; min-height: 44px; padding: 7px 12px 7px 14px;
+    display: flex; align-items: center; gap: 11px; text-align: left; cursor: pointer;
+    font-family: var(--font-sans); font-size: 14.5px; color: var(--text-primary);
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-xs);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .vw-combo__trigger:hover { border-color: var(--border-strong); }
+  .vw-combo__trigger.is-open { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .vw-combo__trigger:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .vw-combo__placeholder { color: var(--text-placeholder); flex: 1 1 auto; }
+  .vw-combo__chev { flex: none; color: var(--text-tertiary); margin-left: auto; transition: transform .16s ease; }
+  .vw-combo__trail { flex: none; color: var(--text-tertiary); margin-left: auto; }
+  .vw-combo__trigger.is-open .vw-combo__chev { transform: rotate(180deg); }
+  .vw-combo__value { flex: 1 1 auto; min-width: 0; }
+
+  /* Selected — property */
+  .vw-combo__prop { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .vw-combo__prop img {
+    width: 46px; height: 38px; flex: none; border-radius: 8px; object-fit: cover;
+    background: var(--gray-100); box-shadow: inset 0 0 0 1px rgba(11,32,24,.06);
+  }
+  .vw-combo__prop-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .vw-combo__prop-title {
+    font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-combo__prop-loc {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-tertiary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-combo__prop-loc svg { flex: none; color: var(--gold-500); }
+
+  /* Selected — person (member / agent) */
+  .vw-combo__person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .vw-combo__person-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .vw-combo__person-name {
+    font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-combo__person-meta {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-tertiary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums;
+  }
+  .vw-combo__person-meta svg { flex: none; color: var(--green-500); }
+
+  /* Dropdown panel (portaled, fixed) */
+  .vw-combo__panel {
+    position: fixed; z-index: 600; padding: 0;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); overflow: hidden;
+    display: flex; flex-direction: column;
+    animation: vw-pop .14s cubic-bezier(.2,.7,.2,1);
+  }
+  .vw-combo__searchbar {
+    flex: none; position: relative; padding: 10px 10px 8px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .vw-combo__searchbar svg { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); color: var(--green-600); pointer-events: none; }
+  .vw-combo__searchinput {
+    width: 100%; height: 38px; padding: 0 12px 0 38px;
+    font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
+    background: var(--gray-50); border: 1px solid var(--border-default);
+    border-radius: var(--radius-control); outline: none; transition: border-color .15s, box-shadow .15s, background-color .15s;
+  }
+  .vw-combo__searchinput::placeholder { color: var(--text-placeholder); }
+  .vw-combo__searchinput:focus { background: var(--surface-card); border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .vw-combo__list { overflow-y: auto; max-height: 256px; padding: 6px; }
+  .vw-combo__list::-webkit-scrollbar { width: 8px; }
+  .vw-combo__list::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+  .vw-combo__opt {
+    display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 10px; text-align: left;
+    border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md);
+    transition: background-color .12s;
+  }
+  .vw-combo__opt:hover, .vw-combo__opt.is-active { background: var(--gray-50); }
+  .vw-combo__opt.is-selected { background: var(--brand-subtle); }
+  .vw-combo__opt-body { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+  .vw-combo__opt-title {
+    font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.25;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-combo__opt-meta {
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-tertiary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-combo__opt-meta span { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+  .vw-combo__opt-meta svg { flex: none; color: var(--gray-400); }
+  .vw-combo__opt-check { flex: none; color: var(--brand-primary); margin-left: auto; }
+  .vw-combo__thumb {
+    width: 46px; height: 38px; flex: none; border-radius: 8px; object-fit: cover;
+    background: var(--gray-100); box-shadow: inset 0 0 0 1px rgba(11,32,24,.06);
+  }
+  .vw-combo__empty {
+    padding: 22px 14px; text-align: center; font-size: 13px; color: var(--text-tertiary);
+  }
+  .vw-combo__foot { flex: none; padding: 6px; border-top: 1px solid var(--border-subtle); }
+  .vw-combo__create {
+    display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; text-align: left;
+    border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md);
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--brand-primary);
+    transition: background-color .12s;
+  }
+  .vw-combo__create:hover { background: var(--brand-subtle); }
+  .vw-combo__create svg { flex: none; }
+  .vw-combo__create b { font-weight: 700; }
+
+  /* ── DATE / TIME PICKER POPOVERS ── */
+  .vw-combo__lead { flex: none; color: var(--text-tertiary); }
+
+  .vw-pop {
+    position: fixed; z-index: 600;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-2xl);
+    overflow: hidden; animation: vw-pop-in .14s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes vw-pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .vw-pop { animation: none; } }
+
+  /* Calendar */
+  .vw-cal { padding: 12px; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); }
+  .vw-cal__head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .vw-cal__title { font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+  .vw-cal__nav {
+    width: 28px; height: 28px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+    border: none; background: transparent; border-radius: var(--radius-md);
+    color: var(--text-secondary); cursor: pointer; transition: background-color .13s, color .13s;
+  }
+  .vw-cal__nav:hover { background: var(--gray-100); color: var(--text-primary); }
+  .vw-cal__nav:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vw-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .vw-cal__dow { margin-bottom: 0; }
+  .vw-cal__dowcell {
+    height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--text-tertiary);
+  }
+  .vw-cal__pad { height: 34px; }
+  .vw-cal__day {
+    height: 34px; display: inline-flex; align-items: center; justify-content: center;
+    border: none; background: transparent; cursor: pointer;
+    border-radius: var(--radius-md); font-family: var(--font-sans);
+    font-size: 13px; font-weight: 400; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; transition: background-color .13s, color .13s;
+  }
+  .vw-cal__day:hover { background: var(--gray-100); }
+  .vw-cal__day.is-today { color: var(--brand-primary); font-weight: 700; }
+  .vw-cal__day.is-selected, .vw-cal__day.is-selected:hover {
+    background: var(--brand-primary); color: #fff; font-weight: 600; box-shadow: none;
+  }
+  .vw-cal__day.is-past { color: var(--gray-300); cursor: not-allowed; }
+  .vw-cal__day.is-past:hover { background: transparent; }
+  .vw-cal__day:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vw-cal__foot { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: center; }
+  .vw-cal__today {
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--brand-primary);
+    background: transparent; border: none; padding: 4px 10px; border-radius: var(--radius-md); cursor: pointer;
+    transition: background-color .12s;
+  }
+  .vw-cal__today:hover { background: var(--brand-subtle); }
+  .vw-cal__today:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* Time picker — hour / minute / AM·PM columns */
+  .vw-timepop__cols { display: grid; grid-template-columns: 1fr 1fr 1.15fr; }
+  .vw-timepop__col {
+    max-height: 244px; overflow-y: auto; padding: 0 6px 6px;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .vw-timepop__col::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  .vw-timepop__col:last-child { border-right: none; }
+  .vw-timepop__colhd {
+    position: sticky; top: 0; z-index: 1; background: var(--surface-card);
+    margin: 0 -6px; padding: 11px 4px 9px; text-align: center;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .vw-timeopt {
+    display: flex; align-items: center; justify-content: center; width: 100%;
+    padding: 8px 6px; border: 1px solid transparent; background: transparent; cursor: pointer;
+    border-radius: var(--radius-md); font-family: var(--font-sans);
+    font-size: 14px; font-weight: 500; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; transition: background-color .12s, color .12s;
+  }
+  .vw-timeopt + .vw-timeopt { margin-top: 2px; }
+  .vw-timeopt:hover { background: var(--gray-100); }
+  .vw-timeopt.is-selected, .vw-timeopt.is-selected:hover {
+    background: var(--brand-primary); color: #fff; font-weight: 600;
+  }
+  .vw-timeopt:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ── SEGMENTED CONTROL (duration, contact method) ── */
+  .vw-seg { display: flex; gap: 4px; background: var(--gray-100); padding: 4px; border-radius: var(--radius-control); }
+  .vw-seg__btn {
+    flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 36px; padding: 0 10px; border: 1px solid transparent; background: transparent; cursor: pointer;
+    border-radius: calc(var(--radius-control) - 4px);
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text-secondary);
+    white-space: nowrap; transition: background-color .14s, color .14s, box-shadow .14s;
+  }
+  .vw-seg__btn svg { flex: none; }
+  .vw-seg__btn:hover { color: var(--text-primary); }
+  .vw-seg__btn.is-active {
+    background: var(--surface-card); color: var(--brand-primary);
+    box-shadow: var(--shadow-xs); border-color: var(--border-subtle);
+  }
+  .vw-seg__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* Status note (read-only default) */
+  .vw-statusnote { display: flex; align-items: center; gap: 10px; }
+  .vw-statusnote__txt { font-size: 13px; color: var(--text-tertiary); line-height: 1.4; }
+
+  @media (max-width: 560px) {
+    .vw-seg { flex-wrap: wrap; }
+    .vw-seg__btn { flex: 1 1 calc(50% - 4px); }
+  }
+
+  /* ============================================================
+     RESCHEDULE — READ-ONLY SUMMARY CARD
+     ============================================================ */
+  .vw-summary {
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+    background: var(--gray-25); overflow: hidden;
+  }
+  .vw-summary__top { display: flex; align-items: center; gap: 13px; padding: 13px 14px; }
+  .vw-summary__thumb {
+    width: 66px; height: 54px; flex: none; border-radius: 9px; object-fit: cover;
+    background: var(--gray-100); box-shadow: inset 0 0 0 1px rgba(11,32,24,.06);
+  }
+  .vw-summary__head { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; }
+  .vw-summary__name {
+    font-size: 15px; font-weight: 600; letter-spacing: -.006em; color: var(--text-primary);
+    line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-summary__loc {
+    display: inline-flex; align-items: center; gap: 4px; min-width: 0;
+    font-size: 12.5px; color: var(--text-tertiary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vw-summary__loc svg { flex: none; color: var(--gold-500); }
+  .vw-summary__tag {
+    flex: none; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px;
+    border-radius: var(--radius-pill); background: var(--surface-card); border: 1px solid var(--border-subtle);
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .vw-summary__tag svg { color: var(--text-tertiary); }
+  .vw-summary__grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    background: var(--border-subtle); border-top: 1px solid var(--border-subtle);
+  }
+  .vw-summary__cell { background: var(--gray-25); padding: 11px 14px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .vw-summary__k {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .vw-summary__v {
+    display: flex; align-items: center; gap: 8px; min-width: 0;
+    font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums;
+  }
+  .vw-summary__v svg { flex: none; color: var(--text-tertiary); }
+  .vw-summary__v .vw-summary__vtxt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 480px) { .vw-summary__grid { grid-template-columns: 1fr; } }
+
+  /* ── NOTIFY MEMBER BLOCK ── */
+  .vw-notify {
+    display: block; padding: 14px; border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg); background: var(--surface-card);
+    transition: border-color .15s, background-color .15s;
+  }
+  .vw-notify.is-on { border-color: var(--green-100); background: var(--brand-subtle); }
+  .vw-notify .cx-choice { align-items: flex-start; }
+  .vw-notify .cx-choice__label { font-size: 14px; font-weight: 600; }
+  .vw-notify .cx-choice__desc { font-size: 12.5px; line-height: 1.5; margin-top: 2px; max-width: 380px; }
+
+  /* ============================================================
+     DISCARD CHANGES — CONFIRM DIALOG (sits above the modal)
+     ============================================================ */
+  .vw-confirm-overlay {
+    position: fixed; inset: 0; z-index: 700;
+    background: rgba(11, 32, 24, .42);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    animation: vw-fade .14s ease;
+  }
+  .vw-confirm {
+    width: 100%; max-width: 410px;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl); box-shadow: var(--shadow-2xl);
+    padding: 24px 24px 20px; text-align: left;
+    animation: vw-modal-up .2s cubic-bezier(.2,.7,.2,1);
+  }
+  .vw-confirm__icon {
+    width: 46px; height: 46px; border-radius: var(--radius-pill); margin-bottom: 15px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--warning-50, #FFFAEB); color: var(--warning-600, #DC6803);
+    box-shadow: inset 0 0 0 1px var(--warning-100, #FEDF89);
+  }
+  .vw-confirm__title {
+    font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -.012em;
+    color: var(--text-primary); margin: 0 0 6px;
+  }
+  .vw-confirm__msg { font-size: 13.5px; line-height: 1.55; color: var(--text-secondary); margin: 0 0 20px; text-wrap: pretty; }
+  .vw-confirm__actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  @media (max-width: 460px) {
+    .vw-confirm__actions { flex-direction: column-reverse; align-items: stretch; }
+    .vw-confirm__actions .cx-btn { width: 100%; }
+  }
+
+  /* ============================================================
+     TOAST NOTIFICATION  (vw-toast)
+     ============================================================ */
+  .vw-toaster {
+    position: fixed; top: 22px; right: 22px; z-index: 2000;
+    display: flex; flex-direction: column; gap: 12px;
+    width: 380px; max-width: calc(100vw - 32px); pointer-events: none;
+  }
+  .vw-toast {
+    position: relative; overflow: hidden; pointer-events: auto;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: start;
+    padding: 16px 16px 17px;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-2xl);
+    transform: translateX(24px); opacity: 0;
+    transition: transform .34s cubic-bezier(.2,.7,.2,1), opacity .28s ease;
+  }
+  .vw-toast.is-in  { transform: translateX(0); opacity: 1; }
+  .vw-toast.is-out { transform: translateX(24px); opacity: 0; }
+  .vw-toast__icon {
+    flex: none; width: 38px; height: 38px; border-radius: var(--radius-pill);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--success-50); color: var(--success-600);
+    box-shadow: inset 0 0 0 1px var(--success-100);
+  }
+  .vw-toast__body { min-width: 0; padding-top: 1px; }
+  .vw-toast__title {
+    font-size: 15px; font-weight: 600; letter-spacing: -.006em;
+    color: var(--text-primary); margin: 0; line-height: 1.3;
+  }
+  .vw-toast__msg { font-size: 13.5px; line-height: 1.5; color: var(--text-secondary); margin: 4px 0 0; text-wrap: pretty; }
+  .vw-toast__actions { display: flex; align-items: center; gap: 18px; margin-top: 12px; }
+  .vw-toast__btn {
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; line-height: 1;
+    background: transparent; border: none; padding: 0; cursor: pointer; transition: color .15s;
+  }
+  .vw-toast__btn--dismiss { color: var(--text-secondary); }
+  .vw-toast__btn--dismiss:hover { color: var(--text-primary); }
+  .vw-toast__btn--view { color: var(--brand-primary); }
+  .vw-toast__btn--view:hover { color: var(--brand-primary-hover); text-decoration: underline; text-underline-offset: 3px; }
+  .vw-toast__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: 4px; }
+  .vw-toast__close {
+    flex: none; width: 30px; height: 30px; margin: -3px -3px 0 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; background: transparent; cursor: pointer;
+    border-radius: var(--radius-md); color: var(--text-tertiary);
+    transition: background-color .15s, color .15s;
+  }
+  .vw-toast__close:hover { background: var(--gray-100); color: var(--gray-800); }
+  .vw-toast__close:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vw-toast__progress {
+    position: absolute; left: 0; bottom: 0; height: 3px;
+    background: var(--brand-accent); border-bottom-left-radius: var(--radius-card);
+    transform-origin: left center; will-change: transform;
+  }
+  .vw-toast.is-in .vw-toast__progress { animation: vw-toast-prog 6000ms linear forwards; }
+  @keyframes vw-toast-prog { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+  @media (max-width: 560px) { .vw-toaster { left: 16px; right: 16px; top: 16px; width: auto; } }
+  @media (prefers-reduced-motion: reduce) {
+    .vw-toast { transition: opacity .2s ease; transform: none; }
+    .vw-toast.is-in, .vw-toast.is-out { transform: none; }
+    .vw-toast.is-in .vw-toast__progress { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="viewings.jsx"></script>
+</body>
+</html>

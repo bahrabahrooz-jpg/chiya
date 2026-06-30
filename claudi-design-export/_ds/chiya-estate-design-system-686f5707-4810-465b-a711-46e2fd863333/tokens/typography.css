@@ -1,0 +1,83 @@
+/* ============================================================
+   CHIYA ESTATE — TYPOGRAPHY TOKENS
+   Display = Cormorant Garamond (serif) · UI/body = Hanken Grotesk
+   ============================================================ */
+
+:root {
+  /* --- Families --------------------------------------------- */
+  --font-display: "Cormorant Garamond", "Georgia", "Times New Roman", serif;
+  --font-sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* --- Weights ---------------------------------------------- */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Letter spacing --------------------------------------- */
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.12em;   /* eyebrow / label caps */
+
+  /* --- Display scale (serif) -------------------------------- */
+  --display-2xl-size: 76px;  --display-2xl-line: 80px;
+  --display-xl-size: 60px;   --display-xl-line: 66px;
+  --display-lg-size: 48px;   --display-lg-line: 56px;
+  --display-md-size: 38px;   --display-md-line: 46px;
+  --display-sm-size: 30px;   --display-sm-line: 38px;
+  --display-xs-size: 24px;   --display-xs-line: 32px;
+
+  /* --- Text scale (sans) ------------------------------------ */
+  --text-xl-size: 20px;  --text-xl-line: 30px;
+  --text-lg-size: 18px;  --text-lg-line: 28px;
+  --text-md-size: 16px;  --text-md-line: 24px;
+  --text-sm-size: 14px;  --text-sm-line: 20px;
+  --text-xs-size: 12px;  --text-xs-line: 18px;
+
+  /* --- Eyebrow / overline ----------------------------------- */
+  --eyebrow-size: 13px;  --eyebrow-line: 16px;
+}
+
+/* ============================================================
+   Type helper classes — apply directly or mirror in JSX
+   ============================================================ */
+.cx-display-2xl, .cx-display-xl, .cx-display-lg,
+.cx-display-md, .cx-display-sm, .cx-display-xs {
+  font-family: var(--font-display);
+  font-weight: var(--weight-500, 500);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin: 0;
+}
+.cx-display-2xl { font-size: var(--display-2xl-size); line-height: var(--display-2xl-line); font-weight: 600; }
+.cx-display-xl  { font-size: var(--display-xl-size);  line-height: var(--display-xl-line);  font-weight: 600; }
+.cx-display-lg  { font-size: var(--display-lg-size);  line-height: var(--display-lg-line);  font-weight: 600; }
+.cx-display-md  { font-size: var(--display-md-size);  line-height: var(--display-md-line);  font-weight: 600; }
+.cx-display-sm  { font-size: var(--display-sm-size);  line-height: var(--display-sm-line);  font-weight: 600; }
+.cx-display-xs  { font-size: var(--display-xs-size);  line-height: var(--display-xs-line);  font-weight: 600; }
+
+.cx-text-xl, .cx-text-lg, .cx-text-md, .cx-text-sm, .cx-text-xs {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-normal);
+  color: var(--text-secondary);
+  margin: 0;
+}
+.cx-text-xl { font-size: var(--text-xl-size); line-height: var(--text-xl-line); }
+.cx-text-lg { font-size: var(--text-lg-size); line-height: var(--text-lg-line); }
+.cx-text-md { font-size: var(--text-md-size); line-height: var(--text-md-line); }
+.cx-text-sm { font-size: var(--text-sm-size); line-height: var(--text-sm-line); }
+.cx-text-xs { font-size: var(--text-xs-size); line-height: var(--text-xs-line); }
+
+.cx-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--eyebrow-size);
+  line-height: var(--eyebrow-line);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-accent);
+}

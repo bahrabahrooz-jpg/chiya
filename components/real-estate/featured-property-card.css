@@ -1,0 +1,36 @@
+/* FeaturedPropertyCard — ported from the design system (cx-feat). */
+.cx-feat {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card-lg);
+  overflow: hidden;
+  font-family: var(--font-sans);
+  box-shadow: var(--shadow-lg);
+}
+.cx-feat__media { position: relative; min-height: 340px; background: var(--gray-100); }
+.cx-feat__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cx-feat__grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(11, 32, 24, .55), transparent 50%); }
+.cx-feat__badges { position: absolute; top: 16px; inset-inline-start: 16px; display: flex; gap: 8px; z-index: 2; }
+.cx-feat__fav { position: absolute; top: 16px; inset-inline-end: 16px; z-index: 2; }
+.cx-feat__thumbs { position: absolute; inset-inline-start: 16px; bottom: 16px; display: flex; gap: 8px; z-index: 2; }
+.cx-feat__thumb { width: 54px; height: 42px; border-radius: 8px; object-fit: cover; border: 2px solid rgba(255, 255, 255, .85); box-shadow: var(--shadow-md); }
+.cx-feat__thumb--more { display: flex; align-items: center; justify-content: center; background: rgba(11, 32, 24, .66); color: #fff; font-size: 12px; font-weight: 700; backdrop-filter: blur(4px); }
+.cx-feat__body { display: flex; flex-direction: column; padding: 28px; gap: 18px; }
+.cx-feat__eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text-accent); }
+.cx-feat__title { font-family: var(--font-display); font-weight: 600; font-size: 30px; line-height: 36px; letter-spacing: -0.01em; color: var(--text-primary); }
+.cx-feat__addr { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-tertiary); margin-top: -8px; }
+.cx-feat__price { font-weight: 700; font-size: 30px; letter-spacing: -0.01em; color: var(--brand-primary); font-variant-numeric: tabular-nums; }
+.cx-feat__price small { font-size: 15px; font-weight: 600; color: var(--text-tertiary); }
+.cx-feat__specs { display: flex; flex-wrap: wrap; gap: 10px; }
+.cx-feat__spec { display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--gray-50); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.cx-feat__spec b { color: var(--text-primary); font-weight: 700; }
+.cx-feat__spec svg { color: var(--green-500); }
+.cx-feat__desc { font-size: 14px; line-height: 22px; color: var(--text-secondary); }
+.cx-feat__foot { display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border-subtle); }
+.cx-feat__agent { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.cx-feat__agent b { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.cx-feat__agent span { font-size: 12px; color: var(--text-tertiary); }
+.cx-feat__actions { margin-inline-start: auto; display: flex; gap: 8px; }
+@media (max-width: 760px) { .cx-feat { grid-template-columns: 1fr; } .cx-feat__media { min-height: 240px; } }

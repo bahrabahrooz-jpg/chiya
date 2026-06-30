@@ -1,0 +1,28 @@
+/* StatCard + Sparkline — ported from the design system (cx-stat). */
+.cx-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  font-family: var(--font-sans);
+  box-shadow: var(--shadow-xs);
+}
+.cx-stat__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.cx-stat__label { font-size: 13px; font-weight: 600; color: var(--text-tertiary); }
+.cx-stat__icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--radius-md); flex: none; }
+.cx-stat__icon--brand { background: var(--brand-subtle); color: var(--green-700); }
+.cx-stat__icon--gold { background: var(--brand-accent-subtle); color: var(--gold-700); }
+.cx-stat__icon--info { background: var(--info-50); color: var(--info-600); }
+.cx-stat__icon--success { background: var(--success-50); color: var(--success-600); }
+.cx-stat__value { font-weight: 700; font-size: 32px; line-height: 1; letter-spacing: -0.02em; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.cx-stat__foot { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.cx-stat__delta { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cx-stat__delta--up { color: var(--success-600); }
+.cx-stat__delta--down { color: var(--error-600); }
+.cx-stat__sub { color: var(--text-tertiary); }
+.cx-spark { display: flex; align-items: flex-end; gap: 3px; height: 36px; }
+.cx-spark__bar { flex: 1; border-radius: 2px; background: var(--green-100); min-height: 3px; transition: background-color .2s; }
+.cx-spark__bar--peak { background: var(--brand-accent); }

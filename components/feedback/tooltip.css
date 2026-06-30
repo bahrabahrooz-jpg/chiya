@@ -1,0 +1,32 @@
+/* Tooltip — CSS hover/focus bubble (no JS state, SSR-safe). */
+.cx-tip { position: relative; display: inline-flex; }
+.cx-tip__bubble {
+  position: absolute;
+  z-index: 1500;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(.96);
+  transition: opacity .14s ease, transform .14s ease;
+  background: var(--gray-900);
+  color: var(--gray-25);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  white-space: nowrap;
+  max-width: 240px;
+}
+.cx-tip:hover .cx-tip__bubble,
+.cx-tip:focus-within .cx-tip__bubble { opacity: 1; transform: scale(1); }
+
+.cx-tip__bubble--top { bottom: calc(100% + 8px); left: 50%; transform-origin: bottom center; translate: -50% 0; }
+.cx-tip__bubble--bottom { top: calc(100% + 8px); left: 50%; transform-origin: top center; translate: -50% 0; }
+.cx-tip__bubble--left { right: calc(100% + 8px); top: 50%; transform-origin: center right; translate: 0 -50%; }
+.cx-tip__bubble--right { left: calc(100% + 8px); top: 50%; transform-origin: center left; translate: 0 -50%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cx-tip__bubble { transition: opacity .14s ease; }
+}
