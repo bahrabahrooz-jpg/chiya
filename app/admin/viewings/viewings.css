@@ -186,10 +186,10 @@
   .vw-filterdate__clear {
     display: inline-flex; align-items: center; justify-content: center;
     width: 18px; height: 18px; border-radius: 50%; flex: none; border: none; cursor: pointer;
-    background: var(--green-100); color: var(--green-700);
+    background: var(--gray-100); color: var(--text-tertiary);
     transition: background-color .13s, color .13s;
   }
-  .vw-filterdate__clear:hover { background: var(--brand-primary); color: #fff; }
+  .vw-filterdate__clear:hover { background: var(--gray-200); color: var(--text-primary); }
   .vw-filterbar__actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
   .vw-clearbtn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -842,9 +842,10 @@
   }
 
   /* Icon tints for the status / delete confirmations */
-  .vw-confirm__icon--brand {
+  .vw-confirm__icon--status {
+    border-radius: 14px;
     background: var(--brand-subtle); color: var(--green-700);
-    box-shadow: inset 0 0 0 1px var(--brand-accent, #ABEFC6);
+    box-shadow: inset 0 0 0 1px var(--green-100, #D3F8DF);
   }
   .vw-confirm__icon--danger {
     background: var(--error-50, #FEF3F2); color: var(--error-600, #D92D20);
@@ -862,7 +863,8 @@
   }
   .vw-statustrigger:hover { border-color: var(--border-strong); }
   .vw-statustrigger.is-open { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
-  .vw-statustrigger__placeholder { flex: 1; font-size: 14px; color: var(--text-placeholder); }
+  .vw-statustrigger__placeholder { flex: 1; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-placeholder); }
+  .vw-statustrigger__placeholder svg { flex: none; color: var(--text-tertiary); }
   .vw-statustrigger__chev { margin-left: auto; flex: none; color: var(--text-tertiary); transition: transform .15s ease; }
   .vw-statustrigger.is-open .vw-statustrigger__chev { transform: rotate(180deg); }
 
@@ -880,6 +882,9 @@
   }
   .vw-statopt:hover { background: var(--gray-50); }
   .vw-statopt.is-selected { background: var(--brand-subtle); }
+  .vw-statopt__val { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+  .vw-statopt__dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+  .vw-statopt__text { font-size: 14px; font-weight: 500; color: var(--text-primary); }
   .vw-statopt__spacer { flex: 1; }
   .vw-statopt__current {
     font-size: 11px; font-weight: 600; color: var(--text-tertiary);

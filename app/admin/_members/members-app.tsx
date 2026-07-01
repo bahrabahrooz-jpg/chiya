@@ -109,6 +109,21 @@ function MpCustomSelect({ value, onChange, options, placeholder }: { value: stri
     <div className="mp-datebtn-wrap" ref={btnRef}>
       <button type="button" className={"mp-datebtn" + (open ? " is-open" : "") + (value ? " has-value" : "")} onClick={toggle}>
         <span className="mp-datebtn__label">{options.find((o) => o.value === value)?.label || placeholder}</span>
+        {value && (
+          <span
+            className="mp-datebtn__clear"
+            role="button"
+            tabIndex={0}
+            aria-label="Clear"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            <Icon name="x" size={12} />
+          </span>
+        )}
         <Icon name="chevron-down" size={14} />
       </button>
       {open &&
@@ -136,7 +151,7 @@ function MpCustomSelect({ value, onChange, options, placeholder }: { value: stri
   );
 }
 
-function MpDatePicker({ value, onChange, placeholder }: { value: Date | null; onChange: (v: Date) => void; placeholder: string }) {
+function MpDatePicker({ value, onChange, placeholder }: { value: Date | null; onChange: (v: Date | null) => void; placeholder: string }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState(() => ({ y: (value || MP_TODAY).getFullYear(), m: (value || MP_TODAY).getMonth() }));
   const btnRef = useRef<HTMLDivElement>(null);
@@ -187,6 +202,21 @@ function MpDatePicker({ value, onChange, placeholder }: { value: Date | null; on
     <div className="mp-datebtn-wrap" ref={btnRef}>
       <button type="button" className={"mp-datebtn" + (open ? " is-open" : "") + (value ? " has-value" : "")} onClick={toggle}>
         <span className="mp-datebtn__label">{value ? fmtDate(value) : placeholder}</span>
+        {value && (
+          <span
+            className="mp-datebtn__clear"
+            role="button"
+            tabIndex={0}
+            aria-label="Clear date"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange(null);
+              setOpen(false);
+            }}
+          >
+            <Icon name="x" size={12} />
+          </span>
+        )}
         <Icon name="calendar" size={15} />
       </button>
       {open &&
@@ -671,7 +701,7 @@ function MembersTableCard(props: {
         <div className={"mp-filterbar" + (filtersOpen ? " is-open" : "")}>
           <div className="mp-filterbar__inner">
             <div className="mp-filterbar__row">
-              <MpCustomSelect value={props.filters.status} onChange={(v) => props.setFilter("status", v)} options={opt(["Active", "Suspended"])} placeholder="All statuses" />
+              <MpCustomSelect value={props.filters.status} onChange={(v) => props.setFilter("status", v)} options={opt(["Active", "Suspended"])} placeholder="Status" />
               <MpDatePicker value={props.filters.date} onChange={(v) => props.setFilter("date", v)} placeholder="Date added" />
               <div className="mp-filterbar__actions">
                 <button type="button" className="mp-clearbtn" onClick={props.onClear}>

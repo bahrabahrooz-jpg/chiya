@@ -81,9 +81,10 @@ function buildViewings(): ViewingRecord[] {
 export const VIEWINGS: ViewingRecord[] = buildViewings();
 export const TOTAL_VIEWINGS = VIEWINGS.length;
 
-/* Filter option lists — the agents and properties that actually appear in viewings. */
+/* Filter option lists — the agents, properties and locations in viewings. */
 export const AGENTS_LIST: string[] = [...new Set(VIEWINGS.map((v) => v.agent))].sort();
 export const PROPS_LIST: string[] = [...new Set(VIEWINGS.map((v) => v.property.title))].sort();
+export const CITIES_LIST: string[] = [...new Set(VIEWINGS.map((v) => v.property.location.split(",").pop()!.trim()))].sort();
 
 /* Live KPI counts derived from a viewings list — so add / delete / status
    changes update the cards (see ViewingsApp). */
@@ -160,7 +161,7 @@ export interface RescheduleForm {
   reason: string;
 }
 
-export const EMPTY_FILTERS = { q: "", status: "", agent: "", property: "", dateRange: "" };
+export const EMPTY_FILTERS = { q: "", status: "", location: "", dateRange: "" };
 export type ViewingFilters = typeof EMPTY_FILTERS;
 
 export const MONTHS_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];

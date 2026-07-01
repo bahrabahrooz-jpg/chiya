@@ -13,9 +13,7 @@ import { Modal } from "@/components/ui/modal";
 import {
   AGENTS,
   AMENITIES,
-  CITIES,
   CONDITIONS,
-  DISTRICTS,
   FURNISHING,
   GALLERY_IMGS,
   INITIAL,
@@ -23,6 +21,7 @@ import {
   PROPERTY_TYPES,
   type ApForm,
 } from "./data";
+import { useProperties } from "../_shared/properties-store";
 import {
   AgentSelect,
   AgentSummary,
@@ -41,6 +40,7 @@ import {
   Stepper,
   SubHead,
   VideoUpload,
+  usePhotoUploader,
 } from "../_add-property/add-property-app";
 
 export function EditPropertyApp({ id }: { id: string }) {
@@ -49,6 +49,14 @@ export function EditPropertyApp({ id }: { id: string }) {
   const [f, setF] = useState<ApForm>(INITIAL);
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
   const [step, setStep] = useState(0);
+  const photos = usePhotoUploader(true);
+  const { locationTree } = useProperties();
+  const cityOptions = locationTree.map((c) => c.name);
+  const cityNode = locationTree.find((c) => c.name === f.city);
+  const districtSource = cityNode ? cityNode.children : locationTree.flatMap((c) => c.children);
+  const districtOptions = districtSource.map((d) => d.name);
+  const districtNode = districtSource.find((d) => d.name === f.district);
+  const projectOptions = districtNode ? districtNode.children.map((p) => p.name) : [];
   const goTo = (n: number) => {
     setStep(n);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -96,6 +104,7 @@ export function EditPropertyApp({ id }: { id: string }) {
     area: areaStr,
     city: f.city || "Erbil",
     district: f.district || "Ankawa",
+    project: f.project,
     street: f.street || "60 Meter Street, Block 4",
     building: f.building || "Villa 128",
     lat: f.lat || "36.19085",
@@ -222,14 +231,24 @@ export function EditPropertyApp({ id }: { id: string }) {
             <div className="ap-grid">
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-city">City</FieldLabel>
-                <Dropdown id="ap-city" placeholder="Select city" value={f.city} onChange={(v) => set("city", v)} options={CITIES.map((c) => ({ value: c, label: c }))} />
+                <Dropdown id="ap-city" placeholder="Select city" value={f.city} onChange={(v) => { set("city", v); set("district", ""); set("project", ""); }} options={cityOptions.map((c) => ({ value: c, label: c }))} />
               </div>
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-district">Area / district</FieldLabel>
-                <Dropdown id="ap-district" placeholder="Select area or district" value={f.district} onChange={(v) => set("district", v)} options={DISTRICTS.map((d) => ({ value: d, label: d }))} />
+                <FieldLabel htmlFor="ap-district" optional>
+                  Area / district
+                </FieldLabel>
+                <Dropdown id="ap-district" disabled={districtOptions.length === 0} placeholder={districtOptions.length ? "Select area or district" : "No areas in this city"} value={f.district} onChange={(v) => { set("district", v); set("project", ""); }} options={districtOptions.map((d) => ({ value: d, label: d }))} />
               </div>
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-street">Street address</FieldLabel>
+                <FieldLabel htmlFor="ap-project" optional>
+                  Project / community
+                </FieldLabel>
+                <Dropdown id="ap-project" disabled={projectOptions.length === 0} placeholder={!f.district ? "Select an area first" : projectOptions.length ? "Select project or community" : "No projects in this area"} value={f.project} onChange={(v) => set("project", v)} options={projectOptions.map((p) => ({ value: p, label: p }))} />
+              </div>
+              <div className="ap-field">
+                <FieldLabel htmlFor="ap-street" optional>
+                  Street address
+                </FieldLabel>
                 <Input id="ap-street" size="lg" placeholder="e.g. 60 Meter Street, Block 4" value={f.street} onChange={(e) => set("street", e.target.value)} />
               </div>
               <div className="ap-field">
@@ -240,8 +259,16 @@ export function EditPropertyApp({ id }: { id: string }) {
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel>Map location</FieldLabel>
-                <MapPicker />
-                <span className="ap-hint">Search for an address or drag the map to drop the pin precisely on the property.</span>
+                <MapPicker
+                  city={f.city}
+                  lat={f.lat}
+                  lng={f.lng}
+                  onMove={(la, ln) => {
+                    set("lat", la.toFixed(5));
+                    set("lng", ln.toFixed(5));
+                  }}
+                />
+                <span className="ap-hint">Drag the pin or click the map to drop it precisely on the property.</span>
               </div>
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-lat">Latitude</FieldLabel>
@@ -297,17 +324,17 @@ export function EditPropertyApp({ id }: { id: string }) {
             <div className="ap-grid">
               <div className="ap-field ap-col-full">
                 <FieldLabel>Cover image</FieldLabel>
-                <CoverImage />
-                <span className="ap-hint">The cover photo headlines the listing across search results and the property page.</span>
+                <CoverImage cover={photos.cover} onPick={photos.addAsCover} onRemove={() => photos.cover && photos.removePhoto(photos.cover.id)} />
+                <span className="ap-hint">The cover photo headlines the listing across search results and the property page. Set any gallery image as the cover with its star.</span>
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel>Gallery images</FieldLabel>
-                <GalleryGrid />
+                <GalleryGrid store={photos} />
                 <span className="ap-hint">Drag to reorder · hover an image to set it as cover or remove it.</span>
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel optional>Video upload</FieldLabel>
-                <VideoUpload />
+                <VideoUpload store={photos} />
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel htmlFor="ap-tour" optional>
@@ -354,7 +381,7 @@ export function EditPropertyApp({ id }: { id: string }) {
                 </div>
                 <div className="ap-field">
                   <FieldLabel optional>Levels / floors</FieldLabel>
-                  <Stepper value={f.floors} onChange={(v) => set("floors", v)} min={1} />
+                  <Stepper value={f.floors} onChange={(v) => set("floors", v)} min={0} />
                 </div>
                 <div className="ap-field">
                   <FieldLabel htmlFor="ap-year" optional>
@@ -494,6 +521,7 @@ export function EditPropertyApp({ id }: { id: string }) {
                 <div className="ap-rev__grid">
                   <RevItem k="City" v={rev.city} />
                   <RevItem k="Area / district" v={rev.district} />
+                  <RevItem k="Project / community" v={rev.project} />
                   <RevItem k="Street address" v={rev.street} full />
                   <RevItem k="Building number" v={rev.building} />
                   <RevItem k="Coordinates" v={rev.lat + ", " + rev.lng} tnum />
@@ -533,10 +561,10 @@ export function EditPropertyApp({ id }: { id: string }) {
               </ReviewSection>
               <ReviewSection icon="ruler" title="Property features" onEdit={() => goTo(3)}>
                 <div className="ap-rev__grid">
-                  <RevItem k="Bedrooms" v={f.beds} tnum />
-                  <RevItem k="Bathrooms" v={f.baths} tnum />
-                  <RevItem k="Parking spaces" v={f.parking} tnum />
-                  <RevItem k="Levels / floors" v={f.floors} tnum />
+                  <RevItem k="Bedrooms" v={f.beds || ""} tnum />
+                  <RevItem k="Bathrooms" v={f.baths || ""} tnum />
+                  <RevItem k="Parking spaces" v={f.parking || ""} tnum />
+                  <RevItem k="Levels / floors" v={f.floors || ""} tnum />
                   <RevItem k="Year built" v={rev.year} tnum />
                   <RevItem k="Orientation" v={rev.orientation} />
                   <RevItem k="Condition" v={f.condition} />
@@ -585,7 +613,7 @@ export function EditPropertyApp({ id }: { id: string }) {
               Previous
             </Button>
             <div className="ap-foot__right">
-              <Button hierarchy="tertiary" size="lg" iconLeading="save">
+              <Button hierarchy="secondary" size="lg" iconLeading="save">
                 Save draft
               </Button>
               <Button hierarchy="primary" size="lg" iconLeading="check" onClick={onUpdate}>

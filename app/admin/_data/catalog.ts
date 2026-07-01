@@ -193,16 +193,21 @@ const PORTRAITS: string[] = [
 /* ----------------------------------------------------------------------------
    Location structure (placeable areas roll up into districts and cities)
    ------------------------------------------------------------------------- */
-interface DistrictDef {
+export interface DistrictDef {
   name: string;
   projects: string[];
   desc: string;
 }
-interface CityDef {
+export interface CityDef {
   city: string;
   weight: number;
   desc: string;
   districts: DistrictDef[];
+}
+export const slugify = (s: string) => s.toLowerCase().trim().replace(/\s+/g, "-");
+/** Deep copy of the location structure so it can be mutated in state safely. */
+export function cloneLocationDefs(defs: CityDef[]): CityDef[] {
+  return defs.map((c) => ({ ...c, districts: c.districts.map((d) => ({ ...d, projects: [...d.projects] })) }));
 }
 export const LOCATION_DEF: CityDef[] = [
   {
@@ -536,11 +541,11 @@ export function countAgents(agents: AgentRecord[]): AgentCounts {
 
 /** Build the location tree with property counts rolled up from the live list. */
 const NODE_CREATED = "Jan 12, 2023";
-export function buildLocationTree(list: PropertyRecord[]): LocationNode[] {
+export function buildLocationTree(defs: CityDef[], list: PropertyRecord[]): LocationNode[] {
   const byArea: Record<string, number> = {};
   for (const p of list) byArea[p.area] = (byArea[p.area] || 0) + 1;
 
-  return LOCATION_DEF.map((c) => {
+  return defs.map((c) => {
     const districts: LocationNode[] = c.districts.map((d) => {
       const projects: LocationNode[] = d.projects.map((pName) => ({
         id: pName.toLowerCase().replace(/\s+/g, "-"),
@@ -585,11 +590,11 @@ export interface LocationCounts {
   projects: number;
   assigned: number;
 }
-export function countLocations(list: PropertyRecord[]): LocationCounts {
+export function countLocations(defs: CityDef[], list: PropertyRecord[]): LocationCounts {
   let cities = 0;
   let districts = 0;
   let projects = 0;
-  for (const c of LOCATION_DEF) {
+  for (const c of defs) {
     cities++;
     for (const d of c.districts) {
       districts++;
@@ -597,6 +602,39 @@ export function countLocations(list: PropertyRecord[]): LocationCounts {
     }
   }
   return { cities, districts, projects, assigned: list.length };
+}
+
+/** Remove a location node (and its descendants) from a (cloned) structure. */
+export function removeLocationDef(defs: CityDef[], type: "city" | "district" | "project", id: string): CityDef[] {
+  const next = cloneLocationDefs(defs);
+  if (type === "city") return next.filter((c) => slugify(c.city) !== id);
+  if (type === "district") {
+    for (const c of next) c.districts = c.districts.filter((d) => slugify(d.name) !== id);
+    return next;
+  }
+  for (const c of next) for (const d of c.districts) d.projects = d.projects.filter((p) => slugify(p) !== id);
+  return next;
+}
+
+/** Insert a new location node into a (cloned) structure. Parent ids are slugs. */
+export function addLocationDef(defs: CityDef[], name: string, type: "city" | "district" | "project", parentId: string): CityDef[] {
+  const next = cloneLocationDefs(defs);
+  const key = slugify(name);
+  if (type === "city") {
+    if (!next.some((c) => slugify(c.city) === key)) next.push({ city: name, weight: 0, desc: "", districts: [] });
+  } else if (type === "district") {
+    const city = next.find((c) => slugify(c.city) === parentId);
+    if (city && !city.districts.some((d) => slugify(d.name) === key)) city.districts.push({ name, projects: [], desc: "" });
+  } else if (type === "project") {
+    for (const c of next) {
+      const d = c.districts.find((dd) => slugify(dd.name) === parentId);
+      if (d) {
+        if (!d.projects.some((p) => slugify(p) === key)) d.projects.push(name);
+        break;
+      }
+    }
+  }
+  return next;
 }
 
 /* Lookup helpers for detail pages. */

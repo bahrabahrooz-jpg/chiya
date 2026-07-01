@@ -124,17 +124,6 @@ export const ROLES_SEED: RoleSeed[] = [
     spec: { dashboard: "all", properties: "all", members: "all", agents: "all", viewings: "all", reports: "all", settings: "all" },
   },
   {
-    id: "admin", name: "Admin", tone: "brand", dot: "brand", icon: "shield", system: true,
-    status: "Active", users: 5, created: "Jan 4, 2024",
-    desc: "Full operational control of listings, members and agents. Cannot manage platform roles or global settings.",
-    spec: {
-      dashboard: { perms: "all", scope: "org" }, properties: { perms: "all", scope: "org" },
-      members: { perms: "all", scope: "org" }, agents: { perms: "all", scope: "org" },
-      viewings: { perms: "all", scope: "org" }, reports: { perms: "all", scope: "org" },
-      settings: { perms: [0], scope: "org" },
-    },
-  },
-  {
     id: "agent", name: "Agent", tone: "amber", dot: "amber", icon: "badge-check", system: true,
     status: "Active", users: 120, created: "Jan 11, 2024",
     desc: "Field agent. Manages their own assigned properties, members and viewings.",

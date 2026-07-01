@@ -13,7 +13,6 @@ import { StatCard } from "@/components/data/stat-card";
 import {
   AGENTS_PER_PAGE,
   AGENT_STATUS,
-  CITIES,
   EMPTY_FILTERS,
   EXPERIENCE_OPTIONS,
   KPI_CARDS,
@@ -181,7 +180,7 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
         <div className="ag-card__row">
           <Icon name="map-pin" size={15} />
           <span>
-            {a.city} آ· {a.area}
+            {a.city} · {a.area}
           </span>
         </div>
       </div>
@@ -282,7 +281,7 @@ function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusReq
         </span>
       </div>
       <div className="ag-col--city">
-        <span className="ag-celllabel">City</span>
+        <span className="ag-celllabel">Location</span>
         <span className="ag-cell">
           <Icon name="map-pin" size={14} />
           {a.city}
@@ -342,11 +341,11 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
   const totalPages = Math.max(1, Math.ceil(totalItems / AGENTS_PER_PAGE));
   const start = Math.min((currentPage - 1) * AGENTS_PER_PAGE + 1, totalItems);
   const end = Math.min(currentPage * AGENTS_PER_PAGE, totalItems);
-  const getPages = (): (number | "â€¦")[] => {
+  const getPages = (): (number | "…")[] => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    if (currentPage <= 4) return [1, 2, 3, 4, 5, "â€¦", totalPages];
-    if (currentPage >= totalPages - 3) return [1, "â€¦", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    return [1, "â€¦", currentPage - 1, currentPage, currentPage + 1, "â€¦", totalPages];
+    if (currentPage <= 4) return [1, 2, 3, 4, 5, "…", totalPages];
+    if (currentPage >= totalPages - 3) return [1, "…", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [1, "…", currentPage - 1, currentPage, currentPage + 1, "…", totalPages];
   };
   if (totalItems === 0) return null;
   return (
@@ -354,7 +353,7 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
       <span className="ag-pagination__info">
         Showing{" "}
         <b>
-          {start.toLocaleString("en-US")}â€“{end.toLocaleString("en-US")}
+          {start.toLocaleString("en-US")}–{end.toLocaleString("en-US")}
         </b>{" "}
         of <b>{totalItems.toLocaleString("en-US")}</b> agents
       </span>
@@ -364,9 +363,9 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
           Previous
         </button>
         {getPages().map((p, i) =>
-          p === "â€¦" ? (
+          p === "…" ? (
             <span key={"e" + i} className="ag-page-ellipsis">
-              â€¦
+              …
             </span>
           ) : (
             <button key={p} type="button" className={"ag-page-btn" + (p === currentPage ? " is-active" : "")} onClick={() => onPageChange(p)}>
@@ -397,7 +396,7 @@ function AgentTable({
           <span className="ag-th ag-col--agent">Agent</span>
           <span className="ag-th ag-col--verification">Verification</span>
           <span className="ag-th ag-col--phone">Phone</span>
-          <span className="ag-th ag-col--city">City</span>
+          <span className="ag-th ag-col--city">Location</span>
           <span className="ag-th ag-th--num ag-col--listings">Listings</span>
           <span className="ag-th ag-th--num ag-col--sold">Sold</span>
           <span className="ag-th ag-th--num ag-col--rented">Rented</span>
@@ -420,6 +419,7 @@ function AgentsPanel({
   setView,
   rows,
   totalCount,
+  cityOptions,
   filtersOpen,
   onToggleFilters,
 }: {
@@ -431,6 +431,7 @@ function AgentsPanel({
   setView: (v: string) => void;
   rows: AgentRecord[];
   totalCount: number;
+  cityOptions: string[];
   filtersOpen: boolean;
   onToggleFilters: () => void;
 }) {
@@ -474,7 +475,7 @@ function AgentsPanel({
               <span className="ap-tabsearch__lead">
                 <Icon name="search" size={16} />
               </span>
-              <input type="text" value={filters.q} onChange={(e) => setFilter("q", e.target.value)} placeholder="Search agentsâ€¦" aria-label="Search agents" />
+              <input type="text" value={filters.q} onChange={(e) => setFilter("q", e.target.value)} placeholder="Search agents…" aria-label="Search agents" />
             </div>
             <button
               type="button"
@@ -500,8 +501,8 @@ function AgentsPanel({
         <div className={"ap-filterbar" + (filtersOpen ? " is-open" : "")}>
           <div className="ap-filterbar__inner">
             <div className="ap-filterbar__row">
-              <CustomSelect value={filters.city} onChange={(v) => setFilter("city", v)} options={[{ value: "", label: "City" }, ...opt(CITIES)]} />
-              <CustomSelect value={filters.status} onChange={(v) => setFilter("status", v)} options={[{ value: "", label: "Status" }, ...opt(["Active", "Suspended"])]} />
+              <CustomSelect value={filters.city} onChange={(v) => setFilter("city", v)} options={[{ value: "", label: "Location" }, ...opt(cityOptions)]} clearable />
+              <CustomSelect value={filters.status} onChange={(v) => setFilter("status", v)} options={[{ value: "", label: "Status" }, ...opt(["Active", "Suspended"])]} clearable />
               <div className="ap-filterbar__actions">
                 <button type="button" className="ap-clearbtn" onClick={onClear}>
                   <Icon name="x" size={14} />
@@ -776,7 +777,8 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
 
 export function AgentsApp() {
   const router = useRouter();
-  const { agents, agentCounts, addAgent, removeAgent, updateAgent } = useProperties();
+  const { agents, agentCounts, addAgent, removeAgent, updateAgent, locationTree } = useProperties();
+  const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
   const [filters, setFilters] = useState<AgentFilters>(EMPTY_FILTERS);
   const [view, setView] = useState("table");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -930,7 +932,7 @@ export function AgentsApp() {
         ))}
       </div>
 
-      <AgentsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} view={view} setView={setView} rows={rows} totalCount={agents.length} filtersOpen={filtersOpen} onToggleFilters={() => setFiltersOpen((o) => !o)} />
+      <AgentsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} view={view} setView={setView} rows={rows} totalCount={agents.length} cityOptions={cityOptions} filtersOpen={filtersOpen} onToggleFilters={() => setFiltersOpen((o) => !o)} />
 
       {view === "cards" ? <AgentGrid rows={rows} {...handlers} /> : <AgentTable rows={pagedRows} currentPage={page} totalItems={rows.length} onPageChange={setCurrentPage} {...handlers} />}
 

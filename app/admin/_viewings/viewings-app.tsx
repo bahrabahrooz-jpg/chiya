@@ -8,11 +8,9 @@ import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Select } from "@/components/ui/select";
 import { StatCard } from "@/components/data/stat-card";
 import {
   AGENTS,
-  AGENTS_LIST,
   AGENT_IMG,
   CAL_DOW,
   DURATIONS,
@@ -25,7 +23,6 @@ import {
   MINUTES_60,
   MONTHS_FULL,
   PROPERTIES,
-  PROPS_LIST,
   STATUSES,
   STATUS_TABS,
   VIEWINGS,
@@ -44,6 +41,7 @@ import {
   type ViewingFilters,
   type ViewingRecord,
 } from "./data";
+import { useProperties } from "../_shared/properties-store";
 
 /* ---------------- anchored panel positioning ---------------- */
 function useAnchoredPanel(open: boolean, triggerRef: React.RefObject<HTMLButtonElement | null>, onClose: () => void) {
@@ -314,6 +312,69 @@ function DatePicker({ id, value, onChange, placeholder }: { id?: string; value: 
       >
         {value ? <span className="vw-combo__value">{fmtDateLabel(value)}</span> : <span className="vw-combo__placeholder">{placeholder}</span>}
         <Icon name="calendar" size={17} className="vw-combo__trail" />
+      </button>
+      {panel}
+    </div>
+  );
+}
+
+/* Custom select for the filter bar — matches the app's dropdown design. */
+function FilterSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder: string }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const pos = useAnchoredPanel(open, triggerRef, () => setOpen(false));
+  const choose = (v: string) => {
+    onChange(v);
+    setOpen(false);
+  };
+  const panel =
+    open &&
+    pos &&
+    createPortal(
+      <>
+        <div className="vw-combo__backdrop" style={{ position: "fixed", inset: 0, zIndex: 590 }} onMouseDown={() => setOpen(false)} />
+        <div className="vw-combo__panel" role="listbox" style={{ left: pos.left, top: pos.top, width: pos.width, maxHeight: pos.maxH }} onMouseDown={(e) => e.stopPropagation()}>
+          <div className="vw-combo__list">
+            {options.map((o) => (
+              <button key={o} type="button" role="option" aria-selected={o === value} className={"vw-combo__opt" + (o === value ? " is-selected" : "")} onClick={() => choose(o === value ? "" : o)}>
+                <span className="vw-combo__opt-body">
+                  <span className="vw-combo__opt-title">{o}</span>
+                </span>
+                {o === value && <Icon name="check" size={17} className="vw-combo__opt-check" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      </>,
+      document.body,
+    );
+  return (
+    <div className="vw-filterdate-wrap">
+      <button
+        ref={triggerRef}
+        type="button"
+        className={"vw-filterdate" + (open ? " is-open" : "") + (value ? "" : " is-placeholder")}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="vw-filterdate__label">{value || placeholder}</span>
+        {value && (
+          <span
+            className="vw-filterdate__clear"
+            role="button"
+            tabIndex={0}
+            aria-label="Clear location"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            <Icon name="x" size={12} />
+          </span>
+        )}
+        <Icon name="chevron-down" size={16} className="vw-filterdate__icon" />
       </button>
       {panel}
     </div>
@@ -1004,11 +1065,10 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
   );
 }
 
-function ViewingsPanel({ filters, setFilter, onClear, hasActive, filteredCount, totalAll }: { filters: ViewingFilters; setFilter: (k: keyof ViewingFilters, v: string) => void; onClear: () => void; hasActive: boolean; filteredCount: number; totalAll: number }) {
-  const opt = (arr: string[]) => arr.map((v) => ({ value: v, label: v }));
+function ViewingsPanel({ filters, setFilter, onClear, hasActive, filteredCount, totalAll, cityOptions }: { filters: ViewingFilters; setFilter: (k: keyof ViewingFilters, v: string) => void; onClear: () => void; hasActive: boolean; filteredCount: number; totalAll: number; cityOptions: string[] }) {
   const shown = hasActive ? filteredCount : totalAll;
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeAdvCount = [filters.agent, filters.property, filters.dateRange].filter(Boolean).length;
+  const activeAdvCount = [filters.location, filters.dateRange].filter(Boolean).length;
   return (
     <header className="vw-tablecard__head">
       <div className="vw-tablecard__titlerow">
@@ -1049,8 +1109,7 @@ function ViewingsPanel({ filters, setFilter, onClear, hasActive, filteredCount, 
       <div className={"vw-filterbar" + (filtersOpen ? " is-open" : "")}>
         <div className="vw-filterbar__inner">
           <div className="vw-filterbar__row">
-            <Select size="md" value={filters.agent} onChange={(e) => setFilter("agent", e.target.value)} options={[{ value: "", label: "Agent" }, ...opt(AGENTS_LIST)]} />
-            <Select size="md" value={filters.property} onChange={(e) => setFilter("property", e.target.value)} options={[{ value: "", label: "Property" }, ...opt(PROPS_LIST)]} />
+            <FilterSelect value={filters.location} onChange={(v) => setFilter("location", v)} options={cityOptions} placeholder="Location" />
             <FilterDatePicker value={filters.dateRange} onChange={(v) => setFilter("dateRange", v)} placeholder="Date" />
             <div className="vw-filterbar__actions">
               <button type="button" className="vw-clearbtn" onClick={onClear}>
@@ -1121,6 +1180,13 @@ function Toast({ toast, onDismiss }: { toast: { title: string; message: string }
 }
 
 /* ---------------- Change status modal ---------------- */
+const VIEW_STATUS_DOT: Record<string, string> = {
+  Scheduled: "var(--info-500)",
+  Confirmed: "var(--success-500)",
+  Completed: "var(--green-700)",
+  Cancelled: "var(--error-500)",
+  "No Show": "var(--warning-500)",
+};
 function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingRecord; onCancel: () => void; onConfirm: (status: string) => void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -1146,12 +1212,11 @@ function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingR
   }, [open]);
 
   const canConfirm = selected && selected !== viewing.status;
-  const selMeta = selected ? VIEWING_STATUS[selected] : null;
 
   return createPortal(
     <div className="vw-confirm-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="vw-confirm vw-confirm--status" role="dialog" aria-modal="true" aria-labelledby="vw-status-ttl">
-        <span className="vw-confirm__icon vw-confirm__icon--brand">
+        <span className="vw-confirm__icon vw-confirm__icon--status">
           <Icon name="refresh-cw" size={22} strokeWidth={1.9} />
         </span>
         <h3 id="vw-status-ttl" className="vw-confirm__title">
@@ -1161,40 +1226,40 @@ function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingR
 
         <div className="vw-statusfield" ref={fieldRef}>
           <button type="button" className={"vw-statustrigger" + (open ? " is-open" : "")} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            {selected && selMeta ? (
-              <Badge variant={selMeta.variant} size="sm" icon={selMeta.icon} className={selMeta.cls}>
-                {selected}
-              </Badge>
+            {selected ? (
+              <span className="vw-statopt__val">
+                <span className="vw-statopt__dot" style={{ background: VIEW_STATUS_DOT[selected] }} />
+                <span className="vw-statopt__text">{selected}</span>
+              </span>
             ) : (
-              <span className="vw-statustrigger__placeholder">Choose a status…</span>
+              <span className="vw-statustrigger__placeholder">
+                <Icon name="tag" size={16} />
+                Choose a status…
+              </span>
             )}
             <Icon name="chevron-down" size={16} className="vw-statustrigger__chev" />
           </button>
           {open && (
             <div className="vw-statusdrop" role="listbox" aria-label="Viewing status">
-              {STATUSES.map((s) => {
-                const meta = VIEWING_STATUS[s];
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    role="option"
-                    aria-selected={selected === s}
-                    className={"vw-statopt" + (selected === s ? " is-selected" : "")}
-                    onClick={() => {
-                      setSelected(s);
-                      setOpen(false);
-                    }}
-                  >
-                    <Badge variant={meta.variant} size="sm" icon={meta.icon} className={meta.cls}>
-                      {s}
-                    </Badge>
-                    <span className="vw-statopt__spacer" />
-                    {viewing.status === s && <span className="vw-statopt__current">Current</span>}
-                    {selected === s && <Icon name="check" size={16} strokeWidth={2.5} className="vw-statopt__check" />}
-                  </button>
-                );
-              })}
+              {STATUSES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  role="option"
+                  aria-selected={selected === s}
+                  className={"vw-statopt" + (selected === s ? " is-selected" : "")}
+                  onClick={() => {
+                    setSelected(s);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="vw-statopt__dot" style={{ background: VIEW_STATUS_DOT[s] }} />
+                  <span className="vw-statopt__text">{s}</span>
+                  <span className="vw-statopt__spacer" />
+                  {viewing.status === s && <span className="vw-statopt__current">Current</span>}
+                  {selected === s && <Icon name="check" size={16} strokeWidth={2.5} className="vw-statopt__check" />}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -1250,6 +1315,8 @@ function DeleteViewingModal({ viewing, onCancel, onConfirm }: { viewing: Viewing
 
 export function ViewingsApp() {
   const router = useRouter();
+  const { locationTree } = useProperties();
+  const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
   const [viewings, setViewings] = useState<ViewingRecord[]>(VIEWINGS);
   const [filters, setFilters] = useState<ViewingFilters>(EMPTY_FILTERS);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -1321,8 +1388,7 @@ export function ViewingsApp() {
     const q = filters.q.trim().toLowerCase();
     return viewings.filter((v) => {
       if (filters.status && v.status !== filters.status) return false;
-      if (filters.agent && v.agent !== filters.agent) return false;
-      if (filters.property && v.property.title !== filters.property) return false;
+      if (filters.location && v.property.location.split(",").pop()?.trim() !== filters.location) return false;
       if (filters.dateRange && v.date !== fmtDateShort(filters.dateRange)) return false;
       if (q) {
         const hay = [v.id, v.property.title, v.member, v.agent].join(" ").toLowerCase();
@@ -1359,7 +1425,7 @@ export function ViewingsApp() {
       </div>
 
       <section className="vw-tablecard">
-        <ViewingsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} filteredCount={rows.length} totalAll={viewings.length} />
+        <ViewingsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} filteredCount={rows.length} totalAll={viewings.length} cityOptions={cityOptions} />
         <ViewingsTable rows={pagedRows} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={openEdit} onView={openView} onChangeStatus={(v) => { setOpenMenu(null); setStatusTarget(v); }} onDelete={(v) => { setOpenMenu(null); setDeleteTarget(v); }} />
         <PaginationFooter currentPage={page} totalItems={rows.length} onPageChange={setCurrentPage} />
       </section>

@@ -26,6 +26,7 @@ export const INITIAL: ApForm = {
   highlights: "",
   city: "Erbil",
   district: "Ankawa",
+  project: "",
   street: "60 Meter Street, Block 4",
   building: "Villa 128",
   lat: "36.19085",

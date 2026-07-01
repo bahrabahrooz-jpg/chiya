@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import {
   AGENTS_LIST,
-  CITY_OPTIONS,
   EMPTY_ADV,
   ITEMS_PER_PAGE,
   KPI_CARDS,
@@ -118,6 +117,21 @@ function CustomSelect({ value, onChange, options, placeholder }: { value: string
     <div className="pp-datebtn-wrap" ref={btnRef}>
       <button type="button" className={"pp-datebtn" + (open ? " is-open" : "") + (value ? " has-value" : "")} onClick={toggle}>
         <span className="pp-datebtn__label">{options.find((o) => o.value === value)?.label || placeholder}</span>
+        {value && (
+          <span
+            className="pp-datebtn__clear"
+            role="button"
+            tabIndex={0}
+            aria-label="Clear"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            <Icon name="x" size={12} />
+          </span>
+        )}
         <Icon name="chevron-down" size={14} />
       </button>
       {open &&
@@ -202,6 +216,21 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
     <div className="pp-datebtn-wrap" ref={btnRef}>
       <button type="button" className={"pp-datebtn" + (open ? " is-open" : "") + (value ? " has-value" : "")} onClick={toggle}>
         <span className="pp-datebtn__label">{value || "Date added"}</span>
+        {value && (
+          <span
+            className="pp-datebtn__clear"
+            role="button"
+            tabIndex={0}
+            aria-label="Clear date"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            <Icon name="x" size={12} />
+          </span>
+        )}
         <Icon name="calendar" size={15} />
       </button>
       {open &&
@@ -822,6 +851,7 @@ function PropertiesTableCard(props: {
   advFilters: AdvFilters;
   onAdvFilter: (k: keyof AdvFilters, v: string) => void;
   onClearFilters: () => void;
+  cityOptions: string[];
   rows: PropertyRecord[];
   totalRows: number;
   totalCount: number;
@@ -894,7 +924,7 @@ function PropertiesTableCard(props: {
           <div className="pp-filterbar__inner">
             <div className="pp-filterbar__row">
               <CustomSelect value={props.advFilters.type} onChange={(v) => props.onAdvFilter("type", v)} options={opt(TYPE_OPTIONS)} placeholder="Property type" />
-              <CustomSelect value={props.advFilters.city} onChange={(v) => props.onAdvFilter("city", v)} options={opt(CITY_OPTIONS)} placeholder="City" />
+              <CustomSelect value={props.advFilters.city} onChange={(v) => props.onAdvFilter("city", v)} options={opt(props.cityOptions)} placeholder="Location" />
               <CustomSelect value={props.advFilters.priceRange} onChange={(v) => props.onAdvFilter("priceRange", v)} options={opt(PRICE_RANGES)} placeholder="Price range" />
               <CalendarPicker value={props.advFilters.dateAdded} onChange={(v) => props.onAdvFilter("dateAdded", v)} />
               <div className="pp-filterbar__actions">
@@ -951,7 +981,8 @@ function PropertiesTableCard(props: {
 /* ---------------- Page ---------------- */
 export function PropertiesApp() {
   const searchParams = useSearchParams();
-  const { properties, setProperties, counts } = useProperties();
+  const { properties, setProperties, counts, locationTree } = useProperties();
+  const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
   const [activeTab, setActiveTab] = useState("all");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -1108,6 +1139,7 @@ export function PropertiesApp() {
         advFilters={advFilters}
         onAdvFilter={setAdvFilter}
         onClearFilters={clearFilters}
+        cityOptions={cityOptions}
         rows={pagedRows}
         totalRows={totalRows}
         totalCount={counts.total}

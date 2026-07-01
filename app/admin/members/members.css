@@ -210,10 +210,12 @@
   /* ---------- DATE PICKER CALENDAR ---------- */
   .mp-datebtn__clear {
     display: inline-flex; align-items: center; justify-content: center;
-    flex: none; width: 18px; height: 18px; border-radius: 50%;
-    color: var(--text-tertiary); transition: background-color .13s, color .13s; cursor: pointer;
+    flex: none; width: 18px; height: 18px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--gray-100); color: var(--text-tertiary); transition: background-color .13s, color .13s;
   }
-  .mp-datebtn__clear:hover { background: var(--brand-primary); color: #fff; }
+  .mp-datebtn__clear svg { color: var(--text-tertiary); }
+  .mp-datebtn__clear:hover { background: var(--gray-200); }
+  .mp-datebtn__clear:hover svg { color: var(--text-primary); }
   .mp-cal {
     position: fixed; z-index: 130; width: 272px; padding: 12px;
     background: var(--surface-card); border: 1px solid var(--border-subtle);

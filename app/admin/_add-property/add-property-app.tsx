@@ -5,6 +5,8 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { IconButton } from "@/components/ui/icon-button";
 import { Button } from "@/components/ui/button";
@@ -14,10 +16,8 @@ import { Input, Textarea } from "@/components/ui/input";
 import {
   AGENTS,
   AMENITIES,
-  CITIES,
   CONDITIONS,
   COVER_IMG,
-  DISTRICTS,
   EMPTY_FORM,
   FURNISHING,
   GALLERY_IMGS,
@@ -41,13 +41,14 @@ function todayLabel(): string {
 let addedSeq = 0;
 function formToProperty(f: ApForm, agent: ApAgent | null): PropertyRecord {
   const listing: "sale" | "rent" = f.listing === "rent" ? "rent" : "sale";
-  const area = f.district || "Ankawa";
+  const district = f.district || "Ankawa";
+  const area = f.project || district; // most specific location (project → district)
   const date = todayLabel();
   return {
     id: "CH-" + (3400 + addedSeq++),
     title: f.title || "Untitled property",
     area,
-    district: area,
+    district,
     city: f.city || "Erbil",
     type: f.type || "Villa",
     img: COVER_IMG,
@@ -106,62 +107,78 @@ export function ProgressStepper({ active }: { active: number }) {
   );
 }
 
-export function MapPicker() {
+const MAP_CITY_GEO: Record<string, { lat: number; lng: number; zoom: number }> = {
+  Erbil: { lat: 36.1911, lng: 43.993, zoom: 13 },
+  Sulaymaniyah: { lat: 35.5556, lng: 45.4329, zoom: 13 },
+  Duhok: { lat: 36.8669, lng: 42.9503, zoom: 13 },
+};
+const MAP_KURDISTAN = { lat: 36.2, lng: 44.1, zoom: 8 };
+
+/** MapPicker — real OpenStreetMap (Leaflet) map with a draggable pin, centred
+ *  on the selected city. Loaded client-side only. */
+export function MapPicker({ city, lat, lng, onMove }: { city?: string; lat?: string; lng?: string; onMove?: (lat: number, lng: number) => void }) {
+  const elRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const markerRef = useRef<LeafletMarker | null>(null);
+  const onMoveRef = useRef(onMove);
+  useEffect(() => {
+    onMoveRef.current = onMove;
+  });
+
+  // init once
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const L = (await import("leaflet")).default;
+      if (cancelled || !elRef.current || mapRef.current) return;
+      const nLat = lat ? parseFloat(lat) : NaN;
+      const nLng = lng ? parseFloat(lng) : NaN;
+      const start = !isNaN(nLat) && !isNaN(nLng) ? { lat: nLat, lng: nLng, zoom: 14 } : (city && MAP_CITY_GEO[city]) || MAP_KURDISTAN;
+      const map = L.map(elRef.current, { center: [start.lat, start.lng], zoom: start.zoom, scrollWheelZoom: false, attributionControl: false, zoomControl: false });
+      L.control.zoom({ position: "topright" }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+      const icon = L.divIcon({ className: "ap-map__pinwrap", html: '<span class="ap-map__pin2"></span>', iconSize: [26, 26], iconAnchor: [13, 13] });
+      const marker = L.marker([start.lat, start.lng], { icon, draggable: true }).addTo(map);
+      marker.on("dragend", () => {
+        const p = marker.getLatLng();
+        onMoveRef.current?.(p.lat, p.lng);
+      });
+      map.on("click", (e) => {
+        marker.setLatLng(e.latlng);
+        onMoveRef.current?.(e.latlng.lat, e.latlng.lng);
+      });
+      markerRef.current = marker;
+      mapRef.current = map;
+      setTimeout(() => map.invalidateSize(), 0);
+    })();
+    return () => {
+      cancelled = true;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // recenter the map when the selected city changes (coordinates are only set
+  // once the user actually clicks or drags the pin)
+  useEffect(() => {
+    const map = mapRef.current;
+    const marker = markerRef.current;
+    if (!map || !marker || !city) return;
+    const c = MAP_CITY_GEO[city] || MAP_KURDISTAN;
+    map.setView([c.lat, c.lng], c.zoom, { animate: true });
+    marker.setLatLng([c.lat, c.lng]);
+  }, [city]);
+
   return (
     <div className="ap-map" role="application" aria-label="Map location picker">
-      <svg className="ap-map__svg" viewBox="0 0 800 392" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <rect width="800" height="392" fill="#E8EAED" />
-        <rect x="56" y="44" width="150" height="120" rx="14" fill="#D6E0C4" />
-        <rect x="612" y="232" width="150" height="128" rx="14" fill="#D6E0C4" />
-        <path d="M-20 96 C 150 150, 250 60, 430 130 S 720 210, 840 168 L 840 226 C 720 268, 560 210, 430 188 S 150 208, -20 154 Z" fill="#C2D4DA" />
-        <g fill="#DCDFE3">
-          <rect x="250" y="56" width="92" height="56" rx="6" />
-          <rect x="356" y="56" width="120" height="56" rx="6" />
-          <rect x="250" y="232" width="92" height="60" rx="6" />
-          <rect x="356" y="232" width="78" height="60" rx="6" />
-          <rect x="448" y="232" width="120" height="60" rx="6" />
-          <rect x="250" y="304" width="180" height="64" rx="6" />
-          <rect x="612" y="56" width="92" height="56" rx="6" />
-          <rect x="56" y="304" width="150" height="64" rx="6" />
-        </g>
-        <g stroke="#F4F5F7" strokeLinecap="round">
-          <line x1="0" y1="200" x2="800" y2="216" strokeWidth="20" />
-          <line x1="232" y1="0" x2="232" y2="392" strokeWidth="16" />
-          <line x1="586" y1="0" x2="586" y2="392" strokeWidth="16" />
-          <line x1="0" y1="36" x2="800" y2="36" strokeWidth="10" />
-          <line x1="0" y1="300" x2="800" y2="300" strokeWidth="10" />
-          <line x1="438" y1="0" x2="438" y2="392" strokeWidth="9" />
-        </g>
-        <line x1="-20" y1="392" x2="500" y2="-20" stroke="#EEF0F2" strokeWidth="13" strokeLinecap="round" />
-      </svg>
-      <div className="ap-map__search">
-        <Icon name="search" size={18} />
-        <input type="text" placeholder="Search address, place, or coordinates…" aria-label="Search map" />
-        <button type="button" className="ap-map__search-btn">
-          <Icon name="locate-fixed" size={15} />
-          Locate
-        </button>
-      </div>
-      <div className="ap-map__pin">
-        <span className="ap-map__pin-ic">
-          <Icon name="map-pin" size={22} strokeWidth={2.25} />
-        </span>
-        <span className="ap-map__pin-shadow" />
-      </div>
-      <button type="button" className="ap-map__locate" aria-label="Use my location">
-        <Icon name="navigation" size={19} />
-      </button>
-      <div className="ap-map__zoom">
-        <button type="button" className="ap-map__zbtn" aria-label="Zoom in">
-          <Icon name="plus" size={19} strokeWidth={2.25} />
-        </button>
-        <button type="button" className="ap-map__zbtn" aria-label="Zoom out">
-          <Icon name="minus" size={19} strokeWidth={2.25} />
-        </button>
-      </div>
+      <div className="ap-map__canvas" ref={elRef} />
       <div className="ap-map__hint">
         <Icon name="move" size={14} />
-        Drag the map to position the pin
+        Drag the pin or click the map to set the location
       </div>
     </div>
   );
@@ -230,13 +247,14 @@ export function useTopbarClip(triggerRef: React.RefObject<HTMLElement | null>) {
   return { coords, setCoords, calc };
 }
 
-export function Dropdown({ id, options, value, onChange, placeholder }: { id?: string; options: Opt[]; value: string; onChange: (v: string) => void; placeholder?: string }) {
+export function Dropdown({ id, options, value, onChange, placeholder, disabled }: { id?: string; options: Opt[]; value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const { coords, calc } = useTopbarClip(triggerRef);
 
   const openDropdown = () => {
+    if (disabled) return;
     calc();
     setOpen(true);
   };
@@ -263,7 +281,7 @@ export function Dropdown({ id, options, value, onChange, placeholder }: { id?: s
   const selected = options.find((o) => o.value === value);
   return (
     <>
-      <button ref={triggerRef} type="button" id={id} className={["lc-dd__trigger", open && "is-open"].filter(Boolean).join(" ")} onClick={() => (open ? setOpen(false) : openDropdown())} aria-haspopup="listbox" aria-expanded={open}>
+      <button ref={triggerRef} type="button" id={id} disabled={disabled} className={["lc-dd__trigger", open && "is-open", disabled && "is-disabled"].filter(Boolean).join(" ")} onClick={() => (open ? setOpen(false) : openDropdown())} aria-haspopup="listbox" aria-expanded={open}>
         {selected ? (
           <span className="lc-dd__val">
             <span className="lc-dd__val-txt">{selected.label}</span>
@@ -378,48 +396,152 @@ export function ComboSelect({ side, value, onChange, options }: { side: "left" |
   );
 }
 
-export function CoverImage() {
+interface UpImg {
+  id: string;
+  url: string;
+  name: string;
+}
+
+/** Shared photo state so the Cover-image field and the Gallery stay in sync:
+ *  one list of photos + one cover id. Star in the gallery sets the big cover. */
+export function usePhotoUploader(demo: boolean) {
+  const [photos, setPhotos] = useState<UpImg[]>(() => (demo ? GALLERY_IMGS.map((g) => ({ id: g.id, url: g.url, name: "" })) : []));
+  const [coverId, setCoverId] = useState<string | null>(() => (demo ? GALLERY_IMGS.find((g) => g.cover)?.id ?? GALLERY_IMGS[0]?.id ?? null : null));
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [video, setVideo] = useState<{ name: string; size: string } | null>(() => (demo ? { name: "olive-grove-walkthrough.mp4", size: "84.2 MB" } : null));
+  const setVideoFromFiles = (files: FileList | null) => {
+    const f = files?.[0];
+    if (!f) return;
+    setVideo({ name: f.name, size: (f.size / 1048576).toFixed(1) + " MB" });
+  };
+  const removeVideo = () => setVideo(null);
+
+  const addPhotos = (files: FileList | null) => {
+    if (!files || !files.length) return;
+    const next = Array.from(files).map((f, i) => ({ id: `${Date.now()}-${i}`, url: URL.createObjectURL(f), name: f.name }));
+    setPhotos((prev) => {
+      const merged = [...prev, ...next];
+      setCoverId((c) => c ?? merged[0]?.id ?? null);
+      return merged;
+    });
+  };
+  const addAsCover = (files: FileList | null) => {
+    const f = files?.[0];
+    if (!f) return;
+    const img = { id: `${Date.now()}`, url: URL.createObjectURL(f), name: f.name };
+    setPhotos((prev) => [...prev, img]);
+    setCoverId(img.id);
+  };
+  const removePhoto = (id: string) =>
+    setPhotos((prev) => {
+      const nx = prev.filter((x) => x.id !== id);
+      setCoverId((c) => (c === id ? nx[0]?.id ?? null : c));
+      return nx;
+    });
+  const reorder = (targetId: string) => {
+    setPhotos((prev) => {
+      if (!dragId || dragId === targetId) return prev;
+      const from = prev.findIndex((x) => x.id === dragId);
+      const to = prev.findIndex((x) => x.id === targetId);
+      if (from < 0 || to < 0) return prev;
+      const nx = prev.slice();
+      const [m] = nx.splice(from, 1);
+      nx.splice(to, 0, m);
+      return nx;
+    });
+    setDragId(null);
+  };
+  const cover = photos.find((p) => p.id === coverId) ?? null;
+  return { photos, coverId, cover, dragId, setDragId, addPhotos, addAsCover, removePhoto, setCover: setCoverId, reorder, video, setVideoFromFiles, removeVideo };
+}
+export type PhotoUploader = ReturnType<typeof usePhotoUploader>;
+
+export function CoverImage({ cover, onPick, onRemove }: { cover: UpImg | null; onPick: (files: FileList | null) => void; onRemove: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="ap-cover">
-      <img className="ap-cover__img" src={COVER_IMG} alt="Cover preview" />
-      <div className="ap-cover__grad" />
-      <span className="ap-cover__badge">
-        <Icon name="star" size={14} strokeWidth={2.5} />
-        Cover photo
-      </span>
-      <div className="ap-cover__actions">
-        <IconButton icon="repeat-2" label="Replace cover image" variant="glass" />
-        <IconButton icon="trash-2" label="Remove cover image" variant="glass" />
-      </div>
-      <span className="ap-cover__foot">
-        <Icon name="image" size={14} />
-        exterior-front.jpg
-        <span className="ap-cover__dot" />
-        2.4 MB
-      </span>
-    </div>
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          onPick(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      {cover ? (
+        <div className="ap-cover">
+          <img className="ap-cover__img" src={cover.url} alt="Cover preview" />
+          <div className="ap-cover__grad" />
+          <span className="ap-cover__badge">
+            <Icon name="star" size={14} strokeWidth={2.5} />
+            Cover photo
+          </span>
+          <div className="ap-cover__actions">
+            <IconButton icon="repeat-2" label="Replace cover image" variant="glass" onClick={() => inputRef.current?.click()} />
+            <IconButton icon="trash-2" label="Remove cover image" variant="glass" onClick={onRemove} />
+          </div>
+          <span className="ap-cover__foot">
+            <Icon name="image" size={14} />
+            {cover.name || "cover.jpg"}
+          </span>
+        </div>
+      ) : (
+        <button type="button" className="ap-drop ap-cover--empty" onClick={() => inputRef.current?.click()}>
+          <span className="ap-drop__ic">
+            <Icon name="image" size={22} />
+          </span>
+          <span className="ap-drop__title">Upload cover photo</span>
+          <span className="ap-drop__sub">PNG or JPG · recommended 1600×900</span>
+        </button>
+      )}
+    </>
   );
 }
 
-export function GalleryGrid() {
+export function GalleryGrid({ store }: { store: PhotoUploader }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { photos, coverId, dragId, setDragId, addPhotos, removePhoto, setCover, reorder } = store;
   return (
     <div className="ap-gal">
-      {GALLERY_IMGS.map((g) => (
-        <div className="ap-gal__item" key={g.id} role="group" aria-label="Gallery image">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          addPhotos(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      {photos.map((g) => (
+        <div
+          className={"ap-gal__item" + (dragId === g.id ? " is-dragging" : "")}
+          key={g.id}
+          role="group"
+          aria-label="Gallery image"
+          draggable
+          onDragStart={() => setDragId(g.id)}
+          onDragEnd={() => setDragId(null)}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={() => reorder(g.id)}
+        >
           <img className="ap-gal__img" src={g.url} alt="" />
           <span className="ap-gal__top" />
           <span className="ap-gal__handle" aria-label="Drag to reorder" title="Drag to reorder">
             <Icon name="grip-vertical" size={15} />
           </span>
           <div className="ap-gal__acts">
-            <button type="button" className={"ap-gal__abtn" + (g.cover ? " is-on" : "")} aria-label="Set as cover" title="Set as cover">
+            <button type="button" className={"ap-gal__abtn" + (coverId === g.id ? " is-on" : "")} aria-label="Set as cover" title="Set as cover" onClick={() => setCover(g.id)}>
               <Icon name="star" size={14} strokeWidth={2.25} />
             </button>
-            <button type="button" className="ap-gal__abtn ap-gal__abtn--danger" aria-label="Remove image" title="Remove">
+            <button type="button" className="ap-gal__abtn ap-gal__abtn--danger" aria-label="Remove image" title="Remove" onClick={() => removePhoto(g.id)}>
               <Icon name="x" size={15} strokeWidth={2.5} />
             </button>
           </div>
-          {g.cover && (
+          {coverId === g.id && (
             <span className="ap-gal__cover">
               <Icon name="star" size={11} strokeWidth={2.5} />
               Cover
@@ -427,18 +549,17 @@ export function GalleryGrid() {
           )}
         </div>
       ))}
-      <button type="button" className="ap-drop ap-gal__add" aria-label="Add more images">
+      <button type="button" className="ap-drop ap-gal__add" aria-label="Add images" onClick={() => inputRef.current?.click()}>
         <span className="ap-drop__ic">
           <Icon name="plus" size={20} strokeWidth={2.25} />
         </span>
-        <span className="ap-drop__title">Add more</span>
+        <span className="ap-drop__title">{photos.length ? "Add more" : "Add photos"}</span>
       </button>
     </div>
   );
 }
 
-export function VideoUpload() {
-  const pct = 64;
+function VideoRow({ name, size, onRemove }: { name: string; size: string; onRemove?: () => void }) {
   return (
     <div className="ap-vid">
       <div className="ap-vid__row">
@@ -446,23 +567,56 @@ export function VideoUpload() {
           <Icon name="video" size={22} />
         </span>
         <div className="ap-vid__meta">
-          <span className="ap-vid__name">olive-grove-walkthrough.mp4</span>
-          <span className="ap-vid__sub">84.2 MB · uploading…</span>
+          <span className="ap-vid__name">{name}</span>
+          <span className="ap-vid__sub">{size} · Uploaded</span>
         </div>
-        <button type="button" className="ap-vid__cancel" aria-label="Cancel upload" title="Cancel">
+        <button type="button" className="ap-vid__cancel" aria-label="Remove video" title="Remove" onClick={onRemove}>
           <Icon name="x" size={17} strokeWidth={2.25} />
         </button>
       </div>
       <div>
         <div className="ap-vid__track">
-          <span className="ap-vid__fill" style={{ width: pct + "%" }} />
+          <span className="ap-vid__fill ap-vid__fill--done" style={{ width: "100%" }} />
         </div>
         <div className="ap-vid__pct" style={{ marginTop: 8 }}>
-          <span>Uploading video</span>
-          <b>{pct}%</b>
+          <span className="ap-vid__done">
+            <Icon name="circle-check" size={15} strokeWidth={2.25} />
+            Upload complete
+          </span>
+          <b>100%</b>
         </div>
       </div>
     </div>
+  );
+}
+
+export function VideoUpload({ store }: { store: PhotoUploader }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { video, setVideoFromFiles, removeVideo } = store;
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="video/*"
+        hidden
+        onChange={(e) => {
+          setVideoFromFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      {video ? (
+        <VideoRow name={video.name} size={video.size} onRemove={removeVideo} />
+      ) : (
+        <button type="button" className="ap-drop ap-vid--empty" onClick={() => inputRef.current?.click()}>
+          <span className="ap-drop__ic">
+            <Icon name="video" size={22} />
+          </span>
+          <span className="ap-drop__title">Upload a video</span>
+          <span className="ap-drop__sub">MP4 or MOV · up to 200 MB</span>
+        </button>
+      )}
+    </>
   );
 }
 
@@ -779,7 +933,8 @@ function PublishedSuccess() {
 }
 
 export function AddPropertyApp() {
-  const { addProperty } = useProperties();
+  const { addProperty, locationTree } = useProperties();
+  const photos = usePhotoUploader(false);
   const [f, setF] = useState<ApForm>(EMPTY_FORM);
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
   const [step, setStep] = useState(0);
@@ -790,28 +945,38 @@ export function AddPropertyApp() {
 
   const CUR: Record<string, string> = { USD: "$", EUR: "€", IQD: "IQD " };
   const fmtNum = (n: string | number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  const priceStr = f.price ? (CUR[f.currency] || "") + fmtNum(f.price) : "$450,000";
-  const areaStr = f.area ? fmtNum(f.area) + " " + (f.areaUnit === "sqm" ? "m²" : f.areaUnit) : "420 m²";
+  const priceStr = f.price ? (CUR[f.currency] || "") + fmtNum(f.price) : "";
+  const areaStr = f.area ? fmtNum(f.area) + " " + (f.areaUnit === "sqm" ? "m²" : f.areaUnit) : "";
   const rev = {
     listing: f.listing === "rent" ? "For rent" : "For sale",
-    type: f.type || "Villa",
-    title: f.title || "Olive Grove Estate",
+    type: f.type,
+    title: f.title,
     price: priceStr,
     area: areaStr,
-    city: f.city || "Erbil",
-    district: f.district || "Ankawa",
-    street: f.street || "60 Meter Street, Block 4",
-    building: f.building || "Villa 128",
-    lat: f.lat || "36.19085",
-    lng: f.lng || "44.00947",
-    year: f.year || "2022",
-    orientation: f.orientation || "South facing",
-    ownerName: f.ownerName || "Hêmin Abdullah",
-    ownerPhone: f.ownerPhone || "+964 750 412 8890",
-    ownerEmail: f.ownerEmail || "hemin@email.com",
+    city: f.city,
+    district: f.district,
+    project: f.project,
+    street: f.street,
+    building: f.building,
+    lat: f.lat,
+    lng: f.lng,
+    year: f.year,
+    orientation: f.orientation,
+    ownerName: f.ownerName,
+    ownerPhone: f.ownerPhone,
+    ownerEmail: f.ownerEmail,
   };
-  const revAgent = AGENTS.find((a) => a.id === f.agent) || AGENTS[0];
+  const revAgent = AGENTS.find((a) => a.id === f.agent) || null;
   const AMEN_IC: Record<string, IconName> = Object.fromEntries(AMENITIES.map((a) => [a.label, a.icon]));
+
+  // City / district options come from the live Locations structure, so a
+  // location added on the Locations page shows up here immediately.
+  const cityOptions = locationTree.map((c) => c.name);
+  const cityNode = locationTree.find((c) => c.name === f.city);
+  const districtSource = cityNode ? cityNode.children : locationTree.flatMap((c) => c.children);
+  const districtOptions = districtSource.map((d) => d.name);
+  const districtNode = districtSource.find((d) => d.name === f.district);
+  const projectOptions = districtNode ? districtNode.children.map((p) => p.name) : [];
 
   if (step === 6) return <PublishedSuccess />;
 
@@ -910,14 +1075,24 @@ export function AddPropertyApp() {
             <div className="ap-grid">
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-city">City</FieldLabel>
-                <Dropdown id="ap-city" placeholder="Select city" value={f.city} onChange={(v) => set("city", v)} options={CITIES.map((c) => ({ value: c, label: c }))} />
+                <Dropdown id="ap-city" placeholder="Select city" value={f.city} onChange={(v) => { set("city", v); set("district", ""); set("project", ""); }} options={cityOptions.map((c) => ({ value: c, label: c }))} />
               </div>
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-district">Area / district</FieldLabel>
-                <Dropdown id="ap-district" placeholder="Select area or district" value={f.district} onChange={(v) => set("district", v)} options={DISTRICTS.map((d) => ({ value: d, label: d }))} />
+                <FieldLabel htmlFor="ap-district" optional>
+                  Area / district
+                </FieldLabel>
+                <Dropdown id="ap-district" disabled={districtOptions.length === 0} placeholder={districtOptions.length ? "Select area or district" : "No areas in this city"} value={f.district} onChange={(v) => { set("district", v); set("project", ""); }} options={districtOptions.map((d) => ({ value: d, label: d }))} />
               </div>
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-street">Street address</FieldLabel>
+                <FieldLabel htmlFor="ap-project" optional>
+                  Project / community
+                </FieldLabel>
+                <Dropdown id="ap-project" disabled={projectOptions.length === 0} placeholder={!f.district ? "Select an area first" : projectOptions.length ? "Select project or community" : "No projects in this area"} value={f.project} onChange={(v) => set("project", v)} options={projectOptions.map((p) => ({ value: p, label: p }))} />
+              </div>
+              <div className="ap-field">
+                <FieldLabel htmlFor="ap-street" optional>
+                  Street address
+                </FieldLabel>
                 <Input id="ap-street" size="lg" placeholder="e.g. 60 Meter Street, Block 4" value={f.street} onChange={(e) => set("street", e.target.value)} />
               </div>
               <div className="ap-field">
@@ -928,8 +1103,16 @@ export function AddPropertyApp() {
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel>Map location</FieldLabel>
-                <MapPicker />
-                <span className="ap-hint">Search for an address or drag the map to drop the pin precisely on the property.</span>
+                <MapPicker
+                  city={f.city}
+                  lat={f.lat}
+                  lng={f.lng}
+                  onMove={(la, ln) => {
+                    set("lat", la.toFixed(5));
+                    set("lng", ln.toFixed(5));
+                  }}
+                />
+                <span className="ap-hint">Drag the pin or click the map to drop it precisely on the property.</span>
               </div>
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-lat">Latitude</FieldLabel>
@@ -985,17 +1168,17 @@ export function AddPropertyApp() {
             <div className="ap-grid">
               <div className="ap-field ap-col-full">
                 <FieldLabel>Cover image</FieldLabel>
-                <CoverImage />
-                <span className="ap-hint">The cover photo headlines the listing across search results and the property page. Drag a new image here or replace it to change.</span>
+                <CoverImage cover={photos.cover} onPick={photos.addAsCover} onRemove={() => photos.cover && photos.removePhoto(photos.cover.id)} />
+                <span className="ap-hint">The cover photo headlines the listing across search results and the property page. Set any gallery image as the cover with its star.</span>
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel>Gallery images</FieldLabel>
-                <GalleryGrid />
+                <GalleryGrid store={photos} />
                 <span className="ap-hint">Drag to reorder · hover an image to set it as cover or remove it.</span>
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel optional>Video upload</FieldLabel>
-                <VideoUpload />
+                <VideoUpload store={photos} />
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel htmlFor="ap-tour" optional>
@@ -1042,7 +1225,7 @@ export function AddPropertyApp() {
                 </div>
                 <div className="ap-field">
                   <FieldLabel optional>Levels / floors</FieldLabel>
-                  <Stepper value={f.floors} onChange={(v) => set("floors", v)} min={1} />
+                  <Stepper value={f.floors} onChange={(v) => set("floors", v)} min={0} />
                 </div>
                 <div className="ap-field">
                   <FieldLabel htmlFor="ap-year" optional>
@@ -1182,49 +1365,58 @@ export function AddPropertyApp() {
                 <div className="ap-rev__grid">
                   <RevItem k="City" v={rev.city} />
                   <RevItem k="Area / district" v={rev.district} />
+                  <RevItem k="Project / community" v={rev.project} />
                   <RevItem k="Street address" v={rev.street} full />
                   <RevItem k="Building number" v={rev.building} />
-                  <RevItem k="Coordinates" v={rev.lat + ", " + rev.lng} tnum />
+                  <RevItem k="Coordinates" v={rev.lat && rev.lng ? rev.lat + ", " + rev.lng : ""} tnum />
                 </div>
               </ReviewSection>
               <ReviewSection icon="image" title="Media" onEdit={() => goTo(2)}>
-                <div className="ap-rev__media">
-                  <div className="ap-rev__thumbs">
-                    {GALLERY_IMGS.slice(0, 4).map((g, i) => (
-                      <span className={"ap-rev__thumb" + (i === 0 ? " ap-rev__thumb--cover" : "")} key={g.id}>
-                        <img src={g.url} alt="" />
-                        {i === 0 && (
-                          <span className="ap-rev__thumb-tag">
-                            <Icon name="star" size={9} strokeWidth={2.5} />
-                            Cover
+                {photos.photos.length === 0 && !photos.video ? (
+                  <span className="ap-rev__v ap-rev__v--muted">No media uploaded</span>
+                ) : (
+                  <div className="ap-rev__media">
+                    {photos.photos.length > 0 && (
+                      <div className="ap-rev__thumbs">
+                        {photos.photos.slice(0, 4).map((g) => (
+                          <span className={"ap-rev__thumb" + (g.id === photos.coverId ? " ap-rev__thumb--cover" : "")} key={g.id}>
+                            <img src={g.url} alt="" />
+                            {g.id === photos.coverId && (
+                              <span className="ap-rev__thumb-tag">
+                                <Icon name="star" size={9} strokeWidth={2.5} />
+                                Cover
+                              </span>
+                            )}
                           </span>
-                        )}
+                        ))}
+                        {photos.photos.length > 4 && <span className="ap-rev__more">+{photos.photos.length - 4}</span>}
+                      </div>
+                    )}
+                    <div className="ap-rev__stats">
+                      <span className="ap-rev__stat">
+                        <Icon name="image" size={16} />
+                        <b>{photos.photos.length}</b> photo{photos.photos.length === 1 ? "" : "s"} uploaded
                       </span>
-                    ))}
-                    <span className="ap-rev__more">+8</span>
+                      <span className="ap-rev__stat">
+                        <Icon name="video" size={16} />
+                        <b>{photos.video ? 1 : 0}</b> video{photos.video ? "" : "s"} uploaded
+                      </span>
+                      {photos.cover && (
+                        <span className="ap-rev__stat">
+                          <Icon name="star" size={16} />
+                          Cover photo selected
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="ap-rev__stats">
-                    <span className="ap-rev__stat">
-                      <Icon name="image" size={16} />
-                      <b>12</b> photos uploaded
-                    </span>
-                    <span className="ap-rev__stat">
-                      <Icon name="video" size={16} />
-                      <b>1</b> video uploaded
-                    </span>
-                    <span className="ap-rev__stat">
-                      <Icon name="star" size={16} />
-                      Cover photo selected
-                    </span>
-                  </div>
-                </div>
+                )}
               </ReviewSection>
               <ReviewSection icon="ruler" title="Property features" onEdit={() => goTo(3)}>
                 <div className="ap-rev__grid">
-                  <RevItem k="Bedrooms" v={f.beds} tnum />
-                  <RevItem k="Bathrooms" v={f.baths} tnum />
-                  <RevItem k="Parking spaces" v={f.parking} tnum />
-                  <RevItem k="Levels / floors" v={f.floors} tnum />
+                  <RevItem k="Bedrooms" v={f.beds || ""} tnum />
+                  <RevItem k="Bathrooms" v={f.baths || ""} tnum />
+                  <RevItem k="Parking spaces" v={f.parking || ""} tnum />
+                  <RevItem k="Levels / floors" v={f.floors || ""} tnum />
                   <RevItem k="Year built" v={rev.year} tnum />
                   <RevItem k="Orientation" v={rev.orientation} />
                   <RevItem k="Condition" v={f.condition} />
@@ -1254,15 +1446,19 @@ export function AddPropertyApp() {
                   <RevItem k="Owner email" v={rev.ownerEmail} full />
                   <div className="ap-rev__item ap-rev__item--full">
                     <span className="ap-rev__k">Assigned agent</span>
-                    <span className="ap-rev__agent">
-                      <Avatar src={revAgent.avatar} name={revAgent.name} size="xs" verified />
-                      <span className="ap-rev__agent-name">
-                        {revAgent.name}
-                        <Badge variant="brand" size="sm" icon="badge-check">
-                          Verified
-                        </Badge>
+                    {revAgent ? (
+                      <span className="ap-rev__agent">
+                        <Avatar src={revAgent.avatar} name={revAgent.name} size="xs" verified />
+                        <span className="ap-rev__agent-name">
+                          {revAgent.name}
+                          <Badge variant="brand" size="sm" icon="badge-check">
+                            Verified
+                          </Badge>
+                        </span>
                       </span>
-                    </span>
+                    ) : (
+                      <span className="ap-rev__v ap-rev__v--muted">Not provided</span>
+                    )}
                   </div>
                 </div>
               </ReviewSection>
@@ -1273,7 +1469,7 @@ export function AddPropertyApp() {
               Previous
             </Button>
             <div className="ap-foot__right">
-              <Button hierarchy="tertiary" size="lg" iconLeading="save">
+              <Button hierarchy="secondary" size="lg" iconLeading="save">
                 Save draft
               </Button>
               <Button

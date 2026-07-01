@@ -1,7 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
-import { PROPERTIES, buildLocationTree, type LocationNode } from "../_data/catalog";
+import type { LocationNode } from "../_data/catalog";
 
 export type { LocationNode } from "../_data/catalog";
 
@@ -59,18 +59,9 @@ export function countNodes(nodes: LocationNode[]): number {
   return nodes.reduce((s, n) => s + 1 + countNodes(n.children || []), 0);
 }
 
-/* Static structure (counts here don't matter) for the "parent location" picker. */
-const STATIC_TREE = buildLocationTree(PROPERTIES);
-export const ALL_FLAT = flattenTree(STATIC_TREE);
-
-export function getParentOptions(type: string): LocationNode[] {
+/* Valid parents for the "parent location" picker, from the live tree. */
+export function getParentOptions(tree: LocationNode[], type: string): LocationNode[] {
   if (!type || type === "city") return [];
-  const allowed =
-    (
-      {
-        district: ["city"],
-        project: ["city", "district"],
-      } as Record<string, string[]>
-    )[type] || [];
-  return ALL_FLAT.filter((n) => allowed.includes(n.type));
+  const allowed = ({ district: ["city"], project: ["district"] } as Record<string, string[]>)[type] || [];
+  return flattenTree(tree).filter((n) => allowed.includes(n.type));
 }

@@ -93,6 +93,7 @@ export interface ApForm {
   highlights: string;
   city: string;
   district: string;
+  project: string;
   street: string;
   building: string;
   lat: string;
@@ -115,25 +116,26 @@ export const EMPTY_FORM: ApForm = {
   currency: "USD",
   area: "",
   areaUnit: "sqm",
-  beds: 3,
-  baths: 2,
-  parking: 1,
-  condition: "Good",
+  beds: 0,
+  baths: 0,
+  parking: 0,
+  condition: "",
   furnished: "no",
   year: "",
   short: "",
-  furnishing: "Semi-furnished",
-  floors: 2,
+  furnishing: "",
+  floors: 0,
   orientation: "",
-  amenities: ["Swimming pool", "Garden", "Security", "Central AC"],
-  customAmenities: ["Rooftop terrace"],
+  amenities: [],
+  customAmenities: [],
   highlights: "",
-  city: "Erbil",
+  city: "",
   district: "",
+  project: "",
   street: "",
   building: "",
-  lat: "36.19085",
-  lng: "44.00947",
+  lat: "",
+  lng: "",
   locNotes: "",
   tourUrl: "",
   ownerName: "",

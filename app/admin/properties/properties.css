@@ -230,11 +230,13 @@
   .pp-datebtn__label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pp-datebtn__clear {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 18px; height: 18px; border-radius: 50%; flex: none;
-    background: var(--green-100); color: var(--green-700);
+    width: 18px; height: 18px; border-radius: 50%; flex: none; border: none; cursor: pointer;
+    background: var(--gray-100); color: var(--text-tertiary);
     transition: background-color .13s, color .13s;
   }
-  .pp-datebtn__clear:hover { background: var(--brand-primary); color: #fff; }
+  .pp-datebtn__clear svg { color: var(--text-tertiary); }
+  .pp-datebtn__clear:hover { background: var(--gray-200); }
+  .pp-datebtn__clear:hover svg { color: var(--text-primary); }
 
   /* ---------- CALENDAR POPUP ---------- */
   .pp-calpop {

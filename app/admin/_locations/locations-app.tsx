@@ -131,27 +131,42 @@ function Dropdown({
   );
 }
 
-function LocationToast({ isOut, onDismiss }: { isOut: boolean; onDismiss: () => void }) {
+interface ToastAction {
+  label: string;
+  icon: IconName;
+  onClick: () => void;
+}
+function LocationToast({ title, msg, tone, action, isOut, onDismiss }: { title: string; msg: string; tone: "success" | "danger"; action?: ToastAction; isOut: boolean; onDismiss: () => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true));
     return () => cancelAnimationFrame(raf);
   }, []);
   return (
-    <div className={`lc-toast${visible && !isOut ? " is-in" : ""}${isOut ? " is-out" : ""}`}>
+    <div className={`lc-toast${tone === "danger" ? " lc-toast--danger" : ""}${visible && !isOut ? " is-in" : ""}${isOut ? " is-out" : ""}`}>
       <span className="lc-toast__icon">
-        <Icon name="check" size={20} strokeWidth={2.25} />
+        <Icon name={tone === "danger" ? "trash-2" : "check"} size={20} strokeWidth={2.25} />
       </span>
       <div className="lc-toast__body">
-        <p className="lc-toast__title">Location created successfully</p>
-        <p className="lc-toast__msg">The location has been added and is now available throughout the platform.</p>
+        <p className="lc-toast__title">{title}</p>
+        <p className="lc-toast__msg">{msg}</p>
         <div className="lc-toast__actions">
           <button type="button" className="lc-toast__btn lc-toast__btn--dismiss" onClick={onDismiss}>
             Dismiss
           </button>
-          <button type="button" className="lc-toast__btn lc-toast__btn--view">
-            View details
-          </button>
+          {action && (
+            <button
+              type="button"
+              className="lc-toast__btn lc-toast__btn--view"
+              onClick={() => {
+                action.onClick();
+                onDismiss();
+              }}
+            >
+              <Icon name={action.icon} size={15} />
+              {action.label}
+            </button>
+          )}
         </div>
       </div>
       <button type="button" className="lc-toast__close" aria-label="Close" onClick={onDismiss}>
@@ -162,13 +177,63 @@ function LocationToast({ isOut, onDismiss }: { isOut: boolean; onDismiss: () => 
   );
 }
 
+/** Locate a node and its ancestor ids in the tree (for "View details"). */
+function findNodePath(nodes: LocationNode[], id: string, trail: string[] = []): { node: LocationNode; ancestors: string[] } | null {
+  for (const n of nodes) {
+    if (n.id === id) return { node: n, ancestors: trail };
+    if (n.children?.length) {
+      const r = findNodePath(n.children, id, [...trail, n.id]);
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
+function DeleteLocationModal({ node, onCancel, onConfirm }: { node: LocationNode; onCancel: () => void; onConfirm: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  const childCount = node.children?.length || 0;
+  const typeLabel = TYPE_CONFIG[node.type]?.label.toLowerCase() || "location";
+  return createPortal(
+    <div className="lc-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="lc-confirm" role="alertdialog" aria-modal="true" aria-labelledby="lc-del-title">
+        <span className="lc-confirm__icon">
+          <Icon name="trash-2" size={22} strokeWidth={1.9} />
+        </span>
+        <h2 className="lc-confirm__title" id="lc-del-title">
+          Delete location?
+        </h2>
+        <p className="lc-confirm__msg">
+          Are you sure you want to delete the {typeLabel} <strong>{node.name}</strong>?
+          {childCount > 0 && ` This will also remove its ${childCount} sub-location${childCount > 1 ? "s" : ""}.`}
+          {node.properties > 0 && ` ${node.properties.toLocaleString()} propert${node.properties === 1 ? "y is" : "ies are"} mapped here.`} This action cannot be undone.
+        </p>
+        <div className="lc-confirm__actions">
+          <Button hierarchy="secondary" size="md" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button hierarchy="destructive" size="md" iconLeading="trash-2" onClick={onConfirm}>
+            Delete location
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 interface FormErrors {
   name?: boolean;
   type?: boolean;
   parentId?: boolean;
 }
 
-function LocationModal({ onClose, onCreate, initialData }: { onClose: () => void; onCreate: (name: string) => void; initialData: LocationNode | null }) {
+function LocationModal({ onClose, onCreate, initialData, tree }: { onClose: () => void; onCreate: (data: { name: string; type: string; parentId: string }) => void; initialData: LocationNode | null; tree: LocationNode[] }) {
   const isEdit = !!initialData;
   const [form, setForm] = useState(
     initialData ? { name: initialData.name, type: initialData.type as string, parentId: "", description: initialData.description || "" } : { name: "", type: "", parentId: "", description: "" },
@@ -177,7 +242,7 @@ function LocationModal({ onClose, onCreate, initialData }: { onClose: () => void
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const parentOptions = getParentOptions(form.type);
+  const parentOptions = getParentOptions(tree, form.type);
   const parentDisabled = !form.type || form.type === "city";
 
   // mandatory: name + type, and a parent unless the type is a city (description is optional)
@@ -197,7 +262,7 @@ function LocationModal({ onClose, onCreate, initialData }: { onClose: () => void
       setErrors(e);
       return;
     }
-    onCreate(form.name.trim());
+    onCreate({ name: form.name.trim(), type: form.type, parentId: form.parentId });
   };
 
   useEffect(() => {
@@ -216,9 +281,12 @@ function LocationModal({ onClose, onCreate, initialData }: { onClose: () => void
             <span className="lc-modal__headicon">
               <Icon name={isEdit ? "pencil" : "map-pin"} size={20} strokeWidth={1.75} />
             </span>
-            <h2 className="lc-modal__title" id="lc-modal-title">
-              {isEdit ? "Edit location" : "Add location"}
-            </h2>
+            <div className="lc-modal__heading">
+              <h2 className="lc-modal__title" id="lc-modal-title">
+                {isEdit ? "Edit location" : "Add location"}
+              </h2>
+              <p className="lc-modal__desc">{isEdit ? "Update this location’s name, type, or parent." : "Create a new city, district, or project for the platform."}</p>
+            </div>
           </div>
           <button type="button" className="lc-modal__close" aria-label="Close" onClick={onClose}>
             <Icon name="x" size={18} strokeWidth={2} />
@@ -490,15 +558,23 @@ function DetailPanel({ location, onEdit, onDelete }: { location: LocationNode | 
 
 interface ToastItem {
   id: number;
-  name: string;
+  title: string;
+  msg: string;
+  tone: "success" | "danger";
+  action?: ToastAction;
   out?: boolean;
 }
 
 export function LocationsApp() {
-  const { locationTree, locationCounts } = useProperties();
+  const { locationTree, locationCounts, locationDefs, addLocation, removeLocation, restoreLocations } = useProperties();
+  const treeRef = useRef(locationTree);
+  useEffect(() => {
+    treeRef.current = locationTree;
+  }, [locationTree]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(["erbil", "100-meter", "duhok", "sulaymaniyah"]));
   const [selectedNode, setSelectedNode] = useState<LocationNode | null>(null);
   const [modal, setModal] = useState<null | "add" | "edit">(null);
+  const [deleteTarget, setDeleteTarget] = useState<LocationNode | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const toggleExpanded = useCallback((id: string) => {
@@ -510,9 +586,9 @@ export function LocationsApp() {
     });
   }, []);
 
-  const pushToast = useCallback((name: string) => {
+  const pushToast = useCallback((title: string, msg: string, tone: "success" | "danger" = "success", action?: ToastAction) => {
     const id = Date.now();
-    setToasts((ts) => [...ts, { id, name }]);
+    setToasts((ts) => [...ts, { id, title, msg, tone, action }]);
     setTimeout(() => setToasts((ts) => ts.map((t) => (t.id === id ? { ...t, out: true } : t))), 6000);
     setTimeout(() => setToasts((ts) => ts.filter((t) => t.id !== id)), 6380);
   }, []);
@@ -523,16 +599,39 @@ export function LocationsApp() {
   }, []);
 
   const handleCreate = useCallback(
-    (name: string) => {
+    (data: { name: string; type: string; parentId: string }) => {
+      addLocation(data.name, data.type as "city" | "district" | "project", data.parentId);
       setModal(null);
-      pushToast(name);
+      const id = data.name.toLowerCase().replace(/\s+/g, "-");
+      pushToast("Location created successfully", `“${data.name}” has been added and is now available throughout the platform.`, "success", {
+        label: "View details",
+        icon: "arrow-up-right",
+        onClick: () => {
+          const path = findNodePath(treeRef.current, id);
+          if (!path) return;
+          setSelectedNode(path.node);
+          setExpandedIds((prev) => new Set([...prev, ...path.ancestors, id]));
+        },
+      });
     },
-    [pushToast],
+    [addLocation, pushToast],
   );
 
-  const handleDelete = useCallback(() => {
+  const handleDeleteConfirm = useCallback(() => {
+    const node = deleteTarget!;
+    const snapshot = locationDefs; // structure before removal, for undo
+    removeLocation(node.type, node.id);
+    setDeleteTarget(null);
     setSelectedNode(null);
-  }, []);
+    pushToast("Location deleted", `“${node.name}” has been removed from the platform.`, "danger", {
+      label: "Undo",
+      icon: "undo-2",
+      onClick: () => {
+        restoreLocations(snapshot);
+        pushToast("Location restored", `“${node.name}” has been restored.`, "success");
+      },
+    });
+  }, [deleteTarget, locationDefs, removeLocation, restoreLocations, pushToast]);
 
   return (
     <>
@@ -556,14 +655,15 @@ export function LocationsApp() {
 
       <div className="lc-split">
         <TreePanel tree={locationTree} expandedIds={expandedIds} selectedId={selectedNode?.id} onToggle={toggleExpanded} onSelect={setSelectedNode} searchQuery="" />
-        <DetailPanel location={selectedNode} onEdit={() => setModal("edit")} onDelete={handleDelete} />
+        <DetailPanel location={selectedNode} onEdit={() => setModal("edit")} onDelete={() => selectedNode && setDeleteTarget(selectedNode)} />
       </div>
 
-      {modal && <LocationModal onClose={() => setModal(null)} onCreate={handleCreate} initialData={modal === "edit" ? selectedNode : null} />}
+      {modal && <LocationModal tree={locationTree} onClose={() => setModal(null)} onCreate={handleCreate} initialData={modal === "edit" ? selectedNode : null} />}
+      {deleteTarget && <DeleteLocationModal node={deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
 
       <div className="lc-toaster" aria-live="polite">
         {toasts.map((t) => (
-          <LocationToast key={t.id} isOut={!!t.out} onDismiss={() => dismissToast(t.id)} />
+          <LocationToast key={t.id} title={t.title} msg={t.msg} tone={t.tone} action={t.action} isOut={!!t.out} onDismiss={() => dismissToast(t.id)} />
         ))}
       </div>
     </>

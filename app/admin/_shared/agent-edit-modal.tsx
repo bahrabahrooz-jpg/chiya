@@ -23,7 +23,7 @@ export function Field({ label, htmlFor, children }: { label?: ReactNode; htmlFor
   );
 }
 
-export function CustomSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: SelectOption[] }) {
+export function CustomSelect({ value, onChange, options, clearable }: { value: string; onChange: (v: string) => void; options: SelectOption[]; clearable?: boolean }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; minWidth: number } | null>(null);
@@ -60,6 +60,21 @@ export function CustomSelect({ value, onChange, options }: { value: string; onCh
     <div className="ap-selwrap" ref={btnRef}>
       <button type="button" className={"ap-selbtn" + (open ? " is-open" : "") + (value ? " has-value" : "")} onClick={toggle}>
         <span className="ap-selbtn__label">{items.find((o) => o.value === value)?.label || placeholder}</span>
+        {clearable && value && (
+          <span
+            className="ap-selbtn__clear"
+            role="button"
+            tabIndex={0}
+            aria-label="Clear"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            <Icon name="x" size={12} />
+          </span>
+        )}
         <Icon name="chevron-down" size={14} />
       </button>
       {open &&
