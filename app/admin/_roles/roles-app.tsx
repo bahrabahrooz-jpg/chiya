@@ -75,12 +75,30 @@ function RoleList({ roles, selectedId, onSelect, onCreate }: { roles: RoleState[
   );
 }
 
-function PermissionGroup({ cat, group, role, locked, onToggle }: { cat: Cat; group: Group; role: RoleState; locked: boolean; onToggle: (id: string, v: boolean) => void }) {
+function ScopeSelect({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (v: string) => void }) {
+  return (
+    <label className="rb-scope">
+      <select value={value} disabled={disabled} aria-label="Access scope" onChange={(e) => onChange(e.target.value)}>
+        {SCOPE_OPTS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <span className="rb-scope__chev">
+        <Icon name="chevrons-up-down" size={15} />
+      </span>
+    </label>
+  );
+}
+
+function PermissionGroup({ cat, group, role, locked, onToggle, onScope }: { cat: Cat; group: Group; role: RoleState; locked: boolean; onToggle: (id: string, v: boolean) => void; onScope: (id: string, v: string) => void }) {
   const perms = CAT_FLAT[cat.key].filter((p) => p.groupId === group.id);
   const on = perms.filter((p) => role.grant[p.permId]).length;
   const total = perms.length;
   const allOn = on === total;
   const anyOn = on > 0;
+  const scopeId = cat.key + "/" + group.id;
   const setMaster = (checked: boolean) => perms.forEach((p) => onToggle(p.permId, checked));
   return (
     <section className={"rb-group" + (anyOn ? "" : " is-off")}>
@@ -90,6 +108,7 @@ function PermissionGroup({ cat, group, role, locked, onToggle }: { cat: Cat; gro
           {on}/{total}
         </span>
         <span className="rb-group__ctrl">
+          {group.scope && <ScopeSelect value={role.scope[scopeId]} disabled={locked || !anyOn} onChange={(v) => onScope(scopeId, v)} />}
           <Switch checked={allOn} disabled={locked} aria-label={"Enable all " + group.label + " permissions"} onChange={(e) => setMaster(e.target.checked)} />
         </span>
       </header>
