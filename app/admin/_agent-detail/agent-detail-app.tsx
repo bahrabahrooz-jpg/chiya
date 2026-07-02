@@ -218,10 +218,10 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
 }
 
 /* ---------------- building blocks ---------------- */
-function StatusBadge({ value, meta }: { value: string; meta: Record<string, { variant: import("@/components/ui/badge").BadgeVariant; icon?: IconName; dot?: boolean }> }) {
+function StatusBadge({ value, meta }: { value: string; meta: Record<string, { variant: import("@/components/ui/badge").BadgeVariant; icon?: IconName; dot?: boolean; cls?: string }> }) {
   const m = (meta && meta[value]) || { variant: "neutral" as const };
   return (
-    <Badge variant={m.variant} size="sm" icon={m.icon} dot={m.dot}>
+    <Badge variant={m.variant} size="sm" icon={m.icon} dot={m.dot} className={m.cls}>
       {value}
     </Badge>
   );
@@ -579,14 +579,14 @@ function Reviews({ agent }: { agent: AgentDetail }) {
   );
 }
 
-const TL_TONE: Record<string, string> = { brand: "var(--green-700)", gold: "var(--gold-500)", success: "var(--success-600)", info: "var(--info-600)", error: "var(--error-600)", neutral: "var(--gray-500)" };
+const TL_TONE: Record<string, string> = { brand: "#7F56D9", success: "#15B79E", info: "#2E90FA", warning: "#EAB308", error: "#F04438", gold: "#EE46BC", neutral: "#6172F3" };
 function Timeline() {
   return (
     <ul className="pd-timeline">
       {TIMELINE.map((it, i) => (
         <li className="pd-tl" key={i}>
-          <span className="pd-tl__dot" style={{ background: TL_TONE[it.tone] }}>
-            <Icon name={it.icon} size={14} strokeWidth={2.2} />
+          <span className="pd-tl__dot" style={{ background: TL_TONE[it.tone], boxShadow: `0 0 0 4px color-mix(in srgb, ${TL_TONE[it.tone]} 16%, transparent)` }}>
+            <Icon name={it.icon} size={13} strokeWidth={2.2} />
           </span>
           <div className="pd-tl__body">
             <div className="pd-tl__top">
@@ -935,7 +935,17 @@ export function AgentDetailApp() {
           )}
         </SectionCard>
 
-        <SectionCard title="Viewings" count={VIEWINGS.length} desc="Scheduled and completed property viewings hosted by this agent." flush>
+        <SectionCard
+          title="Viewings"
+          count={VIEWINGS.length}
+          desc="Scheduled and completed property viewings hosted by this agent."
+          action={
+            <Button hierarchy="secondary" size="sm" iconTrailing="arrow-right" href="/admin/viewings">
+              All viewings
+            </Button>
+          }
+          flush
+        >
           <ViewingsTable rows={VIEWINGS} />
         </SectionCard>
 

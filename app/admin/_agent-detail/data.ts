@@ -23,11 +23,11 @@ export const MEMBER_STATUS_META: Record<string, { variant: BadgeVariant; dot?: b
   Active: { variant: "success", dot: true },
   Inactive: { variant: "neutral", dot: true },
 };
-export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean }> = {
-  Pending: { variant: "warning", dot: true },
-  Confirmed: { variant: "info", dot: true },
-  Completed: { variant: "success", dot: true },
-  Cancelled: { variant: "neutral", dot: true },
+export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; icon?: IconName; cls?: string }> = {
+  Pending: { variant: "warning", icon: "clock", cls: "vw-st--pending" },
+  Confirmed: { variant: "success", icon: "calendar-check", cls: "vw-st--confirmed" },
+  Completed: { variant: "brand", icon: "check-check", cls: "vw-st--completed" },
+  Cancelled: { variant: "error", icon: "circle-x", cls: "vw-st--cancelled" },
 };
 
 export interface AgentDetail {

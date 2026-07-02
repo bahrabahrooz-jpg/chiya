@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment, useState } from "react";
-import { Icon } from "@/components/ui/icon";
+import { Fragment, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
-import { AvatarGroup } from "@/components/ui/avatar";
 import { Input, Textarea } from "@/components/ui/input";
 import { Switch } from "@/components/ui/choice";
 import { Tabs } from "@/components/navigation/tabs";
@@ -13,12 +13,10 @@ import {
   CAT_FLAT,
   MATRIX_ROWS,
   ROLES_SEED,
-  SCOPE_OPTS,
   TOTAL_PERMS,
   buildRole,
   cellLevel,
   countGrant,
-  usersFor,
   type Cat,
   type Group,
   type RoleState,
@@ -75,30 +73,12 @@ function RoleList({ roles, selectedId, onSelect, onCreate }: { roles: RoleState[
   );
 }
 
-function ScopeSelect({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (v: string) => void }) {
-  return (
-    <label className="rb-scope">
-      <select value={value} disabled={disabled} aria-label="Access scope" onChange={(e) => onChange(e.target.value)}>
-        {SCOPE_OPTS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <span className="rb-scope__chev">
-        <Icon name="chevrons-up-down" size={15} />
-      </span>
-    </label>
-  );
-}
-
-function PermissionGroup({ cat, group, role, locked, onToggle, onScope }: { cat: Cat; group: Group; role: RoleState; locked: boolean; onToggle: (id: string, v: boolean) => void; onScope: (id: string, v: string) => void }) {
+function PermissionGroup({ cat, group, role, locked, onToggle }: { cat: Cat; group: Group; role: RoleState; locked: boolean; onToggle: (id: string, v: boolean) => void }) {
   const perms = CAT_FLAT[cat.key].filter((p) => p.groupId === group.id);
   const on = perms.filter((p) => role.grant[p.permId]).length;
   const total = perms.length;
   const allOn = on === total;
   const anyOn = on > 0;
-  const scopeId = cat.key + "/" + group.id;
   const setMaster = (checked: boolean) => perms.forEach((p) => onToggle(p.permId, checked));
   return (
     <section className={"rb-group" + (anyOn ? "" : " is-off")}>
@@ -108,7 +88,6 @@ function PermissionGroup({ cat, group, role, locked, onToggle, onScope }: { cat:
           {on}/{total}
         </span>
         <span className="rb-group__ctrl">
-          {group.scope && <ScopeSelect value={role.scope[scopeId]} disabled={locked || !anyOn} onChange={(v) => onScope(scopeId, v)} />}
           <Switch checked={allOn} disabled={locked} aria-label={"Enable all " + group.label + " permissions"} onChange={(e) => setMaster(e.target.checked)} />
         </span>
       </header>
@@ -129,16 +108,10 @@ function PermissionGroup({ cat, group, role, locked, onToggle, onScope }: { cat:
   );
 }
 
-function PermissionsTab({ role, locked, activeCat, onCat, onToggle, onScope }: { role: RoleState; locked: boolean; activeCat: string; onCat: (k: string) => void; onToggle: (id: string, v: boolean) => void; onScope: (id: string, v: string) => void }) {
+function PermissionsTab({ role, locked, activeCat, onCat, onToggle }: { role: RoleState; locked: boolean; activeCat: string; onCat: (k: string) => void; onToggle: (id: string, v: boolean) => void }) {
   const cat = CATS.find((c) => c.key === activeCat) || CATS[0];
   return (
     <div className="rb-permissions">
-      {locked && (
-        <div className="rb-locknote">
-          <Icon name="lock" size={15} />
-          <span>Super admin always has full access. Its permissions are locked to protect platform integrity.</span>
-        </div>
-      )}
       <nav className="rb-catnav" aria-label="Permission categories">
         {CATS.map((c) => (
           <button key={c.key} type="button" className={"rb-cat" + (c.key === activeCat ? " is-active" : "")} onClick={() => onCat(c.key)} aria-pressed={c.key === activeCat}>
@@ -149,69 +122,147 @@ function PermissionsTab({ role, locked, activeCat, onCat, onToggle, onScope }: {
       </nav>
       <div className="rb-groups">
         {cat.groups.map((g) => (
-          <PermissionGroup key={g.id} cat={cat} group={g} role={role} locked={locked} onToggle={onToggle} onScope={onScope} />
+          <PermissionGroup key={g.id} cat={cat} group={g} role={role} locked={locked} onToggle={onToggle} />
         ))}
       </div>
     </div>
   );
 }
 
-function RoleSettingsTab({ role }: { role: RoleState }) {
-  const enabled = countGrant(role.grant);
-  const users = usersFor(role, 5);
+const ROLE_ICONS: IconName[] = ["shield-check", "badge-check", "user", "users", "key", "star", "crown", "briefcase", "gauge", "settings"];
+
+function IconPicker({ role, onIcon }: { role: RoleState; onIcon: (v: IconName) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rb-iconpick">
+      <button type="button" className="rb-iconpick__btn" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} aria-label="Choose role icon">
+        <span className={"rb-roleicon rb-roleicon--" + role.dot}>
+          <Icon name={role.icon} size={18} />
+        </span>
+      </button>
+      {open && (
+        <>
+          <button type="button" className="rb-iconpick__scrim" aria-label="Close icon picker" onClick={() => setOpen(false)} />
+          <div className="rb-iconpick__pop" role="menu">
+            {ROLE_ICONS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                role="menuitemradio"
+                aria-checked={name === role.icon}
+                className={"rb-iconpick__opt" + (name === role.icon ? " is-active" : "")}
+                onClick={() => {
+                  onIcon(name);
+                  setOpen(false);
+                }}
+              >
+                <Icon name={name} size={18} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const DESC_MAX = 240;
+
+function DescriptionField({ defaultValue, readOnly }: { defaultValue: string; readOnly?: boolean }) {
+  const [val, setVal] = useState(defaultValue);
+  const remaining = DESC_MAX - val.length;
+  return (
+    <div className="rb-descfield">
+      <Textarea label="Role description" rows={3} value={val} maxLength={DESC_MAX} readOnly={readOnly} onChange={(e) => setVal(e.target.value)} />
+      <span className={"rb-desccount" + (remaining <= 20 ? " is-low" : "")}>{remaining} characters left</span>
+    </div>
+  );
+}
+
+function DeleteRoleModal({ role, onCancel, onConfirm }: { role: RoleState; onCancel: () => void; onConfirm: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return createPortal(
+    <div className="rb-confirm-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="rb-confirm" role="alertdialog" aria-modal="true" aria-labelledby="rb-del-ttl">
+        <span className="rb-confirm__icon rb-confirm__icon--danger">
+          <Icon name="trash-2" size={22} strokeWidth={1.9} />
+        </span>
+        <h3 id="rb-del-ttl" className="rb-confirm__title">
+          Delete role?
+        </h3>
+        <p className="rb-confirm__msg">
+          Are you sure you want to delete the <strong>{role.name}</strong> role? Members assigned to it will lose its permissions. This action cannot be undone.
+        </p>
+        <div className="rb-confirm__actions">
+          <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button hierarchy="destructive" size="md" type="button" iconLeading="trash-2" onClick={onConfirm}>
+            Delete role
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function RoleSettingsTab({ role, onIcon, onDelete }: { role: RoleState; onIcon: (v: IconName) => void; onDelete: () => void }) {
   const canDelete = ADMIN.role === "Super Admin" && !role.locked;
+  const [confirmOpen, setConfirmOpen] = useState(false);
   return (
     <div className="rb-settings">
       <section className="rb-setblock">
-        <h3 className="rb-setblock__title">Role details</h3>
-        <div className="rb-setgrid">
-          <Input label="Role name" defaultValue={role.name} iconLeading="tag" readOnly={role.system} />
+        <header className="rb-setblock__head">
+          <h3 className="rb-setblock__title">Role detail</h3>
+          <p className="rb-setblock__sub">Basic identity for this role — its name, icon and description.</p>
+        </header>
+        <div className="rb-setrow">
+          <div className="rb-setrow__field">
+            <Input label="Role name" defaultValue={role.name} disabled={role.id === "super-admin"} />
+          </div>
           <div className="rb-setfield">
-            <span className="rb-setfield__label">Role status</span>
-            <div className="rb-statuspill">
-              <span className="rb-statusdot" /> {role.status}
+            <span className="rb-setfield__label">Icon</span>
+            <IconPicker role={role} onIcon={onIcon} />
+          </div>
+        </div>
+        <div className="rb-setrow">
+          <div className="rb-setrow__field">
+            <DescriptionField key={role.id} defaultValue={role.desc} readOnly={role.system} />
+          </div>
+        </div>
+      </section>
+
+      {role.id !== "super-admin" && (
+        <section className="rb-setblock">
+          <div className="rb-setbody rb-dangerrow">
+            <div className="rb-danger__text">
+              <h3 className="rb-danger__title">Delete this role</h3>
+              <p className="rb-danger__sub">Permanently remove this role. Members assigned to it will lose its permissions.</p>
             </div>
+            <Button hierarchy="secondary-destructive" iconLeading="trash-2" disabled={!canDelete} title={canDelete ? undefined : "System roles can't be deleted"} onClick={() => setConfirmOpen(true)}>
+              Delete role
+            </Button>
           </div>
-        </div>
-        <div style={{ marginTop: 16 }}>
-          <Textarea label="Role description" rows={3} defaultValue={role.desc} readOnly={role.system} />
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="rb-setblock">
-        <h3 className="rb-setblock__title">Assigned members</h3>
-        <div className="rb-assigned">
-          <AvatarGroup avatars={users.map((p) => ({ src: p.src, name: p.name }))} max={5} size="md" />
-          <div className="rb-assigned__meta">
-            <span className="rb-assigned__count">{role.users}</span>
-            <span className="rb-assigned__lbl">
-              {role.users === 1 ? "member has" : "members have"} this role · {enabled} permissions granted
-            </span>
-          </div>
-          <span style={{ flex: "1 1 auto" }} />
-          <Button hierarchy="secondary" size="sm" iconLeading="user-plus">
-            Manage members
-          </Button>
-        </div>
-      </section>
-
-      <section className="rb-setblock">
-        <h3 className="rb-setblock__title">Actions</h3>
-        <div className="rb-actions">
-          <Button hierarchy="secondary" iconLeading="pencil" disabled={role.system}>
-            Edit role
-          </Button>
-          <Button hierarchy="secondary" iconLeading="copy">
-            Duplicate role
-          </Button>
-          <button type="button" className="rb-delbtn" disabled={!canDelete} title={canDelete ? undefined : "System roles can't be deleted"}>
-            <Icon name="trash-2" size={16} /> Delete role
-          </button>
-        </div>
-        <p className="rb-actions__note">
-          <Icon name="info" size={14} /> System roles are protected and can&apos;t be deleted.
-        </p>
-      </section>
+      {confirmOpen && (
+        <DeleteRoleModal
+          role={role}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            onDelete();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -223,7 +274,8 @@ function RoleDetail({
   activeCat,
   onCat,
   onToggle,
-  onScope,
+  onIcon,
+  onDelete,
 }: {
   role: RoleState;
   detailTab: string;
@@ -231,7 +283,8 @@ function RoleDetail({
   activeCat: string;
   onCat: (k: string) => void;
   onToggle: (id: string, v: boolean) => void;
-  onScope: (id: string, v: string) => void;
+  onIcon: (v: IconName) => void;
+  onDelete: () => void;
 }) {
   const locked = !!role.locked;
   const enabled = countGrant(role.grant);
@@ -259,9 +312,9 @@ function RoleDetail({
       </div>
       <div className="rb-detail__body">
         {detailTab === "permissions" ? (
-          <PermissionsTab role={role} locked={locked} activeCat={activeCat} onCat={onCat} onToggle={onToggle} onScope={onScope} />
+          <PermissionsTab role={role} locked={locked} activeCat={activeCat} onCat={onCat} onToggle={onToggle} />
         ) : (
-          <RoleSettingsTab role={role} />
+          <RoleSettingsTab role={role} onIcon={onIcon} onDelete={onDelete} />
         )}
       </div>
     </section>
@@ -348,7 +401,12 @@ export function RolesApp() {
     setActiveCat("dashboard");
   };
   const toggle = (permId: string, val: boolean) => setRoles((rs) => rs.map((r) => (r.id === selectedId ? { ...r, grant: { ...r.grant, [permId]: val } } : r)));
-  const setScope = (scopeId: string, val: string) => setRoles((rs) => rs.map((r) => (r.id === selectedId ? { ...r, scope: { ...r.scope, [scopeId]: val } } : r)));
+  const setIcon = (icon: IconName) => setRoles((rs) => rs.map((r) => (r.id === selectedId ? { ...r, icon } : r)));
+  const deleteRole = () => {
+    const next = roles.find((r) => r.id !== selectedId);
+    setRoles((rs) => rs.filter((r) => r.id !== selectedId));
+    if (next) selectRole(next.id);
+  };
 
   const selectedRole = roles.find((r) => r.id === selectedId) || roles[0];
 
@@ -358,7 +416,7 @@ export function RolesApp() {
       {view === "detail" ? (
         <div className="rb-split">
           <RoleList roles={roles} selectedId={selectedId} onSelect={selectRole} onCreate={() => {}} />
-          <RoleDetail role={selectedRole} detailTab={detailTab} onDetailTab={setDetailTab} activeCat={activeCat} onCat={setActiveCat} onToggle={toggle} onScope={setScope} />
+          <RoleDetail role={selectedRole} detailTab={detailTab} onDetailTab={setDetailTab} activeCat={activeCat} onCat={setActiveCat} onToggle={toggle} onIcon={setIcon} onDelete={deleteRole} />
         </div>
       ) : (
         <RoleMatrix roles={roles} />

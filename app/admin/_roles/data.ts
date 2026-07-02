@@ -11,7 +11,6 @@ export const CATS: Cat[] = [
       { label: "View KPI cards", desc: "High-level performance metrics at a glance." },
       { label: "View analytics", desc: "Charts and platform trend analytics." },
     ] },
-    { id: "personal", label: "Personal", scope: false, perms: [{ label: "View personal performance", desc: "See their own performance metrics only." }] },
   ] },
   { key: "properties", label: "Properties", groups: [
     { id: "listings", label: "Listings", scope: true, perms: [
@@ -118,17 +117,17 @@ export interface RoleSeed {
 
 export const ROLES_SEED: RoleSeed[] = [
   {
-    id: "super-admin", name: "Super admin", tone: "gold", dot: "gold", icon: "shield-check", system: true, locked: true,
-    status: "Active", users: 2, created: "Jan 4, 2024",
+    id: "super-admin", name: "Super admin", tone: "brand", dot: "brand", icon: "shield-check", system: true, locked: true,
+    status: "Active", users: 1, created: "Jan 4, 2024",
     desc: "Unrestricted access to every module, setting and permission across the Chiya Estate platform.",
     spec: { dashboard: "all", properties: "all", members: "all", agents: "all", viewings: "all", reports: "all", settings: "all" },
   },
   {
-    id: "agent", name: "Agent", tone: "amber", dot: "amber", icon: "badge-check", system: true,
-    status: "Active", users: 120, created: "Jan 11, 2024",
+    id: "agent", name: "Agent", tone: "brand", dot: "brand", icon: "badge-check", system: true,
+    status: "Active", users: 35, created: "Jan 11, 2024",
     desc: "Field agent. Manages their own assigned properties, members and viewings.",
     spec: {
-      dashboard: { perms: [0, 1, 3], scope: "own" },
+      dashboard: { perms: [0, 1], scope: "own" },
       properties: { perms: [0, 1, 2, 7], scope: "own" },
       members: { perms: [0], scope: "own" },
       agents: { perms: [0], scope: "own" },
@@ -164,7 +163,11 @@ export function buildRole(spec: Record<string, Spec>): { grant: Record<string, b
   return { grant, scope };
 }
 export function countGrant(grant: Record<string, boolean>) {
-  return Object.values(grant).filter(Boolean).length;
+  // count only permissions that currently exist, so the total can never
+  // drift past TOTAL_PERMS (e.g. after a permission is removed)
+  let n = 0;
+  CATS.forEach((c) => CAT_FLAT[c.key].forEach((p) => { if (grant[p.permId]) n++; }));
+  return n;
 }
 
 export const PEOPLE = [

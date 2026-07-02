@@ -804,3 +804,9 @@
     .adr__bars { display: none; }
     .adr__summary { flex-direction: row; gap: 18px; justify-content: center; padding: 20px; }
   }
+
+  /* Viewing status pills — consistent with the Viewings table */
+  .cx-badge.vw-st--pending   { background: #FFFAEB; color: #B54708; border-color: #FEDF89; }
+  .cx-badge.vw-st--confirmed { background: #ECFDF3; color: #067647; border-color: #ABEFC6; }
+  .cx-badge.vw-st--completed { background: #F9FAFB; color: #344054; border-color: #EAECF0; }
+  .cx-badge.vw-st--cancelled { background: #FEF3F2; color: #B42318; border-color: #FECDCA; }

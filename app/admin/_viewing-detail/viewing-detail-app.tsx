@@ -468,14 +468,14 @@ function AgentCard({ a, href, onReassign }: { a: ViewingDetail["agent"]; href: s
   );
 }
 
-const TL_TONE: Record<string, string> = { brand: "var(--green-700)", gold: "var(--gold-500)", success: "var(--success-600)", info: "var(--info-600)", error: "var(--error-600)", neutral: "var(--gray-500)" };
+const TL_TONE: Record<string, string> = { brand: "#7F56D9", success: "#15B79E", info: "#2E90FA", warning: "#EAB308", error: "#F04438", gold: "#EE46BC", neutral: "#6172F3" };
 function Timeline() {
   return (
     <ul className="pd-timeline">
       {TIMELINE.map((it, i) => (
         <li className="pd-tl" key={i}>
-          <span className="pd-tl__dot" style={{ background: TL_TONE[it.tone] }}>
-            <Icon name={it.icon} size={14} strokeWidth={2.2} />
+          <span className="pd-tl__dot" style={{ background: TL_TONE[it.tone], boxShadow: `0 0 0 4px color-mix(in srgb, ${TL_TONE[it.tone]} 16%, transparent)` }}>
+            <Icon name={it.icon} size={13} strokeWidth={2.2} />
           </span>
           <div className="pd-tl__body">
             <div className="pd-tl__top">
@@ -483,71 +483,10 @@ function Timeline() {
               <span className="pd-tl__time">{it.time}</span>
             </div>
             <p className="pd-tl__desc">{it.desc}</p>
-            <span className="pd-tl__by">
-              <Icon name="user-round" size={13} />
-              by <b>{it.by}</b>
-            </span>
           </div>
         </li>
       ))}
     </ul>
-  );
-}
-
-function AppointmentDetails({ v }: { v: ViewingDetail }) {
-  return (
-    <SectionCard title="Appointment details" desc="How the viewing will be conducted.">
-      <div className="vwd-appt">
-        <div className="vwd-apptgrid">
-          <div className="vwd-apptitem">
-            <span className="vwd-apptitem__icon">
-              <Icon name={v.contactIcon} size={17} />
-            </span>
-            <div className="vwd-apptitem__text">
-              <span className="vwd-apptitem__label">Preferred contact method</span>
-              <span className="vwd-apptitem__value">{v.contactMethod}</span>
-            </div>
-          </div>
-          <div className="vwd-apptitem">
-            <span className="vwd-apptitem__icon">
-              <Icon name="bell" size={17} />
-            </span>
-            <div className="vwd-apptitem__text">
-              <span className="vwd-apptitem__label">Reminder sent</span>
-              <span className="vwd-apptitem__value">
-                {v.reminderSent ? (
-                  <Badge variant="success" size="sm" icon="check">
-                    Yes
-                  </Badge>
-                ) : (
-                  <Badge variant="neutral" size="sm">
-                    No
-                  </Badge>
-                )}
-              </span>
-            </div>
-          </div>
-          <div className="vwd-apptitem">
-            <span className="vwd-apptitem__icon">
-              <Icon name="calendar-clock" size={17} />
-            </span>
-            <div className="vwd-apptitem__text">
-              <span className="vwd-apptitem__label">Reminder time</span>
-              <span className="vwd-apptitem__value" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {v.reminderSent ? v.reminderWhen : "—"}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="vwd-noteblock">
-          <span className="vwd-noteblock__label">
-            <Icon name="message-square-text" size={13} />
-            Notes
-          </span>
-          <p className="vwd-noteblock__text">{v.notes}</p>
-        </div>
-      </div>
-    </SectionCard>
   );
 }
 
@@ -688,7 +627,7 @@ export function ViewingDetailApp() {
     setV(base);
     setStatus(base.status);
   }
-  const [modal, setModal] = useState<"status" | "cancel" | "delete" | "edit" | null>(null);
+  const [modal, setModal] = useState<"status" | "delete" | "edit" | null>(null);
   const [notes, setNotes] = useState<NoteItem[]>(INIT_NOTES);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -717,7 +656,6 @@ export function ViewingDetailApp() {
     time: v.time,
     status,
   };
-  const closed = status === "Completed" || status === "Cancelled";
 
   return (
     <>
@@ -725,7 +663,7 @@ export function ViewingDetailApp() {
         <nav className="pd-breadcrumb" aria-label="Breadcrumb">
           <Link href="/admin/viewings">Viewings</Link>
           <Icon name="chevron-right" size={14} />
-          <span aria-current="page">{v.id}</span>
+          <span aria-current="page">Viewing details</span>
         </nav>
 
         <div className="pd-head__main">
@@ -779,36 +717,11 @@ export function ViewingDetailApp() {
                     role="menuitem"
                     onClick={() => {
                       setMoreOpen(false);
-                      editViewing();
-                    }}
-                  >
-                    <Icon name="calendar-range" size={17} />
-                    Reschedule
-                  </button>
-                  <button
-                    type="button"
-                    className="pd-moreitem"
-                    role="menuitem"
-                    onClick={() => {
-                      setMoreOpen(false);
                       pushToast({ tone: "default", icon: "send", title: "Reminder sent", msg: "A reminder was sent to " + v.member.name + "." });
                     }}
                   >
                     <Icon name="bell" size={17} />
                     Send reminder
-                  </button>
-                  <button
-                    type="button"
-                    className="pd-moreitem"
-                    role="menuitem"
-                    disabled={closed}
-                    onClick={() => {
-                      setMoreOpen(false);
-                      setModal("cancel");
-                    }}
-                  >
-                    <Icon name="circle-x" size={17} />
-                    Cancel viewing
                   </button>
                   <div className="pd-moremenu__sep" />
                   <button
@@ -834,10 +747,6 @@ export function ViewingDetailApp() {
         <div className="pd-grid__main">
           <PropertyInfo p={v.property} onView={() => router.push(`/admin/properties/${v.property.id}`)} />
           <Overview v={v} status={status} />
-          <AppointmentDetails v={v} />
-          <SectionCard title="Timeline" desc="Chronological history of this viewing.">
-            <Timeline />
-          </SectionCard>
           <NotesSection
             notes={notes}
             onAdd={(text) => {
@@ -850,6 +759,9 @@ export function ViewingDetailApp() {
             }}
             onDelete={(i) => setNoteToDelete(i)}
           />
+          <SectionCard title="Activity timeline" desc="Chronological history of this viewing.">
+            <Timeline />
+          </SectionCard>
         </div>
 
         <aside className="pd-grid__aside">
@@ -884,30 +796,6 @@ export function ViewingDetailApp() {
             const meta = VIEW_STATUS_META[next] || {};
             const danger = next === "Cancelled" || next === "No Show";
             pushToast({ tone: danger ? "danger" : "brand", icon: meta.icon || "refresh-cw", title: "Status updated", msg: v.id + " is now marked as " + next + "." });
-          }}
-        />
-      )}
-      {modal === "cancel" && (
-        <ConfirmModal
-          icon="circle-x"
-          title="Cancel this viewing?"
-          body={
-            <>
-              This will cancel the viewing of <strong>{v.property.name}</strong> scheduled for{" "}
-              <strong>
-                {v.date}, {v.time}
-              </strong>
-              . The member and agent will be notified.
-            </>
-          }
-          confirmLabel="Cancel viewing"
-          confirmIcon="circle-x"
-          tone="danger"
-          onCancel={() => setModal(null)}
-          onConfirm={() => {
-            setStatus("Cancelled");
-            setModal(null);
-            pushToast({ tone: "danger", icon: "circle-x", title: "Viewing cancelled", msg: v.id + " has been cancelled." });
           }}
         />
       )}
