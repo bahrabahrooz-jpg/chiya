@@ -357,8 +357,8 @@
   /* column templates */
   .mpf-table--portfolio .mpf-thead,
   .mpf-table--portfolio .mpf-trow {
-    grid-template-columns: minmax(220px, 2.4fr) 116px 128px 132px minmax(150px, 1.3fr) 116px 96px;
-    min-width: 1040px;
+    grid-template-columns: minmax(220px, 2.2fr) minmax(130px, 1fr) 100px 120px minmax(150px, 1.3fr) 120px 116px 116px 56px;
+    min-width: 1260px;
   }
   .mpf-table--saved .mpf-thead,
   .mpf-table--saved .mpf-trow {
@@ -367,8 +367,8 @@
   }
   .mpf-table--viewings .mpf-thead,
   .mpf-table--viewings .mpf-trow {
-    grid-template-columns: minmax(240px, 2.6fr) 150px minmax(170px, 1.4fr) 132px;
-    min-width: 820px;
+    grid-template-columns: minmax(230px, 2.3fr) minmax(140px, 1fr) minmax(160px, 1.3fr) 140px 128px 56px;
+    min-width: 940px;
   }
   .mpf-table--inquiries .mpf-thead,
   .mpf-table--inquiries .mpf-trow {
@@ -393,15 +393,44 @@
   }
   .mpf-prop__sub svg { flex: none; color: var(--gold-500); }
   .mpf-prop__sub--mono { font-family: var(--font-mono); }
+  /* neutral location pin in the viewings table's dedicated Location column */
+  .mpf-loc svg { color: var(--text-tertiary); }
 
   .mpf-cell { min-width: 0; }
   .mpf-cell__label { display: none; }
   .mpf-price { font-size: 14px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .mpf-price__per { font-size: 12px; font-weight: 600; color: var(--text-tertiary); }
+  .mpf-type { font-size: 13.5px; color: var(--text-secondary); white-space: nowrap; }
+
+  /* role badges — same palette as the main Members table
+     (higher specificity .cx-badge.mp-role--* overrides the DS variant) */
+  .cx-badge.mp-role--buyer    { background: #F9F5FF; color: #6941C6; border-color: #E9D7FE; }
+  .cx-badge.mp-role--seller   { background: #FDF2FA; color: #C11574; border-color: #FCCEEE; }
+  .cx-badge.mp-role--landlord { background: #EEF4FF; color: #3538CD; border-color: #C7D7FE; }
+  .cx-badge.mp-role--tenant   { background: #FEF6EE; color: #B93815; border-color: #F9DBAF; }
   .mpf-date { font-size: 13px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .mpf-agentcell { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
   .mpf-agentcell__name { font-size: 13.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mpf-agentcell--none { font-size: 13px; color: var(--text-tertiary); }
+
+  /* stacked date + time (matches the main Viewings table) */
+  .mpf-dt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .mpf-dt__date { font-size: 13px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mpf-dt__time {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .mpf-dt__time svg { flex: none; color: var(--text-tertiary); }
+
+  /* row actions kebab */
+  .mpf-kebab {
+    width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; background: transparent; border-radius: var(--radius-md);
+    color: var(--text-tertiary); cursor: pointer; transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .mpf-kebab:hover { background: var(--gray-100); color: var(--text-secondary); }
+  .mpf-kebab[aria-expanded="true"] { background: var(--gray-100); color: var(--text-primary); }
+  .mpf-kebab:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
 
   /* view-property icon button */
   .mpf-viewbtn {

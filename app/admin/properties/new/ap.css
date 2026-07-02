@@ -714,6 +714,35 @@
   .ap-agentsel__area { font-size: 12.5px; color: var(--text-tertiary); }
   .ap-agentsel__check { flex: none; color: var(--brand-primary); display: flex; }
 
+  /* searchable variant — fixed search field on top, scrollable results below */
+  .ap-agentsel__drop--search { display: flex; flex-direction: column; overflow: hidden; }
+  .ap-agentsel__search {
+    display: flex; align-items: center; gap: 8px; flex: none; margin-bottom: 4px; padding: 7px 10px;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-card);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .ap-agentsel__search:focus-within { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .ap-agentsel__search-ic { color: var(--text-tertiary); flex: none; }
+  .ap-agentsel__search-input {
+    flex: 1 1 auto; min-width: 0; border: none; outline: none; background: transparent;
+    font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
+  }
+  .ap-agentsel__search-input::placeholder { color: var(--text-placeholder); }
+  .ap-agentsel__search-clear {
+    flex: none; display: flex; padding: 2px; border: none; background: transparent;
+    color: var(--text-tertiary); cursor: pointer; border-radius: var(--radius-sm);
+    transition: background .13s, color .13s;
+  }
+  .ap-agentsel__search-clear:hover { color: var(--text-secondary); background: var(--gray-100); }
+  .ap-agentsel__list { flex: 1 1 auto; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--gray-200) transparent; }
+  .ap-agentsel__list::-webkit-scrollbar { width: 5px; }
+  .ap-agentsel__list::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 6px; }
+  .ap-agentsel__empty {
+    display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 12px;
+    text-align: center; font-size: 13px; color: var(--text-tertiary);
+  }
+  .ap-agentsel__empty svg { color: var(--text-tertiary); }
+
   /* staff-only note callout under internal notes */
   .ap-staffnote {
     display: flex; align-items: flex-start; gap: 9px;
@@ -979,6 +1008,8 @@
     color: #fff; font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: -.005em;
   }
   .pp-listing__badge svg { color: var(--gold-300); }
+  .pp-listing__badge--pending { background: rgba(122,74,8,.78); }
+  .pp-listing__badge--pending svg { color: var(--warning-100); }
   .pp-listing__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 7px; padding: 4px 4px 4px 0; }
   .pp-listing__tags { display: flex; align-items: center; gap: 10px; }
   .pp-listing__ref {

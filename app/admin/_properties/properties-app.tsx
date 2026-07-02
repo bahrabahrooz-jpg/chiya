@@ -10,7 +10,9 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import {
-  AGENTS_LIST,
+  AGENT_ASSIGNED,
+  AGENT_FILTER_OPTIONS,
+  AGENT_UNASSIGNED,
   EMPTY_ADV,
   ITEMS_PER_PAGE,
   KPI_CARDS,
@@ -20,6 +22,7 @@ import {
   STATUS_OPTIONS,
   STATUS_TABS,
   TYPE_OPTIONS,
+  statusRequiresAgent,
   type AdvFilters,
   type AgentRef,
   type PropertyRecord,
@@ -360,11 +363,14 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Proper
                 const meta = STATUS_META[status];
                 const isCurrent = property.status === status;
                 const isSelected = selected === status;
+                // A property with no agent can't move to a live status.
+                const blocked = !property.agent && statusRequiresAgent(status);
                 return (
                   <button
                     key={status}
                     type="button"
-                    className={"pp-smodal__item" + (isSelected ? " is-selected" : "")}
+                    disabled={blocked}
+                    className={"pp-smodal__item" + (isSelected ? " is-selected" : "") + (blocked ? " is-disabled" : "")}
                     onClick={() => {
                       setSelected(status);
                       setDropOpen(false);
@@ -373,11 +379,17 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Proper
                     <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[meta.variant] }} />
                     <span className="pp-smodal__label">{status}</span>
                     <span className="pp-smodal__spacer" />
-                    {isCurrent && <span className="pp-amodal__current-tag">Current</span>}
-                    {isSelected && (
-                      <span className="pp-smodal__check">
-                        <Icon name="check" size={16} strokeWidth={2.5} />
-                      </span>
+                    {blocked ? (
+                      <span className="pp-smodal__req">Needs agent</span>
+                    ) : (
+                      <>
+                        {isCurrent && <span className="pp-amodal__current-tag">Current</span>}
+                        {isSelected && (
+                          <span className="pp-smodal__check">
+                            <Icon name="check" size={16} strokeWidth={2.5} />
+                          </span>
+                        )}
+                      </>
                     )}
                   </button>
                 );
@@ -405,8 +417,24 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
   const hasAgent = !!property.agent;
   const [selected, setSelected] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Assignable = the verified agents in the live roster, so an agent promoted
+  // from Pending → Verified on the Agents page becomes selectable here at once.
+  const { agents } = useProperties();
+  const verifiedAgents = useMemo(
+    () =>
+      agents
+        .filter((a) => a.verification === "Verified")
+        .map((a) => ({ name: a.name, agency: a.agency, img: a.img || "" }))
+        .sort((x, y) => x.name.localeCompare(y.name)),
+    [agents],
+  );
+
+  const q = query.trim().toLowerCase();
+  const filtered = q ? verifiedAgents.filter((a) => a.name.toLowerCase().includes(q) || a.agency.toLowerCase().includes(q)) : verifiedAgents;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -425,7 +453,10 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
     setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
   };
   const toggleDrop = () => {
-    if (!dropOpen) calcPos();
+    if (!dropOpen) {
+      calcPos();
+      setQuery("");
+    }
     setDropOpen((v) => !v);
   };
 
@@ -446,7 +477,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
     };
   }, [dropOpen]);
 
-  const selectedAgent = selected ? AGENTS_LIST.find((a) => a.name === selected) : null;
+  const selectedAgent = selected ? verifiedAgents.find((a) => a.name === selected) : null;
   const canConfirm = selected && selected !== (property.agent?.name ?? null);
 
   return createPortal(
@@ -467,7 +498,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
         <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} onClick={toggleDrop}>
           {selectedAgent ? (
             <>
-              <Avatar src={selectedAgent.img} name={selectedAgent.name} size="sm" verified={selectedAgent.verified} />
+              <Avatar src={selectedAgent.img} name={selectedAgent.name} size="sm" verified />
               <span className="pp-amodal__trigger-name">{selectedAgent.name}</span>
             </>
           ) : (
@@ -481,31 +512,52 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
         {dropOpen &&
           dropPos &&
           createPortal(
-            <div className="pp-amodal__drop" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
-              {AGENTS_LIST.map((agent) => {
-                const isCurrent = property.agent?.name === agent.name;
-                const isSelected = selected === agent.name;
-                return (
-                  <button
-                    key={agent.name}
-                    type="button"
-                    className={"pp-amodal__agent" + (isSelected ? " is-selected" : "")}
-                    onClick={() => {
-                      setSelected(agent.name);
-                      setDropOpen(false);
-                    }}
-                  >
-                    <Avatar src={agent.img} name={agent.name} size="sm" verified={agent.verified} />
-                    <span className="pp-amodal__agent-name">{agent.name}</span>
-                    {isCurrent && <span className="pp-amodal__current-tag">Current</span>}
-                    {isSelected && (
-                      <span className="pp-amodal__check">
-                        <Icon name="check" size={16} strokeWidth={2.5} />
-                      </span>
-                    )}
+            <div className="pp-amodal__drop pp-amodal__drop--search" role="listbox" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
+              <div className="pp-amodal__search">
+                <Icon name="search" size={15} className="pp-amodal__search-ic" />
+                <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name or agency…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
+                {query && (
+                  <button type="button" className="pp-amodal__search-clear" aria-label="Clear search" onClick={() => setQuery("")}>
+                    <Icon name="x" size={14} />
                   </button>
-                );
-              })}
+                )}
+              </div>
+              <div className="pp-amodal__list">
+                {filtered.length === 0 ? (
+                  <div className="pp-amodal__empty">
+                    <Icon name="user-x" size={18} />
+                    No agents match “{query}”.
+                  </div>
+                ) : (
+                  filtered.map((agent) => {
+                    const isCurrent = property.agent?.name === agent.name;
+                    const isSelected = selected === agent.name;
+                    return (
+                      <button
+                        key={agent.name}
+                        type="button"
+                        className={"pp-amodal__agent" + (isSelected ? " is-selected" : "")}
+                        onClick={() => {
+                          setSelected(agent.name);
+                          setDropOpen(false);
+                        }}
+                      >
+                        <Avatar src={agent.img} name={agent.name} size="sm" verified />
+                        <span className="pp-amodal__agent-body">
+                          <span className="pp-amodal__agent-name">{agent.name}</span>
+                          {agent.agency && <span className="pp-amodal__agent-agency">{agent.agency}</span>}
+                        </span>
+                        {isCurrent && <span className="pp-amodal__current-tag">Current</span>}
+                        {isSelected && (
+                          <span className="pp-amodal__check">
+                            <Icon name="check" size={16} strokeWidth={2.5} />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>,
             document.body,
           )}
@@ -518,8 +570,8 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
             className="pp-modal__confirm"
             disabled={!canConfirm}
             onClick={() => {
-              const a = AGENTS_LIST.find((x) => x.name === selected);
-              if (a) onConfirm(a);
+              const a = verifiedAgents.find((x) => x.name === selected);
+              if (a) onConfirm({ name: a.name, verified: true, img: a.img });
             }}
           >
             <Icon name={hasAgent ? "user-check" : "user-plus"} size={15} />
@@ -925,6 +977,7 @@ function PropertiesTableCard(props: {
             <div className="pp-filterbar__row">
               <CustomSelect value={props.advFilters.type} onChange={(v) => props.onAdvFilter("type", v)} options={opt(TYPE_OPTIONS)} placeholder="Property type" />
               <CustomSelect value={props.advFilters.city} onChange={(v) => props.onAdvFilter("city", v)} options={opt(props.cityOptions)} placeholder="Location" />
+              <CustomSelect value={props.advFilters.agent} onChange={(v) => props.onAdvFilter("agent", v)} options={AGENT_FILTER_OPTIONS} placeholder="Agent" />
               <CustomSelect value={props.advFilters.priceRange} onChange={(v) => props.onAdvFilter("priceRange", v)} options={opt(PRICE_RANGES)} placeholder="Price range" />
               <CalendarPicker value={props.advFilters.dateAdded} onChange={(v) => props.onAdvFilter("dateAdded", v)} />
               <div className="pp-filterbar__actions">
@@ -983,7 +1036,10 @@ export function PropertiesApp() {
   const searchParams = useSearchParams();
   const { properties, setProperties, counts, locationTree } = useProperties();
   const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState(() => {
+    const s = searchParams.get("status");
+    return s && STATUS_TABS.some((t) => t.id === s) ? s : "all";
+  });
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [advFilters, setAdvFilters] = useState<AdvFilters>(EMPTY_ADV);
@@ -1094,9 +1150,11 @@ export function PropertiesApp() {
       if (activeTab === "sold" && p.status !== "Sold") return false;
       if (activeTab === "rented" && p.status !== "Rented") return false;
       if (activeTab === "pending" && p.status !== "Pending") return false;
+      if (activeTab === "draft" && p.status !== "Draft") return false;
       if (advFilters.type && p.type !== advFilters.type) return false;
       if (advFilters.city && p.city !== advFilters.city) return false;
-      if (advFilters.agent && (!p.agent || p.agent.name !== advFilters.agent)) return false;
+      if (advFilters.agent === AGENT_ASSIGNED && !p.agent) return false;
+      if (advFilters.agent === AGENT_UNASSIGNED && p.agent) return false;
       if (sq) {
         const hay = [p.title, p.area, p.city, p.owner.name, p.agent ? p.agent.name : "", p.id].join(" ").toLowerCase();
         if (!hay.includes(sq)) return false;

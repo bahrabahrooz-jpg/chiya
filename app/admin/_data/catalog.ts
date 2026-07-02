@@ -29,6 +29,38 @@ export interface OwnerRef {
   phone: string;
   type: string;
 }
+/** Amenity captured from the Add-property form (label + its icon). */
+export interface PropertyAmenity {
+  icon: IconName;
+  label: string;
+}
+/** Rich, user-entered detail carried from the Add-property wizard. Every field
+    is optional: the 320 generated seed records omit it and the detail page falls
+    back to its deterministic generators, while a listing created through the
+    form fills it in so the detail page shows exactly what was entered. */
+export interface PropertyDetails {
+  description?: string;
+  currency?: string; // "USD" | "IQD" | "EUR"
+  areaUnit?: string; // "sqm" | "sq ft"
+  ownerEmail?: string;
+  ownerType?: string;
+  agentPhone?: string;
+  project?: string;
+  street?: string;
+  building?: string;
+  lat?: string;
+  lng?: string;
+  locNotes?: string;
+  year?: string;
+  orientation?: string;
+  condition?: string;
+  furnishing?: string;
+  parking?: number;
+  floors?: number;
+  amenities?: PropertyAmenity[];
+  gallery?: string[];
+  tourUrl?: string;
+}
 export interface PropertyRecord {
   id: string;
   title: string;
@@ -52,6 +84,8 @@ export interface PropertyRecord {
   published: boolean;
   listingDate: string;
   updated: string;
+  /** Present only for listings created through the Add-property wizard. */
+  details?: PropertyDetails;
 }
 
 export interface MemberRecord {
@@ -86,6 +120,11 @@ export interface AgentRecord {
   languages?: string[];
   areas?: string[];
 }
+
+/* A live listing must have an assigned agent — you can't publish, sell, or rent a
+   property with nobody on it. Only Draft / Pending listings may be unassigned. */
+export const AGENT_REQUIRED_STATUSES = ["Published", "Sold", "Rented"];
+export const statusRequiresAgent = (status: string) => AGENT_REQUIRED_STATUSES.includes(status);
 
 export interface LocationNode {
   id: string;
@@ -375,6 +414,10 @@ function buildAgents(): AgentRecord[] {
 }
 export const AGENTS: AgentRecord[] = buildAgents();
 
+/* Only verified agents can be assigned to a listing, so a property never shows
+   a "Pending" agent on its card. */
+const VERIFIED_AGENTS: AgentRecord[] = AGENTS.filter((a) => a.verification === "Verified");
+
 function buildProperties(): PropertyRecord[] {
   const r = rng(424242);
   const out: PropertyRecord[] = [];
@@ -402,11 +445,15 @@ function buildProperties(): PropertyRecord[] {
     const ownerPool = listing === "rent" ? LANDLORD_MEMBERS : SELLER_MEMBERS;
     const owner = listing === "rent" ? ownerPool[landlordCursor++ % ownerPool.length] : ownerPool[sellerCursor++ % ownerPool.length];
 
-    const hasAgent = r() < 0.85;
+    // A live listing (Published / Sold / Rented) must always have a verified
+    // agent — you can't sell, rent, or publish a property with nobody on it.
+    // Only Draft / Pending listings may be left unassigned.
+    const mustHaveAgent = status === "Published" || status === "Sold" || status === "Rented";
+    const hasAgent = mustHaveAgent || r() < 0.5;
     let agentRec: AgentRecord | null = null;
     if (hasAgent) {
-      const sameCity = AGENTS.filter((a) => a.city === city);
-      agentRec = sameCity.length && r() < 0.7 ? pick(r, sameCity) : pick(r, AGENTS);
+      const sameCity = VERIFIED_AGENTS.filter((a) => a.city === city);
+      agentRec = sameCity.length && r() < 0.7 ? pick(r, sameCity) : pick(r, VERIFIED_AGENTS);
     }
 
     const beds = type === "Land" || type === "Office" ? 0 : randInt(r, 1, 6);
@@ -425,7 +472,9 @@ function buildProperties(): PropertyRecord[] {
         : randInt(r, 150, 1600) * 1000; // 150k – 1.6M
 
     const daysAgo = randInt(r, 1, 540);
-    const updatedDaysAgo = Math.max(0, daysAgo - randInt(r, 0, 6));
+    // Last activity (sale/rental close or edit) happens sometime between the
+    // listing date and today — so recent transactions actually exist.
+    const updatedDaysAgo = randInt(r, 0, daysAgo);
     const adj = TITLE_ADJ[(i * 3) % TITLE_ADJ.length];
     const noun = pick(r, NOUN_BY_TYPE[type]);
     const published = status === "Published" || status === "Sold" || status === "Rented";
@@ -483,6 +532,38 @@ export function countProperties(list: PropertyRecord[]): PropertyCounts {
     else if (p.status === "Rented") counts.rented++;
   }
   return counts;
+}
+
+/* Days between a "Mon D, YYYY" date string and the catalog's TODAY (0 = today,
+   negative = future). Returns null for an unparseable string (e.g. "—"). */
+export function daysAgoFrom(dateStr: string): number | null {
+  const m = /^([A-Za-z]{3})\s+(\d+),\s*(\d+)$/.exec(dateStr.trim());
+  if (!m) return null;
+  const mi = MONTHS_ABBR.indexOf(m[1]);
+  if (mi < 0) return null;
+  const d = new Date(Number(m[3]), mi, Number(m[2]));
+  return Math.round((TODAY.getTime() - d.getTime()) / 86400000);
+}
+
+export type CountPeriod = "today" | "week" | "month" | "year";
+/* Inclusive rolling window, in days ago, for each dashboard period. */
+const PERIOD_MAX_DAYS: Record<CountPeriod, number> = { today: 0, week: 6, month: 29, year: 364 };
+
+/* Count Sold / Rented listings whose last status change (p.updated) falls inside
+   the selected rolling window — i.e. how many properties actually sold or rented
+   in that period. Drawn from the same live records as every other KPI. */
+export function countSoldRentedInPeriod(list: PropertyRecord[], period: CountPeriod): { sold: number; rented: number } {
+  const max = PERIOD_MAX_DAYS[period];
+  let sold = 0;
+  let rented = 0;
+  for (const p of list) {
+    if (p.status !== "Sold" && p.status !== "Rented") continue;
+    const ago = daysAgoFrom(p.updated);
+    if (ago == null || ago < 0 || ago > max) continue;
+    if (p.status === "Sold") sold++;
+    else rented++;
+  }
+  return { sold, rented };
 }
 
 /** Overlay each member's owned-listing count from the live property list. */

@@ -3,11 +3,11 @@ import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
 import { fmtUSD, type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
 
-export const ROLE_META: Record<string, { variant: BadgeVariant }> = {
-  Buyer: { variant: "info" },
-  Seller: { variant: "success" },
-  Landlord: { variant: "neutral" },
-  Tenant: { variant: "brand" },
+export const ROLE_META: Record<string, { variant: BadgeVariant; cls: string }> = {
+  Buyer: { variant: "info", cls: "mp-role--buyer" },
+  Seller: { variant: "success", cls: "mp-role--seller" },
+  Landlord: { variant: "neutral", cls: "mp-role--landlord" },
+  Tenant: { variant: "brand", cls: "mp-role--tenant" },
 };
 export const LISTING_STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean; icon?: IconName }> = {
   Published: { variant: "success", dot: true },
@@ -16,12 +16,12 @@ export const LISTING_STATUS_META: Record<string, { variant: BadgeVariant; dot?: 
   Pending: { variant: "warning", dot: true },
 };
 export const LISTING_TYPE_META: Record<string, { variant: BadgeVariant }> = {
-  "For sale": { variant: "success" },
+  "For sale": { variant: "brand" },
   "For rent": { variant: "info" },
 };
-export const MEMBER_STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean }> = {
-  Active: { variant: "success", dot: true },
-  Inactive: { variant: "neutral", dot: true },
+export const MEMBER_STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean; cls?: string }> = {
+  Active: { variant: "success", dot: true, cls: "mp-statusbadge" },
+  Inactive: { variant: "neutral", dot: true, cls: "mp-statusbadge" },
 };
 export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; icon?: IconName; cls?: string }> = {
   Pending: { variant: "warning", icon: "clock", cls: "vw-st--pending" },
@@ -78,14 +78,14 @@ export const KPIS: KpiCard[] = [
 
 const TH = (w: string) => "https://images.unsplash.com/" + w + "?auto=format&fit=crop&w=160&q=70";
 
-export interface ListingRow { id: string; title: string; loc: string; img: string; type: string; status: string; price: string; per?: string; date: string }
+export interface ListingRow { id: string; title: string; loc: string; img: string; propertyType: string; type: string; owner: string; status: string; price: string; per?: string; date: string }
 export const LISTINGS: ListingRow[] = [
-  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", img: TH("photo-1613490493576-7fde63acd811"), type: "For sale", status: "Published", price: "$1,200,000", date: "Jun 12, 2026" },
-  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", img: TH("photo-1545324418-cc1a3fa10c00"), type: "For rent", status: "Published", price: "$1,650", per: "/mo", date: "Jun 4, 2026" },
-  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", img: TH("photo-1600607687939-ce8a6c25118c"), type: "For sale", status: "Sold", price: "$980,000", date: "May 30, 2026" },
-  { id: "CH-2008", title: "Lakeside Apartment", loc: "Dukan, Sulaymaniyah", img: TH("photo-1560448204-e02f11c3d0e2"), type: "For sale", status: "Pending", price: "$365,000", date: "May 22, 2026" },
-  { id: "CH-2022", title: "Park View Loft", loc: "Dream City, Erbil", img: TH("photo-1502672260266-1c1ef2d93688"), type: "For rent", status: "Rented", price: "$1,100", per: "/mo", date: "May 18, 2026" },
-  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", img: TH("photo-1568605114967-8130f3a36994"), type: "For sale", status: "Published", price: "$845,000", date: "May 9, 2026" },
+  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", img: TH("photo-1613490493576-7fde63acd811"), propertyType: "Villa", type: "For sale", owner: "Rawa Jalal", status: "Published", price: "$1,200,000", date: "Jun 12, 2026" },
+  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", img: TH("photo-1545324418-cc1a3fa10c00"), propertyType: "Apartment", type: "For rent", owner: "Dilan Rashid", status: "Published", price: "$1,650", per: "/mo", date: "Jun 4, 2026" },
+  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", img: TH("photo-1600607687939-ce8a6c25118c"), propertyType: "Penthouse", type: "For sale", owner: "Sara Hama", status: "Sold", price: "$980,000", date: "May 30, 2026" },
+  { id: "CH-2008", title: "Lakeside Apartment", loc: "Dukan, Sulaymaniyah", img: TH("photo-1560448204-e02f11c3d0e2"), propertyType: "Apartment", type: "For sale", owner: "Ahmed Karim", status: "Pending", price: "$365,000", date: "May 22, 2026" },
+  { id: "CH-2022", title: "Park View Loft", loc: "Dream City, Erbil", img: TH("photo-1502672260266-1c1ef2d93688"), propertyType: "Apartment", type: "For rent", owner: "Dilan Rashid", status: "Rented", price: "$1,100", per: "/mo", date: "May 18, 2026" },
+  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", img: TH("photo-1568605114967-8130f3a36994"), propertyType: "Villa", type: "For sale", owner: "Rawa Jalal", status: "Published", price: "$845,000", date: "May 9, 2026" },
 ];
 
 export interface MemberRow { id: string; name: string; phone: string; img: string; roles: string[]; status: string; activity: string }
@@ -196,7 +196,9 @@ export function buildListings(properties: PropertyRecord[], name: string): Listi
       title: p.title,
       loc: `${p.area}, ${p.city}`,
       img: p.img,
+      propertyType: p.type,
       type: p.listing === "rent" ? "For rent" : "For sale",
+      owner: p.owner.name,
       status: p.status,
       price: fmtUSD(p.price),
       per: p.per,

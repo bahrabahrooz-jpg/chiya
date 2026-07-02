@@ -14,6 +14,7 @@ import {
   countLocations,
   countMembers,
   countProperties,
+  statusRequiresAgent,
   withAgentStats,
   withMemberCounts,
   type AgentCounts,
@@ -59,10 +60,23 @@ interface PropertiesContextValue {
 
 const PropertiesContext = createContext<PropertiesContextValue | null>(null);
 
+/* Enforce the core invariant on any property set we load: a live listing
+   (Published / Sold / Rented) must have an assigned agent. Anything that
+   violates it — stale cached data, or a record from an older schema — is pulled
+   back to "Pending" until an agent is assigned. Runs on the seed and on every
+   hydrate so the UI can trust that no live listing is ever unassigned. */
+function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
+  return list.map((p) => (!p.agent && statusRequiresAgent(p.status) ? { ...p, status: "Pending", published: false } : p));
+}
+
 /* The admin store lives in memory, but several actions (e.g. the "Add property"
    button) trigger a full-page navigation that would otherwise reset it. We
    persist the mutable slices to localStorage so changes survive reloads. */
-const STORAGE_KEY = "chiya:admin-store:v1";
+/* Bump the version whenever the seed schema/semantics change so stale caches are
+   discarded. v2: only verified agents can be assigned (no "Pending" agent cards).
+   v3: sold/rented "updated" dates spread between listing and today (period KPIs).
+   v4: live listings (Published/Sold/Rented) always have an assigned agent. */
+const STORAGE_KEY = "chiya:admin-store:v4";
 
 /**
  * Single source of truth for the whole admin area. Properties, members, and
@@ -71,7 +85,7 @@ const STORAGE_KEY = "chiya:admin-store:v1";
  * change) updates every derived KPI consistently.
  */
 export function PropertiesProvider({ children }: { children: React.ReactNode }) {
-  const [properties, setProperties] = useState<PropertyRecord[]>(PROPERTIES);
+  const [properties, setProperties] = useState<PropertyRecord[]>(() => normalizeProperties(PROPERTIES));
   const [memberRoster, setMemberRoster] = useState<MemberRecord[]>(MEMBERS);
   const [agentRoster, setAgentRoster] = useState<AgentRecord[]>(AGENTS);
   const [locationDefs, setLocationDefs] = useState<CityDef[]>(() => cloneLocationDefs(LOCATION_DEF));
@@ -116,7 +130,7 @@ export function PropertiesProvider({ children }: { children: React.ReactNode }) 
       if (!raw) return;
       const data = JSON.parse(raw) as Partial<{ properties: PropertyRecord[]; members: MemberRecord[]; agents: AgentRecord[]; locations: CityDef[] }>;
       /* eslint-disable react-hooks/set-state-in-effect -- hydrating from localStorage after mount avoids an SSR hydration mismatch */
-      if (Array.isArray(data.properties)) setProperties(data.properties);
+      if (Array.isArray(data.properties)) setProperties(normalizeProperties(data.properties));
       if (Array.isArray(data.members)) setMemberRoster(data.members);
       if (Array.isArray(data.agents)) setAgentRoster(data.agents);
       if (Array.isArray(data.locations)) setLocationDefs(data.locations);

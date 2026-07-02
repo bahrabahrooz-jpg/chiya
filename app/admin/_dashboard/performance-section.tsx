@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { PERF_AXIS, PERF_SERIES } from "./data";
 
 const PERIODS = [
+  { id: "today", short: "Today" },
   { id: "week", short: "Week" },
   { id: "month", short: "Month" },
   { id: "year", short: "Year" },

@@ -10,11 +10,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeSize } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
 import {
+  ASSIGNABLE_AGENTS,
   INIT_NOTES,
   NOTE_KIND,
   TIMELINE,
   VIEW_STATUS_DOT,
   VIEW_STATUS_META,
+  buildViewingAgent,
   getViewingDetail,
   noteRoleLabel,
   type NoteItem,
@@ -240,6 +242,141 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
           <button type="button" className="pp-modal__delete" onClick={onConfirm}>
             <Icon name="trash-2" size={15} />
             Delete note
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReassignAgentModal({ current, onCancel, onConfirm }: { current: string; onCancel: () => void; onConfirm: (name: string) => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [dropOpen, setDropOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q ? ASSIGNABLE_AGENTS.filter((a) => a.name.toLowerCase().includes(q) || a.agency.toLowerCase().includes(q)) : ASSIGNABLE_AGENTS;
+  const selectedAgent = selected ? ASSIGNABLE_AGENTS.find((a) => a.name === selected) : null;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (dropOpen) setDropOpen(false);
+        else onCancel();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel, dropOpen]);
+
+  const calcPos = () => {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+  };
+  const toggleDrop = () => {
+    if (!dropOpen) {
+      calcPos();
+      setQuery("");
+    }
+    setDropOpen((v) => !v);
+  };
+  useEffect(() => {
+    if (!dropOpen) return;
+    const close = (e: MouseEvent) => {
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (document.querySelector(".pp-amodal__drop")?.contains(e.target as Node)) return;
+      setDropOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    window.addEventListener("scroll", calcPos, true);
+    window.addEventListener("resize", calcPos);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      window.removeEventListener("scroll", calcPos, true);
+      window.removeEventListener("resize", calcPos);
+    };
+  }, [dropOpen]);
+
+  const canConfirm = selected && selected !== current;
+  return (
+    <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="pp-modal pp-modal--agent" role="dialog" aria-modal="true" aria-labelledby="vwd-agent-title">
+        <div className="pp-modal__icon pp-modal__icon--assign">
+          <Icon name="user-cog" size={24} strokeWidth={1.8} />
+        </div>
+        <h2 className="pp-modal__title" id="vwd-agent-title">
+          Reassign agent
+        </h2>
+        <p className="pp-modal__sublabel">Select new agent</p>
+        <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} style={{ marginBottom: 22 }} aria-haspopup="listbox" aria-expanded={dropOpen} onClick={toggleDrop}>
+          {selectedAgent ? (
+            <>
+              <Avatar src={selectedAgent.img} name={selectedAgent.name} size="sm" verified={selectedAgent.verified} />
+              <span className="pp-amodal__trigger-name">{selectedAgent.name}</span>
+            </>
+          ) : (
+            <span className="pp-amodal__trigger-placeholder">
+              <Icon name="user" size={16} />
+              Choose an agent…
+            </span>
+          )}
+          <Icon name="chevron-down" size={15} className="pp-amodal__trigger-chev" />
+        </button>
+        {dropOpen && dropPos && (
+          <div className="pp-amodal__drop pp-amodal__drop--search" role="listbox" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
+            <div className="pp-amodal__search">
+              <Icon name="search" size={15} className="pp-amodal__search-ic" />
+              <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name or agency…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
+              {query && (
+                <button type="button" className="pp-amodal__search-clear" aria-label="Clear search" onClick={() => setQuery("")}>
+                  <Icon name="x" size={14} />
+                </button>
+              )}
+            </div>
+            <div className="pp-amodal__list">
+              {filtered.length === 0 ? (
+                <div className="pp-amodal__empty">
+                  <Icon name="user-x" size={18} />
+                  No agents match “{query}”.
+                </div>
+              ) : (
+                filtered.map((agent) => (
+                  <button
+                    key={agent.name}
+                    type="button"
+                    className={"pp-amodal__agent" + (selected === agent.name ? " is-selected" : "")}
+                    onClick={() => {
+                      setSelected(agent.name);
+                      setDropOpen(false);
+                    }}
+                  >
+                    <Avatar src={agent.img} name={agent.name} size="sm" verified={agent.verified} />
+                    <span className="pp-amodal__agent-body">
+                      <span className="pp-amodal__agent-name">{agent.name}</span>
+                      {agent.agency && <span className="pp-amodal__agent-agency">{agent.agency}</span>}
+                    </span>
+                    {current === agent.name && <span className="pp-amodal__current-tag">Current</span>}
+                    {selected === agent.name && (
+                      <span className="pp-amodal__check">
+                        <Icon name="check" size={16} strokeWidth={2.5} />
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+        <div className="pp-modal__actions">
+          <button type="button" className="pp-modal__cancel" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="button" className="pp-modal__confirm" disabled={!canConfirm} onClick={() => selected && onConfirm(selected)}>
+            <Icon name="user-check" size={15} />
+            Reassign agent
           </button>
         </div>
       </div>
@@ -627,7 +764,7 @@ export function ViewingDetailApp() {
     setV(base);
     setStatus(base.status);
   }
-  const [modal, setModal] = useState<"status" | "delete" | "edit" | null>(null);
+  const [modal, setModal] = useState<"status" | "delete" | "edit" | "agent" | null>(null);
   const [notes, setNotes] = useState<NoteItem[]>(INIT_NOTES);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -759,14 +896,28 @@ export function ViewingDetailApp() {
             }}
             onDelete={(i) => setNoteToDelete(i)}
           />
-          <SectionCard title="Activity timeline" desc="Chronological history of this viewing.">
+          <SectionCard
+            title="Activity timeline"
+            desc="Chronological history of this viewing."
+            action={
+              <Button
+                hierarchy="link"
+                size="sm"
+                iconTrailing="arrow-right"
+                style={{ color: "var(--text-secondary)" }}
+                onClick={() => pushToast({ tone: "brand", icon: "history", title: "Activity", msg: "Opening full activity history for " + v.id + "." })}
+              >
+                View all
+              </Button>
+            }
+          >
             <Timeline />
           </SectionCard>
         </div>
 
         <aside className="pd-grid__aside">
           <MemberCard m={v.member} />
-          <AgentCard a={v.agent} href={`/admin/agents/${v.agent.id}`} onReassign={() => pushToast({ tone: "default", icon: "user-cog", title: "Reassign agent", msg: "Use the property page to reassign the agent for this listing." })} />
+          <AgentCard a={v.agent} href={`/admin/agents/${v.agent.id}`} onReassign={() => setModal("agent")} />
         </aside>
       </div>
 
@@ -796,6 +947,17 @@ export function ViewingDetailApp() {
             const meta = VIEW_STATUS_META[next] || {};
             const danger = next === "Cancelled" || next === "No Show";
             pushToast({ tone: danger ? "danger" : "brand", icon: meta.icon || "refresh-cw", title: "Status updated", msg: v.id + " is now marked as " + next + "." });
+          }}
+        />
+      )}
+      {modal === "agent" && (
+        <ReassignAgentModal
+          current={v.agent.name}
+          onCancel={() => setModal(null)}
+          onConfirm={(name) => {
+            setV((prev) => ({ ...prev, agent: buildViewingAgent(name) }));
+            setModal(null);
+            pushToast({ tone: "brand", icon: "user-check", title: "Agent reassigned", msg: name + " is now hosting this viewing." });
           }}
         />
       )}

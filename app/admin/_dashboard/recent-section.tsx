@@ -54,7 +54,7 @@ function AgentRow({ item }: { item: RecentAgent }) {
           </Badge>
         ) : (
           <Badge variant="warning" size="sm" dot>
-            Pending verification
+            Pending
           </Badge>
         )}
       </div>
@@ -64,7 +64,7 @@ function AgentRow({ item }: { item: RecentAgent }) {
 
 export function RecentSection() {
   return (
-    <section className="ax-section ax-grid2" aria-label="Recent properties and recent agents">
+    <section className="ax-section ax-grid2 ax-grid2--stretch" aria-label="Recent properties and recent agents">
       <div className="ax-col">
         <div className="ax-section__head">
           <div className="ax-section__heading">
@@ -75,7 +75,7 @@ export function RecentSection() {
           </Link>
         </div>
         <div className="ax-listcard">
-          {RECENT_PROPERTIES.map((p) => (
+          {RECENT_PROPERTIES.filter((p) => p.status === "Published").slice(0, 3).map((p) => (
             <PropertyRow key={p.id} item={p} />
           ))}
         </div>
@@ -90,7 +90,7 @@ export function RecentSection() {
           </Link>
         </div>
         <div className="ax-listcard">
-          {RECENT_AGENTS.map((a) => (
+          {RECENT_AGENTS.filter((a) => a.verified).map((a) => (
             <AgentRow key={a.id} item={a} />
           ))}
         </div>

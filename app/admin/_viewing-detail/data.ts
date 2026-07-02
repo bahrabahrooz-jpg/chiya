@@ -1,7 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import { VIEWINGS, PROPERTIES as VW_PROPS } from "../_viewings/data";
-import { MEMBERS as CAT_MEMBERS, fmtUSD, getAgentByName, getPropertyById } from "../_data/catalog";
+import { AGENTS as CAT_AGENTS, MEMBERS as CAT_MEMBERS, fmtUSD, getAgentByName, getPropertyById } from "../_data/catalog";
 
 export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; icon: IconName; cls: string }> = {
   Scheduled: { variant: "info", icon: "clock", cls: "vwd-st--scheduled" },
@@ -96,6 +96,40 @@ function addMinutes(time: string, mins: number): string {
   return `${h12}:${String(M).padStart(2, "0")} ${ap}`;
 }
 
+/* Enrich a bare agent name into the viewing's rich agent shape, pulling real
+   contact details from the catalog roster and deriving stable rating/experience
+   figures from the name. Shared by getViewingDetail and the reassign flow. */
+export function buildViewingAgent(name: string): ViewingDetail["agent"] {
+  const catAgent = getAgentByName(name);
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return {
+    id: catAgent?.id ?? VIEWING.agent.id,
+    name,
+    phone: catAgent?.phone ?? VIEWING.agent.phone,
+    email: catAgent?.email ?? VIEWING.agent.email,
+    experience: catAgent?.experience ? Number(String(catAgent.experience).replace(/\D/g, "")) || 5 : 3 + (h % 8),
+    img: catAgent?.img ?? VIEWING.agent.img,
+    agency: catAgent?.agency ?? VIEWING.agent.agency,
+    rating: Number((4.4 + (h % 6) / 10).toFixed(1)),
+    reviews: 20 + (h % 80),
+    // Only verified agents can host a viewing, so the card is never "Pending".
+    verified: true,
+  };
+}
+
+/* Verified roster for the reassign picker (searchable). Unverified agents are
+   excluded — only verified agents can be assigned. */
+export interface AssignableAgent { name: string; agency: string; img: string; verified: boolean }
+export const ASSIGNABLE_AGENTS: AssignableAgent[] = CAT_AGENTS.filter((a) => a.verification === "Verified")
+  .map((a) => ({
+    name: a.name,
+    agency: a.agency,
+    img: a.img || "",
+    verified: true,
+  }))
+  .sort((x, y) => x.name.localeCompare(y.name));
+
 export function getViewingDetail(id: string): ViewingDetail {
   const real = VIEWINGS.find((x) => x.id === id);
   if (!real) return VIEWING;
@@ -103,9 +137,6 @@ export function getViewingDetail(id: string): ViewingDetail {
   const comboProp = VW_PROPS.find((p) => p.title === real.property.title && p.location === real.property.location);
   const fullProp = comboProp ? getPropertyById(comboProp.id) : undefined;
   const catMember = CAT_MEMBERS.find((m) => m.name === real.member);
-  const catAgent = getAgentByName(real.agent);
-  let h = 0;
-  for (let i = 0; i < real.agent.length; i++) h = (h * 31 + real.agent.charCodeAt(i)) >>> 0;
 
   return {
     ...VIEWING,
@@ -132,18 +163,7 @@ export function getViewingDetail(id: string): ViewingDetail {
       phone: catMember?.phone ?? VIEWING.member.phone,
       email: catMember?.email ?? VIEWING.member.email,
     },
-    agent: {
-      id: catAgent?.id ?? VIEWING.agent.id,
-      name: real.agent,
-      phone: catAgent?.phone ?? VIEWING.agent.phone,
-      email: catAgent?.email ?? VIEWING.agent.email,
-      experience: catAgent?.experience ? Number(String(catAgent.experience).replace(/\D/g, "")) || 5 : 3 + (h % 8),
-      img: catAgent?.img ?? VIEWING.agent.img,
-      agency: catAgent?.agency ?? VIEWING.agent.agency,
-      rating: Number((4.4 + (h % 6) / 10).toFixed(1)),
-      reviews: 20 + (h % 80),
-      verified: catAgent ? catAgent.verification === "Verified" : true,
-    },
+    agent: buildViewingAgent(real.agent),
   };
 }
 

@@ -1,0 +1,323 @@
+/* ============================================================
+   ADMIN LOGIN  (al- = admin login; distinct from the public site auth)
+   Two-panel: sign-in form on the left, brand image on the right.
+   Rendered bare (no admin shell).
+   ============================================================ */
+.ax-authpage {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--surface-card);
+}
+
+.al-page {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* full-bleed two-panel container */
+.al-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 4fr);
+  min-height: 100vh;
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+/* ---------- left: form column ---------- */
+.al-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(28px, 6vh, 60px) 40px 40px;
+}
+.al-head {
+  flex: none;
+}
+/* the gap between the logo and the form — the divider is centered inside it */
+.al-mid {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+.al-form-inner {
+  flex: none;
+  width: 100%;
+  max-width: 360px;
+}
+/* balances .al-mid below the form so the form stays roughly centered */
+.al-tail {
+  flex: 1 1 0;
+}
+
+/* brand lockup */
+.al-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+}
+
+/* small divider — centered in the gap between the logo and the welcome text */
+.al-divider {
+  display: block;
+  width: 54px;
+  height: 1px;
+  background: var(--border-subtle);
+}
+.al-brand__mark {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  background: url("/brand/chiya-symbol.svg") center / contain no-repeat;
+}
+.al-brand__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: 0.16em;
+  color: var(--green-700);
+}
+
+/* headings */
+.al-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.12;
+  text-align: center;
+}
+.al-desc {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 8px 0 26px;
+  text-wrap: pretty;
+  text-align: center;
+}
+
+/* form */
+.al-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.al-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.al-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.al-inputwrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.al-input__lead {
+  position: absolute;
+  left: 14px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.al-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 16px 0 42px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-xs);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.al-input--pw {
+  padding-right: 46px;
+  /* the Hanken webfont draws the mask bullet (U+2022) as a square, so force the
+     password field to a system font stack that renders it as a round dot */
+  font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+}
+/* hide the browser's native password reveal/clear controls (Edge/Chrome on
+   Windows) — we provide our own show/hide toggle */
+.al-input--pw::-ms-reveal,
+.al-input--pw::-ms-clear {
+  display: none;
+}
+.al-input::placeholder {
+  color: var(--text-placeholder);
+}
+.al-input:hover {
+  border-color: var(--border-strong);
+}
+.al-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus-brand);
+}
+.al-input--error,
+.al-input--error:hover,
+.al-input--error:focus {
+  border-color: var(--error-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--error-500) 20%, transparent);
+}
+.al-errhint {
+  display: block;
+  margin-top: -3px;
+  font-size: 11.5px;
+  color: var(--error-600);
+}
+.al-pwtoggle {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background-color 0.15s;
+}
+.al-pwtoggle:hover {
+  color: var(--text-secondary);
+  background: var(--gray-100);
+}
+.al-pwtoggle:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-brand);
+}
+
+/* remember + forgot row */
+.al-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 0 6px;
+}
+.al-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.al-check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.al-check__box {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-default);
+  border-radius: 5px;
+  background: var(--surface-card);
+  color: transparent;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.al-check input:checked + .al-check__box {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+.al-check input:focus-visible + .al-check__box {
+  box-shadow: var(--shadow-focus-brand);
+}
+.al-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--brand-primary);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.al-link:hover {
+  color: var(--brand-primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* back link (forgot view) */
+.al-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.15s;
+}
+.al-back:hover {
+  color: var(--text-primary);
+}
+
+/* reset-sent confirmation */
+.al-sent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.al-sent__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-2xl);
+  background: var(--brand-subtle);
+  border: 1px solid var(--green-100);
+  color: var(--green-700);
+}
+.al-sent .al-desc {
+  margin-bottom: 24px;
+}
+
+/* ---------- right: image panel ---------- */
+.al-hero {
+  position: relative;
+  overflow: hidden;
+  background: url("/images/hero-villa-bright.png") center / cover no-repeat;
+}
+
+/* ---------- responsive: drop the image, single column ---------- */
+@media (max-width: 860px) {
+  .al-shell {
+    grid-template-columns: 1fr;
+  }
+  .al-hero {
+    display: none;
+  }
+  .al-left {
+    padding: 40px 30px;
+  }
+}

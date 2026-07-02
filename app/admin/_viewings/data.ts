@@ -24,7 +24,10 @@ export interface ComboMember { id: string; name: string; phone: string; email: s
 export const MEMBERS: ComboMember[] = CAT_MEMBERS.map((m) => ({ id: m.id, name: m.name, phone: m.phone, email: m.email }));
 
 export interface ComboAgent { id: string; name: string; phone: string; img: string }
-export const AGENTS: ComboAgent[] = CAT_AGENTS.map((a) => ({ id: a.id, name: a.name, phone: a.phone, img: a.img || FALLBACK_PORTRAIT }));
+/* Only verified agents can host viewings, so an unverified agent is never
+   assignable in the schedule form or generated onto a viewing. */
+const VERIFIED_CAT_AGENTS = CAT_AGENTS.filter((a) => a.verification === "Verified");
+export const AGENTS: ComboAgent[] = VERIFIED_CAT_AGENTS.map((a) => ({ id: a.id, name: a.name, phone: a.phone, img: a.img || FALLBACK_PORTRAIT }));
 
 export const AGENT_IMG: Record<string, string> = Object.fromEntries(AGENTS.map((a) => [a.name, a.img]));
 
@@ -63,7 +66,7 @@ function buildViewings(): ViewingRecord[] {
   for (let n = 0; n < VIEWING_COUNT; n++) {
     const p = CAT_PROPS[(n * 7 + 3) % CAT_PROPS.length];
     const m = CAT_MEMBERS[(n * 5 + 1) % CAT_MEMBERS.length];
-    const agent = p.agent ? p.agent.name : CAT_AGENTS[(n * 3) % CAT_AGENTS.length].name;
+    const agent = p.agent ? p.agent.name : VERIFIED_CAT_AGENTS[(n * 3) % VERIFIED_CAT_AGENTS.length].name;
     const status = GEN_STATUS[Math.floor(r() * GEN_STATUS.length)];
     const offset = Math.floor(r() * 43) - 14; // -14 … +28 days around "today"
     list.push({

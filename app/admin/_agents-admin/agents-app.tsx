@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
@@ -34,7 +34,9 @@ function ActionMenu({
   btnClass,
   ariaLabel,
   status,
+  verification,
   onStatus,
+  onVerify,
   onDelete,
   onEdit,
   onView,
@@ -45,7 +47,9 @@ function ActionMenu({
   btnClass?: string;
   ariaLabel?: string;
   status: string;
+  verification: string;
   onStatus: () => void;
+  onVerify: () => void;
   onDelete: () => void;
   onEdit?: () => void;
   onView?: () => void;
@@ -53,6 +57,7 @@ function ActionMenu({
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const suspended = status === "Suspended";
+  const verified = verification === "Verified";
   useEffect(() => {
     if (!open || !btnRef.current) {
       setPos(null);
@@ -82,9 +87,9 @@ function ActionMenu({
             <Icon name={suspended ? "circle-check" : "circle-pause"} size={17} />
             {suspended ? "Activate agent" : "Suspend agent"}
           </button>
-          <button type="button" className="ag-aitem" role="menuitem" onClick={onClose}>
-            <Icon name="badge-check" size={17} />
-            Manage verification
+          <button type="button" className="ag-aitem" role="menuitem" onClick={onVerify}>
+            <Icon name={verified ? "shield-x" : "badge-check"} size={17} />
+            {verified ? "Revoke verification" : "Verify agent"}
           </button>
         </div>
         <div className="ag-amenu__sect">
@@ -112,10 +117,11 @@ interface CardHandlers {
   onView: (a: AgentRecord) => void;
   onEditRequest: (a: AgentRecord) => void;
   onStatusRequest: (a: AgentRecord) => void;
+  onVerifyRequest: (a: AgentRecord) => void;
   onDeleteRequest: (a: AgentRecord) => void;
 }
 
-function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRequest, onDeleteRequest }: { a: AgentRecord } & CardHandlers) {
+function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRequest, onVerifyRequest, onDeleteRequest }: { a: AgentRecord } & CardHandlers) {
   const ver = VERIFICATION[a.verification] || VERIFICATION.Pending;
   const st = AGENT_STATUS[a.status] || { variant: "neutral" as const, dot: false };
   const verified = a.verification === "Verified";
@@ -143,6 +149,10 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
             setOpenMenu(null);
             onStatusRequest(a);
           }}
+          onVerify={() => {
+            setOpenMenu(null);
+            onVerifyRequest(a);
+          }}
           onDelete={() => {
             setOpenMenu(null);
             onDeleteRequest(a);
@@ -150,6 +160,7 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
           btnClass="ag-card__kebab"
           ariaLabel={"Actions for " + a.name}
           status={a.status}
+          verification={a.verification}
         />
       </div>
 
@@ -239,7 +250,7 @@ function AgentGrid({ rows, ...h }: { rows: AgentRecord[] } & CardHandlers) {
   );
 }
 
-function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRequest, onDeleteRequest }: { a: AgentRecord } & CardHandlers) {
+function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRequest, onVerifyRequest, onDeleteRequest }: { a: AgentRecord } & CardHandlers) {
   const ver = VERIFICATION[a.verification] || VERIFICATION.Pending;
   const st = AGENT_STATUS[a.status] || { variant: "neutral" as const, dot: false };
   const verified = a.verification === "Verified";
@@ -323,6 +334,10 @@ function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusReq
               setOpenMenu(null);
               onStatusRequest(a);
             }}
+            onVerify={() => {
+              setOpenMenu(null);
+              onVerifyRequest(a);
+            }}
             onDelete={() => {
               setOpenMenu(null);
               onDeleteRequest(a);
@@ -330,6 +345,7 @@ function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusReq
             btnClass="ag-kebab"
             ariaLabel={"Actions for " + a.name}
             status={a.status}
+            verification={a.verification}
           />
         </div>
       </div>
@@ -777,9 +793,13 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
 
 export function AgentsApp() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { agents, agentCounts, addAgent, removeAgent, updateAgent, locationTree } = useProperties();
   const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
-  const [filters, setFilters] = useState<AgentFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<AgentFilters>(() => {
+    const v = searchParams.get("verification");
+    return v && VERIFICATION_TABS.some((t) => t.id === v) ? { ...EMPTY_FILTERS, verification: v } : EMPTY_FILTERS;
+  });
   const [view, setView] = useState("table");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -850,6 +870,16 @@ export function AgentsApp() {
         : { variant: "success", icon: "circle-check", title: "Agent activated", message: "The agent account has been activated successfully." },
     );
   };
+  const handleVerifyToggle = (target: AgentRecord) => {
+    const verifying = target.verification !== "Verified";
+    const next = verifying ? "Verified" : "Pending";
+    updateAgent(target.id, { verification: next });
+    setToast(
+      verifying
+        ? { variant: "success", icon: "badge-check", title: "Agent verified", message: `${target.name} is now verified and can be assigned to listings.` }
+        : { variant: "warn", icon: "shield-x", title: "Verification revoked", message: `${target.name} is now pending and can no longer be assigned to listings.` },
+    );
+  };
   const handleDeleteConfirm = () => {
     const target = deleteTarget!;
     const index = agents.findIndex((a) => a.id === target.id);
@@ -909,6 +939,7 @@ export function AgentsApp() {
     onView: viewProfile,
     onEditRequest: setEditTarget,
     onStatusRequest: setStatusTarget,
+    onVerifyRequest: handleVerifyToggle,
     onDeleteRequest: setDeleteTarget,
   };
 

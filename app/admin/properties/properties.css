@@ -614,15 +614,35 @@
   .pp-amodal__agent.is-selected {
     background: var(--brand-subtle); border-color: var(--green-200);
   }
+  .pp-amodal__agent-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .pp-amodal__agent-name {
-    flex: 1 1 auto; font-size: 14px; font-weight: 600; color: var(--text-primary);
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .pp-amodal__agent-agency { font-size: 12px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pp-amodal__current-tag {
     font-size: 11.5px; font-weight: 600; color: var(--text-tertiary);
     background: var(--gray-100); padding: 2px 9px;
     border-radius: var(--radius-pill); flex: none;
   }
   .pp-amodal__check { flex: none; color: var(--brand-primary); display: flex; }
+  /* Searchable variant: fixed search box on top, scrollable results below. */
+  .pp-amodal__drop--search { display: flex; flex-direction: column; overflow: hidden; max-height: 320px; }
+  .pp-amodal__search {
+    display: flex; align-items: center; gap: 8px; flex: none; padding: 7px 10px; margin-bottom: 4px;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-card);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .pp-amodal__search:focus-within { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .pp-amodal__search-ic { color: var(--text-tertiary); flex: none; }
+  .pp-amodal__search-input { flex: 1 1 auto; min-width: 0; border: none; outline: none; background: transparent; font-size: 14px; color: var(--text-primary); }
+  .pp-amodal__search-input::placeholder { color: var(--text-placeholder); }
+  .pp-amodal__search-clear { flex: none; display: flex; padding: 2px; border: none; background: transparent; color: var(--text-tertiary); cursor: pointer; border-radius: var(--radius-sm); transition: background .13s, color .13s; }
+  .pp-amodal__search-clear:hover { color: var(--text-secondary); background: var(--gray-100); }
+  .pp-amodal__list { flex: 1 1 auto; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--gray-200) transparent; }
+  .pp-amodal__list::-webkit-scrollbar { width: 5px; }
+  .pp-amodal__list::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 6px; }
+  .pp-amodal__empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 12px; text-align: center; font-size: 13px; color: var(--text-tertiary); }
   .pp-modal__icon--status {
     background: var(--brand-subtle);
     border-color: var(--green-100);
@@ -642,6 +662,18 @@
   .pp-smodal__label { font-size: 14px; font-weight: 500; color: var(--text-primary); }
   .pp-smodal__spacer { flex: 1 1 auto; }
   .pp-smodal__check { flex: none; color: var(--brand-primary); display: flex; }
+  .pp-smodal__item.is-disabled { opacity: .5; cursor: not-allowed; }
+  .pp-smodal__item.is-disabled:hover { background: transparent; }
+  .pp-smodal__req {
+    flex: none; font-size: 11px; font-weight: 600; letter-spacing: -.005em;
+    color: var(--warning-700); background: var(--warning-50);
+    padding: 2px 8px; border-radius: var(--radius-pill);
+  }
+  .pp-modal__hint {
+    display: flex; align-items: center; gap: 7px; margin: 14px 0 0;
+    font-size: 12.5px; line-height: 1.4; color: var(--text-tertiary); text-align: left;
+  }
+  .pp-modal__hint svg { flex: none; color: var(--warning-600); }
 
   .pp-modal__confirm {
     display: inline-flex; align-items: center; justify-content: center; gap: 7px;

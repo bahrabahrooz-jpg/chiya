@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -444,50 +445,125 @@ function PortfolioTable({ rows }: { rows: PortfolioRow[] }) {
       <div className="mpf-table mpf-table--portfolio">
         <div className="mpf-thead">
           <span className="mpf-th">Property</span>
-          <span className="mpf-th">Relationship</span>
+          <span className="mpf-th">Location</span>
+          <span className="mpf-th">Type</span>
+          <span className="mpf-th">Role</span>
+          <span className="mpf-th">Agent</span>
           <span className="mpf-th">Status</span>
           <span className="mpf-th">Price</span>
-          <span className="mpf-th">Agent</span>
-          <span className="mpf-th">Date</span>
+          <span className="mpf-th">Date added</span>
           <span className="mpf-th mpf-th--end">Action</span>
         </div>
-        {rows.map((row) => (
-          <div className="mpf-trow" key={row.id + row.rel}>
-            <PropCell row={row} />
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Relationship</span>
-              <Badge variant={(ROLE_META[row.rel] || {}).variant} size="sm">
-                {row.rel}
-              </Badge>
+        {rows.map((row) => {
+          // From the member's side, a property they bought reads "Bought" rather
+          // than "Sold" (which is the seller-side / global label).
+          const status = row.rel === "Buyer" && row.status === "Sold" ? "Bought" : row.status;
+          // "area, city" → city only, to match the main properties table.
+          const city = row.loc.split(",").pop()?.trim() || row.loc;
+          return (
+            <div className="mpf-trow" key={row.id + row.rel}>
+              <PropCell row={row} mono />
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Location</span>
+                <span className="mpf-prop__sub mpf-loc">
+                  <Icon name="map-pin" size={12} />
+                  {city}
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Type</span>
+                <span className="mpf-type">{row.type}</span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Role</span>
+                <Badge variant={(ROLE_META[row.rel] || {}).variant} className={(ROLE_META[row.rel] || {}).cls} size="sm">
+                  {row.rel}
+                </Badge>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Agent</span>
+                <span className="mpf-agentcell">
+                  <Avatar src={row.agentImg || undefined} name={row.agent} size="sm" verified />
+                  <span className="mpf-agentcell__name">{row.agent}</span>
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Status</span>
+                <StatusBadge value={status} meta={PROP_STATUS_META} />
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Price</span>
+                <PriceCell price={row.price} per={row.per} />
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Date added</span>
+                <span className="mpf-date">{row.date}</span>
+              </div>
+              <div className="mpf-cell mpf-cell--end mpf-cell--action">
+                <PropertyRowMenu propertyId={row.id} propertyTitle={row.title} />
+              </div>
             </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Status</span>
-              <StatusBadge value={row.status} meta={PROP_STATUS_META} />
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Price</span>
-              <PriceCell price={row.price} per={row.per} />
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Agent</span>
-              <span className="mpf-agentcell">
-                <Avatar name={row.agent} size="xs" />
-                <span className="mpf-agentcell__name">{row.agent}</span>
-              </span>
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Date</span>
-              <span className="mpf-date">{row.date}</span>
-            </div>
-            <div className="mpf-cell mpf-cell--end mpf-cell--action">
-              <Link className="mpf-viewbtn" href={`/admin/properties/${row.id}`} title="View property" aria-label={"View " + row.title}>
-                <Icon name="arrow-up-right" size={17} />
-              </Link>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
+  );
+}
+
+/* Per-row kebab menu (mirrors the main properties / viewings tables). Portalled
+   to <body> so the horizontally-scrolling table can't clip it. */
+function PropertyRowMenu({ propertyId, propertyTitle }: { propertyId: string; propertyTitle: string }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const calc = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: Math.max(12, r.right - 200) });
+  };
+  const toggle = () => {
+    if (!open) calc();
+    setOpen((v) => !v);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      if (document.querySelector(".mpf-rowmenu")?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", calc, true);
+    window.addEventListener("resize", calc);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", calc, true);
+      window.removeEventListener("resize", calc);
+    };
+  }, [open]);
+  return (
+    <>
+      <button ref={btnRef} type="button" className="mpf-kebab" aria-label={"Actions for " + propertyTitle} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+        <Icon name="more-horizontal" size={18} />
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <div className="ax-menu mpf-rowmenu" role="menu" style={{ position: "fixed", top: pos.top, left: pos.left, width: 200 }}>
+            <div className="ax-menu__sect">
+              <Link className="ax-menu-item" role="menuitem" href={`/admin/properties/${propertyId}`} onClick={() => setOpen(false)}>
+                <Icon name="building-2" size={17} />
+                View property
+              </Link>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -497,30 +573,55 @@ function ViewingsTable({ rows }: { rows: MpfViewing[] }) {
       <div className="mpf-table mpf-table--viewings">
         <div className="mpf-thead">
           <span className="mpf-th">Property</span>
-          <span className="mpf-th">Requested date</span>
-          <span className="mpf-th">Assigned agent</span>
+          <span className="mpf-th">Location</span>
+          <span className="mpf-th">Agent</span>
+          <span className="mpf-th">Date &amp; time</span>
           <span className="mpf-th">Status</span>
+          <span className="mpf-th mpf-th--end">Actions</span>
         </div>
-        {rows.map((row, i) => (
-          <div className="mpf-trow" key={row.id + i}>
-            <PropCell row={row} />
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Requested date</span>
-              <span className="mpf-date">{row.requested}</span>
+        {rows.map((row, i) => {
+          const [date, time] = row.requested.split(" · ");
+          // "area, city" → city only, to match the main properties table.
+          const city = row.loc.split(",").pop()?.trim() || row.loc;
+          return (
+            <div className="mpf-trow" key={row.id + i}>
+              <PropCell row={row} mono />
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Location</span>
+                <span className="mpf-prop__sub mpf-loc">
+                  <Icon name="map-pin" size={12} />
+                  {city}
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Agent</span>
+                <span className="mpf-agentcell">
+                  <Avatar src={row.agentImg || undefined} name={row.agent} size="sm" verified />
+                  <span className="mpf-agentcell__name">{row.agent}</span>
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Date &amp; time</span>
+                <span className="mpf-dt">
+                  <span className="mpf-dt__date">{date}</span>
+                  {time && (
+                    <span className="mpf-dt__time">
+                      <Icon name="clock" size={11} />
+                      {time}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Status</span>
+                <StatusBadge value={row.status} meta={VIEW_STATUS_META} />
+              </div>
+              <div className="mpf-cell mpf-cell--end mpf-cell--action">
+                <PropertyRowMenu propertyId={row.id} propertyTitle={row.title} />
+              </div>
             </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Assigned agent</span>
-              <span className="mpf-agentcell">
-                <Avatar name={row.agent} size="xs" />
-                <span className="mpf-agentcell__name">{row.agent}</span>
-              </span>
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Status</span>
-              <StatusBadge value={row.status} meta={VIEW_STATUS_META} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -817,7 +918,17 @@ export function MemberProfileApp() {
             <BasicInfo member={m} pushToast={pushToast} />
           </SectionCard>
 
-          <SectionCard title="Real estate portfolio" count={portfolio.length} desc="Every property connected to this member as buyer, seller, landlord, or tenant." flush>
+          <SectionCard
+            title="Real estate portfolio"
+            count={portfolio.length}
+            desc="Every property connected to this member as buyer, seller, landlord, or tenant."
+            action={
+              <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/properties" style={{ color: "var(--text-secondary)" }}>
+                View all
+              </Button>
+            }
+            flush
+          >
             {portfolio.length > 0 ? (
               <PortfolioTable rows={portfolio} />
             ) : (
@@ -830,7 +941,17 @@ export function MemberProfileApp() {
             )}
           </SectionCard>
 
-          <SectionCard title="Viewing requests" count={VIEWINGS.length} desc="Scheduled and past property viewings." flush>
+          <SectionCard
+            title="Viewing requests"
+            count={VIEWINGS.length}
+            desc="Scheduled and past property viewings."
+            action={
+              <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/viewings" style={{ color: "var(--text-secondary)" }}>
+                View all
+              </Button>
+            }
+            flush
+          >
             <ViewingsTable rows={VIEWINGS} />
           </SectionCard>
 
@@ -847,7 +968,21 @@ export function MemberProfileApp() {
             onDelete={(i) => setNoteToDelete(i)}
           />
 
-          <SectionCard title="Activity timeline" desc="Chronological history of this member's account.">
+          <SectionCard
+            title="Activity timeline"
+            desc="Chronological history of this member's account."
+            action={
+              <Button
+                hierarchy="link"
+                size="sm"
+                iconTrailing="arrow-right"
+                style={{ color: "var(--text-secondary)" }}
+                onClick={() => pushToast({ tone: "brand", icon: "history", title: "Activity", msg: "Opening full activity history for " + m.name + "." })}
+              >
+                View all
+              </Button>
+            }
+          >
             <Timeline />
           </SectionCard>
         </div>

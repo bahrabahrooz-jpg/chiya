@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import {
-  AGENTS,
   AMENITIES,
   CONDITIONS,
   FURNISHING,
@@ -25,6 +24,7 @@ import { useProperties } from "../_shared/properties-store";
 import {
   AgentSelect,
   AgentSummary,
+  useAssignableAgents,
   AmenityGrid,
   ComboSelect,
   CoverImage,
@@ -51,6 +51,7 @@ export function EditPropertyApp({ id }: { id: string }) {
   const [step, setStep] = useState(0);
   const photos = usePhotoUploader(true);
   const { locationTree } = useProperties();
+  const assignableAgents = useAssignableAgents();
   const cityOptions = locationTree.map((c) => c.name);
   const cityNode = locationTree.find((c) => c.name === f.city);
   const districtSource = cityNode ? cityNode.children : locationTree.flatMap((c) => c.children);
@@ -115,7 +116,7 @@ export function EditPropertyApp({ id }: { id: string }) {
     ownerPhone: f.ownerPhone || "+964 750 412 8890",
     ownerEmail: f.ownerEmail || "hemin@email.com",
   };
-  const revAgent = AGENTS.find((a) => a.id === f.agent) || AGENTS[0];
+  const revAgent = assignableAgents.find((a) => a.id === f.agent) || assignableAgents[0];
   const AMEN_IC: Record<string, IconName> = Object.fromEntries(AMENITIES.map((a) => [a.label, a.icon]));
 
   return (
@@ -463,7 +464,7 @@ export function EditPropertyApp({ id }: { id: string }) {
                 <div className="ap-field ap-col-full">
                   <FieldLabel htmlFor="ap-agent">Assigned agent</FieldLabel>
                   {(() => {
-                    const sel = AGENTS.find((a) => a.id === f.agent);
+                    const sel = assignableAgents.find((a) => a.id === f.agent);
                     return sel ? <AgentSummary agent={sel} onClear={() => set("agent", "")} /> : <AgentSelect id="ap-agent" value={f.agent} onChange={(v) => set("agent", v)} />;
                   })()}
                 </div>
@@ -595,7 +596,7 @@ export function EditPropertyApp({ id }: { id: string }) {
                   <div className="ap-rev__item ap-rev__item--full">
                     <span className="ap-rev__k">Assigned agent</span>
                     <span className="ap-rev__agent">
-                      <Avatar src={revAgent.avatar} name={revAgent.name} size="xs" verified />
+                      <Avatar src={revAgent.avatar || undefined} name={revAgent.name} size="xs" verified />
                       <span className="ap-rev__agent-name">
                         {revAgent.name}
                         <Badge variant="brand" size="sm" icon="badge-check">

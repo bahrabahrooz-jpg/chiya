@@ -1,6 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
-import { PROPERTIES as CATALOG_PROPERTIES, getAgentByName, type PropertyRecord } from "../_data/catalog";
+import { AGENTS as CATALOG_AGENTS, PROPERTIES as CATALOG_PROPERTIES, getAgentByName, type PropertyDetails, type PropertyRecord } from "../_data/catalog";
+export { statusRequiresAgent } from "../_data/catalog";
 
 export const STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean; icon?: IconName }> = {
   Draft: { variant: "neutral", dot: true },
@@ -83,7 +84,9 @@ function toBase(p: PropertyRecord): BaseProperty {
     img: p.img,
     owner: { name: p.owner.name, phone: p.owner.phone, type: p.owner.type },
     agent: p.agent
-      ? { name: p.agent.name, verified: p.agent.verified, phone: roster?.phone || "+964 750 000 0000", img: p.agent.img, agency: roster?.agency, listings: roster?.listings }
+      // Only verified agents can be assigned, so an assigned agent is always
+      // shown as verified — never "Pending" — regardless of any stale record.
+      ? { name: p.agent.name, verified: true, phone: roster?.phone || "+964 750 000 0000", img: p.agent.img, agency: roster?.agency, listings: roster?.listings }
       : null,
     listing: p.listing,
     status: p.status,
@@ -99,8 +102,6 @@ function toBase(p: PropertyRecord): BaseProperty {
     updated: p.updated,
   };
 }
-const BASE: BaseProperty[] = CATALOG_PROPERTIES.map(toBase);
-
 function emailFromName(name: string) {
   return name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@mail.chiya.estate";
 }
@@ -195,6 +196,28 @@ function buildSpecs(p: BaseProperty): Specs {
   };
 }
 
+const CURRENCY_LABEL: Record<string, string> = { USD: "USD · US Dollar", IQD: "IQD · Iraqi Dinar", EUR: "EUR · Euro" };
+
+/* Start from the deterministic specs and overlay whatever the user actually
+   entered in the Add-property wizard, so only unfilled fields stay generated. */
+function buildSpecsWith(p: BaseProperty, d: PropertyDetails): Specs {
+  const base = buildSpecs(p);
+  const address = [d.building, d.street, d.project, p.area, p.city, "Kurdistan Region, Iraq"].filter(Boolean).join(", ");
+  const hasCoords = !!(d.lat && d.lng);
+  return {
+    ...base,
+    address: address || base.address,
+    coords: hasCoords ? `${d.lat}° N, ${d.lng}° E` : base.coords,
+    mapUrl: hasCoords ? `https://www.google.com/maps?q=${d.lat},${d.lng}` : base.mapUrl,
+    garages: typeof d.parking === "number" ? d.parking || null : base.garages,
+    yearBuilt: d.year ? Number(d.year) || base.yearBuilt : base.yearBuilt,
+    furnished: d.furnishing || base.furnished,
+    floor: typeof d.floors === "number" && d.floors > 0 ? `${d.floors} floor${d.floors > 1 ? "s" : ""}` : base.floor,
+    currency: d.currency ? CURRENCY_LABEL[d.currency] || base.currency : base.currency,
+    amenities: d.amenities && d.amenities.length ? d.amenities : base.amenities,
+  };
+}
+
 export interface DetailProperty extends Omit<BaseProperty, "agent"> {
   location: string;
   gallery: string[];
@@ -205,23 +228,43 @@ export interface DetailProperty extends Omit<BaseProperty, "agent"> {
   timeline: TimelineEvent[];
 }
 
-export const PROPERTIES: DetailProperty[] = BASE.map((p) => ({
-  ...p,
-  location: p.area + ", " + p.city,
-  gallery: GALLERY[p.type.toLowerCase()] || GALLERY.villa,
-  owner: { ...p.owner, email: emailFromName(p.owner.name) },
-  agent: p.agent ? { ...p.agent, email: emailFromName(p.agent.name), listings: 6 + (p.id.charCodeAt(5) % 12) } : null,
-  specs: buildSpecs(p),
-  notes: buildNotes(p),
-  timeline: buildTimeline(p),
-}));
+/* Adapt a catalog / store record into the full detail-page shape. Records that
+   carry `details` (created via the wizard) render exactly what was entered;
+   seed records fall back to the deterministic generators. */
+export function toDetailProperty(rec: PropertyRecord): DetailProperty {
+  const p = toBase(rec);
+  const d = rec.details;
+  const agent: DetailAgent | null = p.agent
+    ? { ...p.agent, email: emailFromName(p.agent.name), phone: d?.agentPhone || p.agent.phone, listings: p.agent.listings ?? 6 + ((rec.id.charCodeAt(5) || 0) % 12) }
+    : null;
+  return {
+    ...p,
+    location: p.area + ", " + p.city,
+    gallery: d?.gallery && d.gallery.length ? d.gallery : GALLERY[p.type.toLowerCase()] || GALLERY.villa,
+    owner: { ...p.owner, type: d?.ownerType || p.owner.type, email: d?.ownerEmail || emailFromName(p.owner.name) },
+    agent,
+    specs: d ? buildSpecsWith({ ...p, agent }, d) : buildSpecs({ ...p, agent }),
+    notes: buildNotes({ ...p, agent }),
+    timeline: buildTimeline({ ...p, agent }),
+  };
+}
 
-export const AGENTS_LIST: DetailAgent[] = Object.values(
-  PROPERTIES.reduce<Record<string, DetailAgent>>((acc, p) => {
-    if (p.agent && !acc[p.agent.name]) acc[p.agent.name] = { ...p.agent };
-    return acc;
-  }, {}),
-).sort((a, b) => a.name.localeCompare(b.name));
+export const PROPERTIES: DetailProperty[] = CATALOG_PROPERTIES.map(toDetailProperty);
+
+/* Assignable agents: the full verified roster (not just those already on a
+   listing), so the reassign picker can search the whole team. Unverified agents
+   are excluded — only verified agents can be assigned. */
+export const AGENTS_LIST: DetailAgent[] = CATALOG_AGENTS.filter((a) => a.verification === "Verified")
+  .map((a) => ({
+    name: a.name,
+    verified: true,
+    phone: a.phone,
+    img: a.img || "",
+    email: a.email,
+    agency: a.agency,
+    listings: a.listings,
+  }))
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 export function getProperty(id: string): DetailProperty {
   return PROPERTIES.find((p) => p.id === id) || PROPERTIES[0];

@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,18 +11,20 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
 import {
-  AGENTS_LIST,
   STATUS_DOT_COLOR,
   STATUS_META,
   STATUS_OPTIONS,
   VIEWING_STATUS,
+  statusRequiresAgent,
   fmtUSD,
   getProperty,
   getViewings,
+  toDetailProperty,
   type DetailAgent,
   type DetailProperty,
   type NoteItem,
 } from "./data";
+import { useProperties } from "../_shared/properties-store";
 
 const ADMIN = { name: "Rêbîn Kawa", role: "Super Admin" };
 
@@ -167,11 +169,14 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
             <div className="pp-smodal__drop pp-amodal__drop" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
               {STATUS_OPTIONS.map((status) => {
                 const meta = STATUS_META[status];
+                // A property with no agent can't move to a live status.
+                const blocked = !property.agent && statusRequiresAgent(status);
                 return (
                   <button
                     key={status}
                     type="button"
-                    className={"pp-smodal__item" + (selected === status ? " is-selected" : "")}
+                    disabled={blocked}
+                    className={"pp-smodal__item" + (selected === status ? " is-selected" : "") + (blocked ? " is-disabled" : "")}
                     onClick={() => {
                       setSelected(status);
                       setDropOpen(false);
@@ -180,11 +185,17 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
                     <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[meta.variant] }} />
                     <span className="pp-smodal__label">{status}</span>
                     <span className="pp-smodal__spacer" />
-                    {property.status === status && <span className="pp-amodal__current-tag">Current</span>}
-                    {selected === status && (
-                      <span className="pp-smodal__check">
-                        <Icon name="check" size={16} strokeWidth={2.5} />
-                      </span>
+                    {blocked ? (
+                      <span className="pp-smodal__req">Needs agent</span>
+                    ) : (
+                      <>
+                        {property.status === status && <span className="pp-amodal__current-tag">Current</span>}
+                        {selected === status && (
+                          <span className="pp-smodal__check">
+                            <Icon name="check" size={16} strokeWidth={2.5} />
+                          </span>
+                        )}
+                      </>
                     )}
                   </button>
                 );
@@ -211,8 +222,24 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
   const hasAgent = !!property.agent;
   const [selected, setSelected] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Assignable = verified agents in the live roster, so a Pending → Verified
+  // change on the Agents page is reflected here immediately.
+  const { agents } = useProperties();
+  const verifiedAgents = useMemo<DetailAgent[]>(
+    () =>
+      agents
+        .filter((a) => a.verification === "Verified")
+        .map((a) => ({ name: a.name, verified: true, img: a.img || "", phone: a.phone, email: a.email, agency: a.agency, listings: a.listings }))
+        .sort((x, y) => x.name.localeCompare(y.name)),
+    [agents],
+  );
+
+  const q = query.trim().toLowerCase();
+  const filteredAgents = q ? verifiedAgents.filter((a) => a.name.toLowerCase().includes(q) || (a.agency || "").toLowerCase().includes(q)) : verifiedAgents;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -231,7 +258,10 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
     setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
   };
   const toggleDrop = () => {
-    if (!dropOpen) calcPos();
+    if (!dropOpen) {
+      calcPos();
+      setQuery("");
+    }
     setDropOpen((v) => !v);
   };
   useEffect(() => {
@@ -251,7 +281,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
     };
   }, [dropOpen]);
 
-  const selectedAgent = selected ? AGENTS_LIST.find((a) => a.name === selected) : null;
+  const selectedAgent = selected ? verifiedAgents.find((a) => a.name === selected) : null;
   const canConfirm = selected && selected !== (property.agent?.name ?? null);
   return createPortal(
     <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
@@ -280,27 +310,48 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
         {dropOpen &&
           dropPos &&
           createPortal(
-            <div className="pp-amodal__drop" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
-              {AGENTS_LIST.map((agent) => (
-                <button
-                  key={agent.name}
-                  type="button"
-                  className={"pp-amodal__agent" + (selected === agent.name ? " is-selected" : "")}
-                  onClick={() => {
-                    setSelected(agent.name);
-                    setDropOpen(false);
-                  }}
-                >
-                  <Avatar src={agent.img} name={agent.name} size="sm" verified={agent.verified} />
-                  <span className="pp-amodal__agent-name">{agent.name}</span>
-                  {property.agent?.name === agent.name && <span className="pp-amodal__current-tag">Current</span>}
-                  {selected === agent.name && (
-                    <span className="pp-amodal__check">
-                      <Icon name="check" size={16} strokeWidth={2.5} />
-                    </span>
-                  )}
-                </button>
-              ))}
+            <div className="pp-amodal__drop pp-amodal__drop--search" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
+              <div className="pp-amodal__search">
+                <Icon name="search" size={15} className="pp-amodal__search-ic" />
+                <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name or agency…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
+                {query && (
+                  <button type="button" className="pp-amodal__search-clear" aria-label="Clear search" onClick={() => setQuery("")}>
+                    <Icon name="x" size={14} />
+                  </button>
+                )}
+              </div>
+              <div className="pp-amodal__list">
+                {filteredAgents.length === 0 ? (
+                  <div className="pp-amodal__empty">
+                    <Icon name="user-x" size={18} />
+                    No agents match “{query}”.
+                  </div>
+                ) : (
+                  filteredAgents.map((agent) => (
+                    <button
+                      key={agent.name}
+                      type="button"
+                      className={"pp-amodal__agent" + (selected === agent.name ? " is-selected" : "")}
+                      onClick={() => {
+                        setSelected(agent.name);
+                        setDropOpen(false);
+                      }}
+                    >
+                      <Avatar src={agent.img} name={agent.name} size="sm" verified={agent.verified} />
+                      <span className="pp-amodal__agent-body">
+                        <span className="pp-amodal__agent-name">{agent.name}</span>
+                        {agent.agency && <span className="pp-amodal__agent-agency">{agent.agency}</span>}
+                      </span>
+                      {property.agent?.name === agent.name && <span className="pp-amodal__current-tag">Current</span>}
+                      {selected === agent.name && (
+                        <span className="pp-amodal__check">
+                          <Icon name="check" size={16} strokeWidth={2.5} />
+                        </span>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
             </div>,
             document.body,
           )}
@@ -313,7 +364,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
             className="pp-modal__confirm"
             disabled={!canConfirm}
             onClick={() => {
-              const a = AGENTS_LIST.find((x) => x.name === selected);
+              const a = verifiedAgents.find((x) => x.name === selected);
               if (a) onConfirm(a);
             }}
           >
@@ -1055,7 +1106,23 @@ function AssignedAgent({ p, onAssignAgent }: { p: DetailProperty; onAssignAgent:
 export function PropertyDetailApp({ id }: { id: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [property, setProperty] = useState<DetailProperty>(() => getProperty(id));
+  const { properties } = useProperties();
+
+  // Prefer the live record from the admin store — a property created through the
+  // Add-property wizard lives only there (and in localStorage). Fall back to the
+  // static seed data if it isn't found (e.g. an unknown id).
+  const storeRecord = properties.find((p) => p.id === id);
+  const [property, setProperty] = useState<DetailProperty>(() => (storeRecord ? toDetailProperty(storeRecord) : getProperty(id)));
+
+  // The store hydrates from localStorage after mount, so a freshly-added id may
+  // be absent on the first render. Sync once its real record becomes available.
+  const syncedId = useRef<string | null>(storeRecord ? id : null);
+  useEffect(() => {
+    if (syncedId.current === id || !storeRecord) return;
+    syncedId.current = id;
+    setProperty(toDetailProperty(storeRecord));
+  }, [id, storeRecord]);
+
   const [statusOpen, setStatusOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);

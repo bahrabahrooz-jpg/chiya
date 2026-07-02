@@ -46,7 +46,7 @@
   }
   .lc-treepanel__head {
     padding: 16px 18px 15px; border-bottom: 1px solid var(--border-subtle);
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    display: flex; align-items: center; justify-content: flex-start; gap: 10px;
   }
   .lc-treepanel__title {
     font-family: var(--font-display); font-weight: 600; font-size: 18px;

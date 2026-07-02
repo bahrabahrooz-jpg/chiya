@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -371,50 +372,62 @@ function ListingsTable({ rows }: { rows: ListingRow[] }) {
         <div className="mpf-thead">
           <span className="mpf-th">Property</span>
           <span className="mpf-th">Location</span>
-          <span className="mpf-th">Listing type</span>
+          <span className="mpf-th">Type</span>
+          <span className="mpf-th">Owner</span>
+          <span className="mpf-th">Listing</span>
           <span className="mpf-th">Status</span>
           <span className="mpf-th">Price</span>
           <span className="mpf-th">Date added</span>
-          <span className="mpf-th mpf-th--end">Action</span>
+          <span className="mpf-th mpf-th--end">Actions</span>
         </div>
-        {rows.map((row) => (
-          <div className="mpf-trow" key={row.id}>
-            <PropCell row={row} />
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Location</span>
-              <span className="mpf-prop__sub">
-                <Icon name="map-pin" size={12} />
-                {row.loc}
-              </span>
+        {rows.map((row) => {
+          // "area, city" → city only, to match the main properties table.
+          const city = row.loc.split(",").pop()?.trim() || row.loc;
+          return (
+            <div className="mpf-trow" key={row.id}>
+              <PropCell row={row} />
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Location</span>
+                <span className="mpf-prop__sub mpf-loc">
+                  <Icon name="map-pin" size={12} />
+                  {city}
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Type</span>
+                <span className="mpf-type">{row.propertyType}</span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Owner</span>
+                <span className="mpf-owner">{row.owner}</span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Listing</span>
+                <Badge variant={(LISTING_TYPE_META[row.type] || {}).variant} size="sm">
+                  {row.type}
+                </Badge>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Status</span>
+                <StatusBadge value={row.status} meta={LISTING_STATUS_META} />
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Price</span>
+                <span className="mpf-price">
+                  {row.price}
+                  {row.per && <span className="mpf-price__per">{row.per}</span>}
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Date added</span>
+                <span className="mpf-date">{row.date}</span>
+              </div>
+              <div className="mpf-cell mpf-cell--end mpf-cell--action">
+                <RowMenu href={`/admin/properties/${row.id}`} label="View property" icon="building-2" ariaName={row.title} />
+              </div>
             </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Listing type</span>
-              <Badge variant={(LISTING_TYPE_META[row.type] || {}).variant} size="sm">
-                {row.type}
-              </Badge>
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Status</span>
-              <StatusBadge value={row.status} meta={LISTING_STATUS_META} />
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Price</span>
-              <span className="mpf-price">
-                {row.price}
-                {row.per && <span className="mpf-price__per">{row.per}</span>}
-              </span>
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Date added</span>
-              <span className="mpf-date">{row.date}</span>
-            </div>
-            <div className="mpf-cell mpf-cell--end mpf-cell--action">
-              <Link className="mpf-viewbtn" href={`/admin/properties/${row.id}`} title="View property" aria-label={"View " + row.title}>
-                <Icon name="arrow-up-right" size={17} />
-              </Link>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -426,11 +439,11 @@ function MembersTable({ rows }: { rows: MemberRow[] }) {
       <div className="mpf-table mpf-table--amembers">
         <div className="mpf-thead">
           <span className="mpf-th">Member</span>
+          <span className="mpf-th">Roles</span>
           <span className="mpf-th">Phone</span>
-          <span className="mpf-th">Role tags</span>
+          <span className="mpf-th">Joined</span>
           <span className="mpf-th">Status</span>
-          <span className="mpf-th">Last activity</span>
-          <span className="mpf-th mpf-th--end">Action</span>
+          <span className="mpf-th mpf-th--end">Actions</span>
         </div>
         {rows.map((row) => (
           <div className="mpf-trow" key={row.id}>
@@ -442,38 +455,94 @@ function MembersTable({ rows }: { rows: MemberRow[] }) {
               </div>
             </div>
             <div className="mpf-cell">
-              <span className="mpf-cell__label">Phone</span>
-              <span className="mpf-date" style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                {row.phone}
-              </span>
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Role tags</span>
+              <span className="mpf-cell__label">Roles</span>
               <span className="mpf-roletags">
                 {row.roles.map((r) => (
-                  <Badge key={r} variant={(ROLE_META[r] || {}).variant} size="sm">
+                  <Badge key={r} variant="neutral" className={(ROLE_META[r] || {}).cls} size="sm">
                     {r}
                   </Badge>
                 ))}
               </span>
             </div>
             <div className="mpf-cell">
+              <span className="mpf-cell__label">Phone</span>
+              <span className="mpf-memphone">
+                <Icon name="phone" size={13} />
+                {row.phone}
+              </span>
+            </div>
+            <div className="mpf-cell">
+              <span className="mpf-cell__label">Joined</span>
+              <span className="mpf-date">{row.activity}</span>
+            </div>
+            <div className="mpf-cell">
               <span className="mpf-cell__label">Status</span>
               <StatusBadge value={row.status} meta={MEMBER_STATUS_META} />
             </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Last activity</span>
-              <span className="mpf-date">{row.activity}</span>
-            </div>
             <div className="mpf-cell mpf-cell--end mpf-cell--action">
-              <Link className="mpf-viewbtn" href={`/admin/members/${row.id}`} title="View member" aria-label={"View " + row.name}>
-                <Icon name="arrow-up-right" size={17} />
-              </Link>
+              <RowMenu href={`/admin/members/${row.id}`} label="View member" icon="user" ariaName={row.name} />
             </div>
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+/* Per-row kebab menu (mirrors the main properties / members tables). Portalled
+   to <body> so the horizontally-scrolling table can't clip it. */
+function RowMenu({ href, label, icon, ariaName }: { href: string; label: string; icon: IconName; ariaName: string }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const calc = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: Math.max(12, r.right - 200) });
+  };
+  const toggle = () => {
+    if (!open) calc();
+    setOpen((v) => !v);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      if (document.querySelector(".mpf-rowmenu")?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", calc, true);
+    window.addEventListener("resize", calc);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", calc, true);
+      window.removeEventListener("resize", calc);
+    };
+  }, [open]);
+  return (
+    <>
+      <button ref={btnRef} type="button" className="mpf-kebab" aria-label={"Actions for " + ariaName} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+        <Icon name="more-horizontal" size={18} />
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <div className="ax-menu mpf-rowmenu" role="menu" style={{ position: "fixed", top: pos.top, left: pos.left, width: 200 }}>
+            <div className="ax-menu__sect">
+              <Link className="ax-menu-item" role="menuitem" href={href} onClick={() => setOpen(false)}>
+                <Icon name={icon} size={17} />
+                {label}
+              </Link>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -483,39 +552,61 @@ function ViewingsTable({ rows }: { rows: AvViewing[] }) {
       <div className="mpf-table mpf-table--aviewings">
         <div className="mpf-thead">
           <span className="mpf-th">Property</span>
+          <span className="mpf-th">Location</span>
           <span className="mpf-th">Member</span>
           <span className="mpf-th">Date &amp; time</span>
           <span className="mpf-th">Status</span>
+          <span className="mpf-th mpf-th--end">Actions</span>
         </div>
-        {rows.map((row, i) => (
-          <div className="mpf-trow" key={row.id + i}>
-            <div className="mpf-prop">
-              <img className="mpf-prop__thumb" src={row.img} alt="" loading="lazy" />
-              <div className="mpf-prop__body">
-                <div className="mpf-prop__title">{row.title}</div>
-                <div className="mpf-prop__sub">
-                  <Icon name="map-pin" size={12} />
-                  {row.loc}
+        {rows.map((row, i) => {
+          const [date, time] = row.when.split(" · ");
+          // "area, city" → city only, to match the other tables.
+          const city = row.loc.split(",").pop()?.trim() || row.loc;
+          return (
+            <div className="mpf-trow" key={row.id + i}>
+              <div className="mpf-prop">
+                <img className="mpf-prop__thumb" src={row.img} alt="" loading="lazy" />
+                <div className="mpf-prop__body">
+                  <div className="mpf-prop__title">{row.title}</div>
+                  <div className="mpf-prop__sub mpf-prop__sub--mono">{row.id}</div>
                 </div>
               </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Location</span>
+                <span className="mpf-prop__sub mpf-loc">
+                  <Icon name="map-pin" size={12} />
+                  {city}
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Member</span>
+                <span className="mpf-memcell">
+                  <Avatar src={row.memberImg} name={row.member} size="sm" />
+                  <span className="mpf-memcell__name">{row.member}</span>
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Date &amp; time</span>
+                <span className="mpf-dt">
+                  <span className="mpf-dt__date">{date}</span>
+                  {time && (
+                    <span className="mpf-dt__time">
+                      <Icon name="clock" size={11} />
+                      {time}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="mpf-cell">
+                <span className="mpf-cell__label">Status</span>
+                <StatusBadge value={row.status} meta={VIEW_STATUS_META} />
+              </div>
+              <div className="mpf-cell mpf-cell--end mpf-cell--action">
+                <RowMenu href={`/admin/properties/${row.id}`} label="View property" icon="building-2" ariaName={row.title} />
+              </div>
             </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Member</span>
-              <span className="mpf-memcell">
-                <Avatar src={row.memberImg} name={row.member} size="xs" />
-                <span className="mpf-memcell__name">{row.member}</span>
-              </span>
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Date &amp; time</span>
-              <span className="mpf-date">{row.when}</span>
-            </div>
-            <div className="mpf-cell">
-              <span className="mpf-cell__label">Status</span>
-              <StatusBadge value={row.status} meta={VIEW_STATUS_META} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -826,10 +917,6 @@ export function AgentDetailApp() {
               </button>
               {moreOpen && (
                 <div className="pd-moremenu" role="menu">
-                  <Link className="pd-moreitem" role="menuitem" href="/agents" target="_blank" rel="noopener" onClick={() => setMoreOpen(false)}>
-                    <Icon name="external-link" size={17} />
-                    View public profile
-                  </Link>
                   <button
                     type="button"
                     className="pd-moreitem"
@@ -841,18 +928,6 @@ export function AgentDetailApp() {
                   >
                     <Icon name="shield-check" size={17} />
                     Manage verification
-                  </button>
-                  <button
-                    type="button"
-                    className="pd-moreitem"
-                    role="menuitem"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      pushToast({ tone: "default", icon: "download", title: "Export started", msg: "Preparing a performance summary for " + a.name + "." });
-                    }}
-                  >
-                    <Icon name="download" size={17} />
-                    Export summary
                   </button>
                   <div className="pd-moremenu__sep" />
                   <button
@@ -894,8 +969,8 @@ export function AgentDetailApp() {
           count={listings.length}
           desc="Properties currently managed by this agent."
           action={
-            <Button hierarchy="secondary" size="sm" iconTrailing="arrow-right" href="/admin/properties">
-              All properties
+            <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/properties" className="agt-linkbtn">
+              View all
             </Button>
           }
           flush
@@ -917,8 +992,8 @@ export function AgentDetailApp() {
           count={agentMembers.length}
           desc="Clients this agent manages across buying, selling, and renting."
           action={
-            <Button hierarchy="secondary" size="sm" iconTrailing="arrow-right" href="/admin/members">
-              All members
+            <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/members" className="agt-linkbtn">
+              View all
             </Button>
           }
           flush
@@ -940,8 +1015,8 @@ export function AgentDetailApp() {
           count={VIEWINGS.length}
           desc="Scheduled and completed property viewings hosted by this agent."
           action={
-            <Button hierarchy="secondary" size="sm" iconTrailing="arrow-right" href="/admin/viewings">
-              All viewings
+            <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/viewings" className="agt-linkbtn">
+              View all
             </Button>
           }
           flush
@@ -949,7 +1024,22 @@ export function AgentDetailApp() {
           <ViewingsTable rows={VIEWINGS} />
         </SectionCard>
 
-        <SectionCard title="Reviews" count={a.reviews} desc="Feedback from members this agent has worked with.">
+        <SectionCard
+          title="Reviews"
+          count={a.reviews}
+          desc="Feedback from members this agent has worked with."
+          action={
+            <Button
+              hierarchy="link"
+              size="sm"
+              iconTrailing="arrow-right"
+              className="agt-linkbtn"
+              onClick={() => pushToast({ tone: "brand", icon: "star", title: "Reviews", msg: "Opening all reviews for " + a.name + "." })}
+            >
+              View all
+            </Button>
+          }
+        >
           <Reviews agent={a} />
         </SectionCard>
 
@@ -966,7 +1056,21 @@ export function AgentDetailApp() {
           onDelete={(i) => setNoteToDelete(i)}
         />
 
-        <SectionCard title="Activity timeline" desc="Chronological admin history for this agent.">
+        <SectionCard
+          title="Activity timeline"
+          desc="Chronological admin history for this agent."
+          action={
+            <Button
+              hierarchy="link"
+              size="sm"
+              iconTrailing="arrow-right"
+              className="agt-linkbtn"
+              onClick={() => pushToast({ tone: "brand", icon: "history", title: "Activity", msg: "Opening full activity history for " + a.name + "." })}
+            >
+              View all
+            </Button>
+          }
+        >
           <Timeline />
         </SectionCard>
       </div>

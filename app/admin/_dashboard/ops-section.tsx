@@ -1,15 +1,18 @@
+"use client";
+
 import { Fragment } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { ACTION_ITEMS, ACTIVITY_ITEMS, type ActionItem } from "./data";
+import { useProperties } from "../_shared/properties-store";
 
 const ACTION_HREF: Record<string, string> = {
-  properties: "/admin/properties",
-  agents: "/admin/agents",
+  properties: "/admin/properties?status=pending",
+  agents: "/admin/agents?verification=Pending",
 };
 
-function ActionCard({ item }: { item: ActionItem }) {
+function ActionCard({ item, count }: { item: ActionItem; count: number }) {
   return (
     <div className="ax-action">
       <div className="ax-action__head">
@@ -19,7 +22,7 @@ function ActionCard({ item }: { item: ActionItem }) {
         <h3 className="ax-action__title">{item.title}</h3>
       </div>
       <div className="ax-action__count">
-        <span className="ax-action__num">{item.count}</span>
+        <span className="ax-action__num">{count.toLocaleString("en-US")}</span>
         <span className="ax-action__unit">{item.unit}</span>
       </div>
       <p className="ax-action__desc">{item.desc}</p>
@@ -33,17 +36,22 @@ function ActionCard({ item }: { item: ActionItem }) {
 }
 
 export function OpsSection() {
+  const { counts, agentCounts } = useProperties();
+  const actionCounts: Record<string, number> = {
+    properties: counts.pending,
+    agents: agentCounts.pending,
+  };
   return (
-    <section className="ax-section ax-grid2" aria-label="Action required and recent activity">
+    <section className="ax-section ax-grid2" aria-label="Pending approvals and recent activity">
       <div className="ax-col">
         <div className="ax-section__head">
           <div className="ax-section__heading">
-            <h2 className="ax-section__title">Action required</h2>
+            <h2 className="ax-section__title">Pending approvals</h2>
           </div>
         </div>
         <div className="ax-actions">
           {ACTION_ITEMS.map((it) => (
-            <ActionCard key={it.key} item={it} />
+            <ActionCard key={it.key} item={it} count={actionCounts[it.key] ?? 0} />
           ))}
         </div>
       </div>

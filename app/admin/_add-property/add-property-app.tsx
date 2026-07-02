@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -14,7 +14,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input, Textarea } from "@/components/ui/input";
 import {
-  AGENTS,
   AMENITIES,
   CONDITIONS,
   COVER_IMG,
@@ -38,24 +37,35 @@ function todayLabel(): string {
   const d = new Date();
   return `${MONTHS_ABBR[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
+// Session-unique, catalog-safe id base so listings created across reloads (all
+// persisted to localStorage) don't collide on lookup.
+const ID_BASE = 10000 + Math.floor(Date.now() % 90000);
 let addedSeq = 0;
-function formToProperty(f: ApForm, agent: ApAgent | null): PropertyRecord {
+function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader): PropertyRecord {
   const listing: "sale" | "rent" = f.listing === "rent" ? "rent" : "sale";
   const district = f.district || "Ankawa";
   const area = f.project || district; // most specific location (project → district)
   const date = todayLabel();
+  const amenIcon: Record<string, IconName> = Object.fromEntries(AMENITIES.map((a) => [a.label, a.icon]));
+  // Uploaded photos, cover first, as the gallery. Falls back to nothing → the
+  // detail page uses a type-based gallery when the user skipped media.
+  const ordered = photos.cover ? [photos.cover, ...photos.photos.filter((x) => x.id !== photos.coverId)] : photos.photos;
+  const gallery = ordered.map((x) => x.url);
+  const cover = photos.cover?.url || COVER_IMG;
   return {
-    id: "CH-" + (3400 + addedSeq++),
+    id: "CH-" + (ID_BASE + addedSeq++),
     title: f.title || "Untitled property",
     area,
     district,
     city: f.city || "Erbil",
     type: f.type || "Villa",
-    img: COVER_IMG,
+    img: cover,
     owner: { name: f.ownerName || "New owner", phone: f.ownerPhone || "", type: "Individual owner" },
     agent: agent ? { name: agent.name, verified: true, img: agent.avatar } : null,
     listing,
-    status: "Published",
+    // A property can only go live with an assigned agent; without one it stays
+    // Pending until an agent is assigned.
+    status: agent ? "Published" : "Pending",
     price: Number(String(f.price).replace(/[^0-9.]/g, "")) || 0,
     per: listing === "rent" ? "/mo" : undefined,
     date,
@@ -64,10 +74,49 @@ function formToProperty(f: ApForm, agent: ApAgent | null): PropertyRecord {
     baths: f.baths,
     size: Number(String(f.area).replace(/[^0-9.]/g, "")) || 0,
     featured: false,
-    published: true,
+    published: !!agent,
     listingDate: date,
     updated: date,
+    details: {
+      description: f.description || undefined,
+      currency: f.currency,
+      areaUnit: f.areaUnit,
+      ownerEmail: f.ownerEmail || undefined,
+      ownerType: "Individual owner",
+      agentPhone: agent?.phone,
+      project: f.project || undefined,
+      street: f.street || undefined,
+      building: f.building || undefined,
+      lat: f.lat || undefined,
+      lng: f.lng || undefined,
+      locNotes: f.locNotes || undefined,
+      year: f.year || undefined,
+      orientation: f.orientation || undefined,
+      condition: f.condition || undefined,
+      furnishing: f.furnishing || undefined,
+      parking: f.parking,
+      floors: f.floors,
+      amenities: [
+        ...f.amenities.map((label) => ({ icon: amenIcon[label] || ("check" as IconName), label })),
+        ...f.customAmenities.map((label) => ({ icon: "sparkles" as IconName, label })),
+      ],
+      gallery,
+      tourUrl: f.tourUrl || undefined,
+    },
   };
+}
+
+interface PublishPreview {
+  id: string;
+  title: string;
+  address: string;
+  price: string;
+  listing: string;
+  beds: number;
+  baths: number;
+  area: string;
+  cover: string;
+  published: boolean;
 }
 
 export function ProgressStepper({ active }: { active: number }) {
@@ -620,17 +669,54 @@ export function VideoUpload({ store }: { store: PhotoUploader }) {
   );
 }
 
+/**
+ * Assignable agents = every *verified* agent in the system roster, mapped to the
+ * lightweight ApAgent shape the picker/summary/review UI expects. Sourcing from
+ * the live store (rather than a hardcoded list) keeps the "Assigned agent" field
+ * in sync with the Agents page, and the verification filter guarantees a listing
+ * never shows a Pending agent on its card.
+ */
+export function useAssignableAgents(): ApAgent[] {
+  const { agents } = useProperties();
+  return useMemo(
+    () =>
+      agents
+        .filter((a) => a.verification === "Verified")
+        .map((a) => ({
+          id: a.id,
+          name: a.name,
+          area: a.city ? `${a.city} · ${a.area}` : a.area,
+          phone: a.phone,
+          avatar: a.img ?? "",
+        })),
+    [agents],
+  );
+}
+
 export function AgentSelect({ id, value, onChange }: { id?: string; value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const { coords, calc } = useTopbarClip(triggerRef);
+  const agents = useAssignableAgents();
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return agents;
+    return agents.filter((a) => a.name.toLowerCase().includes(q) || a.area.toLowerCase().includes(q));
+  }, [agents, query]);
   const toggle = () => {
-    if (!open) calc();
+    if (!open) {
+      setQuery("");
+      calc();
+    }
     setOpen((v) => !v);
   };
   useEffect(() => {
     if (!open) return;
+    // focus the search field once the portal is painted
+    const t = window.setTimeout(() => searchRef.current?.focus(), 0);
     const onDown = (e: MouseEvent) => {
       if (triggerRef.current?.contains(e.target as Node)) return;
       if (panelRef.current?.contains(e.target as Node)) return;
@@ -644,6 +730,7 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
     window.addEventListener("scroll", calc, true);
     window.addEventListener("resize", calc);
     return () => {
+      window.clearTimeout(t);
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", calc, true);
@@ -662,31 +749,65 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
       {open &&
         coords &&
         createPortal(
-          <div ref={panelRef} className="ap-agentsel__drop" style={{ top: coords.top, left: coords.left, width: coords.width, clipPath: coords.clipTop ? `inset(${coords.clipTop}px 0 0 0)` : undefined }} role="listbox">
-            {AGENTS.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                className={"ap-agentsel__row" + (value === a.id ? " is-selected" : "")}
-                role="option"
-                aria-selected={value === a.id}
-                onClick={() => {
-                  onChange(value === a.id ? "" : a.id);
-                  setOpen(false);
-                }}
-              >
-                <Avatar src={a.avatar} name={a.name} size="sm" verified />
-                <span className="ap-agentsel__body">
-                  <span className="ap-agentsel__name">{a.name}</span>
-                  <span className="ap-agentsel__area">{a.area}</span>
-                </span>
-                {value === a.id && (
-                  <span className="ap-agentsel__check">
-                    <Icon name="check" size={16} strokeWidth={2.5} />
-                  </span>
-                )}
-              </button>
-            ))}
+          <div ref={panelRef} className="ap-agentsel__drop ap-agentsel__drop--search" style={{ top: coords.top, left: coords.left, width: coords.width, clipPath: coords.clipTop ? `inset(${coords.clipTop}px 0 0 0)` : undefined }}>
+            <div className="ap-agentsel__search">
+              <Icon name="search" size={16} className="ap-agentsel__search-ic" />
+              <input
+                ref={searchRef}
+                type="text"
+                className="ap-agentsel__search-input"
+                placeholder="Search verified agents…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Search verified agents"
+              />
+              {query && (
+                <button
+                  type="button"
+                  className="ap-agentsel__search-clear"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setQuery("");
+                    searchRef.current?.focus();
+                  }}
+                >
+                  <Icon name="x" size={15} />
+                </button>
+              )}
+            </div>
+            <div className="ap-agentsel__list" role="listbox">
+              {filtered.length === 0 ? (
+                <div className="ap-agentsel__empty">
+                  <Icon name="user-x" size={20} />
+                  No verified agents match “{query}”.
+                </div>
+              ) : (
+                filtered.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className={"ap-agentsel__row" + (value === a.id ? " is-selected" : "")}
+                    role="option"
+                    aria-selected={value === a.id}
+                    onClick={() => {
+                      onChange(value === a.id ? "" : a.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Avatar src={a.avatar || undefined} name={a.name} size="sm" verified />
+                    <span className="ap-agentsel__body">
+                      <span className="ap-agentsel__name">{a.name}</span>
+                      <span className="ap-agentsel__area">{a.area}</span>
+                    </span>
+                    {value === a.id && (
+                      <span className="ap-agentsel__check">
+                        <Icon name="check" size={16} strokeWidth={2.5} />
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
           </div>,
           document.body,
         )}
@@ -697,7 +818,7 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
 export function AgentSummary({ agent, onClear }: { agent: ApAgent; onClear: () => void }) {
   return (
     <div className="ap-agentcard">
-      <Avatar src={agent.avatar} name={agent.name} size="lg" verified />
+      <Avatar src={agent.avatar || undefined} name={agent.name} size="lg" verified />
       <div className="ap-agentcard__meta">
         <span className="ap-agentcard__name">
           {agent.name}
@@ -833,9 +954,21 @@ export function RevItem({ k, v, full, price, tnum }: { k: string; v: React.React
   );
 }
 
-function PublishedSuccess() {
+function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
   const router = useRouter();
   const stageRef = useRef<HTMLDivElement>(null);
+  const view = preview ?? {
+    id: "CH-2041",
+    title: PUBLISHED.title,
+    address: PUBLISHED.address,
+    price: PUBLISHED.price,
+    listing: PUBLISHED.listing,
+    beds: PUBLISHED.beds,
+    baths: PUBLISHED.baths,
+    area: PUBLISHED.area,
+    cover: PUBLISHED.cover,
+    published: true,
+  };
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
@@ -867,53 +1000,57 @@ function PublishedSuccess() {
           </span>
         </div>
         <h1 className="pp-title" id="pp-title">
-          Property published
+          {view.published ? "Property published" : "Property saved as pending"}
         </h1>
-        <p className="pp-desc">Your property has been published successfully and is now visible on the Chiya Estate platform.</p>
+        <p className="pp-desc">
+          {view.published
+            ? "Your property has been published successfully and is now visible on the Chiya Estate platform."
+            : "Your property has been saved. Assign a verified agent to publish it and make it visible on the Chiya Estate platform."}
+        </p>
         <div className="pp-listing">
           <div className="pp-listing__media">
-            <img src={PUBLISHED.cover} alt="" />
-            <span className="pp-listing__badge">
-              <Icon name="circle-check" size={12} strokeWidth={2.5} />
-              Published
+            <img src={view.cover} alt="" />
+            <span className={"pp-listing__badge" + (view.published ? "" : " pp-listing__badge--pending")}>
+              <Icon name={view.published ? "circle-check" : "clock"} size={12} strokeWidth={2.5} />
+              {view.published ? "Published" : "Pending"}
             </span>
           </div>
           <div className="pp-listing__body">
             <div className="pp-listing__tags">
               <Badge variant="success" size="sm" icon="tag">
-                {PUBLISHED.listing}
+                {view.listing}
               </Badge>
               <span className="pp-listing__ref">
                 <Icon name="hash" size={12} />
-                {PUBLISHED.ref}
+                {view.id}
               </span>
             </div>
-            <h2 className="pp-listing__name">{PUBLISHED.title}</h2>
+            <h2 className="pp-listing__name">{view.title}</h2>
             <span className="pp-listing__addr">
               <Icon name="map-pin" size={14} />
-              {PUBLISHED.address}
+              {view.address}
             </span>
             <div className="pp-listing__row">
-              <span className="pp-listing__price cx-tnum">{PUBLISHED.price}</span>
+              <span className="pp-listing__price cx-tnum">{view.price}</span>
               <span className="pp-listing__specs">
                 <span>
                   <Icon name="bed-double" size={15} />
-                  {PUBLISHED.beds}
+                  {view.beds}
                 </span>
                 <span>
                   <Icon name="bath" size={15} />
-                  {PUBLISHED.baths}
+                  {view.baths}
                 </span>
                 <span className="cx-tnum">
                   <Icon name="maximize-2" size={15} />
-                  {PUBLISHED.area}
+                  {view.area}
                 </span>
               </span>
             </div>
           </div>
         </div>
         <div className="pp-actions">
-          <Button hierarchy="primary" size="lg" iconLeading="eye" onClick={() => router.push("/admin/properties/CH-2041")}>
+          <Button hierarchy="primary" size="lg" iconLeading="eye" onClick={() => router.push(`/admin/properties/${encodeURIComponent(view.id)}`)}>
             View property
           </Button>
           <div className="pp-actions__row">
@@ -934,10 +1071,12 @@ function PublishedSuccess() {
 
 export function AddPropertyApp() {
   const { addProperty, locationTree } = useProperties();
+  const assignableAgents = useAssignableAgents();
   const photos = usePhotoUploader(false);
   const [f, setF] = useState<ApForm>(EMPTY_FORM);
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
   const [step, setStep] = useState(0);
+  const [preview, setPreview] = useState<PublishPreview | null>(null);
   const goTo = (n: number) => {
     setStep(n);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -966,7 +1105,7 @@ export function AddPropertyApp() {
     ownerPhone: f.ownerPhone,
     ownerEmail: f.ownerEmail,
   };
-  const revAgent = AGENTS.find((a) => a.id === f.agent) || null;
+  const revAgent = assignableAgents.find((a) => a.id === f.agent) || null;
   const AMEN_IC: Record<string, IconName> = Object.fromEntries(AMENITIES.map((a) => [a.label, a.icon]));
 
   // City / district options come from the live Locations structure, so a
@@ -978,7 +1117,7 @@ export function AddPropertyApp() {
   const districtNode = districtSource.find((d) => d.name === f.district);
   const projectOptions = districtNode ? districtNode.children.map((p) => p.name) : [];
 
-  if (step === 6) return <PublishedSuccess />;
+  if (step === 6) return <PublishedSuccess preview={preview} />;
 
   return (
     <div className="ap-wrap">
@@ -1307,7 +1446,7 @@ export function AddPropertyApp() {
                 <div className="ap-field ap-col-full">
                   <FieldLabel htmlFor="ap-agent">Assigned agent</FieldLabel>
                   {(() => {
-                    const sel = AGENTS.find((a) => a.id === f.agent);
+                    const sel = assignableAgents.find((a) => a.id === f.agent);
                     return sel ? <AgentSummary agent={sel} onClear={() => set("agent", "")} /> : <AgentSelect id="ap-agent" value={f.agent} onChange={(v) => set("agent", v)} />;
                   })()}
                 </div>
@@ -1448,7 +1587,7 @@ export function AddPropertyApp() {
                     <span className="ap-rev__k">Assigned agent</span>
                     {revAgent ? (
                       <span className="ap-rev__agent">
-                        <Avatar src={revAgent.avatar} name={revAgent.name} size="xs" verified />
+                        <Avatar src={revAgent.avatar || undefined} name={revAgent.name} size="xs" verified />
                         <span className="ap-rev__agent-name">
                           {revAgent.name}
                           <Badge variant="brand" size="sm" icon="badge-check">
@@ -1476,7 +1615,20 @@ export function AddPropertyApp() {
                 hierarchy="primary"
                 size="lg"
                 onClick={() => {
-                  addProperty(formToProperty(f, f.agent ? revAgent : null));
+                  const rec = formToProperty(f, f.agent ? revAgent : null, photos);
+                  addProperty(rec);
+                  setPreview({
+                    id: rec.id,
+                    title: rec.title,
+                    address: rec.area + ", " + rec.city,
+                    price: priceStr || fmtNum(rec.price),
+                    listing: rec.listing === "rent" ? "For rent" : "For sale",
+                    beds: rec.beds,
+                    baths: rec.baths,
+                    area: areaStr || String(rec.size),
+                    cover: rec.img,
+                    published: !!f.agent,
+                  });
                   goTo(6);
                 }}
               >

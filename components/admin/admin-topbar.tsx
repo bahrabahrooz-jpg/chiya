@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Modal } from "@/components/ui/modal";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useAdminAuth } from "@/lib/admin-auth";
 import { ADMIN, LANGUAGES, NOTIFICATIONS } from "./admin-data";
 
 type MenuId = "notif" | "profile" | "lang" | null;
 
-function ProfileMenu({ onClose }: { onClose: () => void }) {
+function ProfileMenu({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
   const items: { icon: "user" | "settings"; label: string }[] = [
     { icon: "user", label: "My profile" },
     { icon: "settings", label: "Account settings" },
@@ -37,7 +41,7 @@ function ProfileMenu({ onClose }: { onClose: () => void }) {
         ))}
       </div>
       <div className="ax-menu__sect">
-        <button type="button" className="ax-menu-item is-danger" role="menuitem" onClick={onClose}>
+        <button type="button" className="ax-menu-item is-danger" role="menuitem" onClick={onLogout}>
           <Icon name="log-out" size={18} />
           Log out
         </button>
@@ -120,6 +124,32 @@ function NotifMenu({ onClose }: { onClose: () => void }) {
   );
 }
 
+function LogoutModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <Modal
+      open
+      onClose={onCancel}
+      icon="log-out"
+      title="Log out?"
+      size="sm"
+      footer={
+        <>
+          <Button hierarchy="secondary" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button hierarchy="destructive" iconLeading="log-out" onClick={onConfirm}>
+            Log out
+          </Button>
+        </>
+      }
+    >
+      <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: "var(--text-secondary)" }}>
+        Are you sure you want to log out? You&apos;ll need to sign in again to access the admin dashboard.
+      </p>
+    </Modal>
+  );
+}
+
 export function AdminTopbar({
   openMenu,
   setOpenMenu,
@@ -129,7 +159,10 @@ export function AdminTopbar({
   setOpenMenu: (m: MenuId) => void;
   onHamburger: () => void;
 }) {
+  const router = useRouter();
+  const { logout } = useAdminAuth();
   const [lang, setLang] = useState("EN");
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const toggle = (m: Exclude<MenuId, null>) => setOpenMenu(openMenu === m ? null : m);
 
   return (
@@ -149,6 +182,11 @@ export function AdminTopbar({
       <div className="ax-tb-spacer" />
 
       <div className="ax-tb-actions">
+        {/* color mode */}
+        <ThemeToggle />
+
+        <div className="ax-tb-divider" />
+
         {/* language */}
         <div style={{ position: "relative" }}>
           <button
@@ -207,9 +245,28 @@ export function AdminTopbar({
             </span>
             <Icon name="chevron-down" size={16} />
           </button>
-          {openMenu === "profile" && <ProfileMenu onClose={() => setOpenMenu(null)} />}
+          {openMenu === "profile" && (
+            <ProfileMenu
+              onClose={() => setOpenMenu(null)}
+              onLogout={() => {
+                setOpenMenu(null);
+                setLogoutOpen(true);
+              }}
+            />
+          )}
         </div>
       </div>
+
+      {logoutOpen && (
+        <LogoutModal
+          onCancel={() => setLogoutOpen(false)}
+          onConfirm={() => {
+            setLogoutOpen(false);
+            logout();
+            router.push("/admin/login");
+          }}
+        />
+      )}
     </header>
   );
 }
