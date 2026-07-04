@@ -29,7 +29,7 @@ export interface TableProps<Row> {
  * Table — data table for dashboards and admin views. Columns support custom
  * cell renderers, numeric (right-aligned, tabular) cells, and sortable headers.
  */
-export function Table<Row extends Record<string, unknown>>({
+export function Table<Row extends object>({
   columns,
   rows,
   hover = true,

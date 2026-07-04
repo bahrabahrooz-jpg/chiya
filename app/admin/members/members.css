@@ -4,7 +4,7 @@
 
   /* ---------- PAGE HEADER WITH PRIMARY ACTION ---------- */
   .mp-head {
-    display: flex; align-items: flex-end; justify-content: space-between;
+    display: flex; align-items: flex-start; justify-content: space-between;
     gap: 28px; margin-bottom: 28px;
   }
   .mp-head__intro { min-width: 0; }
@@ -278,6 +278,17 @@
     gap: 28px;
     padding: 0 24px;
     min-width: 1140px;
+  }
+  /* view-only variant (agent surface) — same table without the "Actions" column */
+  .mp-table--noactions .mp-thead, .mp-table--noactions .mp-row {
+    grid-template-columns:
+      minmax(196px, 2.2fr)   /* member */
+      minmax(168px, 2fr)     /* roles */
+      minmax(140px, 1.1fr)   /* phone */
+      116px                  /* properties */
+      128px                  /* joined */
+      112px;                 /* status */
+    min-width: 1040px;
   }
   .mp-thead {
     height: 46px; background: var(--gray-50);

@@ -32,6 +32,7 @@ import {
 } from "./data";
 import { AddMemberModal } from "../_members/add-member-modal";
 import { useProperties } from "../_shared/properties-store";
+import { VIEWINGS as ALL_VIEWINGS } from "../_viewings/data";
 
 const NOTE_MAX = 500;
 function noteRoleLabel(role: string) {
@@ -439,16 +440,16 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
   );
 }
 
-function PortfolioTable({ rows }: { rows: PortfolioRow[] }) {
+function PortfolioTable({ rows, hideAgent }: { rows: PortfolioRow[]; hideAgent?: boolean }) {
   return (
     <div className="mpf-tablewrap">
-      <div className="mpf-table mpf-table--portfolio">
+      <div className={"mpf-table mpf-table--portfolio" + (hideAgent ? " mpf-table--noagent" : "")}>
         <div className="mpf-thead">
           <span className="mpf-th">Property</span>
           <span className="mpf-th">Location</span>
           <span className="mpf-th">Type</span>
           <span className="mpf-th">Role</span>
-          <span className="mpf-th">Agent</span>
+          {!hideAgent && <span className="mpf-th">Agent</span>}
           <span className="mpf-th">Status</span>
           <span className="mpf-th">Price</span>
           <span className="mpf-th">Date added</span>
@@ -480,13 +481,15 @@ function PortfolioTable({ rows }: { rows: PortfolioRow[] }) {
                   {row.rel}
                 </Badge>
               </div>
-              <div className="mpf-cell">
-                <span className="mpf-cell__label">Agent</span>
-                <span className="mpf-agentcell">
-                  <Avatar src={row.agentImg || undefined} name={row.agent} size="sm" verified />
-                  <span className="mpf-agentcell__name">{row.agent}</span>
-                </span>
-              </div>
+              {!hideAgent && (
+                <div className="mpf-cell">
+                  <span className="mpf-cell__label">Agent</span>
+                  <span className="mpf-agentcell">
+                    <Avatar src={row.agentImg || undefined} name={row.agent} size="sm" verified />
+                    <span className="mpf-agentcell__name">{row.agent}</span>
+                  </span>
+                </div>
+              )}
               <div className="mpf-cell">
                 <span className="mpf-cell__label">Status</span>
                 <StatusBadge value={status} meta={PROP_STATUS_META} />
@@ -567,14 +570,14 @@ function PropertyRowMenu({ propertyId, propertyTitle }: { propertyId: string; pr
   );
 }
 
-function ViewingsTable({ rows }: { rows: MpfViewing[] }) {
+function ViewingsTable({ rows, hideAgent }: { rows: MpfViewing[]; hideAgent?: boolean }) {
   return (
     <div className="mpf-tablewrap">
-      <div className="mpf-table mpf-table--viewings">
+      <div className={"mpf-table mpf-table--viewings" + (hideAgent ? " mpf-table--noagent" : "")}>
         <div className="mpf-thead">
           <span className="mpf-th">Property</span>
           <span className="mpf-th">Location</span>
-          <span className="mpf-th">Agent</span>
+          {!hideAgent && <span className="mpf-th">Agent</span>}
           <span className="mpf-th">Date &amp; time</span>
           <span className="mpf-th">Status</span>
           <span className="mpf-th mpf-th--end">Actions</span>
@@ -593,13 +596,15 @@ function ViewingsTable({ rows }: { rows: MpfViewing[] }) {
                   {city}
                 </span>
               </div>
-              <div className="mpf-cell">
-                <span className="mpf-cell__label">Agent</span>
-                <span className="mpf-agentcell">
-                  <Avatar src={row.agentImg || undefined} name={row.agent} size="sm" verified />
-                  <span className="mpf-agentcell__name">{row.agent}</span>
-                </span>
-              </div>
+              {!hideAgent && (
+                <div className="mpf-cell">
+                  <span className="mpf-cell__label">Agent</span>
+                  <span className="mpf-agentcell">
+                    <Avatar src={row.agentImg || undefined} name={row.agent} size="sm" verified />
+                    <span className="mpf-agentcell__name">{row.agent}</span>
+                  </span>
+                </div>
+              )}
               <div className="mpf-cell">
                 <span className="mpf-cell__label">Date &amp; time</span>
                 <span className="mpf-dt">
@@ -771,13 +776,33 @@ function Timeline() {
   );
 }
 
-export function MemberProfileApp() {
+export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
   const { members, properties } = useProperties();
   const params = useParams();
   const id = String((params?.id as string) ?? "");
   const catalogMember = useMemo(() => members.find((mm) => mm.id === id), [members, id]);
   const resolved = useMemo(() => (catalogMember ? toDetailMember(catalogMember, properties) : MEMBER), [catalogMember, properties]);
   const portfolio = useMemo(() => (catalogMember ? buildPortfolio(properties, catalogMember.name) : PORTFOLIO), [catalogMember, properties]);
+
+  // Agent scope: portfolio + viewing requests show only what involves this agent.
+  const shownPortfolio = useMemo(() => (scopeAgent ? portfolio.filter((r) => r.agent === scopeAgent) : portfolio), [portfolio, scopeAgent]);
+  const shownViewings = useMemo(() => {
+    if (!scopeAgent) return VIEWINGS;
+    const SMAP: Record<string, string> = { Scheduled: "Pending", Confirmed: "Confirmed", Completed: "Completed", Cancelled: "Cancelled", "No Show": "Cancelled" };
+    // Viewings under this agent that touch this member: on the member's own
+    // listings (same properties as the portfolio) or requested by the member.
+    const memberTitles = new Set(shownPortfolio.map((r) => r.title));
+    return ALL_VIEWINGS.filter((v) => v.agent === scopeAgent && (v.member === resolved.name || memberTitles.has(v.property.title))).map((v) => ({
+      id: v.id,
+      title: v.property.title,
+      loc: v.property.location,
+      img: v.property.img,
+      requested: `${v.date} · ${v.time}`,
+      agent: v.agent,
+      agentImg: "",
+      status: SMAP[v.status] || v.status,
+    }));
+  }, [scopeAgent, resolved.name, shownPortfolio]);
 
   const [m, setM] = useState<MemberRecord>(resolved);
   const [status, setStatus] = useState(resolved.status);
@@ -920,7 +945,7 @@ export function MemberProfileApp() {
 
           <SectionCard
             title="Real estate portfolio"
-            count={portfolio.length}
+            count={shownPortfolio.length}
             desc="Every property connected to this member as buyer, seller, landlord, or tenant."
             action={
               <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/properties" style={{ color: "var(--text-secondary)" }}>
@@ -929,8 +954,8 @@ export function MemberProfileApp() {
             }
             flush
           >
-            {portfolio.length > 0 ? (
-              <PortfolioTable rows={portfolio} />
+            {shownPortfolio.length > 0 ? (
+              <PortfolioTable rows={shownPortfolio} hideAgent={!!scopeAgent} />
             ) : (
               <div className="pd-noagent">
                 <span className="pd-noagent__art">
@@ -943,7 +968,7 @@ export function MemberProfileApp() {
 
           <SectionCard
             title="Viewing requests"
-            count={VIEWINGS.length}
+            count={shownViewings.length}
             desc="Scheduled and past property viewings."
             action={
               <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/viewings" style={{ color: "var(--text-secondary)" }}>
@@ -952,7 +977,7 @@ export function MemberProfileApp() {
             }
             flush
           >
-            <ViewingsTable rows={VIEWINGS} />
+            <ViewingsTable rows={shownViewings} hideAgent={!!scopeAgent} />
           </SectionCard>
 
           <NotesSection

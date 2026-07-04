@@ -7,7 +7,7 @@
 
   /* ---------- PAGE HEADER WITH PRIMARY ACTION ---------- */
   .pp-head {
-    display: flex; align-items: flex-end; justify-content: space-between;
+    display: flex; align-items: flex-start; justify-content: space-between;
     gap: 28px; margin-bottom: 28px;
   }
   .pp-head__intro { min-width: 0; }
@@ -341,6 +341,20 @@
     padding: 0 20px;
     min-width: 1400px;
     width: 100%;
+  }
+  /* agent-scoped variant — same table without the "Assigned agent" column */
+  .pp-table--noagent .pp-thead, .pp-table--noagent .pp-row {
+    grid-template-columns:
+      minmax(260px, 2.8fr)   /* property */
+      minmax(140px, 1.2fr)   /* location */
+      88px                   /* type */
+      minmax(130px, 1.4fr)   /* owner */
+      112px                  /* listing type */
+      130px                  /* status */
+      106px                  /* price */
+      106px                  /* date */
+      72px;                  /* actions */
+    min-width: 1280px;
   }
   .pp-thead {
     height: 46px;

@@ -15,7 +15,7 @@
 
   /* ── PAGE HEADER ── */
   .vw-head {
-    display: flex; align-items: flex-end; justify-content: space-between;
+    display: flex; align-items: flex-start; justify-content: space-between;
     gap: 28px; margin-bottom: 28px;
   }
   .vw-head__intro { min-width: 0; }
@@ -229,6 +229,17 @@
       122px                  /* Status */
       64px;                  /* Actions */
     align-items: center; gap: 14px; padding: 0 20px; min-width: 1004px;
+  }
+  /* agent-scoped variant — same table without the "Agent" column */
+  .vw-table--noagent .vw-thead, .vw-table--noagent .vw-row {
+    grid-template-columns:
+      minmax(210px, 2fr)     /* Property */
+      minmax(108px, 1fr)     /* Location */
+      minmax(126px, 1.1fr)   /* Member */
+      148px                  /* Date & Time */
+      122px                  /* Status */
+      64px;                  /* Actions */
+    min-width: 878px;
   }
   .vw-thead {
     height: 46px; background: var(--gray-50); border-bottom: 1px solid var(--border-subtle);

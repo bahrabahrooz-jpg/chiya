@@ -815,7 +815,7 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
   );
 }
 
-export function AgentSummary({ agent, onClear }: { agent: ApAgent; onClear: () => void }) {
+export function AgentSummary({ agent, onClear, locked }: { agent: ApAgent; onClear?: () => void; locked?: boolean }) {
   return (
     <div className="ap-agentcard">
       <Avatar src={agent.avatar || undefined} name={agent.name} size="lg" verified />
@@ -831,9 +831,15 @@ export function AgentSummary({ agent, onClear }: { agent: ApAgent; onClear: () =
           {agent.phone}
         </span>
       </div>
-      <button type="button" className="ap-agentcard__remove" aria-label="Remove assigned agent" onClick={onClear}>
-        <Icon name="x" size={17} />
-      </button>
+      {locked ? (
+        <span className="ap-agentcard__lock" aria-hidden="true">
+          <Icon name="lock" size={16} />
+        </span>
+      ) : (
+        <button type="button" className="ap-agentcard__remove" aria-label="Remove assigned agent" onClick={onClear}>
+          <Icon name="x" size={17} />
+        </button>
+      )}
     </div>
   );
 }
@@ -1069,11 +1075,11 @@ function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
   );
 }
 
-export function AddPropertyApp() {
+export function AddPropertyApp({ lockedAgentId }: { lockedAgentId?: string } = {}) {
   const { addProperty, locationTree } = useProperties();
   const assignableAgents = useAssignableAgents();
   const photos = usePhotoUploader(false);
-  const [f, setF] = useState<ApForm>(EMPTY_FORM);
+  const [f, setF] = useState<ApForm>(() => (lockedAgentId ? { ...EMPTY_FORM, agent: lockedAgentId } : EMPTY_FORM));
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
   const [step, setStep] = useState(0);
   const [preview, setPreview] = useState<PublishPreview | null>(null);
@@ -1447,8 +1453,10 @@ export function AddPropertyApp() {
                   <FieldLabel htmlFor="ap-agent">Assigned agent</FieldLabel>
                   {(() => {
                     const sel = assignableAgents.find((a) => a.id === f.agent);
+                    if (lockedAgentId) return sel ? <AgentSummary agent={sel} locked /> : null;
                     return sel ? <AgentSummary agent={sel} onClear={() => set("agent", "")} /> : <AgentSelect id="ap-agent" value={f.agent} onChange={(v) => set("agent", v)} />;
                   })()}
+                  {lockedAgentId && <p className="ap-lockhint">You are the assigned agent for listings you create.</p>}
                 </div>
               </div>
             </div>

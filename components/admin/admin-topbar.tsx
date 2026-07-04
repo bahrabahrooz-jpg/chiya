@@ -9,32 +9,28 @@ import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAdminAuth } from "@/lib/admin-auth";
+import { useAdminProfile } from "@/lib/admin-profile";
 import { ADMIN, LANGUAGES, NOTIFICATIONS } from "./admin-data";
 
 type MenuId = "notif" | "profile" | "lang" | null;
 
-function ProfileMenu({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
-  const items: { icon: "user" | "settings"; label: string }[] = [
-    { icon: "user", label: "My profile" },
-    { icon: "settings", label: "Account settings" },
+function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; avatar: string; onNavigate: (path: string) => void; onLogout: () => void }) {
+  const items: { icon: "user" | "settings"; label: string; path: string }[] = [
+    { icon: "user", label: "My profile", path: "/admin/profile" },
+    { icon: "settings", label: "Account settings", path: "/admin/settings" },
   ];
   return (
     <div className="ax-menu ax-menu--profile" role="menu">
       <div className="ax-menu-profilecard">
-        <Avatar name={ADMIN.name} size="lg" verified />
+        <Avatar name={name} src={avatar || undefined} size="lg" verified />
         <span className="ax-menu-profilecard__meta">
-          <span className="ax-menu-profilecard__name">{ADMIN.name}</span>
-          <span className="ax-menu-profilecard__mail">{ADMIN.email}</span>
-          <span style={{ marginTop: 6 }}>
-            <Badge variant="gold" size="sm" icon="shield-check">
-              Super Admin
-            </Badge>
-          </span>
+          <span className="ax-menu-profilecard__name">{name}</span>
+          <span style={{ marginTop: 3, fontSize: 13, fontWeight: 400, color: "var(--text-secondary)" }}>Super Admin</span>
         </span>
       </div>
       <div className="ax-menu__sect">
         {items.map((it) => (
-          <button key={it.label} type="button" className="ax-menu-item" role="menuitem" onClick={onClose}>
+          <button key={it.label} type="button" className="ax-menu-item" role="menuitem" onClick={() => onNavigate(it.path)}>
             <Icon name={it.icon} size={18} />
             {it.label}
           </button>
@@ -161,6 +157,7 @@ export function AdminTopbar({
 }) {
   const router = useRouter();
   const { logout } = useAdminAuth();
+  const { profile } = useAdminProfile();
   const [lang, setLang] = useState("EN");
   const [logoutOpen, setLogoutOpen] = useState(false);
   const toggle = (m: Exclude<MenuId, null>) => setOpenMenu(openMenu === m ? null : m);
@@ -238,16 +235,21 @@ export function AdminTopbar({
             aria-expanded={openMenu === "profile"}
             onClick={() => toggle("profile")}
           >
-            <Avatar name={ADMIN.name} size="sm" verified />
+            <Avatar name={profile.name} src={profile.avatar || undefined} size="sm" verified />
             <span className="ax-tb-profile__meta">
-              <span className="ax-tb-profile__name">{ADMIN.name}</span>
+              <span className="ax-tb-profile__name">{profile.name}</span>
               <span className="ax-tb-profile__role">{ADMIN.role}</span>
             </span>
             <Icon name="chevron-down" size={16} />
           </button>
           {openMenu === "profile" && (
             <ProfileMenu
-              onClose={() => setOpenMenu(null)}
+              name={profile.name}
+              avatar={profile.avatar}
+              onNavigate={(path) => {
+                setOpenMenu(null);
+                router.push(path);
+              }}
               onLogout={() => {
                 setOpenMenu(null);
                 setLogoutOpen(true);

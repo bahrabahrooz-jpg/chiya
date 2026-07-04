@@ -910,7 +910,7 @@ function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelet
   );
 }
 
-function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, onDelete }: { v: ViewingRecord; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onChangeStatus: (v: ViewingRecord) => void; onDelete: (v: ViewingRecord) => void }) {
+function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, onDelete, hideAgent }: { v: ViewingRecord; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onChangeStatus: (v: ViewingRecord) => void; onDelete: (v: ViewingRecord) => void; hideAgent: boolean }) {
   const st = VIEWING_STATUS[v.status] || { variant: "neutral" as const, icon: "circle" as const, cls: "" };
   const city = v.property.location.split(",").pop()?.trim();
   return (
@@ -950,13 +950,15 @@ function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, 
           <span className="vw-person__name">{v.member}</span>
         </div>
       </div>
-      <div className="vw-col--agent">
-        <span className="vw-celllabel">Agent</span>
-        <div className="vw-person">
-          <Avatar src={AGENT_IMG[v.agent] || undefined} name={v.agent} size="sm" verified />
-          <span className="vw-person__name">{v.agent}</span>
+      {!hideAgent && (
+        <div className="vw-col--agent">
+          <span className="vw-celllabel">Agent</span>
+          <div className="vw-person">
+            <Avatar src={AGENT_IMG[v.agent] || undefined} name={v.agent} size="sm" verified />
+            <span className="vw-person__name">{v.agent}</span>
+          </div>
         </div>
-      </div>
+      )}
       <div className="vw-col--dt">
         <span className="vw-celllabel">Date &amp; Time</span>
         <div className="vw-dt">
@@ -1001,19 +1003,19 @@ function NoResults() {
   );
 }
 
-function ViewingsTable({ rows, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, onDelete }: { rows: ViewingRecord[]; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onChangeStatus: (v: ViewingRecord) => void; onDelete: (v: ViewingRecord) => void }) {
+function ViewingsTable({ rows, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, onDelete, hideAgent }: { rows: ViewingRecord[]; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onChangeStatus: (v: ViewingRecord) => void; onDelete: (v: ViewingRecord) => void; hideAgent: boolean }) {
   return (
-    <div className="vw-table">
+    <div className={"vw-table" + (hideAgent ? " vw-table--noagent" : "")}>
       <div className="vw-thead" role="row">
         <span className="vw-th vw-col--prop">Property</span>
         <span className="vw-th vw-col--loc">Location</span>
         <span className="vw-th vw-col--member">Member</span>
-        <span className="vw-th vw-col--agent">Agent</span>
+        {!hideAgent && <span className="vw-th vw-col--agent">Agent</span>}
         <span className="vw-th vw-col--dt">Date &amp; Time</span>
         <span className="vw-th vw-col--status">Status</span>
         <span className="vw-th vw-col--acts">Actions</span>
       </div>
-      {rows.length > 0 ? rows.map((v) => <ViewingRow key={v.id} v={v} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={onEdit} onView={onView} onChangeStatus={onChangeStatus} onDelete={onDelete} />) : <NoResults />}
+      {rows.length > 0 ? rows.map((v) => <ViewingRow key={v.id} v={v} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={onEdit} onView={onView} onChangeStatus={onChangeStatus} onDelete={onDelete} hideAgent={hideAgent} />) : <NoResults />}
     </div>
   );
 }
@@ -1313,11 +1315,12 @@ function DeleteViewingModal({ viewing, onCancel, onConfirm }: { viewing: Viewing
   );
 }
 
-export function ViewingsApp() {
+export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scopeAgent?: string; basePath?: string } = {}) {
   const router = useRouter();
   const { locationTree } = useProperties();
   const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
-  const [viewings, setViewings] = useState<ViewingRecord[]>(VIEWINGS);
+  const hideAgent = !!scopeAgent;
+  const [viewings, setViewings] = useState<ViewingRecord[]>(() => (scopeAgent ? VIEWINGS.filter((v) => v.agent === scopeAgent) : VIEWINGS));
   const [filters, setFilters] = useState<ViewingFilters>(EMPTY_FILTERS);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [statusTarget, setStatusTarget] = useState<ViewingRecord | null>(null);
@@ -1328,7 +1331,7 @@ export function ViewingsApp() {
 
   const openView = (v: ViewingRecord) => {
     setOpenMenu(null);
-    router.push(`/admin/viewings/${encodeURIComponent(v.id)}`);
+    router.push(`${basePath}/${encodeURIComponent(v.id)}`);
   };
   const openSchedule = () => {
     setEditViewing(null);
@@ -1426,7 +1429,7 @@ export function ViewingsApp() {
 
       <section className="vw-tablecard">
         <ViewingsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} filteredCount={rows.length} totalAll={viewings.length} cityOptions={cityOptions} />
-        <ViewingsTable rows={pagedRows} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={openEdit} onView={openView} onChangeStatus={(v) => { setOpenMenu(null); setStatusTarget(v); }} onDelete={(v) => { setOpenMenu(null); setDeleteTarget(v); }} />
+        <ViewingsTable rows={pagedRows} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={openEdit} onView={openView} onChangeStatus={(v) => { setOpenMenu(null); setStatusTarget(v); }} onDelete={(v) => { setOpenMenu(null); setDeleteTarget(v); }} hideAgent={hideAgent} />
         <PaginationFooter currentPage={page} totalItems={rows.length} onPageChange={setCurrentPage} />
       </section>
 

@@ -29,6 +29,7 @@ import {
   fmtUSD,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
+import { countProperties } from "../_data/catalog";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_ABBR = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -635,6 +636,8 @@ function RowActions({
   onDelete,
   onAssignAgent,
   onChangeStatus,
+  basePath,
+  hideAgent,
 }: {
   propId: string;
   hasAgent: boolean;
@@ -643,10 +646,12 @@ function RowActions({
   onDelete: () => void;
   onAssignAgent: () => void;
   onChangeStatus: () => void;
+  basePath: string;
+  hideAgent: boolean;
 }) {
   const router = useRouter();
-  const goDetails = () => router.push(`/admin/properties/${encodeURIComponent(propId)}`);
-  const goEdit = () => router.push(`/admin/properties/${encodeURIComponent(propId)}/edit?from=properties`);
+  const goDetails = () => router.push(`${basePath}/${encodeURIComponent(propId)}`);
+  const goEdit = () => router.push(`${basePath}/${encodeURIComponent(propId)}/edit?from=properties`);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -684,17 +689,18 @@ function RowActions({
           </button>
         </div>
         <div className="pp-amenu__sect">
-          {hasAgent ? (
-            <button type="button" className="pp-aitem" role="menuitem" onClick={onAssignAgent}>
-              <Icon name="user-cog" size={17} />
-              Change assigned agent
-            </button>
-          ) : (
-            <button type="button" className="pp-aitem" role="menuitem" onClick={onAssignAgent}>
-              <Icon name="user-plus" size={17} />
-              Assign agent
-            </button>
-          )}
+          {!hideAgent &&
+            (hasAgent ? (
+              <button type="button" className="pp-aitem" role="menuitem" onClick={onAssignAgent}>
+                <Icon name="user-cog" size={17} />
+                Change assigned agent
+              </button>
+            ) : (
+              <button type="button" className="pp-aitem" role="menuitem" onClick={onAssignAgent}>
+                <Icon name="user-plus" size={17} />
+                Assign agent
+              </button>
+            ))}
           <button type="button" className="pp-aitem" role="menuitem" onClick={onChangeStatus}>
             <Icon name="refresh-cw" size={17} />
             Change status
@@ -728,6 +734,8 @@ function PropertyRow({
   onDeleteRequest,
   onAssignAgentRequest,
   onChangeStatusRequest,
+  hideAgent,
+  basePath,
 }: {
   p: PropertyRecord;
   openMenu: string | null;
@@ -735,10 +743,12 @@ function PropertyRow({
   onDeleteRequest: (p: PropertyRecord) => void;
   onAssignAgentRequest: (p: PropertyRecord) => void;
   onChangeStatusRequest: (p: PropertyRecord) => void;
+  hideAgent: boolean;
+  basePath: string;
 }) {
   const st = STATUS_META[p.status] || { variant: "neutral" as const };
   const router = useRouter();
-  const goDetails = () => router.push(`/admin/properties/${encodeURIComponent(p.id)}`);
+  const goDetails = () => router.push(`${basePath}/${encodeURIComponent(p.id)}`);
   return (
     <div
       className="pp-row"
@@ -779,20 +789,22 @@ function PropertyRow({
           <span className="pp-owner__name">{p.owner.name}</span>
         </div>
       </div>
-      <div className="pp-col--agent">
-        <span className="pp-celllabel">Agent</span>
-        {p.agent ? (
-          <div className="pp-agent">
-            <Avatar src={p.agent.img} name={p.agent.name} size="sm" verified />
-            <span className="pp-agent__name">{p.agent.name}</span>
-          </div>
-        ) : (
-          <span className="pp-agent__unassigned">
-            <Icon name="user-plus" size={15} />
-            Unassigned
-          </span>
-        )}
-      </div>
+      {!hideAgent && (
+        <div className="pp-col--agent">
+          <span className="pp-celllabel">Agent</span>
+          {p.agent ? (
+            <div className="pp-agent">
+              <Avatar src={p.agent.img} name={p.agent.name} size="sm" verified />
+              <span className="pp-agent__name">{p.agent.name}</span>
+            </div>
+          ) : (
+            <span className="pp-agent__unassigned">
+              <Icon name="user-plus" size={15} />
+              Unassigned
+            </span>
+          )}
+        </div>
+      )}
       <div className="pp-col--listing">
         <Badge variant={p.listing === "sale" ? "brand" : "info"} size="sm">
           {p.listing === "sale" ? "For sale" : "For rent"}
@@ -819,6 +831,8 @@ function PropertyRow({
       <div className="pp-col--actions" onClick={(e) => e.stopPropagation()}>
         <RowActions
           propId={p.id}
+          basePath={basePath}
+          hideAgent={hideAgent}
           hasAgent={!!p.agent}
           open={openMenu === p.id}
           onToggle={() => setOpenMenu(openMenu === p.id ? null : p.id)}
@@ -914,6 +928,8 @@ function PropertiesTableCard(props: {
   onDeleteRequest: (p: PropertyRecord) => void;
   onAssignAgentRequest: (p: PropertyRecord) => void;
   onChangeStatusRequest: (p: PropertyRecord) => void;
+  hideAgent: boolean;
+  basePath: string;
 }) {
   const opt = (arr: string[]): SelectOption[] => arr.map((v) => ({ value: v, label: v }));
   const activeAdvCount = Object.values(props.advFilters).filter(Boolean).length;
@@ -977,7 +993,9 @@ function PropertiesTableCard(props: {
             <div className="pp-filterbar__row">
               <CustomSelect value={props.advFilters.type} onChange={(v) => props.onAdvFilter("type", v)} options={opt(TYPE_OPTIONS)} placeholder="Property type" />
               <CustomSelect value={props.advFilters.city} onChange={(v) => props.onAdvFilter("city", v)} options={opt(props.cityOptions)} placeholder="Location" />
-              <CustomSelect value={props.advFilters.agent} onChange={(v) => props.onAdvFilter("agent", v)} options={AGENT_FILTER_OPTIONS} placeholder="Agent" />
+              {!props.hideAgent && (
+                <CustomSelect value={props.advFilters.agent} onChange={(v) => props.onAdvFilter("agent", v)} options={AGENT_FILTER_OPTIONS} placeholder="Agent" />
+              )}
               <CustomSelect value={props.advFilters.priceRange} onChange={(v) => props.onAdvFilter("priceRange", v)} options={opt(PRICE_RANGES)} placeholder="Price range" />
               <CalendarPicker value={props.advFilters.dateAdded} onChange={(v) => props.onAdvFilter("dateAdded", v)} />
               <div className="pp-filterbar__actions">
@@ -991,13 +1009,13 @@ function PropertiesTableCard(props: {
         </div>
       </header>
 
-      <div className="pp-table">
+      <div className={"pp-table" + (props.hideAgent ? " pp-table--noagent" : "")}>
         <div className="pp-thead" role="row">
           <span className="pp-th pp-col--prop">Property</span>
           <span className="pp-th pp-col--location">Location</span>
           <span className="pp-th pp-col--type">Type</span>
           <span className="pp-th pp-col--owner">Owner</span>
-          <span className="pp-th pp-col--agent">Assigned agent</span>
+          {!props.hideAgent && <span className="pp-th pp-col--agent">Assigned agent</span>}
           <span className="pp-th pp-col--listing">Listing</span>
           <span className="pp-th pp-col--status">Status</span>
           <span className="pp-th pp-col--price">Price</span>
@@ -1014,6 +1032,8 @@ function PropertiesTableCard(props: {
               onDeleteRequest={props.onDeleteRequest}
               onAssignAgentRequest={props.onAssignAgentRequest}
               onChangeStatusRequest={props.onChangeStatusRequest}
+              hideAgent={props.hideAgent}
+              basePath={props.basePath}
             />
           ))
         ) : (
@@ -1032,9 +1052,13 @@ function PropertiesTableCard(props: {
 }
 
 /* ---------------- Page ---------------- */
-export function PropertiesApp() {
+export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { scopeAgent?: string; basePath?: string } = {}) {
   const searchParams = useSearchParams();
   const { properties, setProperties, counts, locationTree } = useProperties();
+  const hideAgent = !!scopeAgent;
+  // When scoped to an agent, every count/list reflects only that agent's listings.
+  const baseList = useMemo(() => (scopeAgent ? properties.filter((p) => p.agent?.name === scopeAgent) : properties), [properties, scopeAgent]);
+  const effCounts = useMemo(() => (scopeAgent ? countProperties(baseList) : counts), [scopeAgent, baseList, counts]);
   const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
   const [activeTab, setActiveTab] = useState(() => {
     const s = searchParams.get("status");
@@ -1145,7 +1169,7 @@ export function PropertiesApp() {
 
   const rows = useMemo(() => {
     const sq = q.trim().toLowerCase();
-    return properties.filter((p) => {
+    return baseList.filter((p) => {
       if (activeTab === "published" && p.status !== "Published") return false;
       if (activeTab === "sold" && p.status !== "Sold") return false;
       if (activeTab === "rented" && p.status !== "Rented") return false;
@@ -1161,10 +1185,10 @@ export function PropertiesApp() {
       }
       return true;
     });
-  }, [properties, activeTab, q, advFilters]);
+  }, [baseList, activeTab, q, advFilters]);
 
   const isFiltered = activeTab !== "all" || !!q.trim() || Object.values(advFilters).some(Boolean);
-  const totalRows = isFiltered ? rows.length : counts.total;
+  const totalRows = isFiltered ? rows.length : effCounts.total;
   const pagedRows = rows.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
@@ -1175,7 +1199,7 @@ export function PropertiesApp() {
           <p className="pp-head__sub">Manage property listings, approvals, ownership details, and listing status.</p>
         </div>
         <div className="pp-head__action">
-          <Button href="/admin/properties/new" hierarchy="primary" size="lg" iconLeading="plus">
+          <Button href={`${basePath}/new`} hierarchy="primary" size="lg" iconLeading="plus">
             Add property
           </Button>
         </div>
@@ -1183,7 +1207,7 @@ export function PropertiesApp() {
 
       <div className="pp-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={counts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard key={c.key} label={c.label} value={effCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
         ))}
       </div>
 
@@ -1198,9 +1222,11 @@ export function PropertiesApp() {
         onAdvFilter={setAdvFilter}
         onClearFilters={clearFilters}
         cityOptions={cityOptions}
+        hideAgent={hideAgent}
+        basePath={basePath}
         rows={pagedRows}
         totalRows={totalRows}
-        totalCount={counts.total}
+        totalCount={effCounts.total}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         openMenu={openMenu}

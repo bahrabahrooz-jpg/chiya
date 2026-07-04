@@ -370,6 +370,17 @@
     grid-template-columns: minmax(230px, 2.3fr) minmax(140px, 1fr) minmax(160px, 1.3fr) 140px 128px 56px;
     min-width: 940px;
   }
+  /* agent-scoped: same tables without the "Agent" column */
+  .mpf-table--portfolio.mpf-table--noagent .mpf-thead,
+  .mpf-table--portfolio.mpf-table--noagent .mpf-trow {
+    grid-template-columns: minmax(220px, 2.2fr) minmax(130px, 1fr) 100px 120px 120px 116px 116px 56px;
+    min-width: 1110px;
+  }
+  .mpf-table--viewings.mpf-table--noagent .mpf-thead,
+  .mpf-table--viewings.mpf-table--noagent .mpf-trow {
+    grid-template-columns: minmax(230px, 2.3fr) minmax(140px, 1fr) 140px 128px 56px;
+    min-width: 780px;
+  }
   .mpf-table--inquiries .mpf-thead,
   .mpf-table--inquiries .mpf-trow {
     grid-template-columns: minmax(240px, 2.6fr) minmax(160px, 1.4fr) 132px 132px;

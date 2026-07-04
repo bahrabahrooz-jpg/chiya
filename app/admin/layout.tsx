@@ -15,8 +15,9 @@ function categoryFor(w: number) {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  // The login page renders bare (no shell, no guard) so it can't loop on itself.
-  if (pathname === "/admin/login") {
+  // Auth pages (login, password reset) render bare — no shell, no guard — so
+  // they're reachable while logged out and can't loop on the redirect guard.
+  if (pathname === "/admin/login" || pathname === "/admin/reset") {
     return <div className="ax-authpage">{children}</div>;
   }
   return <AdminShell>{children}</AdminShell>;

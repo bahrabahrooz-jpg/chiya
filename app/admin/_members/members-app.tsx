@@ -25,6 +25,7 @@ import {
   type MemberRecord,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
+import { countMembers } from "../_data/catalog";
 
 type SelectOption = { value: string; label: string };
 
@@ -444,6 +445,7 @@ function MemberRow({
   onEditRequest,
   onStatusRequest,
   onDeleteRequest,
+  readOnly,
 }: {
   m: MemberRecord;
   openMenu: string | null;
@@ -452,6 +454,7 @@ function MemberRow({
   onEditRequest: (m: MemberRecord) => void;
   onStatusRequest: (m: MemberRecord) => void;
   onDeleteRequest: (m: MemberRecord) => void;
+  readOnly: boolean;
 }) {
   const st = MEMBER_STATUS[m.status] || { variant: "neutral" as const, dot: false };
   return (
@@ -510,29 +513,31 @@ function MemberRow({
           {m.status}
         </Badge>
       </div>
-      <div className="mp-col--actions" onClick={(e) => e.stopPropagation()}>
-        <RowActions
-          open={openMenu === m.id}
-          onToggle={() => setOpenMenu(openMenu === m.id ? null : m.id)}
-          status={m.status}
-          onView={() => {
-            setOpenMenu(null);
-            onView(m);
-          }}
-          onEdit={() => {
-            setOpenMenu(null);
-            onEditRequest(m);
-          }}
-          onStatus={() => {
-            setOpenMenu(null);
-            onStatusRequest(m);
-          }}
-          onDelete={() => {
-            setOpenMenu(null);
-            onDeleteRequest(m);
-          }}
-        />
-      </div>
+      {!readOnly && (
+        <div className="mp-col--actions" onClick={(e) => e.stopPropagation()}>
+          <RowActions
+            open={openMenu === m.id}
+            onToggle={() => setOpenMenu(openMenu === m.id ? null : m.id)}
+            status={m.status}
+            onView={() => {
+              setOpenMenu(null);
+              onView(m);
+            }}
+            onEdit={() => {
+              setOpenMenu(null);
+              onEditRequest(m);
+            }}
+            onStatus={() => {
+              setOpenMenu(null);
+              onStatusRequest(m);
+            }}
+            onDelete={() => {
+              setOpenMenu(null);
+              onDeleteRequest(m);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -641,6 +646,7 @@ function MembersTableCard(props: {
   onEditRequest: (m: MemberRecord) => void;
   onStatusRequest: (m: MemberRecord) => void;
   onDeleteRequest: (m: MemberRecord) => void;
+  readOnly: boolean;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const shown = props.hasActive ? props.totalRows : props.totalCount;
@@ -713,7 +719,7 @@ function MembersTableCard(props: {
           </div>
         </div>
       </header>
-      <div className="mp-table">
+      <div className={"mp-table" + (props.readOnly ? " mp-table--noactions" : "")}>
         <div className="mp-thead" role="row">
           <span className="mp-th mp-col--member">Member</span>
           <span className="mp-th mp-col--roles">Roles</span>
@@ -721,7 +727,7 @@ function MembersTableCard(props: {
           <span className="mp-th mp-col--props">Properties</span>
           <span className="mp-th mp-col--joined">Joined date</span>
           <span className="mp-th mp-col--status">Status</span>
-          <span className="mp-th mp-col--actions">Actions</span>
+          {!props.readOnly && <span className="mp-th mp-col--actions">Actions</span>}
         </div>
         {props.rows.length > 0 ? (
           props.rows.map((m) => (
@@ -734,6 +740,7 @@ function MembersTableCard(props: {
               onEditRequest={props.onEditRequest}
               onStatusRequest={props.onStatusRequest}
               onDeleteRequest={props.onDeleteRequest}
+              readOnly={props.readOnly}
             />
           ))
         ) : (
@@ -751,9 +758,21 @@ function MembersTableCard(props: {
   );
 }
 
-export function MembersApp() {
+export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeAgent?: string; basePath?: string } = {}) {
   const router = useRouter();
-  const { members, memberCounts, addMember, removeMember, updateMember } = useProperties();
+  const { members, memberCounts, properties, addMember, removeMember, updateMember } = useProperties();
+  const readOnly = !!scopeAgent;
+  // Agent scope: members = owners of the listings assigned to that agent, and the
+  // "Properties" count reflects only their listings handled by THIS agent.
+  const baseMembers = useMemo(() => {
+    if (!scopeAgent) return members;
+    const ownCount: Record<string, number> = {};
+    for (const p of properties) {
+      if (p.agent?.name === scopeAgent) ownCount[p.owner.name] = (ownCount[p.owner.name] || 0) + 1;
+    }
+    return members.filter((m) => ownCount[m.name] > 0).map((m) => ({ ...m, properties: ownCount[m.name] }));
+  }, [scopeAgent, properties, members]);
+  const effCounts = useMemo(() => (scopeAgent ? countMembers(baseMembers) : memberCounts), [scopeAgent, baseMembers, memberCounts]);
   const [filters, setFilters] = useState<MemberFilters>(EMPTY_FILTERS);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -773,8 +792,8 @@ export function MembersApp() {
   };
   const hasActive = Object.values(filters).some(Boolean);
 
-  const viewMember = (m: MemberRecord) => router.push(`/admin/members/${encodeURIComponent(m.id)}`);
-  const viewProfile = () => router.push("/admin/members");
+  const viewMember = (m: MemberRecord) => router.push(`${basePath}/${encodeURIComponent(m.id)}`);
+  const viewProfile = () => router.push(basePath);
 
   const handleAddMember = (v: { name: string; phone: string; email: string; agentId: string; notes: string }) => {
     setAddOpen(false);
@@ -834,7 +853,7 @@ export function MembersApp() {
 
   const rows = useMemo(() => {
     const q = filters.q.trim().toLowerCase();
-    return members.filter((m) => {
+    return baseMembers.filter((m) => {
       if (filters.role && !m.roles.includes(filters.role)) return false;
       if (filters.status && m.status !== filters.status) return false;
       if (filters.date && m.joined !== fmtDate(filters.date)) return false;
@@ -844,9 +863,9 @@ export function MembersApp() {
       }
       return true;
     });
-  }, [filters, members]);
+  }, [filters, baseMembers]);
 
-  const totalRows = hasActive ? rows.length : members.length;
+  const totalRows = hasActive ? rows.length : baseMembers.length;
   const pagedRows = rows.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
@@ -856,16 +875,18 @@ export function MembersApp() {
           <h1 className="mp-head__title">Members</h1>
           <p className="mp-head__sub">Manage buyers, sellers, landlords, and tenants across Chiya Estate.</p>
         </div>
-        <div className="mp-head__action">
-          <Button hierarchy="primary" size="lg" iconLeading="user-plus" onClick={() => setAddOpen(true)}>
-            Add member
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="mp-head__action">
+            <Button hierarchy="primary" size="lg" iconLeading="user-plus" onClick={() => setAddOpen(true)}>
+              Add member
+            </Button>
+          </div>
+        )}
       </header>
 
       <div className="mp-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={memberCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard key={c.key} label={c.label} value={effCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
         ))}
       </div>
 
@@ -876,7 +897,7 @@ export function MembersApp() {
         hasActive={hasActive}
         rows={pagedRows}
         totalRows={totalRows}
-        totalCount={members.length}
+        totalCount={baseMembers.length}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         openMenu={openMenu}
@@ -885,6 +906,7 @@ export function MembersApp() {
         onEditRequest={setEditTarget}
         onStatusRequest={setStatusTarget}
         onDeleteRequest={setDeleteTarget}
+        readOnly={readOnly}
       />
 
       {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}

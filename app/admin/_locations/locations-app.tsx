@@ -641,7 +641,7 @@ export function LocationsApp() {
           <p className="lc-head__sub">Manage cities, districts, and residential projects used throughout the platform.</p>
         </div>
         <div className="lc-head__action">
-          <Button hierarchy="primary" iconLeading="plus" onClick={() => setModal("add")}>
+          <Button hierarchy="primary" size="lg" iconLeading="plus" onClick={() => setModal("add")}>
             Add location
           </Button>
         </div>

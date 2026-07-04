@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
-import { NAV_GROUPS, type NavItemDef } from "./admin-data";
+import { NAV_GROUPS, type NavGroupDef, type NavItemDef } from "./admin-data";
 
 function NavItem({
   item,
@@ -70,12 +70,16 @@ export function AdminSidebar({
   active,
   onToggleCollapse,
   onNavigate,
+  groups = NAV_GROUPS,
+  homeHref = "/admin",
 }: {
   collapsed: boolean;
   drawerOpen: boolean;
   active: string;
   onToggleCollapse: () => void;
   onNavigate: () => void;
+  groups?: NavGroupDef[];
+  homeHref?: string;
 }) {
   const cls = ["ax-sidebar", collapsed ? "is-collapsed" : "", drawerOpen ? "is-drawer-open" : ""]
     .filter(Boolean)
@@ -84,7 +88,7 @@ export function AdminSidebar({
   return (
     <aside className={cls} aria-label="Primary navigation">
       <div className="ax-sb-head">
-        <Link className="ax-sb-logo" href="/admin" onClick={onNavigate}>
+        <Link className="ax-sb-logo" href={homeHref} onClick={onNavigate}>
           <span className="ax-sb-logo__txt">
             <span className="ax-sb-logo__name">
               Chiya<span> Estate</span>
@@ -104,7 +108,7 @@ export function AdminSidebar({
       </button>
 
       <nav className="ax-nav">
-        {NAV_GROUPS.map((g) => (
+        {groups.map((g) => (
           <div className="ax-nav-group" key={g.label}>
             <div className="ax-nav-label">{g.label}</div>
             {g.items.map((it) => (

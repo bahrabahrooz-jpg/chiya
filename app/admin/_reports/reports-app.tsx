@@ -1,24 +1,28 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { StatCard } from "@/components/data/stat-card";
+import { useProperties } from "../_shared/properties-store";
+import { VIEWINGS } from "../_viewings/data";
 import {
-  AGENTS,
   C,
-  DATE_RANGES,
-  KPI_CARDS,
-  LOCATIONS,
-  MEMBER_TRENDS,
-  MONTHS,
-  PERF_SERIES,
-  SR_MONTHS,
-  SR_SERIES,
-  STATUS,
+  PERIODS,
+  buildAgentRows,
+  buildListingsTrend,
+  buildMemberTrends,
+  buildPeriodKpis,
+  buildSalesRentals,
+  buildStatusSlices,
+  buildTopLocations,
   niceNum,
   smoothPath,
+  type AgentRow,
+  type LocationRow,
+  type MemberTrend,
   type Series,
+  type StatusSlice,
 } from "./data";
 
 function useElementWidth(ref: React.RefObject<HTMLDivElement | null>) {
@@ -33,50 +37,6 @@ function useElementWidth(ref: React.RefObject<HTMLDivElement | null>) {
     return () => ro.disconnect();
   }, [ref]);
   return w;
-}
-
-function DateRange({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const current = DATE_RANGES.find((d) => d.id === value) || DATE_RANGES[1];
-  return (
-    <div className="ax-period rp-daterange">
-      <button type="button" className={"ax-period__btn" + (open ? " is-open" : "")} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <span className="ax-period__lead">
-          <Icon name="calendar-range" size={17} />
-        </span>
-        {current.label}
-        <Icon name="chevron-down" size={16} className="ax-period__chev" />
-      </button>
-      {open && (
-        <>
-          <div className="ax-menu-backdrop" onClick={() => setOpen(false)} />
-          <div className="ax-period__menu" role="listbox" aria-label="Date range">
-            {DATE_RANGES.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                role="option"
-                aria-selected={d.id === value}
-                className={"ax-menu-item" + (d.id === value ? " is-selected" : "")}
-                onClick={() => {
-                  onChange(d.id);
-                  setOpen(false);
-                }}
-              >
-                {d.custom && <Icon name="sliders-horizontal" size={16} />}
-                {d.label}
-                {d.id === value && (
-                  <span className="ax-menu-item__check">
-                    <Icon name="check" size={17} strokeWidth={2.5} />
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
 }
 
 function ChartCard({ title, desc, right, children, className }: { title: string; desc?: string; right?: ReactNode; children: ReactNode; className?: string }) {
@@ -149,11 +109,13 @@ function LineChart({ labels, series }: { labels: string[]; series: Series[] }) {
               </text>
             </g>
           ))}
-          {labels.map((lb, i) => (
-            <text key={i} className="ax-chart__xlab" x={xAt(i)} y={H - 10} textAnchor="middle">
-              {lb}
-            </text>
-          ))}
+          {labels.map((lb, i) =>
+            i % Math.max(1, Math.ceil(n / 8)) === 0 || i === n - 1 ? (
+              <text key={i} className="ax-chart__xlab" x={xAt(i)} y={H - 10} textAnchor="middle">
+                {lb}
+              </text>
+            ) : null,
+          )}
           {(() => {
             const pts = primary.data.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
             const line = smoothPath(pts);
@@ -198,24 +160,24 @@ function Legend({ series, visible, onToggle }: { series: Series[]; visible: Reco
   );
 }
 
-function PropertyPerformance() {
-  const [visible, setVisible] = useState<Record<string, boolean>>({ thisYear: true, lastYear: true });
+function PropertyPerformance({ labels, series }: { labels: string[]; series: Series[] }) {
+  const [visible, setVisible] = useState<Record<string, boolean>>(() => Object.fromEntries(series.map((s) => [s.key, true])));
   const toggle = (k: string) =>
     setVisible((v) => {
       const next = { ...v, [k]: !v[k] };
       if (Object.values(next).every((x) => !x)) return v;
       return next;
     });
-  const shown = PERF_SERIES.filter((s) => visible[s.key]);
+  const shown = series.filter((s) => visible[s.key] ?? true);
   return (
-    <ChartCard title="Property performance" desc="Properties added by month — current year against the prior year." right={<Legend series={PERF_SERIES} visible={visible} onToggle={toggle} />}>
-      <LineChart labels={MONTHS} series={shown} />
+    <ChartCard title="Property performance" desc="New listings added over the selected period." right={series.length > 1 ? <Legend series={series} visible={visible} onToggle={toggle} /> : undefined}>
+      <LineChart labels={labels} series={shown} />
     </ChartCard>
   );
 }
 
-function Donut() {
-  const total = STATUS.reduce((a, s) => a + s.value, 0);
+function Donut({ status }: { status: StatusSlice[] }) {
+  const total = status.reduce((a, s) => a + s.value, 0);
   const [active, setActive] = useState<number | null>(null);
   const size = 200,
     stroke = 26,
@@ -223,13 +185,13 @@ function Donut() {
     cx = size / 2,
     cy = size / 2;
   const circ = 2 * Math.PI * r;
-  const segs = STATUS.reduce<{ key: string; color: string; dash: number; offset: number }[]>((arr, s) => {
-    const frac = s.value / total;
+  const segs = status.reduce<{ key: string; color: string; dash: number; offset: number }[]>((arr, s) => {
+    const frac = total ? s.value / total : 0;
     const prior = arr.length ? arr[arr.length - 1].offset + arr[arr.length - 1].dash : 0;
     arr.push({ key: s.key, color: s.color, dash: frac * circ, offset: prior });
     return arr;
   }, []);
-  const center = active != null ? STATUS[active] : null;
+  const center = active != null ? status[active] : null;
   return (
     <div className="rp-donut">
       <div className="rp-donut__chart" role="img" aria-label="Property status breakdown">
@@ -261,11 +223,11 @@ function Donut() {
         </div>
       </div>
       <ul className="rp-donut__legend">
-        {STATUS.map((s, i) => (
+        {status.map((s, i) => (
           <li key={s.key} className={"rp-legrow" + (active === i ? " is-active" : "")} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)}>
             <span className="rp-legrow__dot" style={{ background: s.color }} />
             <span className="rp-legrow__label">{s.label}</span>
-            <span className="rp-legrow__pct">{Math.round((s.value / total) * 100)}%</span>
+            <span className="rp-legrow__pct">{total ? Math.round((s.value / total) * 100) : 0}%</span>
             <span className="rp-legrow__val">{s.value.toLocaleString()}</span>
           </li>
         ))}
@@ -314,9 +276,11 @@ function GroupedBars({ labels, series }: { labels: string[]; series: Series[] })
                   const y = yAt(s.data[i]);
                   return <rect key={s.key} x={x} y={y} width={barW} height={PAD.t + plotH - y} rx={3} fill={s.color} style={{ opacity: hover == null || hover === i ? 1 : 0.55, transition: "opacity .15s" }} />;
                 })}
-                <text className="ax-chart__xlab" x={gx} y={H - 10} textAnchor="middle">
-                  {lb}
-                </text>
+                {(i % Math.max(1, Math.ceil(n / 8)) === 0 || i === n - 1) && (
+                  <text className="ax-chart__xlab" x={gx} y={H - 10} textAnchor="middle">
+                    {lb}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -341,14 +305,14 @@ function GroupedBars({ labels, series }: { labels: string[]; series: Series[] })
   );
 }
 
-function SalesRentals() {
+function SalesRentals({ labels, series }: { labels: string[]; series: Series[] }) {
   return (
     <ChartCard
       title="Sales & rentals trends"
-      desc="Closed sales against rentals, compared month over month."
+      desc="Closed sales against rentals over the selected period."
       right={
         <div className="ax-legend" style={{ margin: 0 }}>
-          {SR_SERIES.map((s) => (
+          {series.map((s) => (
             <span key={s.key} className="ax-legend__item" style={{ cursor: "default" }}>
               <span className="ax-legend__dot" style={{ background: s.color }} />
               {s.label}
@@ -357,15 +321,15 @@ function SalesRentals() {
         </div>
       }
     >
-      <GroupedBars labels={SR_MONTHS} series={SR_SERIES} />
+      <GroupedBars labels={labels} series={series} />
     </ChartCard>
   );
 }
 
-function TopLocations() {
+function TopLocations({ data }: { data: Record<string, LocationRow[]> }) {
   const [scope, setScope] = useState("Cities");
-  const rows = LOCATIONS[scope];
-  const max = Math.max(...rows.map((r) => r.value));
+  const rows = data[scope] ?? [];
+  const max = Math.max(1, ...rows.map((r) => r.value));
   return (
     <ChartCard title="Top performing locations" desc="Listings ranked by activity across the selected geography." right={<Segmented options={["Cities", "Areas", "Projects"]} value={scope} onChange={setScope} ariaLabel="Location scope" />}>
       <ul className="rp-hbars">
@@ -384,58 +348,49 @@ function TopLocations() {
   );
 }
 
-function AgentPerformance() {
-  const conversion = (a: (typeof AGENTS)[number]) => ((a.sold + a.rented) / a.viewings) * 100;
-  const rows = AGENTS.map((a) => ({ ...a, conv: conversion(a) })).sort((x, y) => y.conv - x.conv);
-  const topConv = rows[0].conv;
+function AgentPerformance({ agents }: { agents: AgentRow[] }) {
+  const completion = (a: AgentRow) => (a.viewings ? (a.completed / a.viewings) * 100 : 0);
+  const rows = agents.map((a) => ({ ...a, conv: completion(a) })).sort((x, y) => y.conv - x.conv);
   return (
-    <ChartCard title="Agent performance" desc="Conversion rate = (sold + rented) ÷ total viewings. Top performers highlighted." className="rp-card--flush">
+    <ChartCard title="Top 5 agent performance" desc="Ranked by completion rate = completed viewings ÷ total viewings." className="rp-card--flush">
       <div className="rp-table-wrap">
         <table className="rp-table">
           <thead>
             <tr>
+              <th className="rp-th rp-th--rank">#</th>
               <th className="rp-th rp-th--agent">Agent</th>
               <th className="rp-th rp-th--num">Active listings</th>
               <th className="rp-th rp-th--num">Sold</th>
               <th className="rp-th rp-th--num">Rented</th>
               <th className="rp-th rp-th--num">Viewings</th>
-              <th className="rp-th rp-th--conv">Conversion rate</th>
+              <th className="rp-th rp-th--conv">Completion rate</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((a) => {
-              const top = a.conv === topConv;
-              return (
-                <tr key={a.name} className={"rp-tr" + (top ? " is-top" : "")}>
-                  <td className="rp-td rp-td--agent">
-                    <Avatar src={a.img} name={a.name} size="sm" verified={a.verified} />
-                    <span className="rp-agent">
-                      <span className="rp-agent__name">
-                        {a.name}
-                        {top && (
-                          <span className="rp-topbadge">
-                            <Icon name="star" size={12} strokeWidth={2.5} /> Top performer
-                          </span>
-                        )}
-                      </span>
-                      <span className="rp-agent__team">{a.team}</span>
+            {rows.map((a, i) => (
+              <tr key={a.name} className="rp-tr">
+                <td className="rp-td rp-td--rank">{i + 1}</td>
+                <td className="rp-td rp-td--agent">
+                  <Avatar src={a.img} name={a.name} size="sm" verified={a.verified} />
+                  <span className="rp-agent">
+                    <span className="rp-agent__name">{a.name}</span>
+                    <span className="rp-agent__team">{a.team}</span>
+                  </span>
+                </td>
+                <td className="rp-td rp-td--num">{a.active}</td>
+                <td className="rp-td rp-td--num">{a.sold}</td>
+                <td className="rp-td rp-td--num">{a.rented}</td>
+                <td className="rp-td rp-td--num">{a.viewings}</td>
+                <td className="rp-td rp-td--conv">
+                  <span className="rp-conv">
+                    <span className="rp-conv__track">
+                      <span className="rp-conv__fill" style={{ width: `${a.conv}%`, background: C.green }} />
                     </span>
-                  </td>
-                  <td className="rp-td rp-td--num">{a.active}</td>
-                  <td className="rp-td rp-td--num">{a.sold}</td>
-                  <td className="rp-td rp-td--num">{a.rented}</td>
-                  <td className="rp-td rp-td--num">{a.viewings}</td>
-                  <td className="rp-td rp-td--conv">
-                    <span className="rp-conv">
-                      <span className="rp-conv__track">
-                        <span className="rp-conv__fill" style={{ width: `${a.conv}%`, background: top ? C.gold : C.green }} />
-                      </span>
-                      <span className="rp-conv__val">{a.conv.toFixed(1)}%</span>
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
+                    <span className="rp-conv__val">{a.conv.toFixed(1)}%</span>
+                  </span>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -478,11 +433,11 @@ function MiniTrend({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-function MemberActivity() {
+function MemberActivity({ trends }: { trends: MemberTrend[] }) {
   return (
     <ChartCard title="Member activity" desc="Engagement signals trending across the selected period." className="rp-card--flush">
       <div className="rp-minis">
-        {MEMBER_TRENDS.map((m) => (
+        {trends.map((m) => (
           <div className="rp-mini" key={m.key}>
             <div className="rp-mini__top">
               <span className={"ax-chip ax-chip--sm ax-chip--" + m.tone}>
@@ -541,16 +496,23 @@ function ExportToast({ toast, onDone }: { toast: ToastItem; onDone: () => void }
 }
 
 export function ReportsApp() {
-  const [range, setRange] = useState("30d");
+  const [periodId, setPeriodId] = useState("Month");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const { properties, members, agents } = useProperties();
+
+  const period = PERIODS.find((p) => p.short === periodId) ?? PERIODS[1];
+  const days = period.days;
+  const kpis = useMemo(() => buildPeriodKpis(properties, members, VIEWINGS, days, period.label), [properties, members, days, period.label]);
+  const perf = useMemo(() => buildListingsTrend(properties, days), [properties, days]);
+  const status = useMemo(() => buildStatusSlices(properties, days), [properties, days]);
+  const sr = useMemo(() => buildSalesRentals(properties, days), [properties, days]);
+  const locations = useMemo(() => buildTopLocations(properties, days), [properties, days]);
+  const agentRows = useMemo(() => buildAgentRows(agents, properties, VIEWINGS, days), [agents, properties, days]);
+  const memberTrends = useMemo(() => buildMemberTrends(members, VIEWINGS, days), [members, days]);
 
   const onExport = (kind: string) => {
-    const rangeLabel = (DATE_RANGES.find((d) => d.id === range) || DATE_RANGES[1]).label;
-    setToasts((ts) => [...ts, { id: Date.now(), kind, rangeLabel }]);
+    setToasts((ts) => [...ts, { id: Date.now(), kind, rangeLabel: `the last ${period.label}` }]);
   };
-
-  const compare =
-    range === "7d" ? "vs previous 7 days" : range === "90d" ? "vs previous 90 days" : range === "year" ? "vs last year" : range === "custom" ? "vs previous period" : "vs previous 30 days";
 
   return (
     <>
@@ -560,32 +522,35 @@ export function ReportsApp() {
           <p className="rp-head__sub">Track business performance, property activity, sales, rentals, agent performance, and member engagement.</p>
         </div>
         <div className="rp-head__tools">
-          <DateRange value={range} onChange={setRange} />
           <div className="rp-head__exports">
-            <button type="button" className="rp-xbtn rp-xbtn--solid" onClick={() => onExport("PDF")}>
-              <Icon name="file-text" size={17} /> Export PDF
+            <button type="button" className="rp-xbtn" onClick={() => onExport("data")}>
+              <Icon name="download" size={17} /> Export data
             </button>
           </div>
         </div>
       </div>
 
+      <div className="rp-periodbar">
+        <Segmented options={PERIODS.map((p) => p.short)} value={periodId} onChange={setPeriodId} ariaLabel="Reporting period" />
+      </div>
+
       <section className="rp-kpis" aria-label="Summary metrics">
-        {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={c.value} icon={c.icon} tone={c.tone} delta={c.delta} deltaDir={c.dir} sub={compare} />
+        {kpis.map((c) => (
+          <StatCard key={c.key} label={c.label} value={c.value} icon={c.icon} tone={c.tone} delta={c.delta} deltaDir={c.dir} sub={c.sub} />
         ))}
       </section>
 
       <div className="rp-stack">
-        <PropertyPerformance />
+        <PropertyPerformance labels={perf.labels} series={perf.series} />
         <div className="rp-split">
           <ChartCard title="Property status breakdown" desc="Share of inventory by lifecycle status.">
-            <Donut />
+            <Donut status={status} />
           </ChartCard>
-          <SalesRentals />
+          <SalesRentals labels={sr.labels} series={sr.series} />
         </div>
-        <TopLocations />
-        <AgentPerformance />
-        <MemberActivity />
+        <TopLocations data={locations} />
+        <AgentPerformance agents={agentRows} />
+        <MemberActivity trends={memberTrends} />
       </div>
 
       <div className="rp-toaster">

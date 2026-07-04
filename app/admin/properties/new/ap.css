@@ -667,6 +667,8 @@
   }
   .ap-agentcard__remove:hover { background: var(--gray-100); color: var(--gray-800); }
   .ap-agentcard__remove:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ap-agentcard__lock { flex: none; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-tertiary); }
+  .ap-lockhint { margin: 10px 0 0; font-size: 13px; color: var(--text-tertiary); }
 
   /* assigned-agent picker (before selection) — mirrors Members modal */
   .ap-agentsel__trigger {

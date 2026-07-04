@@ -43,7 +43,7 @@ import {
   usePhotoUploader,
 } from "../_add-property/add-property-app";
 
-export function EditPropertyApp({ id }: { id: string }) {
+export function EditPropertyApp({ id, lockedAgentId }: { id: string; lockedAgentId?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [f, setF] = useState<ApForm>(INITIAL);
@@ -465,8 +465,10 @@ export function EditPropertyApp({ id }: { id: string }) {
                   <FieldLabel htmlFor="ap-agent">Assigned agent</FieldLabel>
                   {(() => {
                     const sel = assignableAgents.find((a) => a.id === f.agent);
+                    if (lockedAgentId) return sel ? <AgentSummary agent={sel} locked /> : null;
                     return sel ? <AgentSummary agent={sel} onClear={() => set("agent", "")} /> : <AgentSelect id="ap-agent" value={f.agent} onChange={(v) => set("agent", v)} />;
                   })()}
+                  {lockedAgentId && <p className="ap-lockhint">You are the assigned agent for this listing.</p>}
                 </div>
               </div>
             </div>

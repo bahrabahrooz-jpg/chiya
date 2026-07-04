@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/lib/admin-auth";
+import { createResetToken } from "@/lib/admin-reset";
 import "./login.css";
 
 type Mode = "signin" | "forgot";
@@ -18,6 +19,7 @@ export default function AdminLoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(true);
   const [sent, setSent] = useState(false);
+  const [resetToken, setResetToken] = useState("");
   const [emailErr, setEmailErr] = useState(false);
   const [pwErr, setPwErr] = useState(false);
 
@@ -38,17 +40,23 @@ export default function AdminLoginPage() {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
     setEmailErr(!emailOk);
     if (!emailOk) return;
+    // Prototype: mint a reset token locally instead of emailing a link.
+    setResetToken(createResetToken(email.trim()));
     setSent(true);
   };
+  // Re-issues the token — the real endpoint would send a fresh reset email.
+  const resend = () => setResetToken(createResetToken(email.trim()));
   const toForgot = () => {
     setMode("forgot");
     setSent(false);
+    setResetToken("");
     setEmailErr(false);
     setPwErr(false);
   };
   const toSignIn = () => {
     setMode("signin");
     setSent(false);
+    setResetToken("");
     setEmailErr(false);
     setPwErr(false);
   };
@@ -73,7 +81,7 @@ export default function AdminLoginPage() {
             {mode === "signin" && (
               <>
                 <h1 className="al-title">Welcome back</h1>
-                <p className="al-desc">Sign in to access the admin dashboard.</p>
+                <p className="al-desc">Log in to access the admin dashboard.</p>
                 <form className="al-form" onSubmit={signIn} noValidate>
                   <label className="al-field">
                     <span className="al-label">Email</span>
@@ -133,8 +141,8 @@ export default function AdminLoginPage() {
                     </button>
                   </div>
 
-                  <Button type="submit" hierarchy="primary" size="lg" fullWidth iconTrailing="arrow-right" disabled={!email.trim() || !password.trim()}>
-                    Sign in
+                  <Button type="submit" hierarchy="primary" size="lg" fullWidth disabled={!email.trim() || !password.trim()}>
+                    Log in
                   </Button>
                 </form>
               </>
@@ -165,12 +173,12 @@ export default function AdminLoginPage() {
                     </span>
                     {emailErr && <span className="al-errhint">Enter a valid email address.</span>}
                   </label>
-                  <Button type="submit" hierarchy="primary" size="lg" fullWidth iconTrailing="arrow-right" disabled={!email.trim()}>
-                    Send reset link
+                  <Button type="submit" hierarchy="primary" size="lg" fullWidth disabled={!email.trim()}>
+                    Reset password
                   </Button>
                   <button type="button" className="al-back" onClick={toSignIn}>
                     <Icon name="arrow-left" size={15} />
-                    Back to sign in
+                    Back to log in
                   </button>
                 </form>
               </>
@@ -179,15 +187,28 @@ export default function AdminLoginPage() {
             {mode === "forgot" && sent && (
               <div className="al-sent">
                 <span className="al-sent__icon">
-                  <Icon name="mail-check" size={26} />
+                  <Icon name="mail" size={22} />
                 </span>
                 <h1 className="al-title">Check your inbox</h1>
                 <p className="al-desc">
-                  If an account exists for <b>{email || "that address"}</b>, we&apos;ve sent a password reset link. It may take a minute to arrive.
+                  We sent a reset link to <b>{email || "your email"}</b>.<br />
+                  Click the link in the email.
                 </p>
-                <Button hierarchy="secondary" size="lg" fullWidth iconLeading="arrow-left" onClick={toSignIn}>
-                  Back to sign in
-                </Button>
+                {/* No real email is sent — "Open email app" stands in for opening the
+                    inbox and clicking the reset link, so it jumps straight to reset. */}
+                <a className="al-sent__link" href={`/admin/reset?token=${resetToken}`}>
+                  Open email app
+                </a>
+                <p className="al-sent__resend">
+                  Didn&apos;t receive the email?{" "}
+                  <button type="button" className="al-sent__link" onClick={resend}>
+                    Click to resend
+                  </button>
+                </p>
+                <button type="button" className="al-back" onClick={toSignIn}>
+                  <Icon name="arrow-left" size={15} />
+                  Back to log in
+                </button>
               </div>
             )}
           </div>

@@ -4,9 +4,11 @@
 
   /* ---------- PAGE HEADER ---------- */
   .rp-head {
-    display: flex; align-items: flex-end; justify-content: space-between;
-    gap: 28px; margin-bottom: 30px;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 28px; margin-bottom: 24px;
   }
+  /* period stepper — its own row, sitting close above the KPI grid */
+  .rp-periodbar { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 14px; }
   .rp-head__intro { min-width: 0; }
   .rp-head__eyebrow {
     display: inline-flex; align-items: center; gap: 7px;
@@ -28,13 +30,13 @@
 
   .rp-xbtn {
     display: inline-flex; align-items: center; gap: 8px;
-    height: 42px; padding: 0 16px;
+    height: 44px; padding: 0 18px;
     border: 1px solid var(--border-default); background: var(--surface-card);
     border-radius: var(--radius-control); box-shadow: var(--shadow-xs); cursor: pointer;
     font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text-secondary);
     white-space: nowrap; transition: border-color .15s, background-color .15s, color .15s;
   }
-  .rp-xbtn svg { flex: none; color: var(--green-600); }
+  .rp-xbtn svg { flex: none; color: var(--text-tertiary); }
   .rp-xbtn:hover { border-color: var(--border-strong); background: var(--gray-25); color: var(--text-primary); }
   .rp-xbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .rp-xbtn--solid {
@@ -155,10 +157,9 @@
   .rp-th--num { text-align: right; }
   .rp-th--conv { text-align: left; width: 200px; }
   .rp-th--agent { padding-left: 4px; }
+  .rp-th--rank { text-align: center; width: 44px; padding-left: 4px; padding-right: 8px; }
   .rp-tr { transition: background-color .13s; }
   .rp-tr:hover { background: var(--gray-25); }
-  .rp-tr.is-top { background: var(--brand-accent-subtle); }
-  .rp-tr.is-top:hover { background: var(--brand-accent-subtle); }
   .rp-td {
     padding: 14px 16px; border-bottom: 1px solid var(--border-subtle);
     font-family: var(--font-sans); font-size: 14px; color: var(--text-secondary);
@@ -166,6 +167,7 @@
   }
   .rp-tr:last-child .rp-td { border-bottom: none; }
   .rp-td--num { text-align: right; font-weight: 600; color: var(--text-primary); }
+  .rp-td--rank { text-align: center; width: 44px; padding-left: 4px; padding-right: 8px; font-weight: 700; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
   .rp-td--agent { display: flex; align-items: center; gap: 12px; padding-left: 4px; }
   .rp-agent { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .rp-agent__name {
@@ -173,13 +175,6 @@
     font-size: 14.5px; font-weight: 600; color: var(--text-primary);
   }
   .rp-agent__team { font-size: 12.5px; color: var(--text-tertiary); }
-  .rp-topbadge {
-    display: inline-flex; align-items: center; gap: 4px;
-    height: 20px; padding: 0 8px; border-radius: var(--radius-pill);
-    background: var(--gold-400); color: var(--green-900);
-    font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
-  }
-  .rp-topbadge svg { color: var(--green-900); }
   .rp-conv { display: flex; align-items: center; gap: 11px; }
   .rp-conv__track { flex: 1 1 auto; height: 8px; border-radius: var(--radius-pill); background: var(--gray-100); overflow: hidden; min-width: 60px; }
   .rp-conv__fill { display: block; height: 100%; border-radius: var(--radius-pill); }
