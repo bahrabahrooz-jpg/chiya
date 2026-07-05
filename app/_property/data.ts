@@ -89,21 +89,6 @@ export const agent = {
   phone: "+964 750 118 4042",
 };
 
-export const apptDates = [
-  { dow: "Fri", day: "13" },
-  { dow: "Sat", day: "14" },
-  { dow: "Sun", day: "15" },
-  { dow: "Mon", day: "16" },
-];
-export const apptTimes = [
-  { label: "10:00" },
-  { label: "11:30" },
-  { label: "13:00", off: true },
-  { label: "15:00" },
-  { label: "16:30" },
-  { label: "18:00" },
-];
-
 export interface Similar {
   id: string;
   title: string;

@@ -55,7 +55,10 @@ export function MobileNav({ open, onClose, links = [], header, footer }: MobileN
               key={i}
               href={l.href || "#"}
               className={"cx-mnav__link" + (l.active ? " cx-mnav__link--active" : "")}
-              onClick={onClose}
+              onClick={(e) => {
+                l.onClick?.(e);
+                onClose();
+              }}
             >
               {l.label}
             </a>

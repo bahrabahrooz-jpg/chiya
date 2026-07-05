@@ -29,6 +29,7 @@ import {
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
 import type { PropertyRecord } from "../_data/catalog";
+import { useListings, type MemberListing } from "@/lib/listings";
 
 export type Opt = { value: string; label: string };
 
@@ -103,6 +104,31 @@ function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader)
       gallery,
       tourUrl: f.tourUrl || undefined,
     },
+  };
+}
+
+/** Map the shared add-property form to a member-owned listing (Pending Review).
+ *  Used by the website's "Submit your property" flow (mode="member"). */
+function formToMemberListing(f: ApForm, photos: PhotoUploader, priceStr: string, areaStr: string, id?: string): MemberListing {
+  const location = [f.district, f.city].filter(Boolean).join(", ") || f.city || "Kurdistan";
+  const ordered = photos.cover ? [photos.cover, ...photos.photos.filter((x) => x.id !== photos.coverId)] : photos.photos;
+  const gallery = ordered.map((x) => x.url);
+  return {
+    id: id || "ml-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    title: f.title || "Untitled property",
+    location,
+    city: f.city || undefined,
+    deal: f.listing === "rent" ? "rent" : "sale",
+    status: "pending",
+    cover: photos.cover?.url || gallery[0] || "",
+    price: priceStr || undefined,
+    beds: f.beds || undefined,
+    baths: f.baths || undefined,
+    area: areaStr || undefined,
+    description: f.description || undefined,
+    gallery,
+    form: f,
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -500,8 +526,14 @@ export function usePhotoUploader(demo: boolean) {
     });
     setDragId(null);
   };
+  // Restore a saved gallery (cover first) when reopening a listing to edit.
+  const hydrate = (urls: string[]) => {
+    const imgs = urls.filter(Boolean).map((url, i) => ({ id: `seed-${i}-${url.slice(-12)}`, url, name: "" }));
+    setPhotos(imgs);
+    setCoverId(imgs[0]?.id ?? null);
+  };
   const cover = photos.find((p) => p.id === coverId) ?? null;
-  return { photos, coverId, cover, dragId, setDragId, addPhotos, addAsCover, removePhoto, setCover: setCoverId, reorder, video, setVideoFromFiles, removeVideo };
+  return { photos, coverId, cover, dragId, setDragId, addPhotos, addAsCover, removePhoto, setCover: setCoverId, reorder, hydrate, video, setVideoFromFiles, removeVideo };
 }
 export type PhotoUploader = ReturnType<typeof usePhotoUploader>;
 
@@ -1075,14 +1107,144 @@ function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
   );
 }
 
-export function AddPropertyApp({ lockedAgentId }: { lockedAgentId?: string } = {}) {
+/** Member-facing success screen after a "Submit your property" run: the listing
+ *  is filed as Pending Review and the member is routed back to My Properties. */
+function MemberSubmittedSuccess({ listing, editing }: { listing: MemberListing | null; editing?: boolean }) {
+  const router = useRouter();
+  return (
+    <div className="pp-stage">
+      <section className="pp-card" aria-labelledby="pp-title">
+        <div className="pp-mark" aria-hidden="true">
+          <span className="pp-mark__halo" />
+          <span className="pp-mark__ring" />
+          <span className="pp-mark__disc">
+            <Icon name="check" size={46} strokeWidth={2.4} />
+          </span>
+          <span className="pp-mark__spark">
+            <Icon name="sparkles" size={18} strokeWidth={2} />
+          </span>
+        </div>
+        <h1 className="pp-title" id="pp-title">
+          {editing ? "Changes saved" : "Property submitted"}
+        </h1>
+        <p className="pp-desc">
+          {editing
+            ? "Your listing has been updated and sent back for review. You can track its status any time from My Properties."
+            : "Thank you — your property has been submitted and is now pending review. Our team will verify the details and publish it shortly. You can track its status any time from My Properties."}
+        </p>
+        {listing && (
+          <div className="pp-listing">
+            <div className="pp-listing__media">
+              {listing.cover ? (
+                <img src={listing.cover} alt="" />
+              ) : (
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", color: "var(--text-tertiary)" }}>
+                  <Icon name="image" size={26} />
+                </span>
+              )}
+              <span className="pp-listing__badge pp-listing__badge--pending">
+                <Icon name="clock" size={12} strokeWidth={2.5} />
+                Pending
+              </span>
+            </div>
+            <div className="pp-listing__body">
+              <div className="pp-listing__tags">
+                <Badge variant="success" size="sm" icon="tag">
+                  {listing.deal === "rent" ? "For rent" : "For sale"}
+                </Badge>
+                <span className="pp-listing__ref">
+                  <Icon name="hash" size={12} />
+                  {"CH-" + listing.id.replace(/^ml-/, "").toUpperCase()}
+                </span>
+              </div>
+              <h2 className="pp-listing__name">{listing.title}</h2>
+              <span className="pp-listing__addr">
+                <Icon name="map-pin" size={14} />
+                {listing.location}
+              </span>
+              <div className="pp-listing__row">
+                <span className="pp-listing__price cx-tnum">{listing.price || "Price on request"}</span>
+                <span className="pp-listing__specs">
+                  <span>
+                    <Icon name="bed-double" size={15} />
+                    {listing.beds ?? 0}
+                  </span>
+                  <span>
+                    <Icon name="bath" size={15} />
+                    {listing.baths ?? 0}
+                  </span>
+                  <span className="cx-tnum">
+                    <Icon name="maximize-2" size={15} />
+                    {listing.area || 0}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="pp-actions">
+          <Button hierarchy="primary" size="lg" iconLeading="eye" onClick={() => router.push("/my-listings")}>
+            View property
+          </Button>
+          <div className="pp-actions__row">
+            <Button hierarchy="secondary" size="lg" iconLeading="plus" onClick={() => { window.location.href = "/my-listings/new"; }}>
+              Add another property
+            </Button>
+          </div>
+          <div className="pp-actions__back">
+            <Button hierarchy="link" size="lg" iconLeading="arrow-left" onClick={() => router.push("/my-listings")}>
+              Back to properties
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }: { lockedAgentId?: string; mode?: "admin" | "member"; editListingId?: string } = {}) {
   const { addProperty, locationTree } = useProperties();
+  const { items: memberListings, add: addMemberListing, update: updateMemberListing } = useListings();
+  const member = mode === "member";
   const assignableAgents = useAssignableAgents();
   const photos = usePhotoUploader(false);
   const [f, setF] = useState<ApForm>(() => (lockedAgentId ? { ...EMPTY_FORM, agent: lockedAgentId } : EMPTY_FORM));
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
   const [step, setStep] = useState(0);
   const [preview, setPreview] = useState<PublishPreview | null>(null);
+  const [submitted, setSubmitted] = useState<MemberListing | null>(null);
+
+  // Member edit mode: reopen an existing listing prefilled. The id is passed in
+  // from the server page's `?edit=` search param (falls back to reading the URL
+  // directly for client navigations).
+  const [editId] = useState<string | null>(() => {
+    if (!member) return null;
+    if (editListingId) return editListingId;
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("edit");
+  });
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!member || seeded.current || !editId) return;
+    const existing = memberListings.find((l) => l.id === editId);
+    if (!existing) return;
+    seeded.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setF(
+      existing.form ?? {
+        ...EMPTY_FORM,
+        title: existing.title,
+        listing: existing.deal === "rent" ? "rent" : "sale",
+        description: existing.description ?? "",
+        city: existing.city ?? "",
+        beds: existing.beds ?? 0,
+        baths: existing.baths ?? 0,
+      },
+    );
+    if (existing.gallery?.length) photos.hydrate(existing.gallery);
+    else if (existing.cover) photos.hydrate([existing.cover]);
+  }, [member, editId, memberListings, photos]);
+  const editing = !!editId && memberListings.some((l) => l.id === editId);
   const goTo = (n: number) => {
     setStep(n);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1123,26 +1285,26 @@ export function AddPropertyApp({ lockedAgentId }: { lockedAgentId?: string } = {
   const districtNode = districtSource.find((d) => d.name === f.district);
   const projectOptions = districtNode ? districtNode.children.map((p) => p.name) : [];
 
-  if (step === 6) return <PublishedSuccess preview={preview} />;
+  if (step === 6) return member ? <MemberSubmittedSuccess listing={submitted} editing={editing} /> : <PublishedSuccess preview={preview} />;
 
   return (
     <div className="ap-wrap">
       <nav className="ap-crumbs" aria-label="Breadcrumb">
-        <Link href="/admin/properties">
-          <Icon name="building-2" size={14} />
-          Properties
+        <Link href={member ? "/my-listings" : "/admin/properties"}>
+          {!member && <Icon name="building-2" size={14} />}
+          {member ? "My Properties" : "Properties"}
         </Link>
         <span className="ap-crumbs__sep">
           <Icon name="chevron-right" size={14} />
         </span>
         <span className="ap-crumbs__current" aria-current="page">
-          Add property
+          {member ? (editing ? "Edit property" : "Submit property") : "Add property"}
         </span>
       </nav>
 
       <div className="ap-title">
-        <h1>Add property</h1>
-        <p>Create a new property listing step by step.</p>
+        <h1>{member ? (editing ? "Edit your property" : "Submit your property") : "Add property"}</h1>
+        <p>{member ? "Add your property details step by step. Our team will review it before it goes live." : "Create a new property listing step by step."}</p>
       </div>
 
       <ProgressStepper active={step} />
@@ -1195,7 +1357,7 @@ export function AddPropertyApp({ lockedAgentId }: { lockedAgentId?: string } = {
             </div>
           </div>
           <div className="ap-foot">
-            <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" href="/admin/properties">
+            <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" href={member ? "/my-listings" : "/admin/properties"}>
               Cancel
             </Button>
             <div className="ap-foot__right">
@@ -1460,20 +1622,22 @@ export function AddPropertyApp({ lockedAgentId }: { lockedAgentId?: string } = {
                 </div>
               </div>
             </div>
-            <div className="ap-sect ap-sect--flush">
-              <div className="ap-grid">
-                <div className="ap-field ap-col-full">
-                  <FieldLabel htmlFor="ap-notes" optional>
-                    Internal notes
-                  </FieldLabel>
-                  <Textarea id="ap-notes" rows={4} placeholder="Pricing flexibility, owner availability, key handover details, or anything the team should know…" value={f.internalNotes} onChange={(e) => set("internalNotes", e.target.value)} />
-                  <span className="ap-staffnote">
-                    <Icon name="lock" size={14} />
-                    Visible only to staff and administrators. Not displayed on the public website.
-                  </span>
+            {!member && (
+              <div className="ap-sect ap-sect--flush">
+                <div className="ap-grid">
+                  <div className="ap-field ap-col-full">
+                    <FieldLabel htmlFor="ap-notes" optional>
+                      Internal notes
+                    </FieldLabel>
+                    <Textarea id="ap-notes" rows={4} placeholder="Pricing flexibility, owner availability, key handover details, or anything the team should know…" value={f.internalNotes} onChange={(e) => set("internalNotes", e.target.value)} />
+                    <span className="ap-staffnote">
+                      <Icon name="lock" size={14} />
+                      Visible only to staff and administrators. Not displayed on the public website.
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
           <div className="ap-foot">
             <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" onClick={() => goTo(3)}>
@@ -1494,7 +1658,7 @@ export function AddPropertyApp({ lockedAgentId }: { lockedAgentId?: string } = {
       {step === 5 && (
         <section className="ap-card">
           <div className="ap-card__head">
-            <h2 className="ap-card__title">Review &amp; publish</h2>
+            <h2 className="ap-card__title">{member ? "Review & submit" : "Review & publish"}</h2>
             <p className="ap-card__desc">Review all property information before submitting the listing for approval.</p>
           </div>
           <div className="ap-card__body">
@@ -1623,6 +1787,19 @@ export function AddPropertyApp({ lockedAgentId }: { lockedAgentId?: string } = {
                 hierarchy="primary"
                 size="lg"
                 onClick={() => {
+                  if (member) {
+                    if (editing && editId) {
+                      const rec = formToMemberListing(f, photos, priceStr, areaStr, editId);
+                      updateMemberListing(editId, rec);
+                      setSubmitted(rec);
+                    } else {
+                      const rec = formToMemberListing(f, photos, priceStr, areaStr);
+                      addMemberListing(rec);
+                      setSubmitted(rec);
+                    }
+                    goTo(6);
+                    return;
+                  }
                   const rec = formToProperty(f, f.agent ? revAgent : null, photos);
                   addProperty(rec);
                   setPreview({
@@ -1640,7 +1817,7 @@ export function AddPropertyApp({ lockedAgentId }: { lockedAgentId?: string } = {
                   goTo(6);
                 }}
               >
-                Publish property
+                {member ? (editing ? "Save changes" : "Submit property") : "Publish property"}
               </Button>
             </div>
           </div>

@@ -74,12 +74,33 @@
 .cxa-inputwrap { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-control); transition: border-color .15s, box-shadow .15s; }
 .cxa-inputwrap:focus-within { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
 .cxa-inputwrap.cxa-bad { border-color: var(--error-500); box-shadow: var(--shadow-focus-error); }
-.cxa-ic { flex: none; color: var(--green-600); display: inline-flex; }
+.cxa-ic { flex: none; color: var(--text-tertiary); display: inline-flex; }
 .cxa-inputwrap input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: inherit; font-size: 15px; color: var(--text-primary); }
 .cxa-inputwrap input::placeholder { color: var(--text-placeholder); }
+/* Hide the browser's native password reveal/clear button (Edge/IE) so only our
+   custom eye toggle shows. */
+.cxa-inputwrap input::-ms-reveal,
+.cxa-inputwrap input::-ms-clear { display: none; }
+/* Neutralise the browser autofill highlight (blue/yellow) so filled fields keep
+   the card background and our text color. */
+.cxa-inputwrap input:-webkit-autofill,
+.cxa-inputwrap input:-webkit-autofill:hover,
+.cxa-inputwrap input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-card) inset;
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+  transition: background-color 9999s ease-out 0s;
+}
+/* The brand webfont draws the mask bullet (U+2022) as a square, so force the
+   password field to a system font stack that renders it as a round dot — same
+   approach as the admin login (.al-input--pw). No letter-spacing. */
+.cxa-inputwrap input[type="password"] { font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif; }
 .cxa-peek { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; background: none; color: var(--text-tertiary); cursor: pointer; border-radius: 7px; }
 .cxa-peek:hover { background: var(--gray-100); color: var(--text-primary); }
 .cxa-err { font-size: 12px; color: var(--text-error); min-height: 0; }
+/* Collapse the reserved error line when there's no message (matches the admin
+   field, which has no empty error row under the input). */
+.cxa-err:empty { display: none; }
 .cxa-aux { display: flex; justify-content: flex-end; margin-top: -4px; }
 .cxa-link { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--brand-primary); padding: 2px; }
 .cxa-link:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -89,6 +110,36 @@
 .cxa-submit[disabled] { opacity: .65; cursor: default; }
 .cxa-spin { width: 18px; height: 18px; border: 2.2px solid rgba(255, 255, 255, .4); border-top-color: #fff; border-radius: 50%; animation: cxa-rot .7s linear infinite; }
 @keyframes cxa-rot { to { transform: rotate(360deg); } }
+
+/* ── Forgot-password flow ───────────────────────────────────────────────── */
+.cxa-back { display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 4px auto 0; border: none; background: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--brand-primary); padding: 6px; text-decoration: none; transition: color .15s; }
+.cxa-back:hover { color: var(--brand-primary-hover, var(--green-800)); }
+
+.cxa-strength { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.cxa-strength__bar { display: flex; gap: 4px; width: 100%; }
+.cxa-strength__seg { flex: 1; height: 4px; border-radius: 999px; background: var(--gray-200); transition: background-color .15s; }
+.cxa-strength__label { font-size: 12.5px; color: var(--text-tertiary); text-align: right; }
+.cxa-strength[data-level="1"] .cxa-strength__seg.is-on { background: var(--error-500); }
+.cxa-strength[data-level="2"] .cxa-strength__seg.is-on { background: var(--warning-500); }
+.cxa-strength[data-level="3"] .cxa-strength__seg.is-on { background: var(--gold-500); }
+.cxa-strength[data-level="4"] .cxa-strength__seg.is-on { background: var(--success-500); }
+
+.cxa-reqs { list-style: none; margin: 4px 0 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: var(--surface-sunken); }
+.cxa-reqs__item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-tertiary); transition: color .15s; }
+.cxa-reqs__icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex: none; border-radius: 999px; border: 1.5px solid var(--border-default); background: transparent; color: transparent; transition: background-color .15s, border-color .15s, color .15s; }
+.cxa-reqs__item.is-met { color: var(--text-primary); }
+.cxa-reqs__item.is-met .cxa-reqs__icon { border-color: var(--success-500); background: var(--success-500); color: #fff; }
+
+.cxa-sent { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.cxa-sent .cxa-title, .cxa-sent .cxa-sub { text-align: center; }
+.cxa-sent__icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: 18px; border-radius: var(--radius-xl); background: var(--green-50); border: 1px solid var(--green-100); color: var(--green-700); }
+.cxa-sent .cxa-sub { margin-bottom: 18px; }
+.cxa-sent__link { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--brand-primary); background: none; border: none; padding: 0; cursor: pointer; text-decoration: none; }
+.cxa-sent__link:hover { color: var(--brand-primary-hover, var(--green-800)); text-decoration: underline; }
+.cxa-sent__resend { font-size: 14px; color: var(--text-secondary); margin: 16px 0 0; }
+.cxa-sent .cxa-back { margin-top: 20px; }
+/* The done screen centers its column, so stretch the submit button full width. */
+.cxa-sent .cxa-submit { width: 100%; }
 .cxa-or { display: flex; align-items: center; gap: 14px; margin: 20px 0; color: var(--text-tertiary); font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .cxa-or::before, .cxa-or::after { content: ""; height: 1px; flex: 1; background: var(--border-subtle); }
 .cxa-google { width: 100%; height: 50px; border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-card); color: var(--text-primary); font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 11px; transition: background-color .15s, border-color .15s; }
@@ -102,20 +153,43 @@
 /* account chip (logged-in header state) */
 .cxa-acct { position: relative; display: inline-flex; align-items: center; gap: 9px; height: 42px; padding: 0 12px 0 6px; border: 1px solid var(--border-default); background: var(--surface-card); border-radius: var(--radius-pill); cursor: pointer; font-family: var(--font-sans); transition: border-color .15s; }
 .cxa-acct:hover { border-color: var(--border-strong); }
+/* Avatar-only trigger (signed-in header): the whole right side collapses to the avatar. */
+.cxa-acct--av { position: relative; display: inline-flex; border: none; background: none; height: auto; padding: 0; }
+.cxa-avbtn { display: inline-flex; align-items: center; gap: 9px; height: 44px; padding: 0 10px 0 5px; border: 1px solid transparent; background: transparent; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-sans); transition: background-color .15s, border-color .15s; }
+.cxa-avbtn:hover { background: var(--gray-100); }
+.cxa-avbtn[aria-expanded="true"] { background: var(--gray-100); }
+/* Header: avatar-only trigger (no name/role/chevron) — a plain clickable circle
+   with a brand-green outer ring (same treatment as the admin/agent gold ring). */
+.cxa-avbtn--icon { height: auto; min-width: 0; padding: 0; gap: 0; border-radius: 50%; }
+.cxa-avbtn--icon:hover, .cxa-avbtn--icon[aria-expanded="true"] { background: transparent; }
+.cxa-avbtn--icon .cx-avatar { box-shadow: 0 0 0 2px var(--surface-card), 0 0 0 3.5px var(--brand-primary); }
+.cxa-avbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+.cxa-avbtn__meta { display: flex; flex-direction: column; line-height: 1.2; text-align: left; min-width: 0; }
+.cxa-avbtn__name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.cxa-avbtn__role { font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
+.cxa-avbtn .cxa-acct__cv { margin-left: -1px; }
+.cxa-acct--full, .cxa-acct--full .cxa-avbtn { width: 100%; }
+.cxa-acct--full .cxa-avbtn { justify-content: flex-start; }
+.cxa-acct--full .cxa-avbtn__meta { flex: 1; }
+.cxa-acct--full .cxa-menu { width: 100%; }
 .cxa-acct__av { flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--brand-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
 .cxa-acct__nm { font-size: 14px; font-weight: 600; color: var(--text-primary); max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cxa-acct__cv { color: var(--text-tertiary); display: inline-flex; }
-.cxa-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 222px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 14px; box-shadow: var(--shadow-2xl); padding: 8px; animation: cxa-pop .14s cubic-bezier(.2, .7, .2, 1); }
+.cxa-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 264px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 16px; box-shadow: var(--shadow-2xl); padding: 0; overflow: hidden; animation: cxa-pop .14s cubic-bezier(.2, .7, .2, 1); }
 @keyframes cxa-pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-.cxa-menu__id { padding: 8px 10px 10px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 6px; }
-.cxa-menu__nm { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-.cxa-menu__em { font-size: 12.5px; color: var(--text-tertiary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cxa-menu__role { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; padding: 3px 9px; border-radius: 999px; background: var(--green-50); color: var(--green-800); font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
-.cxa-menu__item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px; border: none; background: none; cursor: pointer; border-radius: 9px; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text-primary); transition: background-color .13s; }
-.cxa-menu__item:hover { background: var(--gray-50); }
-.cxa-menu__item svg { color: var(--text-tertiary); }
+.cxa-menu__card { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border-subtle); }
+.cxa-menu__meta { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.cxa-menu__nm { font-size: 14.5px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cxa-menu__sub { font-size: 12.5px; color: var(--text-tertiary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cxa-menu__sect { padding: 6px; }
+.cxa-menu__sect + .cxa-menu__sect { border-top: 1px solid var(--border-subtle); }
+.cxa-menu__item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 12px; border: none; background: none; cursor: pointer; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text-primary); transition: background-color .13s, color .13s; }
+.cxa-menu__item svg { flex: none; color: var(--text-tertiary); }
+.cxa-menu__item:hover { background: var(--gray-50); color: var(--text-primary); }
+.cxa-menu__item:hover svg { color: var(--text-secondary); }
 .cxa-menu__item--danger { color: var(--text-error); }
 .cxa-menu__item--danger svg { color: var(--text-error); }
+.cxa-menu__item--danger:hover { background: var(--error-50, #fef2f2); color: var(--text-error); }
 
 @media (max-width: 560px) {
   .cxa-overlay { padding: 0; align-items: flex-end; }

@@ -510,7 +510,7 @@ function DGroup({ title, desc, children, cols, noRowDivider }: { title: string; 
   );
 }
 
-function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onDelete }: { p: DetailProperty; onEdit: () => void; onChangeStatus: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void }) {
+function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onDelete, agentSurface }: { p: DetailProperty; onEdit: () => void; onChangeStatus: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void; agentSurface?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -580,18 +580,20 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
             </button>
             {menuOpen && (
               <div className="pd-moremenu" role="menu">
-                <button
-                  type="button"
-                  className="pd-moreitem"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onAssignAgent();
-                  }}
-                >
-                  <Icon name={p.agent ? "user-cog" : "user-plus"} size={17} />
-                  {p.agent ? "Reassign agent" : "Assign agent"}
-                </button>
+                {!agentSurface && (
+                  <button
+                    type="button"
+                    className="pd-moreitem"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAssignAgent();
+                    }}
+                  >
+                    <Icon name={p.agent ? "user-cog" : "user-plus"} size={17} />
+                    {p.agent ? "Reassign agent" : "Assign agent"}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="pd-moreitem"
@@ -1023,7 +1025,7 @@ function ViewingRequests({ p, onViewAll }: { p: DetailProperty; onViewAll: () =>
   );
 }
 
-function AssignedAgent({ p, onAssignAgent }: { p: DetailProperty; onAssignAgent: () => void }) {
+function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; onAssignAgent: () => void; agentSurface?: boolean }) {
   if (!p.agent) {
     return (
       <SectionCard title="Assigned agent" desc="No agent is managing this listing yet." id="agent">
@@ -1032,9 +1034,11 @@ function AssignedAgent({ p, onAssignAgent }: { p: DetailProperty; onAssignAgent:
             <Icon name="user-plus" size={24} strokeWidth={1.6} />
           </span>
           <p>Assign a verified agent to handle viewings, enquiries, and the sale.</p>
-          <Button hierarchy="primary" size="sm" iconLeading="user-plus" onClick={onAssignAgent}>
-            Assign agent
-          </Button>
+          {!agentSurface && (
+            <Button hierarchy="primary" size="sm" iconLeading="user-plus" onClick={onAssignAgent}>
+              Assign agent
+            </Button>
+          )}
         </div>
       </SectionCard>
     );
@@ -1050,9 +1054,11 @@ function AssignedAgent({ p, onAssignAgent }: { p: DetailProperty; onAssignAgent:
       title="Assigned agent"
       desc="Manages viewings and enquiries."
       action={
-        <Button hierarchy="tertiary" size="sm" iconLeading="user-cog" onClick={onAssignAgent}>
-          Reassign
-        </Button>
+        agentSurface ? undefined : (
+          <Button hierarchy="tertiary" size="sm" iconLeading="user-cog" onClick={onAssignAgent}>
+            Reassign
+          </Button>
+        )
       }
       id="agent"
     >
@@ -1103,7 +1109,7 @@ function AssignedAgent({ p, onAssignAgent }: { p: DetailProperty; onAssignAgent:
   );
 }
 
-export function PropertyDetailApp({ id }: { id: string }) {
+export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurface?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { properties } = useProperties();
@@ -1193,7 +1199,7 @@ export function PropertyDetailApp({ id }: { id: string }) {
 
   return (
     <>
-      <DetailHeader p={property} onEdit={onEdit} onChangeStatus={() => setStatusOpen(true)} onAssignAgent={() => setAgentOpen(true)} onArchive={() => setConfirm("archive")} onDelete={() => setConfirm("delete")} />
+      <DetailHeader p={property} onEdit={onEdit} onChangeStatus={() => setStatusOpen(true)} onAssignAgent={() => setAgentOpen(true)} onArchive={() => setConfirm("archive")} onDelete={() => setConfirm("delete")} agentSurface={agentSurface} />
 
       <div className="pd-grid">
         <div className="pd-grid__main">
@@ -1202,11 +1208,11 @@ export function PropertyDetailApp({ id }: { id: string }) {
           <ListingInfo p={property} />
           <InternalNotes p={property} onAdd={handleAddNote} onEdit={handleEditNote} onDelete={(i) => setNoteToDelete(i)} />
           <ViewingRequests p={property} onViewAll={() => router.push("/admin/viewings")} />
-          <Timeline p={property} onViewAll={() => router.push("/admin/properties")} />
+          <Timeline p={property} onViewAll={agentSurface ? () => {} : () => router.push("/admin/properties")} />
         </div>
         <aside className="pd-grid__aside">
           <Ownership p={property} />
-          <AssignedAgent p={property} onAssignAgent={() => setAgentOpen(true)} />
+          <AssignedAgent p={property} onAssignAgent={() => setAgentOpen(true)} agentSurface={agentSurface} />
         </aside>
       </div>
 

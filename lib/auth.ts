@@ -27,6 +27,8 @@ export interface AuthIntent {
   note?: string;
   /** Toast message after a successful auth. */
   toast?: string;
+  /** Path to navigate to after a successful auth (e.g. "/my-listings"). */
+  next?: string;
 }
 
 interface AuthState {

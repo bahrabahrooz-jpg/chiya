@@ -3,5 +3,5 @@ import "@/app/admin/viewings/viewings.css";
 import "@/app/admin/viewings/[id]/vwd.css";
 
 export default function AgentViewingDetailPage() {
-  return <ViewingDetailApp />;
+  return <ViewingDetailApp agentSurface />;
 }

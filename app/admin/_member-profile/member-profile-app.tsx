@@ -778,6 +778,8 @@ function Timeline() {
 
 export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
   const { members, properties } = useProperties();
+  // In the agent surface, list-level links point at the agent's own routes.
+  const surfaceBase = scopeAgent ? "/agent" : "/admin";
   const params = useParams();
   const id = String((params?.id as string) ?? "");
   const catalogMember = useMemo(() => members.find((mm) => mm.id === id), [members, id]);
@@ -867,26 +869,31 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
           </div>
 
           <div className="pd-head__actions">
-            <Button
-              hierarchy="secondary"
-              iconLeading="refresh-cw"
-              onClick={() => {
-                setMoreOpen(false);
-                setModal("status");
-              }}
-            >
-              Change status
-            </Button>
-            <Button
-              hierarchy="primary"
-              iconLeading="pencil"
-              onClick={() => {
-                setMoreOpen(false);
-                setModal("edit");
-              }}
-            >
-              Edit member
-            </Button>
+            {!scopeAgent && (
+              <Button
+                hierarchy="secondary"
+                iconLeading="refresh-cw"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setModal("status");
+                }}
+              >
+                Change status
+              </Button>
+            )}
+            {!scopeAgent && (
+              <Button
+                hierarchy="primary"
+                iconLeading="pencil"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setModal("edit");
+                }}
+              >
+                Edit member
+              </Button>
+            )}
+            {!scopeAgent && (
             <div className="pd-morewrap" ref={moreRef}>
               <button type="button" className={"pd-morebtn" + (moreOpen ? " is-open" : "")} aria-label="More actions" aria-haspopup="true" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
                 <Icon name="ellipsis" size={20} />
@@ -933,6 +940,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       </header>
@@ -948,7 +956,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
             count={shownPortfolio.length}
             desc="Every property connected to this member as buyer, seller, landlord, or tenant."
             action={
-              <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/properties" style={{ color: "var(--text-secondary)" }}>
+              <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href={`${surfaceBase}/properties`} style={{ color: "var(--text-secondary)" }}>
                 View all
               </Button>
             }
@@ -971,7 +979,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
             count={shownViewings.length}
             desc="Scheduled and past property viewings."
             action={
-              <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/viewings" style={{ color: "var(--text-secondary)" }}>
+              <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href={`${surfaceBase}/viewings`} style={{ color: "var(--text-secondary)" }}>
                 View all
               </Button>
             }

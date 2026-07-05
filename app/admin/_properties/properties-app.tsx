@@ -687,8 +687,6 @@ function RowActions({
             <Icon name="pencil" size={17} />
             Edit
           </button>
-        </div>
-        <div className="pp-amenu__sect">
           {!hideAgent &&
             (hasAgent ? (
               <button type="button" className="pp-aitem" role="menuitem" onClick={onAssignAgent}>

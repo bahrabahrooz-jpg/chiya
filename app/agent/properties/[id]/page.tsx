@@ -6,7 +6,7 @@ export default async function AgentPropertyDetailPage({ params }: { params: Prom
   const { id } = await params;
   return (
     <Suspense fallback={null}>
-      <PropertyDetailApp id={id} />
+      <PropertyDetailApp id={id} agentSurface />
     </Suspense>
   );
 }

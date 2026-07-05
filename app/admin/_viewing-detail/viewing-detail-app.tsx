@@ -23,7 +23,7 @@ import {
   type ViewingDetail,
 } from "./data";
 import { ScheduleModal } from "../_viewings/viewings-app";
-import type { ViewingRecord } from "../_viewings/data";
+import { AGENTS, type ViewingRecord } from "../_viewings/data";
 
 const NOTE_MAX = 500;
 
@@ -545,7 +545,7 @@ function MemberCard({ m }: { m: ViewingDetail["member"] }) {
   );
 }
 
-function AgentCard({ a, href, onReassign }: { a: ViewingDetail["agent"]; href: string; onReassign: () => void }) {
+function AgentCard({ a, href, onReassign, agentSurface }: { a: ViewingDetail["agent"]; href: string; onReassign: () => void; agentSurface?: boolean }) {
   const phoneHref = "tel:" + a.phone.replace(/\s/g, "");
   const waHref = "https://wa.me/" + a.phone.replace(/[^\d]/g, "");
   return (
@@ -553,9 +553,11 @@ function AgentCard({ a, href, onReassign }: { a: ViewingDetail["agent"]; href: s
       title="Assigned agent"
       desc="Manages viewings and enquiries."
       action={
-        <Button hierarchy="tertiary" size="sm" iconLeading="user-cog" onClick={onReassign}>
-          Reassign
-        </Button>
+        agentSurface ? undefined : (
+          <Button hierarchy="tertiary" size="sm" iconLeading="user-cog" onClick={onReassign}>
+            Reassign
+          </Button>
+        )
       }
     >
       <Link className="pd-agent pd-agent--link" href={href} title={"View " + a.name + "’s details"}>
@@ -750,7 +752,7 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
   );
 }
 
-export function ViewingDetailApp() {
+export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = {}) {
   const router = useRouter();
   const params = useParams();
   const id = String((params?.id as string) ?? "");
@@ -917,13 +919,14 @@ export function ViewingDetailApp() {
 
         <aside className="pd-grid__aside">
           <MemberCard m={v.member} />
-          <AgentCard a={v.agent} href={`/admin/agents/${v.agent.id}`} onReassign={() => setModal("agent")} />
+          <AgentCard a={v.agent} href={`/admin/agents/${v.agent.id}`} onReassign={() => setModal("agent")} agentSurface={agentSurface} />
         </aside>
       </div>
 
       <ScheduleModal
         open={modal === "edit"}
         editViewing={editRecord}
+        lockedAgentId={agentSurface ? (AGENTS.find((a) => a.name === v.agent.name)?.id ?? null) : null}
         onClose={() => setModal(null)}
         onSuccess={(rec) => {
           setV((prev) => ({

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Icon } from "@/components/ui/icon";
 import "./navbar.css";
 
@@ -34,6 +34,7 @@ export interface NavLink {
   label: string;
   href?: string;
   active?: boolean;
+  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
 }
 export type NavbarVariant = "default" | "transparent" | "dark";
 

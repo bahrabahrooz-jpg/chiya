@@ -91,6 +91,7 @@ function Combobox<T extends { id: string }>({
   renderOption,
   createLabel,
   onCreate,
+  disabled,
 }: {
   id: string;
   items: T[];
@@ -103,6 +104,7 @@ function Combobox<T extends { id: string }>({
   renderOption: (it: T) => ReactNode;
   createLabel?: string;
   onCreate?: (q: string) => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -203,18 +205,20 @@ function Combobox<T extends { id: string }>({
         ref={triggerRef}
         type="button"
         id={id}
-        className={"vw-combo__trigger" + (open ? " is-open" : "")}
+        className={"vw-combo__trigger" + (open ? " is-open" : "") + (disabled ? " is-disabled" : "")}
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => {
+          if (disabled) return;
           if (!open) setQuery("");
           setOpen((o) => !o);
         }}
       >
         {selected ? <span className="vw-combo__value">{renderValue(selected)}</span> : <span className="vw-combo__placeholder">{placeholder}</span>}
-        <Icon name="chevron-down" size={18} className="vw-combo__chev" />
+        {!disabled && <Icon name="chevron-down" size={18} className="vw-combo__chev" />}
       </button>
-      {panel}
+      {!disabled && panel}
     </div>
   );
 }
@@ -588,14 +592,18 @@ function DiscardDialog({ onCancel, onDiscard }: { onCancel: () => void; onDiscar
 }
 
 /* ---------------- Schedule modal ---------------- */
-export function ScheduleModal({ open, editViewing, onClose, onSuccess }: { open: boolean; editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void }) {
+export function ScheduleModal({ open, editViewing, onClose, onSuccess, lockedAgentId }: { open: boolean; editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void; lockedAgentId?: string | null }) {
   if (!open) return null;
-  return <ScheduleModalInner key={editViewing?.id || "new"} editViewing={editViewing} onClose={onClose} onSuccess={onSuccess} />;
+  return <ScheduleModalInner key={editViewing?.id || "new"} editViewing={editViewing} onClose={onClose} onSuccess={onSuccess} lockedAgentId={lockedAgentId} />;
 }
 
-function ScheduleModalInner({ editViewing, onClose, onSuccess }: { editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void }) {
+function ScheduleModalInner({ editViewing, onClose, onSuccess, lockedAgentId }: { editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void; lockedAgentId?: string | null }) {
   const isEdit = !!editViewing;
-  const initial = useMemo(() => (editViewing ? viewingToForm(editViewing) : EMPTY_FORM), [editViewing]);
+  // In the agent surface the assigned agent is fixed to the signed-in agent.
+  const initial = useMemo(() => {
+    const base = editViewing ? viewingToForm(editViewing) : EMPTY_FORM;
+    return lockedAgentId ? { ...base, agent: lockedAgentId } : base;
+  }, [editViewing, lockedAgentId]);
   const [form, setForm] = useState<ScheduleForm>(initial);
   const [confirm, setConfirm] = useState(false);
   const set = (k: keyof ScheduleForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -768,6 +776,7 @@ function ScheduleModalInner({ editViewing, onClose, onSuccess }: { editViewing: 
                     placeholder="Assign an agent"
                     searchPlaceholder="Search agents…"
                     filterKeys={["name", "phone"]}
+                    disabled={!!lockedAgentId}
                     renderValue={(a) => (
                       <span className="vw-combo__person">
                         <Avatar src={a.img} name={a.name} size="sm" />
@@ -1320,6 +1329,9 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
   const { locationTree } = useProperties();
   const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
   const hideAgent = !!scopeAgent;
+  // Agent surface: the assigned agent is locked to the signed-in agent, so
+  // schedule/edit can't reassign the viewing to someone else.
+  const lockedAgentId = useMemo(() => (scopeAgent ? (AGENTS.find((a) => a.name === scopeAgent)?.id ?? null) : null), [scopeAgent]);
   const [viewings, setViewings] = useState<ViewingRecord[]>(() => (scopeAgent ? VIEWINGS.filter((v) => v.agent === scopeAgent) : VIEWINGS));
   const [filters, setFilters] = useState<ViewingFilters>(EMPTY_FILTERS);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -1434,7 +1446,7 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
       </section>
 
       {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}
-      <ScheduleModal open={modalOpen} editViewing={editViewing} onClose={closeModal} onSuccess={handleScheduled} />
+      <ScheduleModal open={modalOpen} editViewing={editViewing} onClose={closeModal} onSuccess={handleScheduled} lockedAgentId={lockedAgentId} />
       {statusTarget && <ChangeStatusModal viewing={statusTarget} onCancel={() => setStatusTarget(null)} onConfirm={handleStatusConfirm} />}
       {deleteTarget && <DeleteViewingModal viewing={deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
       {toast && <Toast toast={toast} onDismiss={() => setToast(null)} />}

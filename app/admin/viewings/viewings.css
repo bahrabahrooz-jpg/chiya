@@ -553,6 +553,11 @@
     transition: border-color .15s, box-shadow .15s;
   }
   .vw-combo__trigger:hover { border-color: var(--border-strong); }
+  .vw-combo__trigger.is-disabled,
+  .vw-combo__trigger:disabled {
+    cursor: default; background: var(--surface-sunken); color: var(--text-secondary); box-shadow: none;
+  }
+  .vw-combo__trigger.is-disabled:hover { border-color: var(--border-default); }
   .vw-combo__trigger.is-open { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
   .vw-combo__trigger:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
   .vw-combo__placeholder { color: var(--text-placeholder); flex: 1 1 auto; }

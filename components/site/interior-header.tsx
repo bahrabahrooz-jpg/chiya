@@ -8,6 +8,8 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { MobileNav } from "@/components/navigation/mobile-nav";
 import { AuthButton } from "./auth-button";
+import { NotificationBell } from "./notification-bell";
+import { useSellGate } from "./site-header";
 import "./site-header.css";
 
 interface NavItem {
@@ -18,7 +20,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { key: "buy", href: "/search?deal=buy" },
   { key: "rent", href: "/search?deal=rent" },
-  { key: "sell", href: "#" },
+  { key: "sell", href: "/my-listings" },
   { key: "agents", href: "/agents" },
   { key: "about", href: "/about" },
   { key: "blog", href: "#" },
@@ -46,6 +48,7 @@ export interface InteriorHeaderProps {
  */
 export function InteriorHeader({ active = null }: InteriorHeaderProps) {
   const { t } = useLang();
+  const gate = useSellGate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -61,14 +64,17 @@ export function InteriorHeader({ active = null }: InteriorHeaderProps) {
                 key={item.key}
                 href={item.href}
                 className={"cxh__link" + (active === item.key ? " cxh__link--active" : "")}
+                onClick={gate(item.key)}
               >
                 {t("nav." + item.key)}
               </Link>
             ))}
           </nav>
           <div className="cxh__actions">
-            <LanguageSwitcher />
             <ThemeToggle />
+            <span className="cxh__divider" />
+            <LanguageSwitcher />
+            <NotificationBell variant="ghost" />
             <span className="cxh__divider" />
             <AuthButton size="sm" />
             <span className="cxh__menu">
@@ -80,14 +86,14 @@ export function InteriorHeader({ active = null }: InteriorHeaderProps) {
       <MobileNav
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        links={NAV.map((item) => ({ label: t("nav." + item.key), href: item.href, active: active === item.key }))}
+        links={NAV.map((item) => ({ label: t("nav." + item.key), href: item.href, active: active === item.key, onClick: gate(item.key) }))}
         header={<Brand />}
         footer={
           <>
             <AuthButton fullWidth />
             <div className="cx-mnav__row">
-              <LanguageSwitcher />
               <ThemeToggle />
+              <LanguageSwitcher />
             </div>
           </>
         }

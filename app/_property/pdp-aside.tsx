@@ -6,9 +6,11 @@ import { Icon } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 import { AppointmentWidget } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { property, agent, apptDates, apptTimes } from "./data";
+import { property, agent } from "./data";
+import { DatePicker, TimePicker } from "./datetime-picker";
 
 export interface ActionPanelProps {
   onBook: () => void;
@@ -88,8 +90,8 @@ export function ActionPanel({ onBook, onCall, onWhatsApp, className }: ActionPan
 
 export function BookModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLang();
-  const [date, setDate] = useState(0);
-  const [time, setTime] = useState(1);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [done, setDone] = useState(false);
   if (!open) return null;
   return (
@@ -97,9 +99,27 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
       open
       onClose={onClose}
       size="md"
+      className="pdp-reqmodal"
       icon={done ? "calendar-check" : "calendar"}
-      title={done ? t("pdp.bookDone") : t("pdp.bookTitle")}
+      title={done ? t("pdp.bookDone") : t("pdp.requestAViewing")}
       subtitle={done ? t("pdp.bookConfirm") : property.title + " · " + property.address}
+      footerSpread={!done}
+      footer={
+        done ? (
+          <Button hierarchy="primary" size="md" type="button" onClick={onClose}>
+            Done
+          </Button>
+        ) : (
+          <>
+            <Button hierarchy="secondary" size="md" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button hierarchy="primary" size="md" type="button" iconLeading="calendar-check" disabled={!date || !time} onClick={() => setDone(true)}>
+              {t("pdp.requestAViewing")}
+            </Button>
+          </>
+        )
+      }
     >
       {done ? (
         <div style={{ textAlign: "center", padding: "8px 4px 12px" }}>
@@ -110,17 +130,27 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
       ) : (
         <div className="pdp-bookmodal">
           <AppointmentWidget
-            price={"$" + property.price.toLocaleString("en-US")}
-            estimate={property.pstatusLabel + " · viewings 7 days a week"}
-            dates={apptDates}
-            times={apptTimes}
-            selectedDate={date}
-            selectedTime={time}
-            onSelectDate={setDate}
-            onSelectTime={setTime}
+            schedule={
+              <div className="pdp-book-dt">
+                <div className="pdp-book-dt__row">
+                  <div className="pdp-book-dt__field">
+                    <label className="pdp-book-dt__flabel" htmlFor="book-date">
+                      Viewing date
+                    </label>
+                    <DatePicker id="book-date" value={date} onChange={setDate} placeholder="Select date" />
+                  </div>
+                  <div className="pdp-book-dt__field">
+                    <label className="pdp-book-dt__flabel" htmlFor="book-time">
+                      Viewing time
+                    </label>
+                    <TimePicker id="book-time" value={time} onChange={setTime} placeholder="Select time" />
+                  </div>
+                </div>
+              </div>
+            }
             agent={{ name: agent.name, avatar: agent.avatar, agency: agent.agency, verified: agent.verified }}
-            ctaLabel={t("pdp.requestAViewing")}
-            onSubmit={() => setDone(true)}
+            agentLabel="Viewing agent"
+            hideCta
           />
         </div>
       )}
