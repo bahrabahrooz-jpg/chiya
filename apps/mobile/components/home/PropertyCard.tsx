@@ -1,0 +1,94 @@
+import { useState } from "react";
+import { View, Text, Image, Pressable, StyleSheet } from "react-native";
+import { Heart, MapPin, BedDouble, Bath, Maximize, type LucideIcon } from "lucide-react-native";
+import { useTheme } from "@/theme";
+import { priceLabel, type Listing } from "./data";
+
+function Spec({ Icon, label }: { Icon: LucideIcon; label: string }) {
+  const { colors, type } = useTheme();
+  return (
+    <View style={styles.spec}>
+      <Icon size={15} color={colors.textTertiary} strokeWidth={2} />
+      <Text style={[type.bodySm, { color: colors.textSecondary }]}>{label}</Text>
+    </View>
+  );
+}
+
+/** PropertyCard — image with deal badge + favorite, then title/price and specs. */
+export function PropertyCard({ property: p }: { property: Listing }) {
+  const { colors, type, fontFamily, radius } = useTheme();
+  const [fav, setFav] = useState(false);
+  const dealLabel = p.deal === "rent" ? "For Rent" : "For Sale";
+
+  return (
+    <Pressable
+      style={[styles.card, { backgroundColor: colors.surfaceCard, borderRadius: radius.card, borderColor: colors.borderSubtle }]}
+    >
+      <View style={[styles.media, { borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card }]}>
+        <Image source={{ uri: p.cover }} style={styles.img} resizeMode="cover" />
+        <View style={styles.badge}>
+          <Text style={[styles.badgeTxt, { color: colors.brandPrimary, fontFamily: fontFamily.sansSemibold }]}>{dealLabel}</Text>
+        </View>
+        <Pressable style={styles.heart} onPress={() => setFav((f) => !f)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save">
+          <Heart size={18} color={fav ? colors.error : colors.textPrimary} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
+        </Pressable>
+      </View>
+
+      <View style={styles.body}>
+        <View style={styles.titleRow}>
+          <Text numberOfLines={1} style={[type.body, styles.title, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
+            {p.title}
+          </Text>
+          <Text style={[type.body, { color: colors.brandPrimary, fontFamily: fontFamily.sansBold }]}>{priceLabel(p)}</Text>
+        </View>
+
+        <View style={styles.loc}>
+          <MapPin size={14} color={colors.textTertiary} strokeWidth={2} />
+          <Text numberOfLines={1} style={[type.bodySm, styles.locTxt, { color: colors.textSecondary }]}>
+            {p.address}
+          </Text>
+        </View>
+
+        <View style={styles.specs}>
+          {p.beds != null ? <Spec Icon={BedDouble} label={`${p.beds} Bed`} /> : null}
+          {p.baths != null ? <Spec Icon={Bath} label={`${p.baths} Bath`} /> : null}
+          <Spec Icon={Maximize} label={`${p.area} m²`} />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { width: 280, borderWidth: 1 },
+  media: { height: 160, overflow: "hidden", backgroundColor: "#e9edf0" },
+  img: { width: "100%", height: "100%" },
+  badge: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  badgeTxt: { fontSize: 12 },
+  heart: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  body: { padding: 14, gap: 8 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  title: { flex: 1 },
+  loc: { flexDirection: "row", alignItems: "center", gap: 5 },
+  locTxt: { flex: 1 },
+  specs: { flexDirection: "row", alignItems: "center", gap: 16, marginTop: 2 },
+  spec: { flexDirection: "row", alignItems: "center", gap: 5 },
+});
