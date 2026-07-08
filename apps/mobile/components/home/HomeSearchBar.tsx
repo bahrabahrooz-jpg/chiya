@@ -1,26 +1,58 @@
-import { View, Text, Pressable, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
-import { Search, SlidersHorizontal } from "lucide-react-native";
+import { useState } from "react";
+import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { Search, SlidersHorizontal, X } from "lucide-react-native";
 import { useTheme } from "@/theme";
 
+export interface HomeSearchBarProps {
+  value: string;
+  onChangeText: (v: string) => void;
+  onOpenFilters: () => void;
+  activeCount?: number;
+}
+
 /**
- * HomeSearchBar — a tappable search field (jumps to the Search tab) plus a solid
- * filter button that opens the filter drawer. Shows the active-filter count.
+ * HomeSearchBar — an inline search field (filters listings on the Home screen)
+ * plus a neutral filter button that opens the filter drawer.
  */
-export function HomeSearchBar({ onOpenFilters, activeCount = 0 }: { onOpenFilters: () => void; activeCount?: number }) {
-  const { colors, type, radius } = useTheme();
-  const router = useRouter();
+export function HomeSearchBar({ value, onChangeText, onOpenFilters, activeCount = 0 }: HomeSearchBarProps) {
+  const { colors, type, radius, fontFamily } = useTheme();
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.row}>
-      <Pressable
-        style={[styles.field, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.control }]}
-        onPress={() => router.push("/search")}
-        accessibilityRole="search"
+      <View
+        style={[
+          styles.field,
+          {
+            backgroundColor: colors.surfaceCard,
+            borderColor: focused ? colors.borderFocus : colors.borderSubtle,
+            borderWidth: focused ? 1.5 : 1,
+            borderRadius: radius.control,
+          },
+          // Brand-green focus ring, matching the login/admin inputs.
+          focused && { boxShadow: `0 0 0 4px ${colors.ringBrand}` },
+        ]}
       >
         <Search size={19} color={colors.textTertiary} strokeWidth={2} />
-        <Text style={[type.body, { color: colors.textPlaceholder }]}>Search homes, areas…</Text>
-      </Pressable>
+        <TextInput
+          style={[styles.input, { color: colors.textPrimary, fontFamily: fontFamily.sans, fontSize: type.body.fontSize }]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder="Search homes, areas…"
+          placeholderTextColor={colors.textPlaceholder}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+          selectionColor={colors.brandForeground}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+        {value.length > 0 ? (
+          <Pressable onPress={() => onChangeText("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
+            <X size={18} color={colors.textTertiary} strokeWidth={2} />
+          </Pressable>
+        ) : null}
+      </View>
 
       <Pressable
         style={[styles.filter, { backgroundColor: colors.surfaceCard, borderColor: colors.borderDefault, borderRadius: radius.control }]}
@@ -50,6 +82,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 16,
   },
+  input: { flex: 1, height: "100%", padding: 0 },
   filter: { width: 52, height: 52, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   badge: {
     position: "absolute",

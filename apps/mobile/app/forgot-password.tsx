@@ -38,7 +38,7 @@ function Badge({ icon: Icon }: { icon: LucideIcon }) {
   const { colors } = useTheme();
   return (
     <View style={[styles.badge, { backgroundColor: colors.brandSubtle }]}>
-      <Icon size={26} color={colors.brandPrimary} strokeWidth={2} />
+      <Icon size={26} color={colors.brandForeground} strokeWidth={2} />
     </View>
   );
 }
@@ -46,7 +46,7 @@ function Badge({ icon: Icon }: { icon: LucideIcon }) {
 function StrengthMeter({ level }: { level: number }) {
   const { colors, type, space } = useTheme();
   const color =
-    level <= 1 ? colors.error : level === 2 ? colors.brandAccent : colors.brandPrimary;
+    level <= 1 ? colors.error : level === 2 ? colors.brandAccent : colors.brandForeground;
   return (
     <View style={{ marginTop: 6, gap: 6 }}>
       <View style={styles.segRow}>

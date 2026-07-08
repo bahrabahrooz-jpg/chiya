@@ -7,6 +7,7 @@ export default function TabsLayout() {
     <Tabs tabBar={(props) => <BottomNav {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="home" options={{ title: "Home" }} />
       <Tabs.Screen name="search" options={{ title: "Search" }} />
+      <Tabs.Screen name="agents" options={{ title: "Agents" }} />
       <Tabs.Screen name="my-listings" options={{ title: "My listings" }} />
       <Tabs.Screen name="saved" options={{ title: "Saved" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />

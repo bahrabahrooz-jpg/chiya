@@ -13,7 +13,7 @@ export function DealChips({ active, onChange }: { active: string; onChange: (v: 
     >
       {dealCategories.map(({ value, label }) => {
         const on = active === value;
-        const fg = on ? colors.brandPrimary : colors.textSecondary;
+        const fg = on ? colors.brandForeground : colors.textSecondary;
         return (
           <Pressable
             key={value}
@@ -23,7 +23,7 @@ export function DealChips({ active, onChange }: { active: string; onChange: (v: 
               {
                 borderRadius: radius.pill,
                 backgroundColor: on ? colors.brandSubtle : colors.surfaceCard,
-                borderColor: on ? colors.brandPrimary : colors.borderSubtle,
+                borderColor: on ? colors.brandForeground : colors.borderSubtle,
               },
             ]}
             accessibilityRole="button"

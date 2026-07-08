@@ -59,6 +59,10 @@ export interface Colors {
   brandPrimaryPressed: string;
   /** A lighter/softer brand green (the "hover" green). */
   brandHover: string;
+  /** Brand green for foreground use — icons, text, selected states, indicators.
+   *  Same as brandPrimary in light mode; a lighter green in dark mode so it stays
+   *  legible on dark surfaces (brandPrimary is a fill color, too dark to read). */
+  brandForeground: string;
   brandSubtle: string;
   brandAccent: string;
   brandAccentPressed: string;
@@ -85,6 +89,10 @@ export interface Colors {
   ringError: string;
   error: string;
   success: string;
+  /** Amber "warning" status (e.g. Pending) — surface / text / border. */
+  warningSurface: string;
+  warningText: string;
+  warningBorder: string;
 
   /** Brand lockup */
   brandMarkStroke: string;
@@ -98,6 +106,7 @@ const lightColors: Colors = {
   brandPrimary: palette.green[700],
   brandPrimaryPressed: palette.green[900],
   brandHover: palette.green[500], // #2C6149 — lighter brand green
+  brandForeground: palette.green[700], // same as brandPrimary in light mode
   brandSubtle: palette.green[50],
   brandAccent: palette.gold[400],
   brandAccentPressed: palette.gold[500],
@@ -124,6 +133,9 @@ const lightColors: Colors = {
   ringError: "rgba(192, 57, 43, 0.18)",
   error: palette.error,
   success: palette.success,
+  warningSurface: "#FBF1DC", // --warning-50
+  warningText: "#8A641F", // --warning-700
+  warningBorder: "#F6DFAE", // --warning-100
 
   brandMarkStroke: palette.green[700],
   brandWordmark: palette.green[700],
@@ -135,6 +147,7 @@ const darkColors: Colors = {
   brandPrimary: palette.green[700],
   brandPrimaryPressed: palette.green[600], // dark: pressed brightens
   brandHover: "#4E9B77",
+  brandForeground: palette.green[300], // #6FA384 — legible green on dark surfaces
   brandSubtle: "#17271F",
   brandAccent: palette.gold[400],
   brandAccentPressed: palette.gold[300],
@@ -161,6 +174,9 @@ const darkColors: Colors = {
   ringError: "rgba(248, 113, 113, 0.40)",
   error: "#EF4444",
   success: "#22C55E",
+  warningSurface: "#2A2110", // --warning-50 (dark)
+  warningText: "#FCD34D", // --warning-700 (dark)
+  warningBorder: "#3D2F12", // --warning-100 (dark)
 
   brandMarkStroke: "#7FB99B",
   brandWordmark: "#F4F8F5",

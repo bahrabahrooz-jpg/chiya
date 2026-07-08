@@ -138,20 +138,20 @@ export function TextField({
             textContentType={textContentType}
             returnKeyType={returnKeyType}
             onSubmitEditing={onSubmitEditing}
-            selectionColor={colors.brandPrimary}
+            selectionColor={colors.brandForeground}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           />
           {showDots ? (
             <View style={styles.dotsRow} pointerEvents="none">
-              {focused && value.length === 0 ? <Caret color={colors.brandPrimary} /> : null}
+              {focused && value.length === 0 ? <Caret color={colors.brandForeground} /> : null}
               <Text
                 numberOfLines={1}
                 style={[styles.dots, { color: value.length > 0 ? colors.textPrimary : colors.textPlaceholder }]}
               >
                 {DOT.repeat(dotCount)}
               </Text>
-              {focused && value.length > 0 ? <Caret color={colors.brandPrimary} /> : null}
+              {focused && value.length > 0 ? <Caret color={colors.brandForeground} /> : null}
             </View>
           ) : null}
         </View>

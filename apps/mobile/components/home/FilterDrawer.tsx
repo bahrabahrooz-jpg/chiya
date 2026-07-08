@@ -16,15 +16,16 @@ import { useTheme } from "@/theme";
 import { Button } from "@/components/ui";
 import {
   propertyTypes,
-  buyPresets,
-  rentPresets,
   beds,
   baths,
   amenities,
+  searchCities,
   emptyFilters,
   countFilters,
   type Filters,
 } from "./data";
+import { PriceRange } from "./PriceRange";
+import { AreaRange } from "./AreaRange";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const WINDOW_H = Dimensions.get("window").height;
@@ -41,7 +42,7 @@ function Chip({
   onPress: () => void;
 }) {
   const { colors, fontFamily, radius } = useTheme();
-  const fg = selected ? colors.brandPrimary : colors.textSecondary;
+  const fg = selected ? colors.brandForeground : colors.textSecondary;
   return (
     <Pressable
       onPress={onPress}
@@ -49,7 +50,7 @@ function Chip({
         styles.chip,
         {
           borderRadius: radius.pill,
-          borderColor: selected ? colors.brandPrimary : colors.borderDefault,
+          borderColor: selected ? colors.brandForeground : colors.borderDefault,
           backgroundColor: selected ? colors.brandSubtle : colors.surfaceCard,
         },
       ]}
@@ -112,7 +113,6 @@ export function FilterDrawer({ open, onClose, deal, value, onApply }: FilterDraw
 
   if (!mounted) return null;
 
-  const prices = deal === "rent" ? rentPresets : buyPresets;
   const toggle = (arr: string[], v: string) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const n = countFilters(draft);
 
@@ -145,6 +145,17 @@ export function FilterDrawer({ open, onClose, deal, value, onApply }: FilterDraw
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+            <Section title="Location">
+              {searchCities.map((c) => (
+                <Chip
+                  key={c}
+                  label={c}
+                  selected={draft.cities.includes(c)}
+                  onPress={() => setDraft((d) => ({ ...d, cities: toggle(d.cities, c) }))}
+                />
+              ))}
+            </Section>
+
             <Section title="Property type">
               {propertyTypes.map((o) => (
                 <Chip
@@ -157,24 +168,25 @@ export function FilterDrawer({ open, onClose, deal, value, onApply }: FilterDraw
               ))}
             </Section>
 
-            <Section title={deal === "rent" ? "Monthly rent" : "Price range"}>
-              {prices.map((o) => (
-                <Chip
-                  key={o.value}
-                  label={o.label}
-                  selected={draft.price === o.value}
-                  onPress={() => setDraft((d) => ({ ...d, price: d.price === o.value ? null : o.value }))}
-                />
-              ))}
-            </Section>
+            <View style={styles.section}>
+              <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
+                {deal === "rent" ? "Monthly rent" : "Price range"}
+              </Text>
+              <PriceRange value={draft.price} onChange={(p) => setDraft((d) => ({ ...d, price: p }))} />
+            </View>
+
+            <View style={styles.section}>
+              <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>Property size</Text>
+              <AreaRange value={draft.size} onChange={(s) => setDraft((d) => ({ ...d, size: s }))} />
+            </View>
 
             <Section title="Bedrooms">
               {beds.map((o) => (
                 <Chip
-                  key={o.value}
+                  key={o.value || "any"}
                   label={o.label}
                   selected={draft.beds === o.value}
-                  onPress={() => setDraft((d) => ({ ...d, beds: d.beds === o.value ? "" : o.value }))}
+                  onPress={() => setDraft((d) => ({ ...d, beds: o.value }))}
                 />
               ))}
             </Section>
@@ -182,10 +194,10 @@ export function FilterDrawer({ open, onClose, deal, value, onApply }: FilterDraw
             <Section title="Bathrooms">
               {baths.map((o) => (
                 <Chip
-                  key={o.value}
+                  key={o.value || "any"}
                   label={o.label}
                   selected={draft.baths === o.value}
-                  onPress={() => setDraft((d) => ({ ...d, baths: d.baths === o.value ? "" : o.value }))}
+                  onPress={() => setDraft((d) => ({ ...d, baths: o.value }))}
                 />
               ))}
             </Section>

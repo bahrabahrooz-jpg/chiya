@@ -5,7 +5,7 @@
     "version": "0.1.0",
     "scheme": "chiya",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "assetBundlePatterns": [
       "**/*"
@@ -26,6 +26,12 @@
         {
           "backgroundColor": "#FFFFFF",
           "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Chiya to access your photos to add listing images."
         }
       ]
     ],

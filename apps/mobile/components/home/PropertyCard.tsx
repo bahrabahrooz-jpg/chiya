@@ -1,7 +1,8 @@
-import { useState } from "react";
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import { Heart, MapPin, BedDouble, Bath, Maximize, type LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useIsFavorite, toggleFavorite } from "@/lib/favorites";
 import { priceLabel, type Listing } from "./data";
 
 function Spec({ Icon, label }: { Icon: LucideIcon; label: string }) {
@@ -15,21 +16,27 @@ function Spec({ Icon, label }: { Icon: LucideIcon; label: string }) {
 }
 
 /** PropertyCard — image with deal badge + favorite, then title/price and specs. */
-export function PropertyCard({ property: p }: { property: Listing }) {
+export function PropertyCard({ property: p, fullWidth = false }: { property: Listing; fullWidth?: boolean }) {
   const { colors, type, fontFamily, radius } = useTheme();
-  const [fav, setFav] = useState(false);
+  const router = useRouter();
+  const fav = useIsFavorite(p.id);
   const dealLabel = p.deal === "rent" ? "For Rent" : "For Sale";
 
   return (
     <Pressable
-      style={[styles.card, { backgroundColor: colors.surfaceCard, borderRadius: radius.card, borderColor: colors.borderSubtle }]}
+      onPress={() => router.push({ pathname: "/property/[id]", params: { id: p.id } })}
+      style={[
+        styles.card,
+        fullWidth && styles.cardFull,
+        { backgroundColor: colors.surfaceCard, borderRadius: radius.card, borderColor: colors.borderSubtle },
+      ]}
     >
       <View style={[styles.media, { borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card }]}>
         <Image source={{ uri: p.cover }} style={styles.img} resizeMode="cover" />
         <View style={styles.badge}>
           <Text style={[styles.badgeTxt, { color: colors.brandPrimary, fontFamily: fontFamily.sansSemibold }]}>{dealLabel}</Text>
         </View>
-        <Pressable style={styles.heart} onPress={() => setFav((f) => !f)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save">
+        <Pressable style={styles.heart} onPress={() => toggleFavorite(p.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save">
           <Heart size={18} color={fav ? colors.error : colors.textPrimary} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
         </Pressable>
       </View>
@@ -39,7 +46,7 @@ export function PropertyCard({ property: p }: { property: Listing }) {
           <Text numberOfLines={1} style={[type.body, styles.title, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
             {p.title}
           </Text>
-          <Text style={[type.body, { color: colors.brandPrimary, fontFamily: fontFamily.sansBold }]}>{priceLabel(p)}</Text>
+          <Text style={[type.body, { color: colors.brandForeground, fontFamily: fontFamily.sansBold }]}>{priceLabel(p)}</Text>
         </View>
 
         <View style={styles.loc}>
@@ -48,6 +55,8 @@ export function PropertyCard({ property: p }: { property: Listing }) {
             {p.address}
           </Text>
         </View>
+
+        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
         <View style={styles.specs}>
           {p.beds != null ? <Spec Icon={BedDouble} label={`${p.beds} Bed`} /> : null}
@@ -61,6 +70,7 @@ export function PropertyCard({ property: p }: { property: Listing }) {
 
 const styles = StyleSheet.create({
   card: { width: 280, borderWidth: 1 },
+  cardFull: { width: "100%" },
   media: { height: 160, overflow: "hidden", backgroundColor: "#e9edf0" },
   img: { width: "100%", height: "100%" },
   badge: {
@@ -89,6 +99,7 @@ const styles = StyleSheet.create({
   title: { flex: 1 },
   loc: { flexDirection: "row", alignItems: "center", gap: 5 },
   locTxt: { flex: 1 },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: 2 },
   specs: { flexDirection: "row", alignItems: "center", gap: 16, marginTop: 2 },
   spec: { flexDirection: "row", alignItems: "center", gap: 5 },
 });
