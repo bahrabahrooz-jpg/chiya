@@ -6,7 +6,7 @@ import {
   Building2,
   Home,
   Trees,
-  Store,
+  Briefcase,
   SquareParking,
   Waves,
   Sun,
@@ -42,7 +42,7 @@ export const propertyTypes: Opt[] = [
   { value: "apartment", label: "Apartment", Icon: Building2 },
   { value: "house", label: "House", Icon: Home },
   { value: "land", label: "Land", Icon: Trees },
-  { value: "commercial", label: "Commercial", Icon: Store },
+  { value: "office", label: "Office", Icon: Briefcase },
 ];
 
 export const buyPresets: Opt[] = [
@@ -208,6 +208,25 @@ export const labelFor = (opts: Opt[], value: string) => opts.find((o) => o.value
 
 export const getListing = (id: string) => listings.find((l) => l.id === id);
 
+/** Sort suggestions: names starting with the query first, then alphabetically. */
+function sortSuggestions(values: string[], q: string): string[] {
+  return values.sort((a, b) => {
+    const ap = a.toLowerCase().startsWith(q) ? 0 : 1;
+    const bp = b.toLowerCase().startsWith(q) ? 0 : 1;
+    return ap - bp || a.localeCompare(b);
+  });
+}
+
+/** Location suggestions (cities + listing areas) matching a query, for the search field. */
+export function suggestPlaces(query: string, limit = 6): string[] {
+  const s = query.trim().toLowerCase();
+  if (!s) return [];
+  const set = new Set<string>();
+  for (const c of searchCities) if (c.toLowerCase().includes(s)) set.add(c);
+  for (const l of listings) if (l.address.toLowerCase().includes(s)) set.add(l.address);
+  return sortSuggestions(Array.from(set), s).slice(0, limit);
+}
+
 /** Extra interior shots reused across detail galleries (ported from the web PDP). */
 const galleryPool = [
   img("1600596542815-ffad4c1539a9"),
@@ -260,29 +279,81 @@ export interface Agent {
   rating: number;
   reviews: number;
   listings: number;
+  languages: string[];
+  /** Years of experience. */
+  experience: number;
 }
 
 export const agents: Agent[] = [
-  { id: "lana-hassan", name: "Lana Hassan", agency: "Chiya Premier", city: "Erbil", photo: portrait("1573496359142-b8d87734a5a2"), verified: true, rating: 4.9, reviews: 128, listings: 42 },
-  { id: "avan-mahmood", name: "Avan Mahmood", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1544005313-94ddf0286df2"), verified: true, rating: 4.9, reviews: 112, listings: 37 },
-  { id: "daban-ali", name: "Daban Ali", agency: "Chiya Premier", city: "Erbil", photo: portrait("1500648767791-00dcc994a43e"), verified: true, rating: 4.8, reviews: 96, listings: 31 },
-  { id: "nyan-salih", name: "Nyan Salih", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1573497019940-1c28c88b4f3e"), verified: true, rating: 4.9, reviews: 88, listings: 29 },
-  { id: "dilan-aziz", name: "Dilan Aziz", agency: "Erbil Estates", city: "Erbil", photo: portrait("1487412720507-e7ab37603c6f"), verified: true, rating: 4.8, reviews: 77, listings: 26 },
-  { id: "aram-botani", name: "Aram Botani", agency: "Chiya Premier", city: "Erbil", photo: portrait("1507003211169-0a1dd7228f2d"), verified: true, rating: 4.7, reviews: 73, listings: 24 },
-  { id: "sipan-rashid", name: "Sipan Rashid", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1519085360753-af0119f7cbe7"), verified: true, rating: 4.8, reviews: 66, listings: 23 },
-  { id: "rebin-tofiq", name: "Rebin Tofiq", agency: "Duhok Homes", city: "Duhok", photo: portrait("1633332755192-727a05c4013d"), verified: true, rating: 4.8, reviews: 58, listings: 21 },
-  { id: "shene-karim", name: "Shene Karim", agency: "Erbil Estates", city: "Erbil", photo: portrait("1438761681033-6461ffad8d80"), verified: true, rating: 5.0, reviews: 64, listings: 18 },
-  { id: "karwan-jamal", name: "Karwan Jamal", agency: "Empire Realty", city: "Erbil", photo: portrait("1506794778202-cad84cf45f1d"), verified: true, rating: 4.6, reviews: 51, listings: 19 },
-  { id: "hawre-sabir", name: "Hawre Sabir", agency: "Duhok Homes", city: "Duhok", photo: portrait("1472099645785-5658abf4ff4e"), verified: true, rating: 4.7, reviews: 44, listings: 15 },
-  { id: "tara-qadir", name: "Tara Qadir", agency: "Ankawa Properties", city: "Erbil", photo: portrait("1534528741775-53994a69daeb"), verified: true, rating: 5.0, reviews: 39, listings: 12 },
+  { id: "lana-hassan", name: "Lana Hassan", agency: "Chiya Premier", city: "Erbil", photo: portrait("1573496359142-b8d87734a5a2"), verified: true, rating: 4.9, reviews: 128, listings: 42, languages: ["Kurdish", "English", "Arabic"], experience: 12 },
+  { id: "avan-mahmood", name: "Avan Mahmood", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1544005313-94ddf0286df2"), verified: true, rating: 4.9, reviews: 112, listings: 37, languages: ["Kurdish", "Arabic"], experience: 9 },
+  { id: "daban-ali", name: "Daban Ali", agency: "Chiya Premier", city: "Erbil", photo: portrait("1500648767791-00dcc994a43e"), verified: true, rating: 4.8, reviews: 96, listings: 31, languages: ["Kurdish", "English"], experience: 15 },
+  { id: "nyan-salih", name: "Nyan Salih", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1573497019940-1c28c88b4f3e"), verified: true, rating: 4.9, reviews: 88, listings: 29, languages: ["Kurdish", "Arabic", "English"], experience: 7 },
+  { id: "dilan-aziz", name: "Dilan Aziz", agency: "Erbil Estates", city: "Erbil", photo: portrait("1487412720507-e7ab37603c6f"), verified: true, rating: 4.8, reviews: 77, listings: 26, languages: ["Kurdish", "English"], experience: 18 },
+  { id: "aram-botani", name: "Aram Botani", agency: "Chiya Premier", city: "Erbil", photo: portrait("1507003211169-0a1dd7228f2d"), verified: true, rating: 4.7, reviews: 73, listings: 24, languages: ["Kurdish", "Turkish"], experience: 6 },
+  { id: "sipan-rashid", name: "Sipan Rashid", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1519085360753-af0119f7cbe7"), verified: true, rating: 4.8, reviews: 66, listings: 23, languages: ["Kurdish", "Arabic"], experience: 11 },
+  { id: "rebin-tofiq", name: "Rebin Tofiq", agency: "Duhok Homes", city: "Duhok", photo: portrait("1633332755192-727a05c4013d"), verified: true, rating: 4.8, reviews: 58, listings: 21, languages: ["Kurdish", "English"], experience: 4 },
+  { id: "shene-karim", name: "Shene Karim", agency: "Erbil Estates", city: "Erbil", photo: portrait("1438761681033-6461ffad8d80"), verified: true, rating: 5.0, reviews: 64, listings: 18, languages: ["Kurdish", "Arabic", "English"], experience: 20 },
+  { id: "karwan-jamal", name: "Karwan Jamal", agency: "Empire Realty", city: "Erbil", photo: portrait("1506794778202-cad84cf45f1d"), verified: true, rating: 4.6, reviews: 51, listings: 19, languages: ["Kurdish", "English", "Turkish"], experience: 8 },
+  { id: "hawre-sabir", name: "Hawre Sabir", agency: "Duhok Homes", city: "Duhok", photo: portrait("1472099645785-5658abf4ff4e"), verified: true, rating: 4.7, reviews: 44, listings: 15, languages: ["Kurdish", "Arabic"], experience: 5 },
+  { id: "tara-qadir", name: "Tara Qadir", agency: "Ankawa Properties", city: "Erbil", photo: portrait("1534528741775-53994a69daeb"), verified: true, rating: 5.0, reviews: 39, listings: 12, languages: ["Kurdish", "English", "Persian"], experience: 3 },
 ];
 
 export const featuredAgents: Agent[] = agents.slice(0, 6);
 export const agentCities = ["Erbil", "Sulaymaniyah", "Duhok"];
+export const agentLanguages = ["Kurdish", "Arabic", "English", "Turkish", "Persian"];
+export const agentExperience: Opt[] = [
+  { value: "0-5", label: "Under 5 years" },
+  { value: "5-10", label: "5–10 years" },
+  { value: "10-15", label: "10–15 years" },
+  { value: "15+", label: "15+ years" },
+];
 export const agentSort: Opt[] = [
   { value: "listings", label: "Most listings" },
   { value: "rating", label: "Highest rating" },
   { value: "reviews", label: "Most reviews" },
 ];
 
+export interface AgentFilters {
+  cities: string[];
+  languages: string[];
+  experience: string;
+}
+export const emptyAgentFilters: AgentFilters = { cities: [], languages: [], experience: "" };
+export const countAgentFilters = (f: AgentFilters) =>
+  f.cities.length + f.languages.length + (f.experience ? 1 : 0);
+
+const experienceMatch = (years: number, range: string) => {
+  if (range === "0-5") return years < 5;
+  if (range === "5-10") return years >= 5 && years < 10;
+  if (range === "10-15") return years >= 10 && years < 15;
+  if (range === "15+") return years >= 15;
+  return true;
+};
+
+/** Filter + sort agents by query, filters (city/language/experience), and sort. */
+export function filterAgents({ query, filters, sort }: { query: string; filters: AgentFilters; sort: string }): Agent[] {
+  const q = query.trim().toLowerCase();
+  const list = agents.filter((a) => {
+    if (filters.cities.length && !filters.cities.includes(a.city)) return false;
+    if (filters.languages.length && !filters.languages.some((l) => a.languages.includes(l))) return false;
+    if (filters.experience && !experienceMatch(a.experience, filters.experience)) return false;
+    if (q && !`${a.name} ${a.agency} ${a.city}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (sort === "rating") list.sort((x, y) => y.rating - x.rating);
+  else if (sort === "reviews") list.sort((x, y) => y.reviews - x.reviews);
+  else list.sort((x, y) => y.listings - x.listings);
+  return list;
+}
+
 export const getAgent = (id: string) => agents.find((a) => a.id === id);
+
+/** Agent name suggestions matching a query, for the agents search field. */
+export function suggestAgents(query: string, limit = 6): string[] {
+  const s = query.trim().toLowerCase();
+  if (!s) return [];
+  const set = new Set<string>();
+  for (const a of agents) if (a.name.toLowerCase().includes(s)) set.add(a.name);
+  return sortSuggestions(Array.from(set), s).slice(0, limit);
+}

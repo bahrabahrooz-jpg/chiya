@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, Image, ScrollView, Pressable, StyleSheet, Alert, Dimensions, Modal } from "react-native";
+import { View, Text, Image, ScrollView, Pressable, StyleSheet, Dimensions, Modal } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -22,6 +22,7 @@ import MapView, { Marker } from "react-native-maps";
 import { useTheme } from "@/theme";
 import { Button } from "@/components/ui";
 import { useIsFavorite, toggleFavorite } from "@/lib/favorites";
+import { shareProperty } from "@/lib/share";
 import { addViewing, toISODate, formatViewingDate } from "@/lib/viewings";
 import { addNotification } from "@/lib/notifications";
 import { BookViewingSheet } from "@/components/property/BookViewingSheet";
@@ -166,7 +167,7 @@ export default function PropertyDetailScreen() {
           <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
         <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>Property Details</Text>
-        <Pressable onPress={() => Alert.alert("Share", "Sharing coming soon.")} hitSlop={8} style={[styles.hbtn, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle }]}>
+        <Pressable onPress={() => shareProperty(listing)} hitSlop={8} style={[styles.hbtn, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle }]}>
           <Share2 size={19} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
       </View>
@@ -179,7 +180,7 @@ export default function PropertyDetailScreen() {
             <Text style={[styles.badgeTxt, { color: colors.brandPrimary, fontFamily: fontFamily.sansSemibold }]}>{dealLabel}</Text>
           </View>
           <Pressable onPress={() => toggleFavorite(id)} style={styles.heart} hitSlop={8}>
-            <Heart size={20} color={fav ? colors.error : colors.textPrimary} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
+            <Heart size={20} color={fav ? colors.error : "#33383F"} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
           </Pressable>
         </View>
 
@@ -203,8 +204,8 @@ export default function PropertyDetailScreen() {
               >
                 <Text style={[styles.statLabel, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>{s.label}</Text>
                 <View style={styles.statRow}>
-                  <View style={[styles.statIcon, { backgroundColor: colors.brandSubtle }]}>
-                    <s.Icon size={18} color={colors.textPrimary} strokeWidth={2} />
+                  <View style={[styles.statIcon, { backgroundColor: colors.iconTileBg, borderColor: colors.iconTileBorder }]}>
+                    <s.Icon size={18} color={colors.brandForeground} strokeWidth={2} />
                   </View>
                   <Text style={[styles.statValue, { color: colors.textPrimary, fontFamily: fontFamily.sansBold }]}>{s.value}</Text>
                 </View>
@@ -224,7 +225,7 @@ export default function PropertyDetailScreen() {
             <View style={styles.featGrid}>
               {features.map((f) => (
                 <View key={f.label} style={styles.feat}>
-                  <View style={[styles.featIcon, { backgroundColor: colors.brandSubtle }]}>
+                  <View style={[styles.featIcon, { backgroundColor: colors.iconTileBg, borderColor: colors.iconTileBorder }]}>
                     <f.Icon size={18} color={colors.brandForeground} strokeWidth={2} />
                   </View>
                   <View style={styles.featText}>
@@ -306,7 +307,7 @@ export default function PropertyDetailScreen() {
         open={bookOpen}
         onClose={() => setBookOpen(false)}
         property={{ title: listing.title, address: listing.address }}
-        agent={{ name: agent.name, agency: agent.agency, city: agent.city, photo: agent.photo, verified: agent.verified }}
+        agent={{ name: agent.name, city: agent.city, photo: agent.photo, verified: agent.verified, rating: agent.rating, reviews: agent.reviews }}
         onConfirm={({ date, time }) => {
           const iso = toISODate(date);
           addViewing({
@@ -393,11 +394,11 @@ const styles = StyleSheet.create({
   statCol: { flex: 1, paddingHorizontal: 14, paddingVertical: 16 },
   statLabel: { fontSize: 11, letterSpacing: 0.6 },
   statRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
-  statIcon: { width: 36, height: 36, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  statIcon: { width: 36, height: 36, borderRadius: 9, borderWidth: StyleSheet.hairlineWidth, alignItems: "center", justifyContent: "center" },
   statValue: { fontSize: 18 },
   featGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 18 },
   feat: { width: "47%", flexDirection: "row", alignItems: "center", gap: 10 },
-  featIcon: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  featIcon: { width: 40, height: 40, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, alignItems: "center", justifyContent: "center" },
   featText: { flex: 1 },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   amenity: { flexDirection: "row", alignItems: "center", gap: 6, height: 36, paddingHorizontal: 12, borderWidth: 1 },

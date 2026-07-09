@@ -31,7 +31,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Chiya to access your photos to add listing images."
+          "photosPermission": "Allow Chiya to access your photos to add listing images.",
+          "cameraPermission": "Allow Chiya to use your camera to take a profile photo."
         }
       ]
     ],

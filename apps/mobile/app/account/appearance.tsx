@@ -34,7 +34,7 @@ export default function AppearanceScreen() {
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
               >
-                <View style={[styles.iconTile, { backgroundColor: colors.brandSubtle, borderRadius: radius.md }]}>
+                <View style={[styles.iconTile, { backgroundColor: colors.iconTileBg, borderColor: colors.iconTileBorder, borderRadius: radius.md }]}>
                   <Icon size={19} color={colors.brandForeground} strokeWidth={2} />
                 </View>
                 <View style={styles.labelWrap}>
@@ -57,6 +57,6 @@ const styles = StyleSheet.create({
   intro: { marginBottom: 2 },
   card: { borderWidth: 1, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
-  iconTile: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  iconTile: { width: 36, height: 36, borderWidth: StyleSheet.hairlineWidth, alignItems: "center", justifyContent: "center" },
   labelWrap: { flex: 1, gap: 2 },
 });

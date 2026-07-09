@@ -4,4 +4,7 @@ export { BrandLockup, BrandMark } from "./BrandLockup";
 export { Divider } from "./Divider";
 export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { GoogleIcon } from "./GoogleIcon";
+export { WhatsAppIcon } from "./WhatsAppIcon";
 export { ActionSheet, type SheetAction } from "./ActionSheet";
+export { ConfirmHost } from "./ConfirmHost";
+export { HighlightText } from "./HighlightText";

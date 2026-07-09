@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useTheme } from "@/theme";
 
-type Variant = "primary" | "secondary" | "social";
+type Variant = "primary" | "secondary" | "social" | "destructive" | "danger";
 
 export interface ButtonProps {
   title: string;
@@ -43,7 +43,11 @@ export function Button({
   const isDisabled = disabled || loading;
 
   const label =
-    variant === "primary" ? colors.textOnBrand : variant === "social" ? colors.textPrimary : colors.textPrimary;
+    variant === "primary" || variant === "danger"
+      ? colors.textOnBrand
+      : variant === "destructive"
+        ? colors.error
+        : colors.textPrimary;
 
   return (
     <Pressable
@@ -73,6 +77,12 @@ export function Button({
           borderWidth: 1,
           borderColor: colors.borderDefault,
         },
+        variant === "destructive" && {
+          backgroundColor: pressed ? colors.surfaceSunken : colors.surfaceCard,
+          borderWidth: 1,
+          borderColor: colors.error,
+        },
+        variant === "danger" && [{ backgroundColor: colors.error, opacity: pressed ? 0.9 : 1 }, elevation.button],
         fullWidth && styles.full,
         pressed && styles.pressed,
         isDisabled && styles.disabled,

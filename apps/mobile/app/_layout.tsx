@@ -13,6 +13,7 @@ import {
   HankenGrotesk_700Bold,
 } from "@expo-google-fonts/hanken-grotesk";
 import { ThemeProvider, useTheme } from "@/theme";
+import { ConfirmHost } from "@/components/ui";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -49,15 +50,17 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="property/[id]" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="agents/[id]" options={{ animation: "slide_from_right" }} />
+            <Stack.Screen name="agent-listings/[id]" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="my-listings/new" options={{ animation: "slide_from_right" }} />
+            <Stack.Screen name="saved" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="account/edit" options={{ animation: "slide_from_right" }} />
-            <Stack.Screen name="account/viewings" options={{ animation: "slide_from_right" }} />
+            <Stack.Screen name="account/change-password" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="account/notifications" options={{ animation: "slide_from_right" }} />
-            <Stack.Screen name="account/notification-settings" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="account/language" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="account/appearance" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="account/help" options={{ animation: "slide_from_right" }} />
           </Stack>
+          <ConfirmHost />
         </View>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -34,6 +34,10 @@ export interface MenuRowProps {
   /** Hairline divider above this row (for stacking rows in a Group). */
   divider?: boolean;
   danger?: boolean;
+  /** Render the icon on its own, without the tile frame (e.g. Log out). */
+  bareIcon?: boolean;
+  /** Dim the row and make it non-interactive (e.g. a not-yet-built screen). */
+  disabled?: boolean;
   onPress?: () => void;
 }
 
@@ -47,26 +51,40 @@ export function MenuRow({
   chevron,
   divider,
   danger,
+  bareIcon,
+  disabled,
   onPress,
 }: MenuRowProps) {
   const { colors, type, fontFamily, radius } = useTheme();
   const tint = danger ? colors.error : colors.textPrimary;
   const iconTint = danger ? colors.error : colors.brandForeground;
-  const iconBg = danger ? "rgba(192,57,43,0.10)" : colors.brandSubtle;
-  const showChevron = chevron ?? (!trailing && !!onPress);
+  const pressable = !!onPress && !disabled;
+  const showChevron = !disabled && (chevron ?? (!trailing && !!onPress));
 
   return (
     <Pressable
       onPress={onPress}
-      disabled={!onPress}
+      disabled={!pressable}
       style={({ pressed }) => [
         styles.row,
+        disabled && { opacity: 0.4 },
         divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderSubtle },
-        pressed && onPress ? { backgroundColor: colors.surfaceSunken } : null,
+        pressed && pressable ? { backgroundColor: colors.surfaceSunken } : null,
       ]}
-      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityRole={pressable ? "button" : undefined}
+      accessibilityState={{ disabled: !!disabled }}
     >
-      <View style={[styles.iconTile, { backgroundColor: iconBg, borderRadius: radius.md }]}>
+      <View
+        style={[
+          styles.iconTile,
+          !bareIcon && {
+            backgroundColor: colors.iconTileBg,
+            borderColor: colors.iconTileBorder,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderRadius: radius.md,
+          },
+        ]}
+      >
         <Icon size={19} color={iconTint} strokeWidth={2} />
       </View>
 

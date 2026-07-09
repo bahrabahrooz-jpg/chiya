@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, Image, ScrollView, Pressable, TextInput, StyleSheet, Alert } from "react-native";
+import { View, Text, Image, ScrollView, Pressable, TextInput, StyleSheet, Alert, Linking } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -7,19 +7,20 @@ import {
   Share2,
   BadgeCheck,
   MapPin,
-  Building2,
   Star,
   Phone,
-  MessageCircle,
   CalendarCheck,
   ClipboardList,
   TrendingUp,
+  Trash2,
   type LucideIcon,
 } from "lucide-react-native";
 import { useTheme } from "@/theme";
-import { Button } from "@/components/ui";
+import { Button, WhatsAppIcon } from "@/components/ui";
 import { PropertyCard } from "@/components/home/PropertyCard";
 import { getAgent, listings, user } from "@/components/home/data";
+import { confirm } from "@/lib/confirm";
+import { shareAgent } from "@/lib/share";
 
 const SPECIALTIES = ["Luxury villas", "Apartments", "Investment", "New developments", "Family homes"];
 
@@ -180,10 +181,14 @@ export default function AgentDetailScreen() {
     setReviews((rs) => rs.map((r) => (r.id === rid ? { ...r, stars, text, when: "Edited just now" } : r)));
   const deleteReview = (rid: string) => setReviews((rs) => rs.filter((r) => r.id !== rid));
   const confirmDelete = (rid: string) =>
-    Alert.alert("Delete review", "This can’t be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteReview(rid) },
-    ]);
+    confirm({
+      title: "Delete review",
+      message: "This can't be undone.",
+      confirmLabel: "Delete review",
+      destructive: true,
+      icon: Trash2,
+      onConfirm: () => deleteReview(rid),
+    });
 
   if (!agent) {
     return (
@@ -202,7 +207,7 @@ export default function AgentDetailScreen() {
   const bio = `${agent.name} is a verified ${agent.agency} agent based in ${agent.city}. With a ${agent.rating.toFixed(
     1,
   )}-star rating across ${agent.reviews} client reviews and ${agent.listings} active listings, ${first} helps buyers, sellers, and renters find the right home across ${agent.city}.`;
-  const agentListings = listings.slice(0, 5);
+  const agentListings = listings;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
@@ -211,7 +216,7 @@ export default function AgentDetailScreen() {
           <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
         <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>Agent Profile</Text>
-        <Pressable onPress={() => Alert.alert("Share", "Sharing coming soon.")} hitSlop={8} style={[styles.hbtn, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle }]}>
+        <Pressable onPress={() => shareAgent(agent)} hitSlop={8} style={[styles.hbtn, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle }]}>
           <Share2 size={19} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
       </View>
@@ -229,11 +234,6 @@ export default function AgentDetailScreen() {
           </View>
           <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 26, marginTop: 14 }]}>{agent.name}</Text>
           <View style={styles.meta}>
-            <View style={styles.metaItem}>
-              <Building2 size={15} color={colors.textTertiary} strokeWidth={2} />
-              <Text style={[type.bodySm, { color: colors.textSecondary }]}>{agent.agency}</Text>
-            </View>
-            <View style={[styles.dot, { backgroundColor: colors.borderStrong }]} />
             <View style={styles.metaItem}>
               <MapPin size={15} color={colors.textTertiary} strokeWidth={2} />
               <Text style={[type.bodySm, { color: colors.textSecondary }]}>{agent.city}</Text>
@@ -272,7 +272,7 @@ export default function AgentDetailScreen() {
           <View style={[styles.sectionDivided, { borderTopColor: colors.borderSubtle }]}>
             <View style={styles.listHead}>
               <Heading>Active listings</Heading>
-              <Pressable onPress={() => router.push("/search")} hitSlop={8}>
+              <Pressable onPress={() => router.push({ pathname: "/agent-listings/[id]", params: { id: agent.id } })} hitSlop={8}>
                 <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>See all</Text>
               </Pressable>
             </View>
@@ -280,7 +280,7 @@ export default function AgentDetailScreen() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listScroll}>
-          {agentListings.map((p) => (
+          {agentListings.slice(0, 5).map((p) => (
             <PropertyCard key={p.id} property={p} />
           ))}
         </ScrollView>
@@ -326,9 +326,13 @@ export default function AgentDetailScreen() {
         </Pressable>
         <View style={{ flex: 1 }}>
           <Button
-            title="Message"
-            left={<MessageCircle size={19} color={colors.textOnBrand} strokeWidth={2} />}
-            onPress={() => Alert.alert("Message", `Opening a chat with ${agent.name}…`)}
+            title="WhatsApp"
+            left={<WhatsAppIcon size={19} color={colors.textOnBrand} />}
+            onPress={() =>
+              Linking.openURL(
+                `https://wa.me/9647501234567?text=${encodeURIComponent(`Hi ${agent.name}, I'm interested in your listings on Chiya.`)}`,
+              ).catch(() => {})
+            }
           />
         </View>
       </View>

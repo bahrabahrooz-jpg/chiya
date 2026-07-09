@@ -70,7 +70,9 @@ export function ActionSheet({
                   key={a.label}
                   onPress={() => {
                     onClose();
-                    a.onPress();
+                    // Run after the sheet finishes dismissing — presenting another
+                    // Modal (e.g. the confirm sheet) while this one is closing jams iOS.
+                    setTimeout(a.onPress, 260);
                   }}
                   style={({ pressed }) => [
                     styles.action,

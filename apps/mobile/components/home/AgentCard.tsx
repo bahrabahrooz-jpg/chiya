@@ -25,7 +25,7 @@ export function AgentCard({ agent: a }: { agent: Agent }) {
           </View>
         ) : null}
         <Pressable style={styles.heart} onPress={() => toggleFavorite(a.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save">
-          <Heart size={18} color={fav ? colors.error : colors.textPrimary} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
+          <Heart size={18} color={fav ? colors.error : "#33383F"} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
         </Pressable>
       </View>
 

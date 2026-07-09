@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { View, Text, Image, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Text, Image, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Plus, Clock, Building2, MapPin, BedDouble, Bath, Maximize, Pencil, Trash2, MoreVertical, type LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/theme";
 import { ActionSheet } from "@/components/ui";
 import { useMyListings, removeMyListing, type MyListing } from "@/lib/my-listings";
+import { confirm } from "@/lib/confirm";
 
 function Spec({ Icon, label }: { Icon: LucideIcon; label: string }) {
   const { colors, type } = useTheme();
@@ -25,10 +26,14 @@ function ListingRow({ listing: l }: { listing: MyListing }) {
 
   const edit = () => router.push({ pathname: "/my-listings/new", params: { id: l.id } });
   const confirmDelete = () =>
-    Alert.alert("Delete listing", `Remove "${l.title}"? This can't be undone.`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => removeMyListing(l.id) },
-    ]);
+    confirm({
+      title: "Delete listing",
+      message: `Remove "${l.title}"? This can't be undone.`,
+      confirmLabel: "Delete listing",
+      destructive: true,
+      icon: Trash2,
+      onConfirm: () => removeMyListing(l.id),
+    });
 
   return (
     <>
@@ -62,7 +67,7 @@ function ListingRow({ listing: l }: { listing: MyListing }) {
             accessibilityRole="button"
             accessibilityLabel="Listing options"
           >
-            <MoreVertical size={20} color={colors.textPrimary} strokeWidth={2} />
+            <MoreVertical size={20} color="#33383F" strokeWidth={2} />
           </Pressable>
         </View>
 

@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { House, Search, Building2, Users, Heart, User, type LucideIcon } from "lucide-react-native";
+import { House, Search, Building2, Users, CalendarCheck, User, type LucideIcon } from "lucide-react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useTheme } from "@/theme";
 
@@ -8,9 +8,9 @@ import { useTheme } from "@/theme";
 const TABS: Record<string, { label: string; Icon: LucideIcon }> = {
   home: { label: "Home", Icon: House },
   search: { label: "Search", Icon: Search },
-  "my-listings": { label: "Listings", Icon: Building2 },
   agents: { label: "Agents", Icon: Users },
-  saved: { label: "Saved", Icon: Heart },
+  "my-listings": { label: "Listings", Icon: Building2 },
+  viewings: { label: "Viewings", Icon: CalendarCheck },
   profile: { label: "Profile", Icon: User },
 };
 

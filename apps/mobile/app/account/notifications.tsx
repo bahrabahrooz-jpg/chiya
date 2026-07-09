@@ -1,8 +1,6 @@
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import {
-  Settings,
   BellOff,
   CalendarCheck,
   MessageCircle,
@@ -36,7 +34,7 @@ function NotificationItem({ item }: { item: AppNotification }) {
       ]}
       accessibilityRole="button"
     >
-      <View style={[styles.iconTile, { backgroundColor: colors.surfacePage, borderRadius: radius.md }]}>
+      <View style={[styles.iconTile, { backgroundColor: colors.iconTileBg, borderColor: colors.iconTileBorder, borderRadius: radius.md }]}>
         <Icon size={19} color={colors.brandForeground} strokeWidth={2} />
       </View>
       <View style={styles.body}>
@@ -57,20 +55,12 @@ function NotificationItem({ item }: { item: AppNotification }) {
 
 export default function NotificationsScreen() {
   const { colors, type, fontFamily } = useTheme();
-  const router = useRouter();
   const notifications = useNotifications();
   const unread = useUnreadCount();
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
-      <ScreenHeader
-        title="Notifications"
-        right={
-          <Pressable onPress={() => router.push("/account/notification-settings")} hitSlop={8} accessibilityLabel="Notification settings">
-            <Settings size={22} color={colors.textPrimary} strokeWidth={2} />
-          </Pressable>
-        }
-      />
+      <ScreenHeader title="Notifications" />
 
       {notifications.length > 0 ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -113,7 +103,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   wrap: { marginBottom: 10 },
   item: { flexDirection: "row", gap: 12, padding: 14, borderWidth: 1, alignItems: "flex-start" },
-  iconTile: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  iconTile: { width: 38, height: 38, borderWidth: StyleSheet.hairlineWidth, alignItems: "center", justifyContent: "center" },
   body: { flex: 1, gap: 3 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   title: { flex: 1 },

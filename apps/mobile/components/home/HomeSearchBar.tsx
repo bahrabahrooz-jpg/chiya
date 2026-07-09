@@ -8,61 +8,63 @@ export interface HomeSearchBarProps {
   onChangeText: (v: string) => void;
   onOpenFilters: () => void;
   activeCount?: number;
+  placeholder?: string;
+  onFocusChange?: (focused: boolean) => void;
 }
 
 /**
- * HomeSearchBar — an inline search field (filters listings on the Home screen)
- * plus a neutral filter button that opens the filter drawer.
+ * HomeSearchBar — a single search field with the filter control integrated on the
+ * right edge (a leading search icon, the input, an optional clear button, then a
+ * neutral filter button that opens the filter drawer).
  */
-export function HomeSearchBar({ value, onChangeText, onOpenFilters, activeCount = 0 }: HomeSearchBarProps) {
+export function HomeSearchBar({ value, onChangeText, onOpenFilters, activeCount = 0, placeholder = "Search homes, areas…", onFocusChange }: HomeSearchBarProps) {
   const { colors, type, radius, fontFamily } = useTheme();
   const [focused, setFocused] = useState(false);
+  const setFocus = (v: boolean) => {
+    setFocused(v);
+    onFocusChange?.(v);
+  };
 
   return (
-    <View style={styles.row}>
-      <View
-        style={[
-          styles.field,
-          {
-            backgroundColor: colors.surfaceCard,
-            borderColor: focused ? colors.borderFocus : colors.borderSubtle,
-            borderWidth: focused ? 1.5 : 1,
-            borderRadius: radius.control,
-          },
-          // Brand-green focus ring, matching the login/admin inputs.
-          focused && { boxShadow: `0 0 0 4px ${colors.ringBrand}` },
-        ]}
-      >
-        <Search size={19} color={colors.textTertiary} strokeWidth={2} />
-        <TextInput
-          style={[styles.input, { color: colors.textPrimary, fontFamily: fontFamily.sans, fontSize: type.body.fontSize }]}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder="Search homes, areas…"
-          placeholderTextColor={colors.textPlaceholder}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          selectionColor={colors.brandForeground}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-        />
-        {value.length > 0 ? (
-          <Pressable onPress={() => onChangeText("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
-            <X size={18} color={colors.textTertiary} strokeWidth={2} />
-          </Pressable>
-        ) : null}
-      </View>
+    <View
+      style={[
+        styles.field,
+        {
+          backgroundColor: colors.surfaceCard,
+          borderColor: focused ? colors.borderFocus : colors.borderSubtle,
+          borderWidth: focused ? 1.5 : 1,
+          borderRadius: radius.control,
+        },
+        // Brand-green focus ring, matching the login/admin inputs.
+        focused && { boxShadow: `0 0 0 4px ${colors.ringBrand}` },
+      ]}
+    >
+      <Search size={19} color={colors.textTertiary} strokeWidth={2} />
+      <TextInput
+        style={[styles.input, { color: colors.textPrimary, fontFamily: fontFamily.sans, fontSize: type.body.fontSize }]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textPlaceholder}
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+        selectionColor={colors.brandForeground}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+      />
+      {value.length > 0 ? (
+        <Pressable onPress={() => onChangeText("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
+          <X size={18} color={colors.textTertiary} strokeWidth={2} />
+        </Pressable>
+      ) : null}
 
-      <Pressable
-        style={[styles.filter, { backgroundColor: colors.surfaceCard, borderColor: colors.borderDefault, borderRadius: radius.control }]}
-        onPress={onOpenFilters}
-        accessibilityRole="button"
-        accessibilityLabel="Filters"
-      >
+      <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+
+      <Pressable onPress={onOpenFilters} hitSlop={8} style={styles.filter} accessibilityRole="button" accessibilityLabel="Filters">
         <SlidersHorizontal size={20} color={colors.textPrimary} strokeWidth={2} />
         {activeCount > 0 ? (
-          <View style={[styles.badge, { backgroundColor: colors.brandPrimary, borderColor: colors.surfacePage }]}>
+          <View style={[styles.badge, { backgroundColor: colors.brandPrimary, borderColor: colors.surfaceCard }]}>
             <Text style={[styles.badgeTxt, { color: colors.textOnBrand }]}>{activeCount}</Text>
           </View>
         ) : null}
@@ -72,9 +74,7 @@ export function HomeSearchBar({ value, onChangeText, onOpenFilters, activeCount 
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 10 },
   field: {
-    flex: 1,
     height: 52,
     borderWidth: 1,
     flexDirection: "row",
@@ -83,18 +83,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   input: { flex: 1, height: "100%", padding: 0 },
-  filter: { width: 52, height: 52, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  divider: { width: StyleSheet.hairlineWidth, height: 24 },
+  filter: { alignItems: "center", justifyContent: "center", paddingLeft: 2 },
   badge: {
     position: "absolute",
-    top: -5,
-    right: -5,
-    minWidth: 19,
-    height: 19,
-    borderRadius: 10,
+    top: -8,
+    right: -8,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 4,
   },
-  badgeTxt: { fontSize: 11, fontWeight: "700" },
+  badgeTxt: { fontSize: 10, fontWeight: "700" },
 });

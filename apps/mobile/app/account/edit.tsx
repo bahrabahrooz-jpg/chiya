@@ -14,10 +14,11 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
-import { User, Mail, Phone, MapPin, Camera } from "lucide-react-native";
+import { User, Mail, Phone, MapPin, Pencil, SquarePen, Images, Camera, Trash2 } from "lucide-react-native";
 import { useTheme } from "@/theme";
-import { Button, TextField } from "@/components/ui";
+import { Button, TextField, ActionSheet, type SheetAction } from "@/components/ui";
 import { ScreenHeader } from "@/components/account/ScreenHeader";
+import { confirm } from "@/lib/confirm";
 import { useProfile, updateProfile } from "@/lib/profile";
 
 const emailish = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -79,6 +80,7 @@ export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const profile = useProfile();
 
+  const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile.fullName);
   const [email, setEmail] = useState(profile.email);
   const [phone, setPhone] = useState(profile.phone);
@@ -86,8 +88,19 @@ export default function EditProfileScreen() {
   const [avatar, setAvatar] = useState<string | null>(profile.avatar);
   const [errors, setErrors] = useState<{ fullName?: string; email?: string }>({});
   const [toast, setToast] = useState<string | null>(null);
+  const [photoMenu, setPhotoMenu] = useState(false);
 
-  const pickAvatar = async () => {
+  const cancel = () => {
+    setFullName(profile.fullName);
+    setEmail(profile.email);
+    setPhone(profile.phone);
+    setLocation(profile.location);
+    setAvatar(profile.avatar);
+    setErrors({});
+    setEditing(false);
+  };
+
+  const chooseFromLibrary = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -97,6 +110,20 @@ export default function EditProfileScreen() {
     if (res.canceled) return;
     setAvatar(res.assets[0]?.uri ?? null);
   };
+
+  const takePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return;
+    const res = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    if (res.canceled) return;
+    setAvatar(res.assets[0]?.uri ?? null);
+  };
+
+  const photoActions: SheetAction[] = [
+    { label: "Select existing photo", icon: Images, onPress: chooseFromLibrary },
+    { label: "Take a new photo", icon: Camera, onPress: takePhoto },
+    ...(avatar ? [{ label: "Delete photo", icon: Trash2, destructive: true, onPress: () => setAvatar(null) } as SheetAction] : []),
+  ];
 
   const save = () => {
     const next: typeof errors = {};
@@ -115,12 +142,35 @@ export default function EditProfileScreen() {
       avatar,
     });
     setToast("Profile updated");
-    setTimeout(() => router.back(), 700);
+    setEditing(false);
   };
+
+  const deleteAccount = () =>
+    confirm({
+      title: "Delete account",
+      message: "This permanently deletes your account and data. This can't be undone.",
+      confirmLabel: "Delete account",
+      destructive: true,
+      icon: Trash2,
+      onConfirm: () => router.replace("/login"),
+    });
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
-      <ScreenHeader title="Edit profile" />
+      <ScreenHeader
+        title="My profile"
+        right={
+          editing ? (
+            <Pressable onPress={cancel} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel">
+              <Text style={[type.body, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>Cancel</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => setEditing(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Edit profile">
+              <SquarePen size={20} color={colors.textPrimary} strokeWidth={2} />
+            </Pressable>
+          )
+        }
+      />
       {toast ? <Toast message={toast} onHide={() => setToast(null)} /> : null}
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -131,7 +181,7 @@ export default function EditProfileScreen() {
           keyboardDismissMode="on-drag"
         >
           <View style={styles.avatarBlock}>
-            <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel="Change photo">
+            <Pressable onPress={editing ? () => setPhotoMenu(true) : undefined} disabled={!editing} accessibilityRole="button" accessibilityLabel="Edit photo">
               {avatar ? (
                 <Image source={{ uri: avatar }} style={styles.avatarImg} />
               ) : (
@@ -141,12 +191,13 @@ export default function EditProfileScreen() {
                   </Text>
                 </View>
               )}
-              <View style={[styles.cameraBadge, { backgroundColor: colors.brandPrimary, borderColor: colors.surfacePage }]}>
-                <Camera size={15} color={colors.textOnBrand} strokeWidth={2} />
-              </View>
-            </Pressable>
-            <Pressable onPress={pickAvatar} hitSlop={6}>
-              <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>Change photo</Text>
+              {editing ? (
+                <View style={styles.badgeRow}>
+                  <View style={[styles.cameraBadge, { backgroundColor: colors.brandPrimary, borderColor: colors.surfacePage }]}>
+                    <Pencil size={14} color={colors.textOnBrand} strokeWidth={2} />
+                  </View>
+                </View>
+              ) : null}
             </Pressable>
           </View>
 
@@ -162,6 +213,7 @@ export default function EditProfileScreen() {
               placeholder="Your name"
               autoCapitalize="words"
               textContentType="name"
+              editable={editing}
               error={errors.fullName}
             />
             <TextField
@@ -175,6 +227,7 @@ export default function EditProfileScreen() {
               placeholder="you@email.com"
               keyboardType="email-address"
               textContentType="emailAddress"
+              editable={editing}
               error={errors.email}
             />
             <TextField
@@ -185,6 +238,7 @@ export default function EditProfileScreen() {
               placeholder="+964 …"
               keyboardType="phone-pad"
               textContentType="telephoneNumber"
+              editable={editing}
             />
             <TextField
               label="Location"
@@ -193,14 +247,30 @@ export default function EditProfileScreen() {
               icon={MapPin}
               placeholder="City, region"
               autoCapitalize="words"
+              editable={editing}
             />
           </View>
+
+          {!editing ? (
+            <View style={styles.deleteBtn}>
+              <Button
+                title="Delete account"
+                variant="destructive"
+                onPress={deleteAccount}
+                left={<Trash2 size={18} color={colors.error} strokeWidth={2} />}
+              />
+            </View>
+          ) : null}
         </ScrollView>
 
-        <View style={[styles.foot, { borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Button title="Save changes" onPress={save} />
-        </View>
+        {editing ? (
+          <View style={[styles.foot, { borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <Button title="Save changes" onPress={save} />
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
+
+      <ActionSheet open={photoMenu} onClose={() => setPhotoMenu(false)} actions={photoActions} />
     </SafeAreaView>
   );
 }
@@ -213,10 +283,8 @@ const styles = StyleSheet.create({
   avatar: { width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center" },
   avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: "#e9edf0" },
   avatarTxt: { fontSize: 30, letterSpacing: 0.5 },
+  badgeRow: { position: "absolute", left: 0, right: 0, bottom: -15, alignItems: "center" },
   cameraBadge: {
-    position: "absolute",
-    right: -2,
-    bottom: -2,
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -224,7 +292,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  form: { gap: 16 },
+  form: { gap: 12 },
+  deleteBtn: { marginTop: 48 },
   foot: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
   toast: {
     position: "absolute",

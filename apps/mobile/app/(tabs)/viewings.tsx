@@ -1,20 +1,25 @@
-import { View, Text, Image, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Text, Image, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { CalendarCheck, Clock, MapPin, X } from "lucide-react-native";
 import { useTheme } from "@/theme";
-import { ScreenHeader } from "@/components/account/ScreenHeader";
 import { useViewings, cancelViewing, formatViewingDate, type Viewing } from "@/lib/viewings";
+import { confirm } from "@/lib/confirm";
 
 function ViewingCard({ viewing: v }: { viewing: Viewing }) {
   const { colors, type, fontFamily, radius } = useTheme();
   const router = useRouter();
 
   const confirmCancel = () =>
-    Alert.alert("Cancel viewing", `Cancel your viewing of ${v.title}?`, [
-      { text: "Keep", style: "cancel" },
-      { text: "Cancel viewing", style: "destructive", onPress: () => cancelViewing(v.id) },
-    ]);
+    confirm({
+      title: "Cancel viewing",
+      message: `Cancel your viewing of ${v.title}? You can always book again later.`,
+      confirmLabel: "Cancel viewing",
+      cancelLabel: "Keep",
+      destructive: true,
+      icon: X,
+      onConfirm: () => cancelViewing(v.id),
+    });
 
   return (
     <Pressable
@@ -68,7 +73,10 @@ export default function ViewingsScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
-      <ScreenHeader title="My viewings" />
+      <View style={styles.header}>
+        <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 26 }]}>My viewings</Text>
+      </View>
+
       {viewings.length > 0 ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           {viewings.map((v) => (
@@ -96,7 +104,8 @@ export default function ViewingsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingBottom: 40, paddingTop: 12 },
+  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
+  scroll: { paddingBottom: 40, paddingTop: 8 },
   item: { paddingHorizontal: 20, marginTop: 12 },
   card: { padding: 12, borderWidth: 1, gap: 12 },
   top: { flexDirection: "row", gap: 12 },

@@ -37,7 +37,7 @@ export function PropertyCard({ property: p, fullWidth = false }: { property: Lis
           <Text style={[styles.badgeTxt, { color: colors.brandPrimary, fontFamily: fontFamily.sansSemibold }]}>{dealLabel}</Text>
         </View>
         <Pressable style={styles.heart} onPress={() => toggleFavorite(p.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save">
-          <Heart size={18} color={fav ? colors.error : colors.textPrimary} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
+          <Heart size={18} color={fav ? colors.error : "#33383F"} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
         </Pressable>
       </View>
 

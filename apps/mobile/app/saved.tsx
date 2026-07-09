@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Heart, Users } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { ScreenHeader } from "@/components/account/ScreenHeader";
 import { useFavoriteIds } from "@/lib/favorites";
 import { listings, agents } from "@/components/home/data";
 import { PropertyCard } from "@/components/home/PropertyCard";
@@ -25,11 +26,9 @@ export default function SavedScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 26 }]}>Saved</Text>
-      </View>
+      <ScreenHeader title="Saved" />
 
-      <View style={[styles.segment, { backgroundColor: colors.surfaceSunken, borderRadius: radius.control }]}>
+      <View style={[styles.segment, styles.segmentTop, { backgroundColor: colors.surfaceSunken, borderRadius: radius.control }]}>
         {tabs.map((t) => {
           const on = tab === t.key;
           return (
@@ -68,11 +67,7 @@ export default function SavedScreen() {
             ))}
           </ScrollView>
         ) : (
-          <EmptyState
-            Icon={Heart}
-            title="No saved homes yet"
-            text="Tap the heart on any listing to save it here."
-          />
+          <EmptyState Icon={Heart} title="No saved homes yet" text="Tap the heart on any listing to save it here." />
         )
       ) : savedAgents.length > 0 ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -83,11 +78,7 @@ export default function SavedScreen() {
           ))}
         </ScrollView>
       ) : (
-        <EmptyState
-          Icon={Users}
-          title="No saved agents yet"
-          text="Tap the heart on any agent to save them here."
-        />
+        <EmptyState Icon={Users} title="No saved agents yet" text="Tap the heart on any agent to save them here." />
       )}
     </SafeAreaView>
   );
@@ -108,8 +99,8 @@ function EmptyState({ Icon, title, text }: { Icon: typeof Heart; title: string; 
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
   segment: { flexDirection: "row", marginHorizontal: 20, padding: 3, gap: 3 },
+  segmentTop: { marginTop: 16 },
   segBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, height: 40 },
   badge: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
   badgeTxt: { fontSize: 12 },

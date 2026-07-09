@@ -1,12 +1,11 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Text, Image, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  BadgeCheck,
   MapPin,
   ChevronRight,
   UserRound,
-  CalendarCheck,
+  KeyRound,
   Heart,
   Bell,
   Languages,
@@ -18,9 +17,11 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "@/theme";
 import { useProfile, languageLabel } from "@/lib/profile";
+import { confirm } from "@/lib/confirm";
 import { useThemeMode, themeModeLabel } from "@/lib/theme-mode";
 import { useFavoriteIds } from "@/lib/favorites";
 import { useViewings } from "@/lib/viewings";
+import { useMyListings } from "@/lib/my-listings";
 import { listings, agents } from "@/components/home/data";
 import { MenuRow, Group } from "@/components/account/MenuRow";
 
@@ -39,6 +40,7 @@ export default function ProfileScreen() {
   const themeMode = useThemeMode();
   const favIds = useFavoriteIds();
   const viewings = useViewings();
+  const myListings = useMyListings();
 
   const savedHomes = listings.filter((l) => favIds.has(l.id)).length;
   const savedAgents = agents.filter((a) => favIds.has(a.id)).length;
@@ -46,15 +48,19 @@ export default function ProfileScreen() {
   const stats: { label: string; value: number; onPress: () => void }[] = [
     { label: "Saved homes", value: savedHomes, onPress: () => router.push("/saved") },
     { label: "Saved agents", value: savedAgents, onPress: () => router.push("/saved") },
-    { label: "Viewings", value: viewings.length, onPress: () => router.push("/account/viewings") },
+    { label: "Listings", value: myListings.length, onPress: () => router.push("/my-listings") },
+    { label: "Viewings", value: viewings.length, onPress: () => router.push("/viewings") },
   ];
 
-  const logout = () => {
-    Alert.alert("Log out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Log out", style: "destructive", onPress: () => router.replace("/login") },
-    ]);
-  };
+  const logout = () =>
+    confirm({
+      title: "Log out",
+      message: "You'll need to sign in again to access your account.",
+      confirmLabel: "Log out",
+      destructive: true,
+      icon: LogOut,
+      onConfirm: () => router.replace("/login"),
+    });
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
@@ -73,19 +79,19 @@ export default function ProfileScreen() {
           ]}
           accessibilityRole="button"
         >
-          <View style={[styles.avatar, { backgroundColor: colors.brandPrimary }]}>
-            <Text style={[styles.avatarTxt, { color: colors.textOnBrand, fontFamily: fontFamily.sansSemibold }]}>
-              {initialsOf(profile.fullName)}
-            </Text>
-          </View>
+          {profile.avatar ? (
+            <Image source={{ uri: profile.avatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: colors.brandPrimary }]}>
+              <Text style={[styles.avatarTxt, { color: colors.textOnBrand, fontFamily: fontFamily.sansSemibold }]}>
+                {initialsOf(profile.fullName)}
+              </Text>
+            </View>
+          )}
           <View style={styles.cardBody}>
             <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]} numberOfLines={1}>
               {profile.fullName}
             </Text>
-            <View style={styles.badgeRow}>
-              <BadgeCheck size={14} color={colors.brandForeground} strokeWidth={2.5} />
-              <Text style={[type.bodySm, { color: colors.brandForeground, fontFamily: fontFamily.sansMedium }]}>Chiya member</Text>
-            </View>
             <View style={styles.locRow}>
               <MapPin size={13} color={colors.textTertiary} strokeWidth={2} />
               <Text style={[type.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -118,18 +124,17 @@ export default function ProfileScreen() {
         </View>
 
         <Group title="Account">
-          <MenuRow icon={UserRound} label="Edit profile" onPress={() => router.push("/account/edit")} />
-          <MenuRow icon={CalendarCheck} label="My viewings" divider onPress={() => router.push("/account/viewings")} />
+          <MenuRow icon={UserRound} label="My profile" onPress={() => router.push("/account/edit")} />
+          <MenuRow icon={KeyRound} label="Change password" divider onPress={() => router.push("/account/change-password")} />
           <MenuRow icon={Heart} label="Saved" divider onPress={() => router.push("/saved")} />
+          <MenuRow icon={Bell} label="Notifications" divider onPress={() => router.push("/account/notifications")} />
         </Group>
 
         <Group title="Preferences">
-          <MenuRow icon={Bell} label="Notifications" onPress={() => router.push("/account/notifications")} />
           <MenuRow
             icon={Palette}
             label="Appearance"
             value={themeModeLabel(themeMode)}
-            divider
             onPress={() => router.push("/account/appearance")}
           />
           <MenuRow
@@ -142,13 +147,13 @@ export default function ProfileScreen() {
         </Group>
 
         <Group title="Support">
-          <MenuRow icon={CircleHelp} label="Help & support" onPress={() => router.push("/account/help")} />
-          <MenuRow icon={Info} label="About Chiya" divider onPress={() => router.push("/account/help")} />
-          <MenuRow icon={ShieldCheck} label="Terms & privacy" divider onPress={() => router.push("/account/help")} />
+          <MenuRow icon={CircleHelp} label="Help & support" disabled />
+          <MenuRow icon={Info} label="About Chiya" divider disabled />
+          <MenuRow icon={ShieldCheck} label="Terms & privacy" divider disabled />
         </Group>
 
         <Group>
-          <MenuRow icon={LogOut} label="Log out" danger chevron={false} onPress={logout} />
+          <MenuRow icon={LogOut} label="Log out" danger chevron={false} bareIcon onPress={logout} />
         </Group>
 
         <Text style={[type.bodySm, styles.footer, { color: colors.textTertiary }]}>Chiya Estate · v1.0.0</Text>
@@ -165,7 +170,6 @@ const styles = StyleSheet.create({
   avatar: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
   avatarTxt: { fontSize: 20, letterSpacing: 0.5 },
   cardBody: { flex: 1, gap: 4 },
-  badgeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   locRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   stats: { flexDirection: "row", borderWidth: 1, overflow: "hidden" },
   stat: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 16, gap: 3 },

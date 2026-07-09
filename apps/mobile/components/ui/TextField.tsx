@@ -51,6 +51,8 @@ export interface TextFieldProps {
   textContentType?: TextInputProps["textContentType"];
   returnKeyType?: ReturnKeyTypeOptions;
   onSubmitEditing?: () => void;
+  /** When false, the field is read-only (not focusable/editable). */
+  editable?: boolean;
 }
 
 /**
@@ -73,6 +75,7 @@ export function TextField({
   textContentType,
   returnKeyType,
   onSubmitEditing,
+  editable = true,
 }: TextFieldProps) {
   const { colors, radius, type, space } = useTheme();
   const [focused, setFocused] = useState(false);
@@ -126,6 +129,7 @@ export function TextField({
             ]}
             value={value}
             onChangeText={onChangeText}
+            editable={editable}
             placeholder={secure ? undefined : placeholder}
             placeholderTextColor={colors.textPlaceholder}
             secureTextEntry={false}

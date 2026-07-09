@@ -15,6 +15,7 @@ import { X, type LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/theme";
 import { Button } from "@/components/ui";
 import {
+  dealCategories,
   propertyTypes,
   beds,
   baths,
@@ -78,10 +79,10 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export interface FilterDrawerProps {
   open: boolean;
   onClose: () => void;
-  /** Current deal chip — decides which price presets to show. */
+  /** Current deal (All / For Sale / For Rent). */
   deal: string;
   value: Filters;
-  onApply: (f: Filters) => void;
+  onApply: (f: Filters, deal: string) => void;
 }
 
 /** FilterDrawer — a bottom-sheet with the website's search filters. */
@@ -91,12 +92,14 @@ export function FilterDrawer({ open, onClose, deal, value, onApply }: FilterDraw
 
   const [mounted, setMounted] = useState(open);
   const [draft, setDraft] = useState<Filters>(value);
+  const [draftDeal, setDraftDeal] = useState(deal);
   const ty = useRef(new Animated.Value(WINDOW_H)).current;
   const scrim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (open) {
       setDraft(value);
+      setDraftDeal(deal);
       setMounted(true);
       Animated.parallel([
         Animated.timing(ty, { toValue: 0, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
@@ -145,6 +148,12 @@ export function FilterDrawer({ open, onClose, deal, value, onApply }: FilterDraw
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+            <Section title="Listing type">
+              {dealCategories.map((o) => (
+                <Chip key={o.value} label={o.label} selected={draftDeal === o.value} onPress={() => setDraftDeal(o.value)} />
+              ))}
+            </Section>
+
             <Section title="Location">
               {searchCities.map((c) => (
                 <Chip
@@ -170,7 +179,7 @@ export function FilterDrawer({ open, onClose, deal, value, onApply }: FilterDraw
 
             <View style={styles.section}>
               <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
-                {deal === "rent" ? "Monthly rent" : "Price range"}
+                {draftDeal === "rent" ? "Monthly rent" : "Price range"}
               </Text>
               <PriceRange value={draft.price} onChange={(p) => setDraft((d) => ({ ...d, price: p }))} />
             </View>
@@ -222,13 +231,20 @@ export function FilterDrawer({ open, onClose, deal, value, onApply }: FilterDraw
             ]}
           >
             <View style={{ flex: 1 }}>
-              <Button title="Reset" variant="secondary" onPress={() => setDraft(emptyFilters)} />
+              <Button
+                title="Reset"
+                variant="secondary"
+                onPress={() => {
+                  setDraft(emptyFilters);
+                  setDraftDeal("all");
+                }}
+              />
             </View>
             <View style={{ flex: 1.5 }}>
               <Button
                 title={n ? `Apply (${n})` : "Apply"}
                 onPress={() => {
-                  onApply(draft);
+                  onApply(draft, draftDeal);
                   onClose();
                 }}
               />

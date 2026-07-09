@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, BadgeCheck, CalendarCheck, ShieldCheck, CircleCheck } from "lucide-react-native";
+import { X, BadgeCheck, CalendarCheck, CircleCheck, MapPin, Star } from "lucide-react-native";
 import { useTheme } from "@/theme";
 import { Button } from "@/components/ui";
 
@@ -27,7 +27,7 @@ export interface BookViewingSheetProps {
   open: boolean;
   onClose: () => void;
   property: { title: string; address: string };
-  agent: { name: string; agency: string; city: string; photo: string; verified?: boolean };
+  agent: { name: string; city: string; photo: string; verified?: boolean; rating: number; reviews: number };
   /** Fired when a viewing is confirmed, with the chosen date + slot label. */
   onConfirm?: (details: { date: Date; time: string }) => void;
 }
@@ -123,7 +123,7 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
                   You're all set
                 </Text>
                 <Text style={[type.body, styles.doneText, { color: colors.textSecondary }]}>
-                  Thank you. {agent.name} from {agent.agency} will contact you to confirm your viewing of {property.title} on{" "}
+                  Thank you. {agent.name} will contact you to confirm your viewing of {property.title} on{" "}
                   {dateIdx !== null ? `${DOW[days[dateIdx].getDay()]}, ${MON[days[dateIdx].getMonth()]} ${days[dateIdx].getDate()}` : ""}
                   {timeIdx !== null ? ` at ${TIME_SLOTS[timeIdx]}` : ""}.
                 </Text>
@@ -212,19 +212,20 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
                         </Text>
                         {agent.verified ? <BadgeCheck size={15} color={colors.brandForeground} strokeWidth={2.5} /> : null}
                       </View>
-                      <Text style={[type.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>
-                        {agent.agency} · {agent.city}
-                      </Text>
+                      <View style={styles.agentMeta}>
+                        <MapPin size={13} color={colors.textTertiary} strokeWidth={2} />
+                        <Text style={[type.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>{agent.city}</Text>
+                        <Star size={13} color={colors.brandAccent} fill={colors.brandAccent} strokeWidth={0} style={{ marginLeft: 4 }} />
+                        <Text style={[type.bodySm, { color: colors.textSecondary }]}>
+                          {agent.rating.toFixed(1)} ({agent.reviews})
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>
               </ScrollView>
 
               <View style={[styles.foot, { borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 12) }]}>
-                <View style={styles.note}>
-                  <ShieldCheck size={14} color={colors.textTertiary} strokeWidth={2} />
-                  <Text style={[type.caption, { color: colors.textTertiary }]}>Free · no obligation · confirmed in 24h</Text>
-                </View>
                 <Button
                   title="Request a viewing"
                   disabled={!canSubmit}
@@ -260,8 +261,8 @@ const styles = StyleSheet.create({
   agentRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderWidth: 1 },
   agentImg: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#e9edf0" },
   agentNameRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  agentMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   foot: { paddingHorizontal: 20, paddingTop: 12, gap: 10, borderTopWidth: StyleSheet.hairlineWidth },
-  note: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   doneWrap: { paddingHorizontal: 24, paddingVertical: 32, alignItems: "center" },
   doneIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   doneTitle: { marginTop: 16 },
