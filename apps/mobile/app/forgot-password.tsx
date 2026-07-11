@@ -13,19 +13,27 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Mail, Lock, ArrowLeft, Check, CircleCheck, type LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation, type TKey } from "@/lib/i18n";
+import { rtlFlip } from "@/lib/rtl";
 import { Button, TextField } from "@/components/ui";
 
 const emailish = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 // Live requirements for a new password — same set as the admin reset flow.
-const CHECKS: { label: string; test: (v: string) => boolean }[] = [
-  { label: "At least 8 characters", test: (v) => v.length >= 8 },
-  { label: "At least one uppercase letter", test: (v) => /[A-Z]/.test(v) },
-  { label: "At least one lowercase letter", test: (v) => /[a-z]/.test(v) },
-  { label: "At least one number", test: (v) => /\d/.test(v) },
-  { label: "At least one special character", test: (v) => /[^A-Za-z0-9]/.test(v) },
+const CHECKS: { key: TKey; test: (v: string) => boolean }[] = [
+  { key: "auth.forgot.check8", test: (v) => v.length >= 8 },
+  { key: "auth.forgot.checkUpper", test: (v) => /[A-Z]/.test(v) },
+  { key: "auth.forgot.checkLower", test: (v) => /[a-z]/.test(v) },
+  { key: "auth.forgot.checkNumber", test: (v) => /\d/.test(v) },
+  { key: "auth.forgot.checkSpecial", test: (v) => /[^A-Za-z0-9]/.test(v) },
 ];
-const STRENGTH_LABELS = ["Not determined", "Weak", "Fair", "Good", "Strong"];
+const STRENGTH_KEYS: TKey[] = [
+  "auth.forgot.strengthNone",
+  "auth.forgot.strengthWeak",
+  "auth.forgot.strengthFair",
+  "auth.forgot.strengthGood",
+  "auth.forgot.strengthStrong",
+];
 
 // How long the user must wait before requesting another reset link.
 const RESEND_SECONDS = 30;
@@ -45,6 +53,7 @@ function Badge({ icon: Icon }: { icon: LucideIcon }) {
 
 function StrengthMeter({ level }: { level: number }) {
   const { colors, type, space } = useTheme();
+  const { t } = useTranslation();
   const color =
     level <= 1 ? colors.error : level === 2 ? colors.brandAccent : colors.brandForeground;
   return (
@@ -58,7 +67,7 @@ function StrengthMeter({ level }: { level: number }) {
         ))}
       </View>
       <Text style={[type.caption, styles.strengthLabel, { color: level === 0 ? colors.textTertiary : color }]}>
-        {STRENGTH_LABELS[level]}
+        {t(STRENGTH_KEYS[level])}
       </Text>
     </View>
   );
@@ -66,12 +75,13 @@ function StrengthMeter({ level }: { level: number }) {
 
 function Requirements({ pw }: { pw: string }) {
   const { colors, type, space } = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={{ marginTop: 20, gap: 8 }}>
       {CHECKS.map((c) => {
         const met = c.test(pw);
         return (
-          <View key={c.label} style={styles.reqRow}>
+          <View key={c.key} style={styles.reqRow}>
             <View
               style={[
                 styles.reqTick,
@@ -83,7 +93,7 @@ function Requirements({ pw }: { pw: string }) {
               {met ? <Check size={10} color={colors.textOnBrand} strokeWidth={3} /> : null}
             </View>
             <Text style={[type.bodySm, { color: met ? colors.textSecondary : colors.textTertiary }]}>
-              {c.label}
+              {t(c.key)}
             </Text>
           </View>
         );
@@ -94,6 +104,7 @@ function Requirements({ pw }: { pw: string }) {
 
 export default function ForgotPasswordScreen() {
   const { colors, type, space } = useTheme();
+  const { t, isRTL } = useTranslation();
   const router = useRouter();
 
   const [step, setStep] = useState<Step>("email");
@@ -127,7 +138,7 @@ export default function ForgotPasswordScreen() {
 
   const sendReset = () => {
     if (!emailish(email.trim())) {
-      setEmailErr("Enter a valid email address.");
+      setEmailErr(t("auth.forgot.errEmail"));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       return;
     }
@@ -158,8 +169,8 @@ export default function ForgotPasswordScreen() {
           showsVerticalScrollIndicator={false}
         >
           {step !== "done" ? (
-            <Pressable onPress={goLogin} hitSlop={10} style={styles.back} accessibilityLabel="Back to log in">
-              <ArrowLeft size={22} color={colors.textSecondary} strokeWidth={2} />
+            <Pressable onPress={goLogin} hitSlop={10} style={styles.back} accessibilityLabel={t("auth.forgot.backToLogin")}>
+              <ArrowLeft size={22} color={colors.textSecondary} strokeWidth={2} style={rtlFlip(isRTL)} />
             </Pressable>
           ) : null}
 
@@ -168,13 +179,13 @@ export default function ForgotPasswordScreen() {
             {step === "email" ? (
               <>
                 <View style={styles.header}>
-                  <Text style={[type.displaySm, styles.title, { color: colors.textPrimary }]}>Reset password</Text>
+                  <Text style={[type.displaySm, styles.title, { color: colors.textPrimary }]}>{t("auth.forgot.resetTitle")}</Text>
                   <Text style={[type.body, styles.subtitle, { color: colors.textSecondary, marginTop: space[2] }]}>
-                    Enter the email linked to your account and we’ll send you a reset link.
+                    {t("auth.forgot.resetSubtitle")}
                   </Text>
                 </View>
                 <TextField
-                  label="Email"
+                  label={t("auth.forgot.email")}
                   value={email}
                   onChangeText={(v) => {
                     setEmail(v);
@@ -191,7 +202,7 @@ export default function ForgotPasswordScreen() {
                 />
                 <View style={{ marginTop: space[4] }}>
                   <Button
-                    title={busy ? "Sending…" : "Reset password"}
+                    title={busy ? t("auth.forgot.sending") : t("auth.forgot.send")}
                     onPress={sendReset}
                     loading={busy}
                     disabled={!email.trim()}
@@ -205,26 +216,25 @@ export default function ForgotPasswordScreen() {
               <View style={styles.centered}>
                 <Badge icon={Mail} />
                 <Text style={[type.displaySm, styles.title, { color: colors.textPrimary, marginTop: space[5] }]}>
-                  Check your inbox
+                  {t("auth.forgot.checkInboxTitle")}
                 </Text>
                 <Text style={[type.body, styles.subtitle, { color: colors.textSecondary, marginTop: space[2] }]}>
-                  We sent a reset link to <Text style={{ color: colors.textPrimary }}>{email || "your email"}</Text>.
-                  Click the link in the email.
+                  {t("auth.forgot.sentPre")}<Text style={{ color: colors.textPrimary }}>{email || t("auth.forgot.yourEmail")}</Text>{t("auth.forgot.sentPost")}
                 </Text>
                 <View style={{ alignSelf: "stretch", marginTop: space[6] }}>
                   {/* No real email is sent — "Open email app" stands in for clicking the reset link. */}
-                  <Button title="Open email app" variant="secondary" onPress={() => setStep("reset")} />
+                  <Button title={t("auth.forgot.openEmail")} variant="secondary" onPress={() => setStep("reset")} />
                 </View>
                 <View style={[styles.resendRow, { marginTop: space[5] }]}>
-                  <Text style={[type.bodySm, { color: colors.textSecondary }]}>Didn’t receive the email? </Text>
+                  <Text style={[type.bodySm, { color: colors.textSecondary }]}>{t("auth.forgot.noEmail")}</Text>
                   {cooldown > 0 ? (
                     <Text style={[type.bodySm, { color: colors.brandHover }]}>
-                      Resend in {fmtCountdown(cooldown)}
+                      {t("auth.forgot.resendIn", { time: fmtCountdown(cooldown) })}
                     </Text>
                   ) : (
                     <Pressable onPress={resend} hitSlop={8}>
                       <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: type.label.fontFamily }]}>
-                        Resend
+                        {t("auth.forgot.resend")}
                       </Text>
                     </Pressable>
                   )}
@@ -236,16 +246,16 @@ export default function ForgotPasswordScreen() {
             {step === "reset" ? (
               <>
                 <View style={styles.header}>
-                  <Text style={[type.displaySm, styles.title, { color: colors.textPrimary }]}>Create new password</Text>
+                  <Text style={[type.displaySm, styles.title, { color: colors.textPrimary }]}>{t("auth.forgot.newPwTitle")}</Text>
                   <Text style={[type.body, styles.subtitle, { color: colors.textSecondary, marginTop: space[2] }]}>
-                    Choose a new password for{" "}
-                    <Text style={{ color: colors.textPrimary }}>{email || "your account"}</Text>.
+                    {t("auth.forgot.newPwSubtitlePre")}
+                    <Text style={{ color: colors.textPrimary }}>{email || t("auth.forgot.yourAccount")}</Text>.
                   </Text>
                 </View>
 
                 <View>
                   <TextField
-                    label="New password"
+                    label={t("auth.forgot.newPassword")}
                     value={pw}
                     onChangeText={setPw}
                     icon={Lock}
@@ -260,7 +270,7 @@ export default function ForgotPasswordScreen() {
 
                 <View style={{ marginTop: space[4] }}>
                   <TextField
-                    label="Confirm new password"
+                    label={t("auth.forgot.confirmNewPassword")}
                     value={confirm}
                     onChangeText={setConfirm}
                     icon={Lock}
@@ -277,7 +287,7 @@ export default function ForgotPasswordScreen() {
 
                 <View style={{ marginTop: 20 }}>
                   <Button
-                    title={busy ? "Updating…" : "Update password"}
+                    title={busy ? t("auth.forgot.updating") : t("auth.forgot.update")}
                     onPress={updatePw}
                     loading={busy}
                     disabled={!allMet || confirm !== pw}
@@ -291,13 +301,13 @@ export default function ForgotPasswordScreen() {
               <View style={styles.centered}>
                 <Badge icon={CircleCheck} />
                 <Text style={[type.displaySm, styles.title, { color: colors.textPrimary, marginTop: space[5] }]}>
-                  Password updated
+                  {t("auth.forgot.doneTitle")}
                 </Text>
                 <Text style={[type.body, styles.subtitle, { color: colors.textSecondary, marginTop: space[2] }]}>
-                  You can now log in with your new password.
+                  {t("auth.forgot.doneSubtitle")}
                 </Text>
                 <View style={{ alignSelf: "stretch", marginTop: space[6] }}>
-                  <Button title="Log in" onPress={goLogin} />
+                  <Button title={t("auth.forgot.login")} onPress={goLogin} />
                 </View>
               </View>
             ) : null}
@@ -317,7 +327,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 32,
   },
-  back: { alignSelf: "flex-start", padding: 8, marginLeft: -8, marginBottom: 16 },
+  back: { alignSelf: "flex-start", padding: 8, marginStart: -8, marginBottom: 16 },
   card: { width: "100%", maxWidth: 440, alignSelf: "center" },
   header: { marginBottom: 24 },
   centered: { alignItems: "center" },

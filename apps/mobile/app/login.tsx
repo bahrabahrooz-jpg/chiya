@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Mail, Lock } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { Button, TextField, Divider, GoogleIcon, Checkbox } from "@/components/ui";
 
 const emailish = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -63,6 +64,7 @@ function Toast({ message, tone, onHide }: { message: string; tone: "success" | "
 
 export default function LoginScreen() {
   const { colors, type, space } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [id, setId] = useState("");
@@ -74,10 +76,10 @@ export default function LoginScreen() {
 
   const submit = () => {
     const next: { id?: string; pw?: string } = {};
-    if (!id.trim()) next.id = "Enter your email";
-    else if (!emailish(id.trim())) next.id = "Enter a valid email";
-    if (!pw.trim()) next.pw = "Enter your password";
-    else if (pw.length < 6) next.pw = "Password must be at least 6 characters";
+    if (!id.trim()) next.id = t("auth.login.errEmailRequired");
+    else if (!emailish(id.trim())) next.id = t("auth.login.errEmailInvalid");
+    if (!pw.trim()) next.pw = t("auth.login.errPwRequired");
+    else if (pw.length < 6) next.pw = t("auth.login.errPwShort");
     setErrors(next);
     if (Object.keys(next).length) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
@@ -92,7 +94,7 @@ export default function LoginScreen() {
     }, 620);
   };
 
-  const soon = () => setToast({ message: "Available in the next release", tone: "info" });
+  const soon = () => setToast({ message: t("common.comingSoon"), tone: "info" });
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top", "bottom"]}>
@@ -109,24 +111,24 @@ export default function LoginScreen() {
             {/* Brand + heading */}
             <View style={[styles.header, { marginBottom: space[8] }]}>
               <Text style={[type.displaySm, styles.title, { color: colors.textPrimary }]}>
-                Welcome back
+                {t("auth.login.title")}
               </Text>
               <Text style={[type.body, styles.subtitle, { color: colors.textSecondary, marginTop: space[2] }]}>
-                Sign in to continue to your account.
+                {t("auth.login.subtitle")}
               </Text>
             </View>
 
             {/* Form */}
             <View style={{ gap: space[2] }}>
               <TextField
-                label="Email"
+                label={t("auth.login.email")}
                 value={id}
                 onChangeText={(v) => {
                   setId(v);
                   if (errors.id) setErrors((e) => ({ ...e, id: undefined }));
                 }}
                 icon={Mail}
-                placeholder="you@email.com"
+                placeholder={t("auth.login.emailPlaceholder")}
                 error={errors.id}
                 keyboardType={id.includes("@") || !id ? "email-address" : "default"}
                 autoComplete="email"
@@ -134,7 +136,7 @@ export default function LoginScreen() {
                 returnKeyType="next"
               />
               <TextField
-                label="Password"
+                label={t("auth.login.password")}
                 value={pw}
                 onChangeText={(v) => {
                   setPw(v);
@@ -151,17 +153,17 @@ export default function LoginScreen() {
               />
 
               <View style={styles.metaRow}>
-                <Checkbox checked={remember} onChange={setRemember} label="Remember me" />
+                <Checkbox checked={remember} onChange={setRemember} label={t("auth.login.rememberMe")} />
                 <Pressable onPress={() => router.push("/forgot-password")} hitSlop={8}>
                   <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: type.label.fontFamily }]}>
-                    Forgot password?
+                    {t("auth.login.forgot")}
                   </Text>
                 </Pressable>
               </View>
 
               <View style={{ marginTop: space[4] }}>
                 <Button
-                  title={busy ? "Logging in…" : "Log in"}
+                  title={busy ? t("auth.login.submitting") : t("auth.login.submit")}
                   onPress={submit}
                   loading={busy}
                   disabled={!id.trim() || !pw.trim()}
@@ -171,16 +173,16 @@ export default function LoginScreen() {
 
             {/* Alternate auth */}
             <View style={{ gap: space[5], marginTop: space[6] }}>
-              <Divider label="or" />
-              <Button title="Continue with Google" variant="social" left={<GoogleIcon />} onPress={soon} />
+              <Divider label={t("common.or")} />
+              <Button title={t("auth.login.google")} variant="social" left={<GoogleIcon />} onPress={soon} />
             </View>
 
             {/* Switch */}
             <View style={[styles.switch, { marginTop: space[8] }]}>
-              <Text style={[type.bodySm, { color: colors.textSecondary }]}>New to Chiya? </Text>
+              <Text style={[type.bodySm, { color: colors.textSecondary }]}>{t("auth.login.newToChiya")}</Text>
               <Pressable onPress={() => router.push("/register")} hitSlop={8}>
                 <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: type.label.fontFamily }]}>
-                  Create an account
+                  {t("auth.login.createAccount")}
                 </Text>
               </Pressable>
             </View>

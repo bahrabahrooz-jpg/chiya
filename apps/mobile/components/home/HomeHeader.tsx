@@ -2,6 +2,7 @@ import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Bell, Heart } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { useUnreadCount } from "@/lib/notifications";
 import { useProfile } from "@/lib/profile";
 
@@ -16,12 +17,13 @@ const initialsOf = (name: string) =>
 /** HomeHeader — avatar on the left, Saved + notification actions on the right. */
 export function HomeHeader() {
   const { colors, fontFamily } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const unread = useUnreadCount();
   const profile = useProfile();
   return (
     <View style={styles.row}>
-      <Pressable onPress={() => router.push("/account/edit")} hitSlop={6} accessibilityRole="button" accessibilityLabel="My profile">
+      <Pressable onPress={() => router.push("/account/edit")} hitSlop={6} accessibilityRole="button" accessibilityLabel={t("home.myProfile")}>
         {profile.avatar ? (
           <Image source={{ uri: profile.avatar }} style={styles.avatar} />
         ) : (
@@ -37,7 +39,7 @@ export function HomeHeader() {
           style={[styles.iconBtn, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle }]}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel="Saved"
+          accessibilityLabel={t("home.saved")}
         >
           <Heart size={20} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
@@ -47,7 +49,7 @@ export function HomeHeader() {
           style={[styles.iconBtn, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle }]}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel="Notifications"
+          accessibilityLabel={t("home.notifications")}
         >
           <Bell size={20} color={colors.textPrimary} strokeWidth={2} />
           {unread > 0 ? <View style={[styles.dot, { backgroundColor: colors.error, borderColor: colors.surfaceCard }]} /> : null}
@@ -77,7 +79,7 @@ const styles = StyleSheet.create({
   dot: {
     position: "absolute",
     top: 10,
-    right: 11,
+    end: 11,
     width: 9,
     height: 9,
     borderRadius: 5,

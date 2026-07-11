@@ -47,7 +47,7 @@ let profile: Profile = {
   notifications: { viewings: true, savedSearches: true, messages: true, promotions: false },
 };
 
-const STORAGE_KEY = "chiya.profile.v1";
+export const STORAGE_KEY = "chiya.profile.v1";
 let hydrated = false;
 const listeners = new Set<() => void>();
 

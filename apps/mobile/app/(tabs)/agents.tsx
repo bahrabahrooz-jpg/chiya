@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { X, Users, Clock, Search as SearchIcon } from "lucide-react-native";
+import { X, Users, Clock, Search as SearchIcon, ChevronDown } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { HighlightText } from "@/components/ui";
 import { HomeSearchBar } from "@/components/home/HomeSearchBar";
 import { AgentFilterDrawer } from "@/components/home/AgentFilterDrawer";
 import { AgentCard } from "@/components/home/AgentCard";
+import { SortSheet } from "@/components/home/SortSheet";
 import {
   filterAgents,
   suggestAgents,
@@ -14,19 +16,26 @@ import {
   labelFor,
   countAgentFilters,
   emptyAgentFilters,
+  cityLabel,
+  agentLanguageLabel,
+  agentSort,
+  agentSortShortLabel,
   type AgentFilters,
 } from "@/components/home/data";
 import { agentSearchHistory } from "@/lib/search-history";
 
 export default function AgentsScreen() {
   const { colors, type, fontFamily } = useTheme();
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AgentFilters>(emptyAgentFilters);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const sort = "listings";
+  const [sort, setSort] = useState("");
+  const [sortOpen, setSortOpen] = useState(false);
 
-  const results = useMemo(() => filterAgents({ query, filters, sort }), [query, filters]);
+  const results = useMemo(() => filterAgents({ query, filters, sort }), [query, filters, sort]);
+  const sorted = sort !== "";
   const history = agentSearchHistory.useHistory();
   const matches = useMemo(() => suggestAgents(query), [query]);
 
@@ -39,10 +48,10 @@ export default function AgentsScreen() {
   // Removable active-filter chips.
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
   filters.cities.forEach((c) =>
-    chips.push({ key: `city-${c}`, label: c, onRemove: () => setFilters((f) => ({ ...f, cities: f.cities.filter((x) => x !== c) })) }),
+    chips.push({ key: `city-${c}`, label: cityLabel(c), onRemove: () => setFilters((f) => ({ ...f, cities: f.cities.filter((x) => x !== c) })) }),
   );
   filters.languages.forEach((l) =>
-    chips.push({ key: `lang-${l}`, label: l, onRemove: () => setFilters((f) => ({ ...f, languages: f.languages.filter((x) => x !== l) })) }),
+    chips.push({ key: `lang-${l}`, label: agentLanguageLabel(l), onRemove: () => setFilters((f) => ({ ...f, languages: f.languages.filter((x) => x !== l) })) }),
   );
   if (filters.experience)
     chips.push({ key: "exp", label: labelFor(agentExperience, filters.experience), onRemove: () => setFilters((f) => ({ ...f, experience: "" })) });
@@ -52,7 +61,7 @@ export default function AgentsScreen() {
       {query.trim().length > 0 ? (
         matches.length > 0 ? (
           <>
-            <Text style={[type.label, styles.suggHead, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>AGENTS</Text>
+            <Text style={[type.label, styles.suggHead, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>{t("agents.head")}</Text>
             {matches.map((m) => (
               <Pressable key={m} onPress={() => pickSuggestion(m)} style={({ pressed }) => [styles.suggRow, pressed && { backgroundColor: colors.surfaceSunken }]}>
                 <Users size={18} color={colors.textTertiary} strokeWidth={2} />
@@ -62,15 +71,15 @@ export default function AgentsScreen() {
           </>
         ) : (
           <View style={styles.suggEmpty}>
-            <Text style={[type.body, { color: colors.textSecondary }]}>No agents match “{query.trim()}”.</Text>
+            <Text style={[type.body, { color: colors.textSecondary }]}>{t("agents.noMatch", { query: query.trim() })}</Text>
           </View>
         )
       ) : history.length > 0 ? (
         <>
           <View style={styles.suggHeadRow}>
-            <Text style={[type.label, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>RECENT SEARCHES</Text>
+            <Text style={[type.label, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>{t("search.recentSearches")}</Text>
             <Pressable onPress={agentSearchHistory.clear} hitSlop={8}>
-              <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>Clear</Text>
+              <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>{t("search.clear")}</Text>
             </Pressable>
           </View>
           {history.map((h) => (
@@ -87,7 +96,7 @@ export default function AgentsScreen() {
         <View style={styles.suggEmpty}>
           <SearchIcon size={26} color={colors.textTertiary} strokeWidth={2} />
           <Text style={[type.body, { color: colors.textSecondary, textAlign: "center", marginTop: 10 }]}>
-            Search agents by name, agency, or city.
+            {t("agents.hint")}
           </Text>
         </View>
       )}
@@ -101,14 +110,14 @@ export default function AgentsScreen() {
           style={[type.displaySm, { color: colors.textPrimary, fontSize: 26 }, searchFocused && styles.hidden]}
           accessibilityElementsHidden={searchFocused}
         >
-          Agents
+          {t("agents.title")}
         </Text>
         <HomeSearchBar
           value={query}
           onChangeText={setQuery}
           onOpenFilters={() => setDrawerOpen(true)}
           activeCount={countAgentFilters(filters)}
-          placeholder="Search agents, agencies…"
+          placeholder={t("agents.searchPlaceholder")}
           onFocusChange={setSearchFocused}
         />
       </View>
@@ -126,15 +135,41 @@ export default function AgentsScreen() {
                 </Pressable>
               ))}
               <Pressable onPress={() => setFilters(emptyAgentFilters)} style={styles.clearAll} hitSlop={6}>
-                <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>Clear all</Text>
+                <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("search.clearAll")}</Text>
               </Pressable>
             </ScrollView>
           ) : null}
 
           <View style={[styles.pad, styles.resultsHead]}>
             <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansMedium }]}>
-              {results.length} result{results.length === 1 ? "" : "s"}
+              {t(results.length === 1 ? "search.resultOne" : "search.resultOther", { count: results.length })}
             </Text>
+            <Pressable
+              onPress={() => setSortOpen(true)}
+              style={[
+                styles.sortBtn,
+                {
+                  borderRadius: 999,
+                  borderColor: sorted ? colors.brandForeground : colors.borderDefault,
+                  backgroundColor: sorted ? colors.brandSubtle : colors.surfaceCard,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("sort.title")}
+            >
+              <Text
+                style={[
+                  type.bodySm,
+                  {
+                    color: sorted ? colors.brandForeground : colors.textSecondary,
+                    fontFamily: sorted ? fontFamily.sansSemibold : fontFamily.sansMedium,
+                  },
+                ]}
+              >
+                {sorted ? agentSortShortLabel(sort) : t("sort.label")}
+              </Text>
+              <ChevronDown size={15} color={sorted ? colors.brandForeground : colors.textTertiary} strokeWidth={2} />
+            </Pressable>
           </View>
 
           {results.length > 0 ? (
@@ -147,14 +182,16 @@ export default function AgentsScreen() {
             </View>
           ) : (
             <View style={styles.empty}>
-              <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>No agents found</Text>
-              <Text style={[type.body, styles.emptyText, { color: colors.textSecondary }]}>Try adjusting your search or filters.</Text>
+              <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("agents.noAgentsTitle")}</Text>
+              <Text style={[type.body, styles.emptyText, { color: colors.textSecondary }]}>{t("search.noHomesBody")}</Text>
             </View>
           )}
         </ScrollView>
       )}
 
       <AgentFilterDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} value={filters} onApply={setFilters} />
+
+      <SortSheet open={sortOpen} onClose={() => setSortOpen(false)} value={sort} onChange={setSort} options={agentSort} />
     </SafeAreaView>
   );
 }
@@ -169,6 +206,7 @@ const styles = StyleSheet.create({
   clearAll: { height: 34, justifyContent: "center", paddingHorizontal: 4 },
   pad: { paddingHorizontal: 20 },
   resultsHead: { marginTop: 18, marginBottom: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sortBtn: { flexDirection: "row", alignItems: "center", gap: 5, height: 34, paddingHorizontal: 12, borderWidth: 1 },
   grid: { paddingHorizontal: 20, gap: 14, marginTop: 12 },
   gridItem: { width: "100%" },
   empty: { alignItems: "center", justifyContent: "center", paddingHorizontal: 40, paddingTop: 60 },

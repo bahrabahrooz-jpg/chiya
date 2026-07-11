@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Heart, Users } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { ScreenHeader } from "@/components/account/ScreenHeader";
 import { useFavoriteIds } from "@/lib/favorites";
 import { listings, agents } from "@/components/home/data";
@@ -13,6 +14,7 @@ type Tab = "properties" | "agents";
 
 export default function SavedScreen() {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const favIds = useFavoriteIds();
   const [tab, setTab] = useState<Tab>("properties");
 
@@ -20,13 +22,13 @@ export default function SavedScreen() {
   const savedAgents = agents.filter((a) => favIds.has(a.id));
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "properties", label: "Properties", count: savedProps.length },
-    { key: "agents", label: "Agents", count: savedAgents.length },
+    { key: "properties", label: t("saved.properties"), count: savedProps.length },
+    { key: "agents", label: t("saved.agents"), count: savedAgents.length },
   ];
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
-      <ScreenHeader title="Saved" />
+      <ScreenHeader title={t("profile.saved")} />
 
       <View style={[styles.segment, styles.segmentTop, { backgroundColor: colors.surfaceSunken, borderRadius: radius.control }]}>
         {tabs.map((t) => {
@@ -67,7 +69,7 @@ export default function SavedScreen() {
             ))}
           </ScrollView>
         ) : (
-          <EmptyState Icon={Heart} title="No saved homes yet" text="Tap the heart on any listing to save it here." />
+          <EmptyState Icon={Heart} title={t("saved.noHomesTitle")} text={t("saved.noHomesText")} />
         )
       ) : savedAgents.length > 0 ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -78,7 +80,7 @@ export default function SavedScreen() {
           ))}
         </ScrollView>
       ) : (
-        <EmptyState Icon={Users} title="No saved agents yet" text="Tap the heart on any agent to save them here." />
+        <EmptyState Icon={Users} title={t("saved.noAgentsTitle")} text={t("saved.noAgentsText")} />
       )}
     </SafeAreaView>
   );

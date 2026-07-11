@@ -2,21 +2,28 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Sun, Moon, SmartphoneNfc, Check, type LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation, type TKey } from "@/lib/i18n";
 import { ScreenHeader } from "@/components/account/ScreenHeader";
 import { useThemeMode, setThemeMode, THEME_MODES, type ThemeMode } from "@/lib/theme-mode";
 
 const ICONS: Record<ThemeMode, LucideIcon> = { light: Sun, dark: Moon, system: SmartphoneNfc };
+const SUB_KEY: Record<ThemeMode, TKey> = {
+  light: "appearance.lightSub",
+  dark: "appearance.darkSub",
+  system: "appearance.systemSub",
+};
 
 export default function AppearanceScreen() {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const mode = useThemeMode();
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
-      <ScreenHeader title="Appearance" />
+      <ScreenHeader title={t("appearance.title")} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={[type.bodySm, styles.intro, { color: colors.textSecondary }]}>
-          Choose how Chiya looks. System follows your device's light or dark setting.
+          {t("appearance.intro")}
         </Text>
         <View style={[styles.card, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
           {THEME_MODES.map((m, i) => {
@@ -38,8 +45,8 @@ export default function AppearanceScreen() {
                   <Icon size={19} color={colors.brandForeground} strokeWidth={2} />
                 </View>
                 <View style={styles.labelWrap}>
-                  <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansMedium }]}>{m.label}</Text>
-                  <Text style={[type.bodySm, { color: colors.textTertiary }]}>{m.sublabel}</Text>
+                  <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansMedium }]}>{t(`appearance.${m.value}`)}</Text>
+                  <Text style={[type.bodySm, { color: colors.textTertiary }]}>{t(SUB_KEY[m.value])}</Text>
                 </View>
                 {on ? <Check size={20} color={colors.brandForeground} strokeWidth={2.5} /> : null}
               </Pressable>

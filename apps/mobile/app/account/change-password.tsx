@@ -5,18 +5,25 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Lock, Check } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation, type TKey } from "@/lib/i18n";
 import { Button, TextField } from "@/components/ui";
 import { ScreenHeader } from "@/components/account/ScreenHeader";
 
 // Live requirements for the new password — same set as the reset flow.
-const CHECKS: { label: string; test: (v: string) => boolean }[] = [
-  { label: "At least 8 characters", test: (v) => v.length >= 8 },
-  { label: "At least one uppercase letter", test: (v) => /[A-Z]/.test(v) },
-  { label: "At least one lowercase letter", test: (v) => /[a-z]/.test(v) },
-  { label: "At least one number", test: (v) => /\d/.test(v) },
-  { label: "At least one special character", test: (v) => /[^A-Za-z0-9]/.test(v) },
+const CHECKS: { key: TKey; test: (v: string) => boolean }[] = [
+  { key: "auth.forgot.check8", test: (v) => v.length >= 8 },
+  { key: "auth.forgot.checkUpper", test: (v) => /[A-Z]/.test(v) },
+  { key: "auth.forgot.checkLower", test: (v) => /[a-z]/.test(v) },
+  { key: "auth.forgot.checkNumber", test: (v) => /\d/.test(v) },
+  { key: "auth.forgot.checkSpecial", test: (v) => /[^A-Za-z0-9]/.test(v) },
 ];
-const STRENGTH_LABELS = ["Not determined", "Weak", "Fair", "Good", "Strong"];
+const STRENGTH_KEYS: TKey[] = [
+  "auth.forgot.strengthNone",
+  "auth.forgot.strengthWeak",
+  "auth.forgot.strengthFair",
+  "auth.forgot.strengthGood",
+  "auth.forgot.strengthStrong",
+];
 
 /** Top success toast — same pattern as the edit-profile screen. */
 function Toast({ message, onHide }: { message: string; onHide: () => void }) {
@@ -61,6 +68,7 @@ function Toast({ message, onHide }: { message: string; onHide: () => void }) {
 
 function StrengthMeter({ level }: { level: number }) {
   const { colors, type } = useTheme();
+  const { t } = useTranslation();
   const color = level <= 1 ? colors.error : level === 2 ? colors.brandAccent : colors.brandForeground;
   return (
     <View style={{ marginTop: 6, gap: 6 }}>
@@ -70,7 +78,7 @@ function StrengthMeter({ level }: { level: number }) {
         ))}
       </View>
       <Text style={[type.caption, styles.strengthLabel, { color: level === 0 ? colors.textTertiary : color }]}>
-        {STRENGTH_LABELS[level]}
+        {t(STRENGTH_KEYS[level])}
       </Text>
     </View>
   );
@@ -78,12 +86,13 @@ function StrengthMeter({ level }: { level: number }) {
 
 function Requirements({ pw }: { pw: string }) {
   const { colors, type } = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={{ marginTop: 20, gap: 8 }}>
       {CHECKS.map((c) => {
         const met = c.test(pw);
         return (
-          <View key={c.label} style={styles.reqRow}>
+          <View key={c.key} style={styles.reqRow}>
             <View
               style={[
                 styles.reqTick,
@@ -92,7 +101,7 @@ function Requirements({ pw }: { pw: string }) {
             >
               {met ? <Check size={10} color={colors.textOnBrand} strokeWidth={3} /> : null}
             </View>
-            <Text style={[type.bodySm, { color: met ? colors.textSecondary : colors.textTertiary }]}>{c.label}</Text>
+            <Text style={[type.bodySm, { color: met ? colors.textSecondary : colors.textTertiary }]}>{t(c.key)}</Text>
           </View>
         );
       })}
@@ -102,6 +111,7 @@ function Requirements({ pw }: { pw: string }) {
 
 export default function ChangePasswordScreen() {
   const { colors, space } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -122,14 +132,14 @@ export default function ChangePasswordScreen() {
     setTimeout(() => {
       setBusy(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setToast("Password updated");
+      setToast(t("changePassword.toastUpdated"));
       setTimeout(() => router.back(), 700);
     }, 620);
   };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
-      <ScreenHeader title="Change password" />
+      <ScreenHeader title={t("changePassword.title")} />
       {toast ? <Toast message={toast} onHide={() => setToast(null)} /> : null}
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -140,7 +150,7 @@ export default function ChangePasswordScreen() {
           showsVerticalScrollIndicator={false}
         >
           <TextField
-            label="Current password"
+            label={t("changePassword.current")}
             value={current}
             onChangeText={setCurrent}
             icon={Lock}
@@ -152,7 +162,7 @@ export default function ChangePasswordScreen() {
 
           <View style={{ marginTop: space[4] }}>
             <TextField
-              label="New password"
+              label={t("changePassword.newPassword")}
               value={pw}
               onChangeText={setPw}
               icon={Lock}
@@ -167,7 +177,7 @@ export default function ChangePasswordScreen() {
 
           <View style={{ marginTop: space[4] }}>
             <TextField
-              label="Confirm new password"
+              label={t("changePassword.confirm")}
               value={confirm}
               onChangeText={setConfirm}
               icon={Lock}
@@ -184,7 +194,7 @@ export default function ChangePasswordScreen() {
         </ScrollView>
 
         <View style={[styles.foot, { borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Button title={busy ? "Updating…" : "Update password"} onPress={submit} loading={busy} disabled={!canSubmit} />
+          <Button title={busy ? t("changePassword.updating") : t("changePassword.update")} onPress={submit} loading={busy} disabled={!canSubmit} />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

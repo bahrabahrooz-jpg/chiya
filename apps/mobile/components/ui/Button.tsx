@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useTheme } from "@/theme";
 
-type Variant = "primary" | "secondary" | "social" | "destructive" | "danger";
+type Variant = "primary" | "secondary" | "social" | "destructive" | "warning" | "danger";
 
 export interface ButtonProps {
   title: string;
@@ -47,7 +47,9 @@ export function Button({
       ? colors.textOnBrand
       : variant === "destructive"
         ? colors.error
-        : colors.textPrimary;
+        : variant === "warning"
+          ? colors.warningText
+          : colors.textPrimary;
 
   return (
     <Pressable
@@ -81,6 +83,11 @@ export function Button({
           backgroundColor: pressed ? colors.surfaceSunken : colors.surfaceCard,
           borderWidth: 1,
           borderColor: colors.error,
+        },
+        variant === "warning" && {
+          backgroundColor: pressed ? colors.warningSurface : colors.surfaceCard,
+          borderWidth: 1,
+          borderColor: colors.warningText,
         },
         variant === "danger" && [{ backgroundColor: colors.error, opacity: pressed ? 0.9 : 1 }, elevation.button],
         fullWidth && styles.full,

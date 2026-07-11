@@ -232,6 +232,20 @@ export const fontFamily = {
   sansBold: "HankenGrotesk_700Bold",
 } as const;
 
+/**
+ * Arabic font families — Amiri (serif, for display roles) + IBM Plex Sans
+ * Arabic (sans). Latin Cormorant/Hanken have no Arabic glyphs, so the theme
+ * swaps to these when the active locale is Arabic.
+ */
+export const fontFamilyAr = {
+  display: "Amiri_700Bold",
+  displayMedium: "Amiri_400Regular",
+  sans: "IBMPlexSansArabic_400Regular",
+  sansMedium: "IBMPlexSansArabic_500Medium",
+  sansSemibold: "IBMPlexSansArabic_600SemiBold",
+  sansBold: "IBMPlexSansArabic_700Bold",
+} as const;
+
 /** Named type presets (size / lineHeight / letterSpacing in points). */
 export const type = {
   displayLg: { fontFamily: fontFamily.display, fontSize: 40, lineHeight: 46, letterSpacing: -0.6 },
@@ -246,6 +260,27 @@ export const type = {
   caption: { fontFamily: fontFamily.sans, fontSize: 12.5, lineHeight: 18 },
   eyebrow: { fontFamily: fontFamily.sansSemibold, fontSize: 12, lineHeight: 16, letterSpacing: 1.4 },
 } as const;
+
+/**
+ * Arabic type presets — same sizes as `type`, but mapped to the Arabic
+ * families with a touch more line-height for the taller script and no negative
+ * Latin letter-spacing (which mangles Arabic joins). The `wordmark` keeps the
+ * Latin display face since it only ever renders the "CHIYA" brand mark.
+ */
+type TypePreset = { fontFamily: string; fontSize: number; lineHeight: number; letterSpacing?: number };
+export const typeAr: Record<keyof typeof type, TypePreset> = {
+  displayLg: { fontFamily: fontFamilyAr.display, fontSize: 38, lineHeight: 52, letterSpacing: 0 },
+  displayMd: { fontFamily: fontFamilyAr.display, fontSize: 32, lineHeight: 46, letterSpacing: 0 },
+  displaySm: { fontFamily: fontFamilyAr.display, fontSize: 28, lineHeight: 42, letterSpacing: 0 },
+  wordmark: { fontFamily: fontFamily.display, fontSize: 24, lineHeight: 26, letterSpacing: 3.6 },
+  bodyLg: { fontFamily: fontFamilyAr.sans, fontSize: 17, lineHeight: 30 },
+  body: { fontFamily: fontFamilyAr.sans, fontSize: 15.5, lineHeight: 26 },
+  bodySm: { fontFamily: fontFamilyAr.sans, fontSize: 13.5, lineHeight: 22 },
+  label: { fontFamily: fontFamilyAr.sansSemibold, fontSize: 13.5, lineHeight: 20, letterSpacing: 0.1 },
+  button: { fontFamily: fontFamilyAr.sansSemibold, fontSize: 16, lineHeight: 22, letterSpacing: 0 },
+  caption: { fontFamily: fontFamilyAr.sans, fontSize: 12.5, lineHeight: 20 },
+  eyebrow: { fontFamily: fontFamilyAr.sansSemibold, fontSize: 12, lineHeight: 18, letterSpacing: 0.8 },
+};
 
 /** Platform-friendly elevation presets (iOS shadow + Android elevation). */
 export const elevation = {
@@ -294,3 +329,12 @@ export const darkTheme: Theme = {
   fontFamily,
   elevation,
 };
+
+/** Swap a theme's fonts to the Arabic families (used when the locale is Arabic). */
+export function withArabicFonts(base: Theme): Theme {
+  return {
+    ...base,
+    fontFamily: fontFamilyAr as unknown as typeof fontFamily,
+    type: typeAr as unknown as typeof type,
+  };
+}

@@ -2,12 +2,14 @@ import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { BadgeCheck, Star, Heart, MapPin } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { useIsFavorite, toggleFavorite } from "@/lib/favorites";
-import { type Agent } from "./data";
+import { agentBannerPhoto, type Agent } from "./data";
 
 /** AgentCard — vertical card (photo + verified badge + heart, name, city, rating). */
 export function AgentCard({ agent: a }: { agent: Agent }) {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const fav = useIsFavorite(a.id);
   return (
@@ -16,15 +18,15 @@ export function AgentCard({ agent: a }: { agent: Agent }) {
       style={[styles.card, { backgroundColor: colors.surfaceCard, borderRadius: radius.card, borderColor: colors.borderSubtle }]}
       accessibilityRole="button"
     >
-      <View style={[styles.media, { borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card }]}>
-        <Image source={{ uri: a.photo }} style={styles.img} resizeMode="cover" />
+      <View style={[styles.media, { backgroundColor: colors.surfaceSunken, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card }]}>
+        <Image source={{ uri: agentBannerPhoto(a.photo) }} style={styles.img} resizeMode="cover" />
         {a.verified ? (
           <View style={styles.badge}>
             <BadgeCheck size={14} color={colors.brandPrimary} strokeWidth={2.5} />
-            <Text style={[styles.badgeTxt, { color: colors.brandPrimary, fontFamily: fontFamily.sansSemibold }]}>Verified</Text>
+            <Text style={[styles.badgeTxt, { color: colors.brandPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("card.verified")}</Text>
           </View>
         ) : null}
-        <Pressable style={styles.heart} onPress={() => toggleFavorite(a.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save">
+        <Pressable style={styles.heart} onPress={() => toggleFavorite(a.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("card.save")}>
           <Heart size={18} color={fav ? colors.error : "#33383F"} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
         </Pressable>
       </View>
@@ -40,7 +42,7 @@ export function AgentCard({ agent: a }: { agent: Agent }) {
         <View style={styles.stats}>
           <Star size={14} color={colors.brandAccent} fill={colors.brandAccent} strokeWidth={0} />
           <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansMedium }]}>{a.rating.toFixed(1)}</Text>
-          <Text style={[type.bodySm, { color: colors.textTertiary }]}>· {a.listings} listings</Text>
+          <Text style={[type.bodySm, { color: colors.textTertiary }]}>· {t("card.listings", { count: a.listings })}</Text>
         </View>
       </View>
     </Pressable>
@@ -49,12 +51,12 @@ export function AgentCard({ agent: a }: { agent: Agent }) {
 
 const styles = StyleSheet.create({
   card: { width: "100%", borderWidth: 1 },
-  media: { height: 160, overflow: "hidden", backgroundColor: "#e9edf0" },
+  media: { height: 160, overflow: "hidden" },
   img: { width: "100%", height: "100%" },
   badge: {
     position: "absolute",
     top: 12,
-    left: 12,
+    start: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
@@ -67,7 +69,7 @@ const styles = StyleSheet.create({
   heart: {
     position: "absolute",
     top: 10,
-    right: 10,
+    end: 10,
     width: 34,
     height: 34,
     borderRadius: 17,

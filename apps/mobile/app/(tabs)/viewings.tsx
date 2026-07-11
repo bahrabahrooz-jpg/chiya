@@ -3,19 +3,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { CalendarCheck, Clock, MapPin, X } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
+import { formatTimeSlot } from "@/lib/i18n/format";
 import { useViewings, cancelViewing, formatViewingDate, type Viewing } from "@/lib/viewings";
 import { confirm } from "@/lib/confirm";
 
 function ViewingCard({ viewing: v }: { viewing: Viewing }) {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const confirmCancel = () =>
     confirm({
-      title: "Cancel viewing",
-      message: `Cancel your viewing of ${v.title}? You can always book again later.`,
-      confirmLabel: "Cancel viewing",
-      cancelLabel: "Keep",
+      title: t("viewings.cancelTitle"),
+      message: t("viewings.cancelMessage", { title: v.title }),
+      confirmLabel: t("viewings.cancelConfirm"),
+      cancelLabel: t("viewings.keep"),
       destructive: true,
       icon: X,
       onConfirm: () => cancelViewing(v.id),
@@ -32,7 +35,7 @@ function ViewingCard({ viewing: v }: { viewing: Viewing }) {
         <View style={styles.info}>
           <View style={[styles.badge, { backgroundColor: colors.brandSubtle }]}>
             <Clock size={11} color={colors.brandForeground} strokeWidth={2.5} />
-            <Text style={[type.caption, { color: colors.brandForeground, fontFamily: fontFamily.sansSemibold }]}>Requested</Text>
+            <Text style={[type.caption, { color: colors.brandForeground, fontFamily: fontFamily.sansSemibold }]}>{t("viewings.requested")}</Text>
           </View>
           <Text numberOfLines={1} style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
             {v.title}
@@ -44,7 +47,7 @@ function ViewingCard({ viewing: v }: { viewing: Viewing }) {
             </Text>
           </View>
         </View>
-        <Pressable onPress={confirmCancel} hitSlop={8} style={[styles.cancel, { backgroundColor: colors.surfaceSunken }]} accessibilityLabel="Cancel viewing">
+        <Pressable onPress={confirmCancel} hitSlop={8} style={[styles.cancel, { backgroundColor: colors.surfaceSunken }]} accessibilityLabel={t("viewings.cancelConfirm")}>
           <X size={16} color={colors.textTertiary} strokeWidth={2} />
         </Pressable>
       </View>
@@ -54,13 +57,13 @@ function ViewingCard({ viewing: v }: { viewing: Viewing }) {
         <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
           {formatViewingDate(v.date)}
         </Text>
-        <Text style={[type.bodySm, { color: colors.textTertiary }]}>at {v.time}</Text>
+        <Text style={[type.bodySm, { color: colors.textTertiary }]}>{t("viewings.at", { time: formatTimeSlot(v.time) })}</Text>
       </View>
 
       <View style={styles.agent}>
         <Image source={{ uri: v.agentPhoto }} style={styles.agentImg} resizeMode="cover" />
         <Text style={[type.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>
-          With <Text style={{ color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }}>{v.agentName}</Text> · {v.agentAgency}
+          {t("viewings.withPrefix")}<Text style={{ color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }}>{v.agentName}</Text> · {v.agentAgency}
         </Text>
       </View>
     </Pressable>
@@ -69,12 +72,13 @@ function ViewingCard({ viewing: v }: { viewing: Viewing }) {
 
 export default function ViewingsScreen() {
   const { colors, type, fontFamily } = useTheme();
+  const { t } = useTranslation();
   const viewings = useViewings();
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 26 }]}>My viewings</Text>
+        <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 26 }]}>{t("viewings.title")}</Text>
       </View>
 
       {viewings.length > 0 ? (
@@ -91,10 +95,10 @@ export default function ViewingsScreen() {
             <CalendarCheck size={26} color={colors.brandForeground} strokeWidth={2} />
           </View>
           <Text style={[type.bodyLg, styles.emptyTitle, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
-            No viewings yet
+            {t("viewings.emptyTitle")}
           </Text>
           <Text style={[type.body, styles.emptyText, { color: colors.textSecondary }]}>
-            Book a viewing on any property and it'll show up here.
+            {t("viewings.emptyBody")}
           </Text>
         </View>
       )}

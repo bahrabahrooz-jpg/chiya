@@ -3,6 +3,7 @@ import { Modal, View, Text, Pressable, StyleSheet, Animated, Easing, Dimensions 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const WINDOW_H = Dimensions.get("window").height;
@@ -28,6 +29,7 @@ export function ActionSheet({
   actions: SheetAction[];
 }) {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [mounted, setMounted] = useState(open);
   const ty = useRef(new Animated.Value(WINDOW_H)).current;
@@ -97,7 +99,7 @@ export function ActionSheet({
             ]}
             accessibilityRole="button"
           >
-            <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>Cancel</Text>
+            <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("common.cancel")}</Text>
           </Pressable>
         </Animated.View>
       </View>

@@ -12,6 +12,8 @@ export interface ConfirmOptions {
   confirmLabel: string;
   cancelLabel?: string;
   destructive?: boolean;
+  /** Amber "warning" styling (icon + confirm button) — softer than destructive. */
+  warning?: boolean;
   icon?: LucideIcon;
   onConfirm: () => void;
 }

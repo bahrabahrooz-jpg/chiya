@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Eye, EyeOff, CircleAlert, type LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 
 /** Blinking text caret — used in the masked password field, where the native
  * caret is hidden (it would drift from the custom dot overlay). */
@@ -53,6 +54,10 @@ export interface TextFieldProps {
   onSubmitEditing?: () => void;
   /** When false, the field is read-only (not focusable/editable). */
   editable?: boolean;
+  /** Multi-line textarea mode (e.g. a message field). */
+  multiline?: boolean;
+  /** Min height (points) for multiline mode. */
+  minHeight?: number;
 }
 
 /**
@@ -76,8 +81,11 @@ export function TextField({
   returnKeyType,
   onSubmitEditing,
   editable = true,
+  multiline = false,
+  minHeight = 120,
 }: TextFieldProps) {
   const { colors, radius, type, space } = useTheme();
+  const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const [show, setShow] = useState(false);
 
@@ -106,17 +114,19 @@ export function TextField({
             borderRadius: radius.control,
             borderWidth: error ? 1.5 : 1,
           },
+          // Multiline grows from a min height and aligns content to the top.
+          multiline && { height: undefined, minHeight, alignItems: "flex-start", paddingVertical: 12 },
           // Soft ring (halo): on focus, and always in the error state (destructive ring).
           (focused || error) && { boxShadow: `0 0 0 4px ${error ? colors.ringError : colors.ringBrand}` },
         ]}
       >
         {Icon ? (
-          <View style={styles.leading}>
+          <View style={[styles.leading, multiline && { marginTop: 2 }]}>
             <Icon size={19} color={iconColor} strokeWidth={2} />
           </View>
         ) : null}
 
-        <View style={styles.field}>
+        <View style={[styles.field, multiline && { height: undefined, alignSelf: "stretch" }]}>
           <TextInput
             style={[
               styles.input,
@@ -126,10 +136,12 @@ export function TextField({
                 // Hide the real text while masked; the dot overlay stands in for it.
                 color: masked ? "transparent" : colors.textPrimary,
               },
+              multiline && { height: undefined, minHeight: minHeight - 24, textAlignVertical: "top", lineHeight: 22 },
             ]}
             value={value}
             onChangeText={onChangeText}
             editable={editable}
+            multiline={multiline}
             placeholder={secure ? undefined : placeholder}
             placeholderTextColor={colors.textPlaceholder}
             secureTextEntry={false}
@@ -170,7 +182,7 @@ export function TextField({
             onPress={() => setShow((s) => !s)}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={show ? "Hide password" : "Show password"}
+            accessibilityLabel={show ? t("field.hidePassword") : t("field.showPassword")}
             style={styles.peek}
           >
             {show ? (
@@ -204,7 +216,7 @@ const styles = StyleSheet.create({
     height: FIELD_H,
     paddingHorizontal: 14,
   },
-  leading: { marginRight: 10 },
+  leading: { marginEnd: 10 },
   field: { flex: 1, height: "100%", justifyContent: "center" },
   input: {
     width: "100%",
@@ -234,6 +246,6 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     marginHorizontal: 1,
   },
-  peek: { paddingLeft: 10, height: "100%", justifyContent: "center" },
+  peek: { paddingStart: 10, height: "100%", justifyContent: "center" },
   errorRow: { minHeight: 16, justifyContent: "center" },
 });

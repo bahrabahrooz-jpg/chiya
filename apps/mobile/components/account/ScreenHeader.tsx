@@ -3,16 +3,19 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
+import { rtlFlip } from "@/lib/rtl";
 
 /** ScreenHeader — a plain back button + centered title for account sub-screens.
  *  An optional `right` node renders as a trailing action. */
 export function ScreenHeader({ title, right }: { title: string; right?: ReactNode }) {
   const { colors, type, fontFamily } = useTheme();
+  const { t, isRTL } = useTranslation();
   const router = useRouter();
   return (
     <View style={[styles.row, { borderBottomColor: colors.borderSubtle }]}>
-      <Pressable onPress={() => router.back()} hitSlop={8} style={styles.side} accessibilityRole="button" accessibilityLabel="Back">
-        <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
+      <Pressable onPress={() => router.back()} hitSlop={8} style={styles.side} accessibilityRole="button" accessibilityLabel={t("common.back")}>
+        <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} style={rtlFlip(isRTL)} />
       </Pressable>
       <Text style={[type.body, styles.title, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]} numberOfLines={1}>
         {title}

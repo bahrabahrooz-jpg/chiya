@@ -1,6 +1,6 @@
 import { ScrollView, Pressable, Text, StyleSheet } from "react-native";
 import { useTheme } from "@/theme";
-import { dealCategories } from "./data";
+import { dealCategories, optLabel } from "./data";
 
 /** DealChips — horizontal quick filters (All / For Sale / For Rent / New). */
 export function DealChips({ active, onChange }: { active: string; onChange: (v: string) => void }) {
@@ -11,7 +11,8 @@ export function DealChips({ active, onChange }: { active: string; onChange: (v: 
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
     >
-      {dealCategories.map(({ value, label }) => {
+      {dealCategories.map((o) => {
+        const { value } = o;
         const on = active === value;
         const fg = on ? colors.brandForeground : colors.textSecondary;
         return (
@@ -30,7 +31,7 @@ export function DealChips({ active, onChange }: { active: string; onChange: (v: 
             accessibilityState={{ selected: on }}
           >
             <Text style={[styles.label, { color: fg, fontFamily: on ? fontFamily.sansSemibold : fontFamily.sansMedium }]}>
-              {label}
+              {optLabel(o)}
             </Text>
           </Pressable>
         );

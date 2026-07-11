@@ -1,7 +1,13 @@
-import { type ReactNode } from "react";
+import { type ComponentType, type ReactNode } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { ChevronRight, type LucideIcon } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
+import { rtlFlip } from "@/lib/rtl";
+
+/** Any icon component that takes size/color/strokeWidth — lucide icons and the
+ *  app's custom SVG brand marks (WhatsApp, Instagram, …) both satisfy this. */
+type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
 /** Group — a labelled section wrapping rows in a single bordered card. */
 export function Group({ title, children }: { title?: string; children: ReactNode }) {
@@ -21,7 +27,7 @@ export function Group({ title, children }: { title?: string; children: ReactNode
 }
 
 export interface MenuRowProps {
-  icon: LucideIcon;
+  icon: IconCmp;
   label: string;
   /** Small caption under the label. */
   sublabel?: string;
@@ -56,6 +62,7 @@ export function MenuRow({
   onPress,
 }: MenuRowProps) {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { isRTL } = useTranslation();
   const tint = danger ? colors.error : colors.textPrimary;
   const iconTint = danger ? colors.error : colors.brandForeground;
   const pressable = !!onPress && !disabled;
@@ -106,14 +113,14 @@ export function MenuRow({
           {value}
         </Text>
       ) : null}
-      {showChevron ? <ChevronRight size={19} color={colors.textTertiary} strokeWidth={2} /> : null}
+      {showChevron ? <ChevronRight size={19} color={colors.textTertiary} strokeWidth={2} style={rtlFlip(isRTL)} /> : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   group: { gap: 8 },
-  groupTitle: { marginLeft: 4, letterSpacing: 0.6 },
+  groupTitle: { marginStart: 4, letterSpacing: 0.6 },
   card: { borderWidth: 1, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 14, paddingVertical: 13 },
   iconTile: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },

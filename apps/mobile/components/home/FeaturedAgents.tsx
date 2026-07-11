@@ -1,5 +1,6 @@
 import { View, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "@/lib/i18n";
 import { SectionHeader } from "./SectionHeader";
 import { AgentCard } from "./AgentCard";
 import { featuredAgents } from "./data";
@@ -7,10 +8,11 @@ import { featuredAgents } from "./data";
 /** FeaturedAgents — "Featured Agents" header + a horizontal row of agent cards. */
 export function FeaturedAgents() {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <View>
       <View style={styles.head}>
-        <SectionHeader title="Featured Agents" onSeeAll={() => router.push("/agents")} />
+        <SectionHeader title={t("home.featuredAgents")} onSeeAll={() => router.push("/agents")} />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {featuredAgents.map((a) => (

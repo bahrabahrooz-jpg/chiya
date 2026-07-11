@@ -1,4 +1,6 @@
 import { Share } from "react-native";
+import { translate } from "@/lib/i18n";
+import { getActiveLocale } from "@/lib/locale-state";
 import { priceLabel, type Listing, type Agent } from "@/components/home/data";
 
 /**
@@ -18,10 +20,10 @@ async function open(message: string) {
 
 export function shareProperty(l: Listing) {
   const url = `${CHIYA_WEB}/property/${l.id}`;
-  return open(`${l.title} — ${priceLabel(l)} · ${l.address}\nView on Chiya Estate: ${url}`);
+  return open(translate(getActiveLocale(), "share.property", { title: l.title, price: priceLabel(l), address: l.address, url }));
 }
 
 export function shareAgent(a: Agent) {
   const url = `${CHIYA_WEB}/agents/${a.id}`;
-  return open(`${a.name}${a.verified ? " · Verified agent" : ""} on Chiya Estate\n${url}`);
+  return open(translate(getActiveLocale(), a.verified ? "share.agentVerified" : "share.agent", { name: a.name, url }));
 }

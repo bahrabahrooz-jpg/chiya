@@ -1,5 +1,6 @@
 import { View, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "@/lib/i18n";
 import { SectionHeader } from "./SectionHeader";
 import { PropertyCard } from "./PropertyCard";
 import { recommended } from "./data";
@@ -7,10 +8,14 @@ import { recommended } from "./data";
 /** RecommendedSection — "Recommended for you" header + horizontal property cards. */
 export function RecommendedSection() {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <View>
       <View style={styles.head}>
-        <SectionHeader title="Featured Properties" onSeeAll={() => router.push("/search")} />
+        <SectionHeader
+          title={t("home.featuredProperties")}
+          onSeeAll={() => router.push({ pathname: "/search", params: { sort: "featured", ts: String(Date.now()) } })}
+        />
       </View>
       <ScrollView
         horizontal

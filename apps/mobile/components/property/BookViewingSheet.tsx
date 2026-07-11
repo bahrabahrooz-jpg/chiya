@@ -14,13 +14,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, BadgeCheck, CalendarCheck, CircleCheck, MapPin, Star } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
+import { dayName, monthName, formatDayMonth, formatTimeSlot } from "@/lib/i18n/format";
 import { Button } from "@/components/ui";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const WINDOW_H = Dimensions.get("window").height;
 
-const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Canonical slot values (stored on the viewing); display is localized via formatTimeSlot.
 const TIME_SLOTS = ["9:00 AM", "10:30 AM", "12:00 PM", "1:30 PM", "3:00 PM", "4:30 PM", "6:00 PM"];
 
 export interface BookViewingSheetProps {
@@ -36,6 +37,7 @@ export interface BookViewingSheetProps {
  * viewing" flow: pick a date + time, see the viewing agent, submit → confirmed. */
 export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: BookViewingSheetProps) {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   const [mounted, setMounted] = useState(open);
@@ -79,7 +81,11 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
   if (!mounted) return null;
 
   const canSubmit = dateIdx !== null && timeIdx !== null;
-  const dayLabel = (d: Date, i: number) => (i === 0 ? "Today" : i === 1 ? "Tomorrow" : DOW[d.getDay()]);
+  const dayLabel = (d: Date, i: number) => (i === 0 ? t("bookViewing.today") : i === 1 ? t("bookViewing.tomorrow") : dayName(d));
+  const whenLabel =
+    dateIdx !== null
+      ? `${formatDayMonth(days[dateIdx])}${timeIdx !== null ? ` · ${formatTimeSlot(TIME_SLOTS[timeIdx])}` : ""}`
+      : "";
 
   return (
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
@@ -102,10 +108,10 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
           <View style={styles.head}>
             <View style={{ flex: 1 }}>
               <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 22 }]}>
-                {done ? "Viewing requested" : "Request a viewing"}
+                {done ? t("bookViewing.requested") : t("bookViewing.request")}
               </Text>
               <Text numberOfLines={1} style={[type.bodySm, { color: colors.textSecondary, marginTop: 2 }]}>
-                {done ? "Confirmed within 24 hours" : `${property.title} · ${property.address}`}
+                {done ? t("bookViewing.confirmedWithin") : `${property.title} · ${property.address}`}
               </Text>
             </View>
             <Pressable onPress={onClose} hitSlop={10} style={[styles.close, { backgroundColor: colors.surfaceSunken }]}>
@@ -120,16 +126,14 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
                   <CircleCheck size={34} color={colors.brandForeground} strokeWidth={2} />
                 </View>
                 <Text style={[type.bodyLg, styles.doneTitle, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
-                  You're all set
+                  {t("bookViewing.allSet")}
                 </Text>
                 <Text style={[type.body, styles.doneText, { color: colors.textSecondary }]}>
-                  Thank you. {agent.name} will contact you to confirm your viewing of {property.title} on{" "}
-                  {dateIdx !== null ? `${DOW[days[dateIdx].getDay()]}, ${MON[days[dateIdx].getMonth()]} ${days[dateIdx].getDate()}` : ""}
-                  {timeIdx !== null ? ` at ${TIME_SLOTS[timeIdx]}` : ""}.
+                  {t("bookViewing.thankYou", { name: agent.name, title: property.title, when: whenLabel })}
                 </Text>
               </View>
               <View style={[styles.foot, { borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 12) }]}>
-                <Button title="Done" onPress={onClose} />
+                <Button title={t("bookViewing.done")} onPress={onClose} />
               </View>
             </>
           ) : (
@@ -137,7 +141,7 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
                 {/* Date */}
                 <View style={styles.section}>
-                  <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>Select a date</Text>
+                  <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("bookViewing.selectDate")}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
                     {days.map((d, i) => {
                       const on = dateIdx === i;
@@ -160,7 +164,7 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
                           <Text style={[styles.dateNum, { color: on ? colors.textOnBrand : colors.textPrimary, fontFamily: fontFamily.sansBold }]}>
                             {d.getDate()}
                           </Text>
-                          <Text style={[type.caption, { color: on ? colors.textOnBrand : colors.textTertiary }]}>{MON[d.getMonth()]}</Text>
+                          <Text style={[type.caption, { color: on ? colors.textOnBrand : colors.textTertiary }]}>{monthName(d)}</Text>
                         </Pressable>
                       );
                     })}
@@ -169,13 +173,13 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
 
                 {/* Time */}
                 <View style={styles.section}>
-                  <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>Available times</Text>
+                  <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("bookViewing.availableTimes")}</Text>
                   <View style={styles.slots}>
-                    {TIME_SLOTS.map((t, i) => {
+                    {TIME_SLOTS.map((slot, i) => {
                       const on = timeIdx === i;
                       return (
                         <Pressable
-                          key={t}
+                          key={slot}
                           onPress={() => setTimeIdx(i)}
                           style={[
                             styles.slot,
@@ -192,7 +196,7 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
                               { color: on ? colors.brandForeground : colors.textSecondary, fontFamily: on ? fontFamily.sansSemibold : fontFamily.sansMedium },
                             ]}
                           >
-                            {t}
+                            {formatTimeSlot(slot)}
                           </Text>
                         </Pressable>
                       );
@@ -202,7 +206,7 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
 
                 {/* Agent */}
                 <View style={styles.section}>
-                  <Text style={[type.label, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>VIEWING AGENT</Text>
+                  <Text style={[type.label, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>{t("bookViewing.viewingAgent")}</Text>
                   <View style={[styles.agentRow, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
                     <Image source={{ uri: agent.photo }} style={styles.agentImg} resizeMode="cover" />
                     <View style={{ flex: 1 }}>
@@ -227,7 +231,7 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
 
               <View style={[styles.foot, { borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 12) }]}>
                 <Button
-                  title="Request a viewing"
+                  title={t("bookViewing.request")}
                   disabled={!canSubmit}
                   left={<CalendarCheck size={19} color={colors.textOnBrand} strokeWidth={2} />}
                   onPress={() => {

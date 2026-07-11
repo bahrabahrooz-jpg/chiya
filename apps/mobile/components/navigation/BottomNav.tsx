@@ -3,20 +3,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { House, Search, Building2, Users, CalendarCheck, User, type LucideIcon } from "lucide-react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useTheme } from "@/theme";
+import { useTranslation, type TKey } from "@/lib/i18n";
 
-/** Per-route label + icon. Order in the bar comes from the Tabs.Screen order. */
-const TABS: Record<string, { label: string; Icon: LucideIcon }> = {
-  home: { label: "Home", Icon: House },
-  search: { label: "Search", Icon: Search },
-  agents: { label: "Agents", Icon: Users },
-  "my-listings": { label: "Listings", Icon: Building2 },
-  viewings: { label: "Viewings", Icon: CalendarCheck },
-  profile: { label: "Profile", Icon: User },
+/** Per-route label key + icon. Order in the bar comes from the Tabs.Screen order. */
+const TABS: Record<string, { labelKey: TKey; Icon: LucideIcon }> = {
+  home: { labelKey: "nav.home", Icon: House },
+  search: { labelKey: "nav.search", Icon: Search },
+  agents: { labelKey: "nav.agents", Icon: Users },
+  "my-listings": { labelKey: "nav.listings", Icon: Building2 },
+  viewings: { labelKey: "nav.viewings", Icon: CalendarCheck },
+  profile: { labelKey: "nav.profile", Icon: User },
 };
 
 /** BottomNav — the app's bottom tab bar (flat, evenly-weighted tabs). */
 export function BottomNav({ state, navigation }: BottomTabBarProps) {
   const { colors, fontFamily } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   return (
@@ -34,7 +36,8 @@ export function BottomNav({ state, navigation }: BottomTabBarProps) {
         const cfg = TABS[route.name];
         if (!cfg) return null;
         const focused = state.index === index;
-        const { Icon, label } = cfg;
+        const { Icon, labelKey } = cfg;
+        const label = t(labelKey);
         const color = focused ? colors.brandForeground : colors.textTertiary;
 
         const onPress = () => {

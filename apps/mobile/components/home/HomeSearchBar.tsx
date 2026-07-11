@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { Search, SlidersHorizontal, X } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 
 export interface HomeSearchBarProps {
   value: string;
@@ -10,6 +11,8 @@ export interface HomeSearchBarProps {
   activeCount?: number;
   placeholder?: string;
   onFocusChange?: (focused: boolean) => void;
+  /** Ref to the input, so a screen can focus it programmatically (e.g. deep link). */
+  inputRef?: RefObject<TextInput | null>;
 }
 
 /**
@@ -17,8 +20,10 @@ export interface HomeSearchBarProps {
  * right edge (a leading search icon, the input, an optional clear button, then a
  * neutral filter button that opens the filter drawer).
  */
-export function HomeSearchBar({ value, onChangeText, onOpenFilters, activeCount = 0, placeholder = "Search homes, areas…", onFocusChange }: HomeSearchBarProps) {
+export function HomeSearchBar({ value, onChangeText, onOpenFilters, activeCount = 0, placeholder, onFocusChange, inputRef }: HomeSearchBarProps) {
   const { colors, type, radius, fontFamily } = useTheme();
+  const { t } = useTranslation();
+  const ph = placeholder ?? t("searchBar.placeholder");
   const [focused, setFocused] = useState(false);
   const setFocus = (v: boolean) => {
     setFocused(v);
@@ -41,10 +46,11 @@ export function HomeSearchBar({ value, onChangeText, onOpenFilters, activeCount 
     >
       <Search size={19} color={colors.textTertiary} strokeWidth={2} />
       <TextInput
+        ref={inputRef}
         style={[styles.input, { color: colors.textPrimary, fontFamily: fontFamily.sans, fontSize: type.body.fontSize }]}
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder}
+        placeholder={ph}
         placeholderTextColor={colors.textPlaceholder}
         autoCapitalize="none"
         autoCorrect={false}
@@ -54,14 +60,14 @@ export function HomeSearchBar({ value, onChangeText, onOpenFilters, activeCount 
         onBlur={() => setFocus(false)}
       />
       {value.length > 0 ? (
-        <Pressable onPress={() => onChangeText("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
+        <Pressable onPress={() => onChangeText("")} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("searchBar.clear")}>
           <X size={18} color={colors.textTertiary} strokeWidth={2} />
         </Pressable>
       ) : null}
 
       <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
-      <Pressable onPress={onOpenFilters} hitSlop={8} style={styles.filter} accessibilityRole="button" accessibilityLabel="Filters">
+      <Pressable onPress={onOpenFilters} hitSlop={8} style={styles.filter} accessibilityRole="button" accessibilityLabel={t("searchBar.filters")}>
         <SlidersHorizontal size={20} color={colors.textPrimary} strokeWidth={2} />
         {activeCount > 0 ? (
           <View style={[styles.badge, { backgroundColor: colors.brandPrimary, borderColor: colors.surfaceCard }]}>
@@ -88,7 +94,7 @@ const styles = StyleSheet.create({
   badge: {
     position: "absolute",
     top: -8,
-    right: -8,
+    end: -8,
     minWidth: 18,
     height: 18,
     borderRadius: 9,

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { type Href } from "expo-router";
 
 /**
  * Notifications — the member's notification feed (inbox). Seeded with a few mock
@@ -16,6 +17,8 @@ export interface AppNotification {
   /** epoch ms */
   createdAt: number;
   read: boolean;
+  /** Related screen to open on tap (expo-router href). Omitted → tap only marks read. */
+  href?: Href;
 }
 
 const MIN = 60_000;
@@ -42,6 +45,7 @@ let items: AppNotification[] = [
     body: "Thanks for reaching out — happy to arrange a tour of Olive Grove Estate this week.",
     createdAt: now - 35 * MIN,
     read: false,
+    href: { pathname: "/agents/[id]", params: { id: "lana-hassan" } },
   },
   {
     id: "seed-2",
@@ -50,6 +54,7 @@ let items: AppNotification[] = [
     body: "Marble Hill Villa just dropped by $20,000. Take another look.",
     createdAt: now - 5 * HOUR,
     read: false,
+    href: "/saved",
   },
   {
     id: "seed-3",
@@ -58,6 +63,7 @@ let items: AppNotification[] = [
     body: "A 3-bed townhouse in Empire City matches your recent searches.",
     createdAt: now - 2 * DAY,
     read: true,
+    href: { pathname: "/property/[id]", params: { id: "garden-townhouse" } },
   },
   {
     id: "seed-4",
@@ -112,6 +118,7 @@ export function addNotification(n: Omit<AppNotification, "id" | "createdAt" | "r
     body: n.body,
     createdAt: Date.now(),
     read: false,
+    href: n.href,
   };
   items = [item, ...items];
   persist();
@@ -125,9 +132,24 @@ export function markRead(id: string) {
   emit();
 }
 
+export function markUnread(id: string) {
+  hydrated = true;
+  items = items.map((n) => (n.id === id ? { ...n, read: false } : n));
+  persist();
+  emit();
+}
+
 export function markAllRead() {
   hydrated = true;
   items = items.map((n) => (n.read ? n : { ...n, read: true }));
+  persist();
+  emit();
+}
+
+/** Remove a single notification (swipe-to-delete / overflow → Delete). */
+export function removeNotification(id: string) {
+  hydrated = true;
+  items = items.filter((n) => n.id !== id);
   persist();
   emit();
 }

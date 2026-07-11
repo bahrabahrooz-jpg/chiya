@@ -14,6 +14,8 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { User, Mail, Phone, Lock, ArrowLeft } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
+import { rtlFlip } from "@/lib/rtl";
 import { Button, TextField } from "@/components/ui";
 
 const emailish = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -72,6 +74,7 @@ type Errors = Partial<Record<keyof Fields, string>>;
 
 export default function RegisterScreen() {
   const { colors, type, space } = useTheme();
+  const { t, isRTL } = useTranslation();
   const router = useRouter();
 
   const [v, setV] = useState<Fields>({ name: "", email: "", phone: "", password: "", confirm: "" });
@@ -88,11 +91,11 @@ export default function RegisterScreen() {
 
   const submit = () => {
     const next: Errors = {};
-    if (!v.name.trim()) next.name = "Enter your full name";
-    if (!emailish(v.email.trim())) next.email = "Enter a valid email";
-    if (v.phone.replace(/\D/g, "").length < 7) next.phone = "Enter a valid phone number";
-    if (v.password.length < 6) next.password = "At least 6 characters";
-    if (!v.confirm || v.confirm !== v.password) next.confirm = "Passwords do not match";
+    if (!v.name.trim()) next.name = t("auth.register.errName");
+    if (!emailish(v.email.trim())) next.email = t("auth.register.errEmail");
+    if (v.phone.replace(/\D/g, "").length < 7) next.phone = t("auth.register.errPhone");
+    if (v.password.length < 6) next.password = t("auth.register.errPwShort");
+    if (!v.confirm || v.confirm !== v.password) next.confirm = t("auth.register.errConfirm");
     setErrors(next);
     if (Object.keys(next).length) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
@@ -103,7 +106,7 @@ export default function RegisterScreen() {
     setTimeout(() => {
       setBusy(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setToast(`Welcome to Chiya, ${v.name.trim().split(" ")[0]}`);
+      setToast(t("auth.register.welcomeToast", { name: v.name.trim().split(" ")[0] }));
     }, 620);
   };
 
@@ -118,25 +121,25 @@ export default function RegisterScreen() {
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          <Pressable onPress={goLogin} hitSlop={10} style={styles.back} accessibilityLabel="Back to log in">
-            <ArrowLeft size={22} color={colors.textSecondary} strokeWidth={2} />
+          <Pressable onPress={goLogin} hitSlop={10} style={styles.back} accessibilityLabel={t("auth.register.backToLogin")}>
+            <ArrowLeft size={22} color={colors.textSecondary} strokeWidth={2} style={rtlFlip(isRTL)} />
           </Pressable>
 
           <View style={styles.card}>
             <View style={styles.header}>
-              <Text style={[type.displaySm, styles.title, { color: colors.textPrimary }]}>Create your account</Text>
+              <Text style={[type.displaySm, styles.title, { color: colors.textPrimary }]}>{t("auth.register.title")}</Text>
               <Text style={[type.body, styles.subtitle, { color: colors.textSecondary, marginTop: space[2] }]}>
-                Join Chiya to save homes, manage enquiries, and book viewings.
+                {t("auth.register.subtitle")}
               </Text>
             </View>
 
             <View style={{ gap: space[2] }}>
               <TextField
-                label="Full name"
+                label={t("auth.register.name")}
                 value={v.name}
                 onChangeText={set("name")}
                 icon={User}
-                placeholder="Your full name"
+                placeholder={t("auth.register.namePlaceholder")}
                 error={errors.name}
                 autoCapitalize="words"
                 autoComplete="name"
@@ -144,11 +147,11 @@ export default function RegisterScreen() {
                 returnKeyType="next"
               />
               <TextField
-                label="Email"
+                label={t("auth.register.email")}
                 value={v.email}
                 onChangeText={set("email")}
                 icon={Mail}
-                placeholder="you@email.com"
+                placeholder={t("auth.register.emailPlaceholder")}
                 error={errors.email}
                 keyboardType="email-address"
                 autoComplete="email"
@@ -156,11 +159,11 @@ export default function RegisterScreen() {
                 returnKeyType="next"
               />
               <TextField
-                label="Phone number"
+                label={t("auth.register.phone")}
                 value={v.phone}
                 onChangeText={set("phone")}
                 icon={Phone}
-                placeholder="+964 7XX XXX XXXX"
+                placeholder={t("auth.register.phonePlaceholder")}
                 error={errors.phone}
                 keyboardType="phone-pad"
                 autoComplete="tel"
@@ -168,11 +171,11 @@ export default function RegisterScreen() {
                 returnKeyType="next"
               />
               <TextField
-                label="Password"
+                label={t("auth.register.password")}
                 value={v.password}
                 onChangeText={set("password")}
                 icon={Lock}
-                placeholder="Create a password"
+                placeholder={t("auth.register.passwordPlaceholder")}
                 error={errors.password}
                 secure
                 autoComplete="password-new"
@@ -180,11 +183,11 @@ export default function RegisterScreen() {
                 returnKeyType="next"
               />
               <TextField
-                label="Confirm password"
+                label={t("auth.register.confirm")}
                 value={v.confirm}
                 onChangeText={set("confirm")}
                 icon={Lock}
-                placeholder="Repeat password"
+                placeholder={t("auth.register.confirmPlaceholder")}
                 error={errors.confirm}
                 secure
                 autoComplete="password-new"
@@ -195,7 +198,7 @@ export default function RegisterScreen() {
 
               <View style={{ marginTop: space[4] }}>
                 <Button
-                  title={busy ? "Creating account…" : "Create account"}
+                  title={busy ? t("auth.register.submitting") : t("auth.register.submit")}
                   onPress={submit}
                   loading={busy}
                   disabled={!v.name.trim() || !v.email.trim() || !v.phone.trim() || !v.password || !v.confirm}
@@ -204,10 +207,10 @@ export default function RegisterScreen() {
             </View>
 
             <View style={[styles.switch, { marginTop: space[6] }]}>
-              <Text style={[type.bodySm, { color: colors.textSecondary }]}>Already have an account? </Text>
+              <Text style={[type.bodySm, { color: colors.textSecondary }]}>{t("auth.register.haveAccount")}</Text>
               <Pressable onPress={goLogin} hitSlop={8}>
                 <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: type.label.fontFamily }]}>
-                  Sign in
+                  {t("auth.register.signIn")}
                 </Text>
               </Pressable>
             </View>
@@ -227,7 +230,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 32,
   },
-  back: { alignSelf: "flex-start", padding: 8, marginLeft: -8, marginBottom: 16 },
+  back: { alignSelf: "flex-start", padding: 8, marginStart: -8, marginBottom: 16 },
   card: { width: "100%", maxWidth: 440, alignSelf: "center" },
   header: { marginBottom: 24 },
   title: { textAlign: "center" },

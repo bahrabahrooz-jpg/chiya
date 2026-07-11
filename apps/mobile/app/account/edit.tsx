@@ -16,6 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { User, Mail, Phone, MapPin, Pencil, SquarePen, Images, Camera, Trash2 } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { Button, TextField, ActionSheet, type SheetAction } from "@/components/ui";
 import { ScreenHeader } from "@/components/account/ScreenHeader";
 import { confirm } from "@/lib/confirm";
@@ -76,6 +77,7 @@ function Toast({ message, onHide }: { message: string; onHide: () => void }) {
 
 export default function EditProfileScreen() {
   const { colors, type, fontFamily } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const profile = useProfile();
@@ -120,15 +122,15 @@ export default function EditProfileScreen() {
   };
 
   const photoActions: SheetAction[] = [
-    { label: "Select existing photo", icon: Images, onPress: chooseFromLibrary },
-    { label: "Take a new photo", icon: Camera, onPress: takePhoto },
-    ...(avatar ? [{ label: "Delete photo", icon: Trash2, destructive: true, onPress: () => setAvatar(null) } as SheetAction] : []),
+    { label: t("edit.selectPhoto"), icon: Images, onPress: chooseFromLibrary },
+    { label: t("edit.takePhoto"), icon: Camera, onPress: takePhoto },
+    ...(avatar ? [{ label: t("edit.deletePhoto"), icon: Trash2, destructive: true, onPress: () => setAvatar(null) } as SheetAction] : []),
   ];
 
   const save = () => {
     const next: typeof errors = {};
-    if (fullName.trim().length < 2) next.fullName = "Enter your name";
-    if (!emailish(email)) next.email = "Enter a valid email";
+    if (fullName.trim().length < 2) next.fullName = t("edit.errName");
+    if (!emailish(email)) next.email = t("edit.errEmail");
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -141,15 +143,15 @@ export default function EditProfileScreen() {
       location: location.trim(),
       avatar,
     });
-    setToast("Profile updated");
+    setToast(t("edit.toastUpdated"));
     setEditing(false);
   };
 
   const deleteAccount = () =>
     confirm({
-      title: "Delete account",
-      message: "This permanently deletes your account and data. This can't be undone.",
-      confirmLabel: "Delete account",
+      title: t("edit.deleteAccount"),
+      message: t("edit.deleteMessage"),
+      confirmLabel: t("edit.deleteAccount"),
       destructive: true,
       icon: Trash2,
       onConfirm: () => router.replace("/login"),
@@ -158,14 +160,14 @@ export default function EditProfileScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
       <ScreenHeader
-        title="My profile"
+        title={t("edit.title")}
         right={
           editing ? (
-            <Pressable onPress={cancel} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel">
-              <Text style={[type.body, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>Cancel</Text>
+            <Pressable onPress={cancel} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.cancel")}>
+              <Text style={[type.body, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("common.cancel")}</Text>
             </Pressable>
           ) : (
-            <Pressable onPress={() => setEditing(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Edit profile">
+            <Pressable onPress={() => setEditing(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("edit.editProfile")}>
               <SquarePen size={20} color={colors.textPrimary} strokeWidth={2} />
             </Pressable>
           )
@@ -181,7 +183,7 @@ export default function EditProfileScreen() {
           keyboardDismissMode="on-drag"
         >
           <View style={styles.avatarBlock}>
-            <Pressable onPress={editing ? () => setPhotoMenu(true) : undefined} disabled={!editing} accessibilityRole="button" accessibilityLabel="Edit photo">
+            <Pressable onPress={editing ? () => setPhotoMenu(true) : undefined} disabled={!editing} accessibilityRole="button" accessibilityLabel={t("edit.editPhoto")}>
               {avatar ? (
                 <Image source={{ uri: avatar }} style={styles.avatarImg} />
               ) : (
@@ -203,49 +205,49 @@ export default function EditProfileScreen() {
 
           <View style={styles.form}>
             <TextField
-              label="Full name"
+              label={t("edit.fullName")}
               value={fullName}
               onChangeText={(v) => {
                 setFullName(v);
                 if (errors.fullName) setErrors((e) => ({ ...e, fullName: undefined }));
               }}
               icon={User}
-              placeholder="Your name"
+              placeholder={t("edit.namePlaceholder")}
               autoCapitalize="words"
               textContentType="name"
               editable={editing}
               error={errors.fullName}
             />
             <TextField
-              label="Email"
+              label={t("edit.email")}
               value={email}
               onChangeText={(v) => {
                 setEmail(v);
                 if (errors.email) setErrors((e) => ({ ...e, email: undefined }));
               }}
               icon={Mail}
-              placeholder="you@email.com"
+              placeholder={t("edit.emailPlaceholder")}
               keyboardType="email-address"
               textContentType="emailAddress"
               editable={editing}
               error={errors.email}
             />
             <TextField
-              label="Phone"
+              label={t("edit.phone")}
               value={phone}
               onChangeText={setPhone}
               icon={Phone}
-              placeholder="+964 …"
+              placeholder={t("edit.phonePlaceholder")}
               keyboardType="phone-pad"
               textContentType="telephoneNumber"
               editable={editing}
             />
             <TextField
-              label="Location"
+              label={t("edit.location")}
               value={location}
               onChangeText={setLocation}
               icon={MapPin}
-              placeholder="City, region"
+              placeholder={t("edit.locationPlaceholder")}
               autoCapitalize="words"
               editable={editing}
             />
@@ -254,7 +256,7 @@ export default function EditProfileScreen() {
           {!editing ? (
             <View style={styles.deleteBtn}>
               <Button
-                title="Delete account"
+                title={t("edit.deleteAccount")}
                 variant="destructive"
                 onPress={deleteAccount}
                 left={<Trash2 size={18} color={colors.error} strokeWidth={2} />}
@@ -265,7 +267,7 @@ export default function EditProfileScreen() {
 
         {editing ? (
           <View style={[styles.foot, { borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 12) }]}>
-            <Button title="Save changes" onPress={save} />
+            <Button title={t("edit.saveChanges")} onPress={save} />
           </View>
         ) : null}
       </KeyboardAvoidingView>

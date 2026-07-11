@@ -8,3 +8,5 @@ export { WhatsAppIcon } from "./WhatsAppIcon";
 export { ActionSheet, type SheetAction } from "./ActionSheet";
 export { ConfirmHost } from "./ConfirmHost";
 export { HighlightText } from "./HighlightText";
+export { SwipeRow } from "./SwipeRow";
+export { InstagramIcon, FacebookIcon, LinkedInIcon } from "./SocialIcons";

@@ -11,14 +11,18 @@ import {
   Languages,
   Palette,
   CircleHelp,
+  Headset,
   Info,
   ShieldCheck,
+  FileText,
   LogOut,
 } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
+import { rtlFlip } from "@/lib/rtl";
 import { useProfile, languageLabel } from "@/lib/profile";
 import { confirm } from "@/lib/confirm";
-import { useThemeMode, themeModeLabel } from "@/lib/theme-mode";
+import { useThemeMode } from "@/lib/theme-mode";
 import { useFavoriteIds } from "@/lib/favorites";
 import { useViewings } from "@/lib/viewings";
 import { useMyListings } from "@/lib/my-listings";
@@ -35,6 +39,7 @@ const initialsOf = (name: string) =>
 
 export default function ProfileScreen() {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t, isRTL } = useTranslation();
   const router = useRouter();
   const profile = useProfile();
   const themeMode = useThemeMode();
@@ -46,17 +51,17 @@ export default function ProfileScreen() {
   const savedAgents = agents.filter((a) => favIds.has(a.id)).length;
 
   const stats: { label: string; value: number; onPress: () => void }[] = [
-    { label: "Saved homes", value: savedHomes, onPress: () => router.push("/saved") },
-    { label: "Saved agents", value: savedAgents, onPress: () => router.push("/saved") },
-    { label: "Listings", value: myListings.length, onPress: () => router.push("/my-listings") },
-    { label: "Viewings", value: viewings.length, onPress: () => router.push("/viewings") },
+    { label: t("profile.savedHomes"), value: savedHomes, onPress: () => router.push("/saved") },
+    { label: t("profile.savedAgents"), value: savedAgents, onPress: () => router.push("/saved") },
+    { label: t("profile.listings"), value: myListings.length, onPress: () => router.push("/my-listings") },
+    { label: t("profile.viewings"), value: viewings.length, onPress: () => router.push("/viewings") },
   ];
 
   const logout = () =>
     confirm({
-      title: "Log out",
-      message: "You'll need to sign in again to access your account.",
-      confirmLabel: "Log out",
+      title: t("profile.logout"),
+      message: t("profile.logoutMessage"),
+      confirmLabel: t("profile.logout"),
       destructive: true,
       icon: LogOut,
       onConfirm: () => router.replace("/login"),
@@ -65,7 +70,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 26 }]}>Profile</Text>
+        <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 26 }]}>{t("profile.title")}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -99,7 +104,7 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
-          <ChevronRight size={20} color={colors.textTertiary} strokeWidth={2} />
+          <ChevronRight size={20} color={colors.textTertiary} strokeWidth={2} style={rtlFlip(isRTL)} />
         </Pressable>
 
         {/* Stats strip */}
@@ -123,40 +128,43 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        <Group title="Account">
-          <MenuRow icon={UserRound} label="My profile" onPress={() => router.push("/account/edit")} />
-          <MenuRow icon={KeyRound} label="Change password" divider onPress={() => router.push("/account/change-password")} />
-          <MenuRow icon={Heart} label="Saved" divider onPress={() => router.push("/saved")} />
-          <MenuRow icon={Bell} label="Notifications" divider onPress={() => router.push("/account/notifications")} />
+        <Group title={t("profile.groupAccount")}>
+          <MenuRow icon={UserRound} label={t("profile.myProfile")} onPress={() => router.push("/account/edit")} />
+          <MenuRow icon={KeyRound} label={t("profile.changePassword")} divider onPress={() => router.push("/account/change-password")} />
+          <MenuRow icon={Heart} label={t("profile.saved")} divider onPress={() => router.push("/saved")} />
+          <MenuRow icon={Bell} label={t("profile.notifications")} divider onPress={() => router.push("/account/notifications")} />
         </Group>
 
-        <Group title="Preferences">
+        <Group title={t("profile.groupPreferences")}>
           <MenuRow
             icon={Palette}
-            label="Appearance"
-            value={themeModeLabel(themeMode)}
+            label={t("profile.appearance")}
+            value={t(`appearance.${themeMode}`)}
             onPress={() => router.push("/account/appearance")}
           />
           <MenuRow
             icon={Languages}
-            label="Language"
+            label={t("profile.language")}
             value={languageLabel(profile.language)}
             divider
             onPress={() => router.push("/account/language")}
           />
         </Group>
 
-        <Group title="Support">
-          <MenuRow icon={CircleHelp} label="Help & support" disabled />
-          <MenuRow icon={Info} label="About Chiya" divider disabled />
-          <MenuRow icon={ShieldCheck} label="Terms & privacy" divider disabled />
+        <Group title={t("profile.groupSupport")}>
+          <MenuRow icon={CircleHelp} label={t("profile.help")} onPress={() => router.push("/account/help")} />
+          <MenuRow icon={Headset} label={t("profile.contact")} divider onPress={() => router.push("/account/contact")} />
+          <MenuRow icon={Info} label={t("profile.about")} divider onPress={() => router.push("/account/about")} />
+        </Group>
+
+        <Group title={t("profile.groupLegal")}>
+          <MenuRow icon={ShieldCheck} label={t("profile.privacy")} onPress={() => router.push("/account/privacy")} />
+          <MenuRow icon={FileText} label={t("profile.terms")} divider onPress={() => router.push("/account/terms")} />
         </Group>
 
         <Group>
-          <MenuRow icon={LogOut} label="Log out" danger chevron={false} bareIcon onPress={logout} />
+          <MenuRow icon={LogOut} label={t("profile.logout")} danger chevron={false} bareIcon onPress={logout} />
         </Group>
-
-        <Text style={[type.bodySm, styles.footer, { color: colors.textTertiary }]}>Chiya Estate · v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -174,5 +182,4 @@ const styles = StyleSheet.create({
   stats: { flexDirection: "row", borderWidth: 1, overflow: "hidden" },
   stat: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 16, gap: 3 },
   statNum: { fontSize: 24 },
-  footer: { textAlign: "center", marginTop: 4 },
 });

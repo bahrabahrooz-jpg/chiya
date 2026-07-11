@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { formatDayMonth } from "@/lib/i18n/format";
 
 /**
  * Viewings — an app-wide store for viewing requests the member creates from the
@@ -24,19 +25,15 @@ export interface Viewing {
   createdAt: number;
 }
 
-const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 /** ISO (yyyy-mm-dd) for a Date, using local time. */
 export function toISODate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** "Mon, Jul 14" from an ISO date. */
+/** Locale-aware "Mon, Jul 14" / "الاثنين، 14 تموز" from an ISO date. */
 export function formatViewingDate(iso: string): string {
   const [y, m, day] = iso.split("-").map(Number);
-  const d = new Date(y, m - 1, day);
-  return `${DOW[d.getDay()]}, ${MON[d.getMonth()]} ${d.getDate()}`;
+  return formatDayMonth(new Date(y, m - 1, day));
 }
 
 const STORAGE_KEY = "chiya.viewings.v1";

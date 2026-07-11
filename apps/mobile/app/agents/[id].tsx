@@ -16,13 +16,18 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation, type Locale } from "@/lib/i18n";
+import { rtlFlip } from "@/lib/rtl";
 import { Button, WhatsAppIcon } from "@/components/ui";
 import { PropertyCard } from "@/components/home/PropertyCard";
 import { getAgent, listings, user } from "@/components/home/data";
 import { confirm } from "@/lib/confirm";
 import { shareAgent } from "@/lib/share";
 
-const SPECIALTIES = ["Luxury villas", "Apartments", "Investment", "New developments", "Family homes"];
+const SPECIALTIES: Record<Locale, string[]> = {
+  en: ["Luxury villas", "Apartments", "Investment", "New developments", "Family homes"],
+  ar: ["فلل فاخرة", "شقق", "استثمار", "مشاريع جديدة", "منازل عائلية"],
+};
 
 interface Review {
   id: string;
@@ -32,11 +37,18 @@ interface Review {
   text: string;
   own?: boolean;
 }
-const INITIAL_REVIEWS: Review[] = [
-  { id: "r1", name: "Sara Mahmood", stars: 5, when: "2 weeks ago", text: "Incredibly professional and responsive — found us the perfect home within days." },
-  { id: "r2", name: "Karwan Ali", stars: 5, when: "1 month ago", text: "Smooth process from viewing to keys. Deep knowledge of the local market." },
-  { id: "r3", name: "Nma Hassan", stars: 4, when: "2 months ago", text: "Patient and honest throughout. Would happily recommend to friends." },
-];
+const INITIAL_REVIEWS: Record<Locale, Review[]> = {
+  en: [
+    { id: "r1", name: "Sara Mahmood", stars: 5, when: "2 weeks ago", text: "Incredibly professional and responsive — found us the perfect home within days." },
+    { id: "r2", name: "Karwan Ali", stars: 5, when: "1 month ago", text: "Smooth process from viewing to keys. Deep knowledge of the local market." },
+    { id: "r3", name: "Nma Hassan", stars: 4, when: "2 months ago", text: "Patient and honest throughout. Would happily recommend to friends." },
+  ],
+  ar: [
+    { id: "r1", name: "سارة محمود", stars: 5, when: "قبل أسبوعين", text: "محترفة وسريعة الاستجابة للغاية — وجدت لنا المنزل المثالي خلال أيام." },
+    { id: "r2", name: "كاروان علي", stars: 5, when: "قبل شهر", text: "عملية سلسة من المعاينة حتى استلام المفاتيح. معرفة عميقة بالسوق المحلي." },
+    { id: "r3", name: "نما حسن", stars: 4, when: "قبل شهرين", text: "صبور وصادق طوال الوقت. أوصي به للأصدقاء بكل سرور." },
+  ],
+};
 
 const initials = (name: string) =>
   name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -80,6 +92,7 @@ function ReviewComposer({
   onCancel?: () => void;
 }) {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const editing = !!initial;
   const [rating, setRating] = useState(initial?.stars ?? 0);
   const [text, setText] = useState(initial?.text ?? "");
@@ -99,11 +112,11 @@ function ReviewComposer({
     <View style={[styles.composer, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
       <View style={styles.composerHead}>
         <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>
-          {editing ? "Edit your review" : "Rate your experience"}
+          {editing ? t("agentDetail.editReview") : t("agentDetail.rateExperience")}
         </Text>
         {onCancel ? (
           <Pressable onPress={onCancel} hitSlop={8}>
-            <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>Cancel</Text>
+            <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("common.cancel")}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -117,20 +130,21 @@ function ReviewComposer({
         ]}
         value={text}
         onChangeText={setText}
-        placeholder="Share your experience…"
+        placeholder={t("agentDetail.sharePlaceholder")}
         placeholderTextColor={colors.textPlaceholder}
         multiline
         selectionColor={colors.brandForeground}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
       />
-      <Button title={editing ? "Update review" : "Post review"} onPress={post} disabled={!canPost} />
+      <Button title={editing ? t("agentDetail.updateReview") : t("agentDetail.postReview")} onPress={post} disabled={!canPost} />
     </View>
   );
 }
 
 function ReviewCard({ review: r, onEdit, onDelete }: { review: Review; onEdit?: () => void; onDelete?: () => void }) {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={[styles.review, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
       <View style={styles.reviewHead}>
@@ -152,12 +166,12 @@ function ReviewCard({ review: r, onEdit, onDelete }: { review: Review; onEdit?: 
         <View style={styles.reviewActions}>
           {onEdit ? (
             <Pressable onPress={onEdit} hitSlop={6}>
-              <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>Edit</Text>
+              <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.edit")}</Text>
             </Pressable>
           ) : null}
           {onDelete ? (
             <Pressable onPress={onDelete} hitSlop={6}>
-              <Text style={[type.bodySm, { color: colors.textError, fontFamily: fontFamily.sansSemibold }]}>Delete</Text>
+              <Text style={[type.bodySm, { color: colors.textError, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.delete")}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -168,23 +182,24 @@ function ReviewCard({ review: r, onEdit, onDelete }: { review: Review; onEdit?: 
 
 export default function AgentDetailScreen() {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t, locale, isRTL } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const agent = getAgent(id);
-  const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
+  const [reviews, setReviews] = useState<Review[]>(() => INITIAL_REVIEWS[locale]);
   const [editing, setEditing] = useState<Review | null>(null);
 
   const addReview = (stars: number, text: string) =>
-    setReviews((rs) => [{ id: `r-${Date.now()}`, name: user.fullName, stars, when: "Just now", text, own: true }, ...rs]);
+    setReviews((rs) => [{ id: `r-${Date.now()}`, name: user.fullName, stars, when: t("agentDetail.justNow"), text, own: true }, ...rs]);
   const updateReview = (rid: string, stars: number, text: string) =>
-    setReviews((rs) => rs.map((r) => (r.id === rid ? { ...r, stars, text, when: "Edited just now" } : r)));
+    setReviews((rs) => rs.map((r) => (r.id === rid ? { ...r, stars, text, when: t("agentDetail.editedJustNow") } : r)));
   const deleteReview = (rid: string) => setReviews((rs) => rs.filter((r) => r.id !== rid));
   const confirmDelete = (rid: string) =>
     confirm({
-      title: "Delete review",
-      message: "This can't be undone.",
-      confirmLabel: "Delete review",
+      title: t("agentDetail.deleteReviewTitle"),
+      message: t("agentDetail.deleteReviewMessage"),
+      confirmLabel: t("agentDetail.deleteReviewTitle"),
       destructive: true,
       icon: Trash2,
       onConfirm: () => deleteReview(rid),
@@ -193,9 +208,9 @@ export default function AgentDetailScreen() {
   if (!agent) {
     return (
       <SafeAreaView style={[styles.safe, styles.center, { backgroundColor: colors.surfacePage }]}>
-        <Text style={[type.bodyLg, { color: colors.textPrimary }]}>Agent not found</Text>
+        <Text style={[type.bodyLg, { color: colors.textPrimary }]}>{t("agentDetail.notFound")}</Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={[type.body, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>Go back</Text>
+          <Text style={[type.body, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.goBack")}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -204,18 +219,23 @@ export default function AgentDetailScreen() {
   const first = agent.name.split(" ")[0];
   const sold = agent.listings * 4 + (agent.reviews % 15);
   const experience = 3 + (agent.listings % 7);
-  const bio = `${agent.name} is a verified ${agent.agency} agent based in ${agent.city}. With a ${agent.rating.toFixed(
-    1,
-  )}-star rating across ${agent.reviews} client reviews and ${agent.listings} active listings, ${first} helps buyers, sellers, and renters find the right home across ${agent.city}.`;
+  const bio =
+    locale === "ar"
+      ? `${agent.name} وكيل موثّق لدى ${agent.agency} ومقره ${agent.city}. بتقييم ${agent.rating.toFixed(
+          1,
+        )} نجمة عبر ${agent.reviews} مراجعة و${agent.listings} إعلانًا نشطًا، يساعد ${first} المشترين والبائعين والمستأجرين في العثور على المنزل المناسب في ${agent.city}.`
+      : `${agent.name} is a verified ${agent.agency} agent based in ${agent.city}. With a ${agent.rating.toFixed(
+          1,
+        )}-star rating across ${agent.reviews} client reviews and ${agent.listings} active listings, ${first} helps buyers, sellers, and renters find the right home across ${agent.city}.`;
   const agentListings = listings;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.plainBtn}>
-          <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} />
+          <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={2} style={rtlFlip(isRTL)} />
         </Pressable>
-        <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>Agent Profile</Text>
+        <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.title")}</Text>
         <Pressable onPress={() => shareAgent(agent)} hitSlop={8} style={[styles.hbtn, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle }]}>
           <Share2 size={19} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
@@ -242,25 +262,25 @@ export default function AgentDetailScreen() {
           <View style={styles.factRow}>
             <Star size={15} color={colors.brandAccent} fill={colors.brandAccent} strokeWidth={0} />
             <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{agent.rating.toFixed(1)}</Text>
-            <Text style={[type.bodySm, { color: colors.textTertiary }]}>({agent.reviews} reviews)</Text>
+            <Text style={[type.bodySm, { color: colors.textTertiary }]}>{t("agentDetail.reviewsParen", { count: agent.reviews })}</Text>
           </View>
         </View>
 
         {/* Stats */}
         <View style={styles.stats}>
-          <StatTile Icon={ClipboardList} value={String(agent.listings)} label="Listings" />
-          <StatTile Icon={TrendingUp} value={String(sold)} label="Sold" />
-          <StatTile Icon={CalendarCheck} value={`${experience} yrs`} label="Experience" />
+          <StatTile Icon={ClipboardList} value={String(agent.listings)} label={t("agentDetail.listings")} />
+          <StatTile Icon={TrendingUp} value={String(sold)} label={t("agentDetail.sold")} />
+          <StatTile Icon={CalendarCheck} value={t("property.yrs", { count: experience })} label={t("agentDetail.experience")} />
         </View>
 
         <View style={styles.body}>
           {/* About */}
           <View style={styles.section}>
-            <Heading>{`About ${first}`}</Heading>
+            <Heading>{t("agentDetail.about", { name: first })}</Heading>
             <Text style={[type.body, { color: colors.textSecondary, lineHeight: 24 }]}>{bio}</Text>
-            <Text style={[type.label, { color: colors.textSecondary, marginTop: 18, marginBottom: 10 }]}>SPECIALTIES</Text>
+            <Text style={[type.label, { color: colors.textSecondary, marginTop: 18, marginBottom: 10 }]}>{t("agentDetail.specialties")}</Text>
             <View style={styles.chips}>
-              {SPECIALTIES.map((s) => (
+              {SPECIALTIES[locale].map((s) => (
                 <View key={s} style={[styles.chip, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.pill }]}>
                   <Text style={[type.bodySm, { color: colors.textSecondary }]}>{s}</Text>
                 </View>
@@ -271,9 +291,9 @@ export default function AgentDetailScreen() {
           {/* Active listings */}
           <View style={[styles.sectionDivided, { borderTopColor: colors.borderSubtle }]}>
             <View style={styles.listHead}>
-              <Heading>Active listings</Heading>
+              <Heading>{t("agentDetail.activeListings")}</Heading>
               <Pressable onPress={() => router.push({ pathname: "/agent-listings/[id]", params: { id: agent.id } })} hitSlop={8}>
-                <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>See all</Text>
+                <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.seeAll")}</Text>
               </Pressable>
             </View>
           </View>
@@ -289,7 +309,7 @@ export default function AgentDetailScreen() {
           {/* Reviews */}
           <View style={[styles.sectionDivided, { borderTopColor: colors.borderSubtle }]}>
             <View style={styles.listHead}>
-              <Heading>Reviews</Heading>
+              <Heading>{t("agentDetail.reviews")}</Heading>
               <Text style={[type.bodySm, { color: colors.textTertiary }]}>{reviews.length}</Text>
             </View>
             <ReviewComposer
@@ -319,18 +339,18 @@ export default function AgentDetailScreen() {
       {/* Sticky contact bar */}
       <View style={[styles.bar, { backgroundColor: colors.surfaceCard, borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 12) }]}>
         <Pressable
-          onPress={() => Alert.alert("Call", `Calling ${agent.name}…`)}
+          onPress={() => Alert.alert(t("agentDetail.call"), t("agentDetail.callingMessage", { name: agent.name }))}
           style={[styles.callBtn, { borderColor: colors.borderDefault, borderRadius: radius.control }]}
         >
           <Phone size={22} color={colors.textPrimary} strokeWidth={2} />
         </Pressable>
         <View style={{ flex: 1 }}>
           <Button
-            title="WhatsApp"
+            title={t("agentDetail.whatsapp")}
             left={<WhatsAppIcon size={19} color={colors.textOnBrand} />}
             onPress={() =>
               Linking.openURL(
-                `https://wa.me/9647501234567?text=${encodeURIComponent(`Hi ${agent.name}, I'm interested in your listings on Chiya.`)}`,
+                `https://wa.me/9647501234567?text=${encodeURIComponent(t("agentDetail.whatsappMessage", { name: agent.name }))}`,
               ).catch(() => {})
             }
           />
@@ -350,13 +370,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
   },
-  plainBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center", marginLeft: -8 },
+  plainBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center", marginStart: -8 },
   hbtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   hero: { alignItems: "center", paddingHorizontal: 20, paddingTop: 8 },
   avatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: "#e9edf0" },
   vbadge: {
     position: "absolute",
-    right: -2,
+    end: -2,
     bottom: -2,
     width: 30,
     height: 30,

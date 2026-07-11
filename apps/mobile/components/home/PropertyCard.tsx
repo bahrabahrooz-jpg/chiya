@@ -2,8 +2,9 @@ import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Heart, MapPin, BedDouble, Bath, Maximize, type LucideIcon } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { useIsFavorite, toggleFavorite } from "@/lib/favorites";
-import { priceLabel, type Listing } from "./data";
+import { priceLabel, labelFor, dealCategories, type Listing } from "./data";
 
 function Spec({ Icon, label }: { Icon: LucideIcon; label: string }) {
   const { colors, type } = useTheme();
@@ -18,9 +19,10 @@ function Spec({ Icon, label }: { Icon: LucideIcon; label: string }) {
 /** PropertyCard — image with deal badge + favorite, then title/price and specs. */
 export function PropertyCard({ property: p, fullWidth = false }: { property: Listing; fullWidth?: boolean }) {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const fav = useIsFavorite(p.id);
-  const dealLabel = p.deal === "rent" ? "For Rent" : "For Sale";
+  const dealLabel = labelFor(dealCategories, p.deal === "rent" ? "rent" : "buy");
 
   return (
     <Pressable
@@ -36,7 +38,7 @@ export function PropertyCard({ property: p, fullWidth = false }: { property: Lis
         <View style={styles.badge}>
           <Text style={[styles.badgeTxt, { color: colors.brandPrimary, fontFamily: fontFamily.sansSemibold }]}>{dealLabel}</Text>
         </View>
-        <Pressable style={styles.heart} onPress={() => toggleFavorite(p.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save">
+        <Pressable style={styles.heart} onPress={() => toggleFavorite(p.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("card.save")}>
           <Heart size={18} color={fav ? colors.error : "#33383F"} fill={fav ? colors.error : "transparent"} strokeWidth={2} />
         </Pressable>
       </View>
@@ -59,9 +61,9 @@ export function PropertyCard({ property: p, fullWidth = false }: { property: Lis
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
         <View style={styles.specs}>
-          {p.beds != null ? <Spec Icon={BedDouble} label={`${p.beds} Bed`} /> : null}
-          {p.baths != null ? <Spec Icon={Bath} label={`${p.baths} Bath`} /> : null}
-          <Spec Icon={Maximize} label={`${p.area} m²`} />
+          {p.beds != null ? <Spec Icon={BedDouble} label={t("spec.bed", { count: p.beds })} /> : null}
+          {p.baths != null ? <Spec Icon={Bath} label={t("spec.bath", { count: p.baths })} /> : null}
+          <Spec Icon={Maximize} label={t("spec.areaSqm", { area: p.area })} />
         </View>
       </View>
     </Pressable>
@@ -76,7 +78,7 @@ const styles = StyleSheet.create({
   badge: {
     position: "absolute",
     top: 12,
-    left: 12,
+    start: 12,
     backgroundColor: "rgba(255,255,255,0.94)",
     borderRadius: 999,
     paddingHorizontal: 10,
@@ -86,7 +88,7 @@ const styles = StyleSheet.create({
   heart: {
     position: "absolute",
     top: 10,
-    right: 10,
+    end: 10,
     width: 34,
     height: 34,
     borderRadius: 17,

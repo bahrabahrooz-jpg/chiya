@@ -1,13 +1,16 @@
-import { useMemo, useState } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet, Keyboard } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { View, Text, ScrollView, Pressable, StyleSheet, Keyboard, type TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { X, LayoutList, Map as MapIcon, MapPin, Clock, Search as SearchIcon } from "lucide-react-native";
+import { useLocalSearchParams } from "expo-router";
+import { X, LayoutList, Map as MapIcon, MapPin, Clock, Search as SearchIcon, ChevronDown } from "lucide-react-native";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { HighlightText } from "@/components/ui";
 import { HomeSearchBar } from "@/components/home/HomeSearchBar";
 import { PropertyCard } from "@/components/home/PropertyCard";
 import { PropertyMap } from "@/components/home/PropertyMap";
 import { FilterDrawer } from "@/components/home/FilterDrawer";
+import { SortSheet } from "@/components/home/SortSheet";
 import {
   emptyFilters,
   countFilters,
@@ -19,6 +22,10 @@ import {
   beds as bedOpts,
   baths as bathOpts,
   amenities as amenityOpts,
+  cityLabel,
+  allAreas,
+  allProjects,
+  sortShortLabel,
   type Filters,
 } from "@/components/home/data";
 import { priceRangeLabel } from "@/components/home/PriceRange";
@@ -27,15 +34,36 @@ import { propertySearchHistory } from "@/lib/search-history";
 
 export default function SearchScreen() {
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [deal, setDeal] = useState("all");
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [view, setView] = useState<"list" | "map">("list");
   const [searchFocused, setSearchFocused] = useState(false);
-  const sort = "recommended";
+  const [sort, setSort] = useState("");
+  const [sortOpen, setSortOpen] = useState(false);
+  const inputRef = useRef<TextInput | null>(null);
 
-  const results = useMemo(() => searchListings({ query, deal, filters, sort }), [query, deal, filters]);
+  // Deep-link params from the Home screen (Buy/Rent, a property type, sort,
+  // open-filters, or focus). A `ts` nonce makes each tap apply even when the
+  // tab is already mounted and the same option is chosen again.
+  const params = useLocalSearchParams<{ deal?: string; type?: string; sort?: string; openFilters?: string; focus?: string; ts?: string }>();
+  const lastTs = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!params.ts || params.ts === lastTs.current) return;
+    lastTs.current = params.ts;
+    if (params.deal) setDeal(params.deal);
+    if (params.type) setFilters((f) => ({ ...f, types: [params.type as string] }));
+    if (params.sort) setSort(params.sort === "default" ? "" : params.sort);
+    if (params.openFilters === "1") setDrawerOpen(true);
+    if (params.focus === "1") requestAnimationFrame(() => inputRef.current?.focus());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.ts]);
+
+  const results = useMemo(() => searchListings({ query, deal, filters, sort }), [query, deal, filters, sort]);
+  // A non-empty sort is a custom (non-Default) choice — the pill reflects it.
+  const sorted = sort !== "";
   const history = propertySearchHistory.useHistory();
   const places = useMemo(() => suggestPlaces(query), [query]);
 
@@ -49,7 +77,13 @@ export default function SearchScreen() {
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
   if (deal !== "all") chips.push({ key: "deal", label: labelFor(dealCategories, deal), onRemove: () => setDeal("all") });
   filters.cities.forEach((c) =>
-    chips.push({ key: `city-${c}`, label: c, onRemove: () => setFilters((f) => ({ ...f, cities: f.cities.filter((x) => x !== c) })) }),
+    chips.push({ key: `city-${c}`, label: cityLabel(c), onRemove: () => setFilters((f) => ({ ...f, cities: f.cities.filter((x) => x !== c) })) }),
+  );
+  filters.areas.forEach((a) =>
+    chips.push({ key: `area-${a}`, label: labelFor(allAreas, a), onRemove: () => setFilters((f) => ({ ...f, areas: f.areas.filter((x) => x !== a) })) }),
+  );
+  filters.projects.forEach((p) =>
+    chips.push({ key: `project-${p}`, label: labelFor(allProjects, p), onRemove: () => setFilters((f) => ({ ...f, projects: f.projects.filter((x) => x !== p) })) }),
   );
   filters.types.forEach((t) =>
     chips.push({ key: `type-${t}`, label: labelFor(propertyTypes, t), onRemove: () => setFilters((f) => ({ ...f, types: f.types.filter((x) => x !== t) })) }),
@@ -59,9 +93,9 @@ export default function SearchScreen() {
   if (filters.size)
     chips.push({ key: "size", label: areaRangeLabel(filters.size), onRemove: () => setFilters((f) => ({ ...f, size: null })) });
   if (filters.beds)
-    chips.push({ key: "beds", label: filters.beds === "0" ? "Studio" : `${labelFor(bedOpts, filters.beds)} Beds`, onRemove: () => setFilters((f) => ({ ...f, beds: "" })) });
+    chips.push({ key: "beds", label: filters.beds === "0" ? t("search.studio") : t("search.bedsSuffix", { label: labelFor(bedOpts, filters.beds) }), onRemove: () => setFilters((f) => ({ ...f, beds: "" })) });
   if (filters.baths)
-    chips.push({ key: "baths", label: `${labelFor(bathOpts, filters.baths)} Baths`, onRemove: () => setFilters((f) => ({ ...f, baths: "" })) });
+    chips.push({ key: "baths", label: t("search.bathsSuffix", { label: labelFor(bathOpts, filters.baths) }), onRemove: () => setFilters((f) => ({ ...f, baths: "" })) });
   filters.amenities.forEach((a) =>
     chips.push({ key: `amen-${a}`, label: labelFor(amenityOpts, a), onRemove: () => setFilters((f) => ({ ...f, amenities: f.amenities.filter((x) => x !== a) })) }),
   );
@@ -80,13 +114,14 @@ export default function SearchScreen() {
           onOpenFilters={() => setDrawerOpen(true)}
           activeCount={countFilters(filters)}
           onFocusChange={setSearchFocused}
+          inputRef={inputRef}
         />
       </View>
       <Pressable
         onPress={() => setView(view === "list" ? "map" : "list")}
         style={[styles.viewBtn, { backgroundColor: colors.surfaceCard, borderColor: colors.borderDefault, borderRadius: radius.control }]}
         accessibilityRole="button"
-        accessibilityLabel={view === "list" ? "Show map" : "Show list"}
+        accessibilityLabel={view === "list" ? t("search.showMap") : t("search.showList")}
       >
         {view === "list" ? (
           <MapIcon size={20} color={colors.textPrimary} strokeWidth={2} />
@@ -104,7 +139,7 @@ export default function SearchScreen() {
         style={[type.displaySm, styles.title, { color: colors.textPrimary, fontSize: 26 }, (view === "map" || searchFocused) && styles.hidden]}
         accessibilityElementsHidden={view === "map" || searchFocused}
       >
-        Search properties
+        {t("search.title")}
       </Text>
       {searchRow}
     </>
@@ -115,7 +150,7 @@ export default function SearchScreen() {
       {query.trim().length > 0 ? (
         places.length > 0 ? (
           <>
-            <Text style={[type.label, styles.suggHead, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>LOCATIONS</Text>
+            <Text style={[type.label, styles.suggHead, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>{t("search.locations")}</Text>
             {places.map((p) => (
               <Pressable key={p} onPress={() => pickSuggestion(p)} style={({ pressed }) => [styles.suggRow, pressed && { backgroundColor: colors.surfaceSunken }]}>
                 <MapPin size={18} color={colors.textTertiary} strokeWidth={2} />
@@ -125,15 +160,15 @@ export default function SearchScreen() {
           </>
         ) : (
           <View style={styles.suggEmpty}>
-            <Text style={[type.body, { color: colors.textSecondary }]}>No locations match “{query.trim()}”.</Text>
+            <Text style={[type.body, { color: colors.textSecondary }]}>{t("search.noLocations", { query: query.trim() })}</Text>
           </View>
         )
       ) : history.length > 0 ? (
         <>
           <View style={styles.suggHeadRow}>
-            <Text style={[type.label, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>RECENT SEARCHES</Text>
+            <Text style={[type.label, { color: colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>{t("search.recentSearches")}</Text>
             <Pressable onPress={propertySearchHistory.clear} hitSlop={8}>
-              <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>Clear</Text>
+              <Text style={[type.bodySm, { color: colors.textBrand, fontFamily: fontFamily.sansSemibold }]}>{t("search.clear")}</Text>
             </Pressable>
           </View>
           {history.map((h) => (
@@ -150,7 +185,7 @@ export default function SearchScreen() {
         <View style={styles.suggEmpty}>
           <SearchIcon size={26} color={colors.textTertiary} strokeWidth={2} />
           <Text style={[type.body, { color: colors.textSecondary, textAlign: "center", marginTop: 10 }]}>
-            Search by city or area — Erbil, Ankawa, Sulaymaniyah…
+            {t("search.hint")}
           </Text>
         </View>
       )}
@@ -193,14 +228,42 @@ export default function SearchScreen() {
                   </Pressable>
                 ))}
                 <Pressable onPress={clearAll} style={styles.clearAll} hitSlop={6}>
-                  <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>Clear all</Text>
+                  <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("search.clearAll")}</Text>
                 </Pressable>
               </ScrollView>
             ) : null}
 
-            <Text style={[styles.pad, styles.resultsCount, type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansMedium }]}>
-              {results.length} result{results.length === 1 ? "" : "s"}
-            </Text>
+            <View style={[styles.pad, styles.resultsRow]}>
+              <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansMedium }]}>
+                {t(results.length === 1 ? "search.resultOne" : "search.resultOther", { count: results.length })}
+              </Text>
+              <Pressable
+                onPress={() => setSortOpen(true)}
+                style={[
+                  styles.sortBtn,
+                  {
+                    borderRadius: radius.pill,
+                    borderColor: sorted ? colors.brandForeground : colors.borderDefault,
+                    backgroundColor: sorted ? colors.brandSubtle : colors.surfaceCard,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t("sort.title")}
+              >
+                <Text
+                  style={[
+                    type.bodySm,
+                    {
+                      color: sorted ? colors.brandForeground : colors.textSecondary,
+                      fontFamily: sorted ? fontFamily.sansSemibold : fontFamily.sansMedium,
+                    },
+                  ]}
+                >
+                  {sorted ? sortShortLabel(sort) : t("sort.label")}
+                </Text>
+                <ChevronDown size={15} color={sorted ? colors.brandForeground : colors.textTertiary} strokeWidth={2} />
+              </Pressable>
+            </View>
 
             {results.length > 0 ? (
               results.map((p) => (
@@ -211,14 +274,14 @@ export default function SearchScreen() {
             ) : (
               <View style={styles.empty}>
                 <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold, textAlign: "center" }]}>
-                  No homes found
+                  {t("search.noHomesTitle")}
                 </Text>
                 <Text style={[type.body, { color: colors.textSecondary, textAlign: "center", marginTop: 6 }]}>
-                  Try adjusting your search or filters.
+                  {t("search.noHomesBody")}
                 </Text>
                 {chips.length > 0 ? (
                   <Pressable onPress={clearAll} style={[styles.clearBtn, { borderColor: colors.borderDefault, borderRadius: radius.control }]}>
-                    <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>Clear filters</Text>
+                    <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("search.clearFilters")}</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -237,6 +300,8 @@ export default function SearchScreen() {
           setDeal(d);
         }}
       />
+
+      <SortSheet open={sortOpen} onClose={() => setSortOpen(false)} value={sort} onChange={setSort} />
     </SafeAreaView>
   );
 }
@@ -268,7 +333,8 @@ const styles = StyleSheet.create({
   suggEmpty: { alignItems: "center", justifyContent: "center", paddingTop: 48, paddingHorizontal: 40 },
   mapOverlay: { position: "absolute", top: 0, left: 0, right: 0 },
   viewBtn: { width: 52, height: 52, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  resultsCount: { marginTop: 18, marginBottom: 4 },
+  resultsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 4 },
+  sortBtn: { flexDirection: "row", alignItems: "center", gap: 5, height: 34, paddingHorizontal: 12, borderWidth: 1 },
   resultItem: { marginTop: 14 },
   empty: { alignItems: "center", paddingTop: 60, paddingHorizontal: 24 },
   clearBtn: { marginTop: 20, borderWidth: 1, paddingHorizontal: 20, paddingVertical: 12 },

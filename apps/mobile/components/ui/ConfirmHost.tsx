@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Modal, View, Text, Pressable, StyleSheet, Animated, Easing, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
+import { useTranslation } from "@/lib/i18n";
 import { Button } from "./Button";
 import { useConfirm, dismissConfirm, type ConfirmOptions } from "@/lib/confirm";
 
@@ -13,6 +14,7 @@ const WINDOW_H = Dimensions.get("window").height;
 export function ConfirmHost() {
   const options = useConfirm();
   const { colors, type, fontFamily, radius } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   const [mounted, setMounted] = useState(false);
@@ -41,8 +43,8 @@ export function ConfirmHost() {
   if (!mounted || !cfg) return null;
 
   const Icon = cfg.icon;
-  const iconTint = cfg.destructive ? colors.error : colors.brandForeground;
-  const iconBg = cfg.destructive ? "rgba(192,57,43,0.12)" : colors.brandSubtle;
+  const iconTint = cfg.destructive ? colors.error : cfg.warning ? colors.warningText : colors.brandForeground;
+  const iconBg = cfg.destructive ? "rgba(192,57,43,0.12)" : cfg.warning ? colors.warningSurface : colors.brandSubtle;
 
   return (
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={dismissConfirm}>
@@ -78,13 +80,13 @@ export function ConfirmHost() {
           <View style={styles.actions}>
             <Button
               title={cfg.confirmLabel}
-              variant={cfg.destructive ? "destructive" : "primary"}
+              variant={cfg.destructive ? "destructive" : cfg.warning ? "warning" : "primary"}
               onPress={() => {
                 dismissConfirm();
                 cfg.onConfirm();
               }}
             />
-            <Button title={cfg.cancelLabel ?? "Cancel"} variant="secondary" onPress={dismissConfirm} />
+            <Button title={cfg.cancelLabel ?? t("common.cancel")} variant="secondary" onPress={dismissConfirm} />
           </View>
         </Animated.View>
       </View>
