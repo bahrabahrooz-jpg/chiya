@@ -319,10 +319,12 @@
   --info-600: #60A5FA;
   --info-700: #93C5FD;
 
-  /* Brand aliases — cores kept; "subtle" + hover retuned */
+  /* Brand aliases — cores kept; "subtle" + hover retuned.
+     Interaction greens mirror the mobile app (apps/mobile/theme/tokens.ts):
+     hover lifts to a luminous green, press darkens back down. */
   --brand-primary:        var(--green-700);
-  --brand-primary-hover:  var(--green-600);   /* dark = hover BRIGHTENS */
-  --brand-primary-active: var(--green-500);
+  --brand-primary-hover:  #4E9B77;            /* mobile brandHover — luminous green */
+  --brand-primary-active: #20503C;            /* mobile brandPrimaryPressed — press darkens */
   --brand-subtle:         #17271F;
   --brand-subtle-hover:   #1D3227;
   --brand-accent:         var(--gold-400);

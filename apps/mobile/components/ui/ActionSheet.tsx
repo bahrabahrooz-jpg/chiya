@@ -34,6 +34,8 @@ export function ActionSheet({
   const [mounted, setMounted] = useState(open);
   const ty = useRef(new Animated.Value(WINDOW_H)).current;
   const scrim = useRef(new Animated.Value(0)).current;
+  // The chosen action, run only once this sheet has fully dismissed (see below).
+  const pending = useRef<null | (() => void)>(null);
 
   useEffect(() => {
     if (open) {
@@ -50,6 +52,21 @@ export function ActionSheet({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Run the tapped action only once the Modal has actually left the tree. This
+  // effect fires AFTER React commits the unmount (mounted → false), so the native
+  // modal is gone — expo-image-picker (and any nested Modal) silently fail to
+  // present on iOS while another Modal is still on screen, which is the root of
+  // the intermittent "sometimes I can't pick a photo" bug. One extra frame lets
+  // the native dismissal settle before we present the picker.
+  useEffect(() => {
+    if (mounted) return;
+    const run = pending.current;
+    if (!run) return;
+    pending.current = null;
+    const id = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(id);
+  }, [mounted]);
 
   if (!mounted) return null;
 
@@ -71,10 +88,11 @@ export function ActionSheet({
                 <Pressable
                   key={a.label}
                   onPress={() => {
+                    // Defer the action until the sheet has fully dismissed (run in the
+                    // exit-animation completion above), so presenting a native picker or
+                    // another Modal doesn't collide with this one closing on iOS.
+                    pending.current = a.onPress;
                     onClose();
-                    // Run after the sheet finishes dismissing — presenting another
-                    // Modal (e.g. the confirm sheet) while this one is closing jams iOS.
-                    setTimeout(a.onPress, 260);
                   }}
                   style={({ pressed }) => [
                     styles.action,

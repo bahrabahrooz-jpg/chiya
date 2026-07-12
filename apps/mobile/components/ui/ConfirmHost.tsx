@@ -82,8 +82,13 @@ export function ConfirmHost() {
               title={cfg.confirmLabel}
               variant={cfg.destructive ? "destructive" : cfg.warning ? "warning" : "primary"}
               onPress={() => {
+                const run = cfg.onConfirm;
                 dismissConfirm();
-                cfg.onConfirm();
+                // Run the action only after the sheet has fully dismissed. Firing a
+                // LayoutAnimation (or presenting another modal) while this one is still
+                // animating out freezes the screen on iOS — the same reason ActionSheet
+                // defers presenting this sheet. 240ms > the 200ms exit animation above.
+                setTimeout(run, 240);
               }}
             />
             <Button title={cfg.cancelLabel ?? t("common.cancel")} variant="secondary" onPress={dismissConfirm} />

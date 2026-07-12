@@ -10,6 +10,7 @@ import { useTheme } from "@/theme";
 import { useTranslation } from "@/lib/i18n";
 import { Button, ActionSheet, type SheetAction } from "@/components/ui";
 import { SelectField, MultiSelectField } from "@/components/home/SelectField";
+import { AgentPicker } from "@/components/listing/AgentPicker";
 import { confirm } from "@/lib/confirm";
 import { useProfile } from "@/lib/profile";
 import { addMyListing, updateMyListing, getMyListing } from "@/lib/my-listings";
@@ -204,6 +205,7 @@ function MapPicker({ city, lat, lng, onMove }: { city: string; lat: string; lng:
         key={city || "default"}
         style={StyleSheet.absoluteFill}
         initialRegion={{ latitude: center.latitude, longitude: center.longitude, latitudeDelta: 0.08, longitudeDelta: 0.08 }}
+        legalLabelInsets={{ bottom: -9999, left: -9999, top: 0, right: 0 }}
         onPress={(e) => onMove(e.nativeEvent.coordinate.latitude, e.nativeEvent.coordinate.longitude)}
       >
         <Marker
@@ -396,8 +398,6 @@ export default function AddListingScreen() {
   const conditionOpts = [noneOpt, ...opts(CONDITIONS)];
   const furnishingOpts = [noneOpt, ...opts(FURNISHING)];
   const amenityOpts: Opt[] = AMENITIES.map((a) => ({ value: a.label, label: listingLabel(a.label), Icon: a.Icon }));
-  // Verified agents for the assignment dropdown (value = id, label = name).
-  const agentOpts: Opt[] = [noneOpt, ...agents.filter((a) => a.verified).map((a) => ({ value: a.id, label: a.name }))];
   const assignedAgentName = agents.find((a) => a.id === f.assignedAgent)?.name ?? "";
 
   // In-input currency / unit dropdowns open a compact bottom-sheet menu.
@@ -434,7 +434,7 @@ export default function AddListingScreen() {
   const removeVideo = (uri: string) => setF((s) => ({ ...s, videos: s.videos.filter((v) => v !== uri) }));
 
   const canNext =
-    step === 0 ? !!f.type && f.title.trim().length > 0 && f.price.trim().length > 0 : step === 1 ? !!f.city : true;
+    step === 0 ? !!f.type && f.title.trim().length > 0 && f.price.trim().length > 0 && f.area.trim().length > 0 : step === 1 ? !!f.city : true;
 
   const goNext = () => {
     if (step < LISTING_STEPS.length - 1) {
@@ -518,7 +518,7 @@ export default function AddListingScreen() {
                   leading={<InlineSelect label={f.currency} onPress={openCurrency} side="leading" />}
                 />
               </Field>
-              <Field label={t("listingForm.areaSize")} optional>
+              <Field label={t("listingForm.areaSize")}>
                 <TextBox
                   value={f.area}
                   onChangeText={(v) => set("area", v.replace(/[^0-9]/g, ""))}
@@ -700,17 +700,8 @@ export default function AddListingScreen() {
               </Field>
 
               <View style={{ gap: 12, marginTop: 4 }}>
-                <SubHead title={t("listingForm.assignmentTitle")} desc={t("listingForm.assignmentDesc")} />
-                <Field label={t("listingForm.assignedAgent")} optional>
-                  <SelectField
-                    placeholder={t("listingForm.selectAgent")}
-                    sheetTitle={t("listingForm.assignedAgent")}
-                    searchable
-                    options={agentOpts}
-                    value={f.assignedAgent}
-                    onChange={(v) => set("assignedAgent", v)}
-                  />
-                </Field>
+                <SubHead title={t("listingForm.assignmentTitle")} desc={t("listingForm.assignmentDesc")} optional />
+                <AgentPicker value={f.assignedAgent} onChange={(v) => set("assignedAgent", v)} />
               </View>
             </View>
           ) : null}

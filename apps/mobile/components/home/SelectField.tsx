@@ -27,7 +27,7 @@ const WINDOW_H = Dimensions.get("window").height;
 const VISIBLE_CHIPS = 2;
 
 /** Shared bottom-sheet shell: scrim + slide-up animation + handle, mirroring SortSheet. */
-function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+export function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   const { colors, radius } = useTheme();
   const [mounted, setMounted] = useState(open);
   const ty = useRef(new Animated.Value(WINDOW_H)).current;
@@ -75,7 +75,7 @@ function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void
 }
 
 /** Search field shown at the top of searchable sheets. */
-function SheetSearch({ value, onChangeText }: { value: string; onChangeText: (v: string) => void }) {
+export function SheetSearch({ value, onChangeText }: { value: string; onChangeText: (v: string) => void }) {
   const { colors, type, radius } = useTheme();
   const { t } = useTranslation();
   return (
@@ -251,7 +251,7 @@ export function SelectField({ label, placeholder, options, value, onChange, sear
   );
 }
 
-function SheetHeader({ title, onClose }: { title: string; onClose: () => void }) {
+export function SheetHeader({ title, onClose }: { title: string; onClose: () => void }) {
   const { colors, type, fontFamily } = useTheme();
   return (
     <View style={styles.head}>
