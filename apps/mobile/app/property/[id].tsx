@@ -16,6 +16,7 @@ import {
   Home,
   CalendarCheck,
   X,
+  Navigation,
   type LucideIcon,
 } from "lucide-react-native";
 import MapView, { Marker } from "react-native-maps";
@@ -26,6 +27,7 @@ import { rtlFlip } from "@/lib/rtl";
 import { Button } from "@/components/ui";
 import { useIsFavorite, toggleFavorite } from "@/lib/favorites";
 import { shareProperty } from "@/lib/share";
+import { openDirections } from "@/lib/maps";
 import { addViewing, toISODate, formatViewingDate } from "@/lib/viewings";
 import { addNotification } from "@/lib/notifications";
 import { BookViewingSheet } from "@/components/property/BookViewingSheet";
@@ -220,7 +222,14 @@ export default function PropertyDetailScreen() {
                   <View style={[styles.statIcon, { backgroundColor: colors.iconTileBg, borderColor: colors.iconTileBorder }]}>
                     <s.Icon size={18} color={colors.brandForeground} strokeWidth={2} />
                   </View>
-                  <Text style={[styles.statValue, { color: colors.textPrimary, fontFamily: fontFamily.sansBold }]}>{s.value}</Text>
+                  <Text
+                    style={[styles.statValue, { color: colors.textPrimary, fontFamily: fontFamily.sansBold }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    {s.value}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -274,7 +283,12 @@ export default function PropertyDetailScreen() {
           {/* Location */}
           <View style={[styles.sectionDivided, { borderTopColor: colors.borderSubtle }]}>
             <Heading>{t("property.location")}</Heading>
-            <View style={[styles.map, { borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
+            <Pressable
+              onPress={() => openDirections({ lat: coords.lat, lng: coords.lng, label: listing.title })}
+              style={({ pressed }) => [styles.map, { borderColor: colors.borderSubtle, borderRadius: radius.card, opacity: pressed ? 0.85 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel={t("property.directionsA11y", { address: listing.address })}
+            >
               <MapView
                 style={styles.mapView}
                 pointerEvents="none"
@@ -286,7 +300,11 @@ export default function PropertyDetailScreen() {
               >
                 <Marker coordinate={{ latitude: coords.lat, longitude: coords.lng }} title={listing.title} description={listing.address} pinColor={colors.brandPrimary} />
               </MapView>
-            </View>
+              <View style={[styles.mapCta, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.pill }]} pointerEvents="none">
+                <Navigation size={14} color={colors.brandForeground} strokeWidth={2.2} />
+                <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("property.directions")}</Text>
+              </View>
+            </Pressable>
             <View style={styles.mapAddr}>
               <MapPin size={15} color={colors.textTertiary} strokeWidth={2} />
               <Text style={[type.bodySm, { color: colors.textSecondary }]}>{listing.address}</Text>
@@ -405,11 +423,11 @@ const styles = StyleSheet.create({
   section: { marginTop: 28 },
   sectionDivided: { marginTop: 24, paddingTop: 24, borderTopWidth: StyleSheet.hairlineWidth },
   statsCard: { flexDirection: "row", marginTop: 20, borderWidth: 1, overflow: "hidden" },
-  statCol: { flex: 1, paddingHorizontal: 14, paddingVertical: 16 },
+  statCol: { flex: 1, paddingHorizontal: 12, paddingVertical: 16 },
   statLabel: { fontSize: 11, letterSpacing: 0.6 },
-  statRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
-  statIcon: { width: 36, height: 36, borderRadius: 9, borderWidth: StyleSheet.hairlineWidth, alignItems: "center", justifyContent: "center" },
-  statValue: { fontSize: 18 },
+  statRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
+  statIcon: { width: 36, height: 36, borderRadius: 9, borderWidth: StyleSheet.hairlineWidth, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  statValue: { fontSize: 18, flexShrink: 1 },
   featGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 18 },
   feat: { width: "47%", flexDirection: "row", alignItems: "center", gap: 10 },
   featIcon: { width: 40, height: 40, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, alignItems: "center", justifyContent: "center" },
@@ -419,6 +437,22 @@ const styles = StyleSheet.create({
   map: { height: 190, borderWidth: 1, overflow: "hidden", backgroundColor: "#e9edf0" },
   // Extend below the clipped container so Apple's bottom attribution is cropped.
   mapView: { position: "absolute", top: -14, left: 0, right: 0, bottom: -26 },
+  mapCta: {
+    position: "absolute",
+    bottom: 12,
+    end: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
   mapAddr: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
   bar: {
     position: "absolute",

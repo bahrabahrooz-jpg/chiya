@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { IconButton } from "@/components/ui/icon-button";
 import type { NavLink } from "./navbar";
+import "./mobile-nav.css";
 
 const noopSubscribe = () => () => {};
 function useIsClient() {

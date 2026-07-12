@@ -30,7 +30,7 @@ export default function AboutScreen() {
 
         <Group>
           <MenuRow icon={Tag} label={t("about.versionLabel")} value={t("about.version")} chevron={false} />
-          <MenuRow icon={Globe} label={t("about.websiteLabel")} value={t("about.website")} divider onPress={() => open("https://www.chiyaestate.com")} />
+          <MenuRow icon={Globe} label={t("about.websiteLabel")} value={t("about.website")} divider onPress={() => open("https://chiya-blush.vercel.app/")} />
         </Group>
 
         <Group title={t("about.followUs")}>

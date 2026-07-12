@@ -12,7 +12,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.chiya.estate"
+      "bundleIdentifier": "com.chiya.estate",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["comgooglemaps"]
+      }
     },
     "android": {
       "package": "com.chiya.estate",

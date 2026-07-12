@@ -52,8 +52,8 @@ export default function ProfileScreen() {
 
   const stats: { label: string; value: number; onPress: () => void }[] = [
     { label: t("profile.savedHomes"), value: savedHomes, onPress: () => router.push("/saved") },
-    { label: t("profile.savedAgents"), value: savedAgents, onPress: () => router.push("/saved") },
     { label: t("profile.listings"), value: myListings.length, onPress: () => router.push("/my-listings") },
+    { label: t("profile.savedAgents"), value: savedAgents, onPress: () => router.push("/saved") },
     { label: t("profile.viewings"), value: viewings.length, onPress: () => router.push("/viewings") },
   ];
 

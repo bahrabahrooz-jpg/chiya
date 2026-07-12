@@ -37,7 +37,7 @@ export function LanguageSwitcher({ variant, className = "" }: LanguageSwitcherPr
         onClick={() => setOpen((o) => !o)}
       >
         <Icon name="globe" size={variant === "footer" ? 15 : 16} />
-        {variant === "footer" ? t("footer.lang") : SHORT[lang]}
+        <span className="cx-langsw__code">{variant === "footer" ? t("footer.lang") : SHORT[lang]}</span>
       </button>
       {open && (
         <div className="cx-langsw__drop" role="menu">

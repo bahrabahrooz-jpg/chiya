@@ -26,6 +26,9 @@
 .cxhero__inner { position: relative; z-index: 2; width: 100%; max-width: 1320px; margin-inline: auto; padding: 104px 56px 78px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .cxhero__title { font-family: var(--font-display); font-weight: 600; font-size: 64px; line-height: 1.04; letter-spacing: -0.025em; color: var(--text-primary); white-space: pre-line; margin: 24px auto 18px; max-width: 900px; }
 .cxhero__sub { font-family: var(--font-sans); font-size: 19px; line-height: 29px; color: var(--text-secondary); max-width: 600px; margin: 0 auto 34px; text-wrap: pretty; }
+/* The hero photo is bright in both themes, so keep the headline dark for legibility in dark mode. */
+:root[data-theme="dark"] .cxhero__title { color: #191B20; }
+:root[data-theme="dark"] .cxhero__sub { color: #545862; }
 
 /* ---- Hero search: single unified bar, dropped to straddle hero/featured seam ---- */
 .cxsearch { width: 100%; position: relative; display: flex; justify-content: center; --cxsearch-drop: 112px; transform: translateY(var(--cxsearch-drop)); }
