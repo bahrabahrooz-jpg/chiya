@@ -64,12 +64,13 @@ export function SrpApp() {
     if (bedsParam && D.beds.some((b) => b.value === bedsParam)) f.beds = bedsParam;
     f.price = parseRangeParam(params.get("price"), dealVal === "rent" ? D.rentPresets : D.buyPresets, dealVal, "price");
     f.size = parseRangeParam(params.get("size"), D.sizePresets, dealVal, "size");
-    return { deal: dealVal as "buy" | "rent", query: params.has("q") ? params.get("q") || "" : "Erbil", filters: f };
+    return { deal: dealVal as "buy" | "rent", query: params.get("q") || "", filters: f };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Deal (buy/rent) is seeded from the URL; switching happens via header nav links.
-  const [deal] = useState<"buy" | "rent">(init.deal);
+  // Deal (buy/rent) tracks the live URL so the breadcrumb, results, and header
+  // nav stay in sync when switching via the header links (client-side nav).
+  const deal: "buy" | "rent" = params.get("deal") === "rent" ? "rent" : "buy";
   const [query, setQuery] = useState(init.query);
   const [sort, setSort] = useState("recommended");
   const [view, setView] = useState("grid");

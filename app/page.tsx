@@ -12,7 +12,7 @@ import { PremiumCta } from "./_home/premium-cta";
 export default function HomePage() {
   return (
     <>
-      <SiteHeader active="buy" />
+      <SiteHeader />
       <main>
         <Hero />
         <div className="cxk-container" id="properties">

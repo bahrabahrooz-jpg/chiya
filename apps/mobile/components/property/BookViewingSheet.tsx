@@ -219,7 +219,7 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
                       <View style={styles.agentMeta}>
                         <MapPin size={13} color={colors.textTertiary} strokeWidth={2} />
                         <Text style={[type.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>{agent.city}</Text>
-                        <Star size={13} color={colors.brandAccent} fill={colors.brandAccent} strokeWidth={0} style={{ marginLeft: 4 }} />
+                        <Star size={13} color={colors.warning} fill={colors.warning} strokeWidth={0} style={{ marginLeft: 4 }} />
                         <Text style={[type.bodySm, { color: colors.textSecondary }]}>
                           {agent.rating.toFixed(1)} ({agent.reviews})
                         </Text>

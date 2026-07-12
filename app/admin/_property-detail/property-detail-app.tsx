@@ -233,13 +233,13 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
     () =>
       agents
         .filter((a) => a.verification === "Verified")
-        .map((a) => ({ name: a.name, verified: true, img: a.img || "", phone: a.phone, email: a.email, agency: a.agency, listings: a.listings }))
+        .map((a) => ({ name: a.name, verified: true, img: a.img || "", phone: a.phone, email: a.email, listings: a.listings }))
         .sort((x, y) => x.name.localeCompare(y.name)),
     [agents],
   );
 
   const q = query.trim().toLowerCase();
-  const filteredAgents = q ? verifiedAgents.filter((a) => a.name.toLowerCase().includes(q) || (a.agency || "").toLowerCase().includes(q)) : verifiedAgents;
+  const filteredAgents = q ? verifiedAgents.filter((a) => a.name.toLowerCase().includes(q)) : verifiedAgents;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -313,7 +313,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
             <div className="pp-amodal__drop pp-amodal__drop--search" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
               <div className="pp-amodal__search">
                 <Icon name="search" size={15} className="pp-amodal__search-ic" />
-                <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name or agency…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
+                <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
                 {query && (
                   <button type="button" className="pp-amodal__search-clear" aria-label="Clear search" onClick={() => setQuery("")}>
                     <Icon name="x" size={14} />
@@ -340,7 +340,6 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
                       <Avatar src={agent.img} name={agent.name} size="sm" verified={agent.verified} />
                       <span className="pp-amodal__agent-body">
                         <span className="pp-amodal__agent-name">{agent.name}</span>
-                        {agent.agency && <span className="pp-amodal__agent-agency">{agent.agency}</span>}
                       </span>
                       {property.agent?.name === agent.name && <span className="pp-amodal__current-tag">Current</span>}
                       {selected === agent.name && (
@@ -1046,7 +1045,6 @@ function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; 
   const a = p.agent;
   const phoneHref = "tel:" + a.phone.replace(/\s/g, "");
   const waHref = "https://wa.me/" + a.phone.replace(/[^\d]/g, "");
-  const broker = a.agency || "Chiya Premier";
   const rating = a.rating || "4.8";
   const reviews = a.reviews || 96;
   return (
@@ -1078,10 +1076,6 @@ function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; 
             )}
           </span>
           <span className="pd-agent__meta">
-            <span className="pd-agent__broker">
-              <Icon name="building-2" size={15} />
-              {broker}
-            </span>
             <span className="pd-agent__rate">
               <Icon name="star" size={15} />
               {rating}

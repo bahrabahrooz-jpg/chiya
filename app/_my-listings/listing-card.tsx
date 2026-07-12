@@ -95,18 +95,16 @@ export function ListingCard({ listing, onView, onEdit, onDelete }: ListingCardPr
       </div>
 
       <div className="cx-prop__body">
-        <div className="cx-prop__priceln">
+        <div className="cx-prop__titleln">
+          <div className="cx-prop__title">{listing.title}</div>
           <div className="cx-prop__price">
             {listing.price || "Price on request"}
             {listing.price && listing.deal === "rent" && <small> /mo</small>}
           </div>
         </div>
-        <div>
-          <div className="cx-prop__title">{listing.title}</div>
-          <div className="cx-prop__addr">
-            <Icon name="map-pin" size={14} />
-            <span>{listing.location}</span>
-          </div>
+        <div className="cx-prop__addr">
+          <Icon name="map-pin" size={14} />
+          <span>{listing.location}</span>
         </div>
         <div className="cx-prop__specs">
           <div className="cx-prop__spec">
@@ -118,7 +116,7 @@ export function ListingCard({ listing, onView, onEdit, onDelete }: ListingCardPr
             <b>{listing.baths ?? 0}</b>Baths
           </div>
           <div className="cx-prop__spec">
-            <Icon name="maximize-2" size={16} />
+            <Icon name="maximize" size={16} />
             <b>{listing.area || 0}</b>
           </div>
         </div>

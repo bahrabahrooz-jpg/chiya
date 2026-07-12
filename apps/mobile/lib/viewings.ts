@@ -16,7 +16,6 @@ export interface Viewing {
   agentId: string;
   agentName: string;
   agentPhoto: string;
-  agentAgency: string;
   /** ISO date, yyyy-mm-dd. */
   date: string;
   /** Slot label, e.g. "3:00 PM". */

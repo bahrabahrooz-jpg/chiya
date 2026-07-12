@@ -257,7 +257,7 @@ function ReassignAgentModal({ current, onCancel, onConfirm }: { current: string;
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const q = query.trim().toLowerCase();
-  const filtered = q ? ASSIGNABLE_AGENTS.filter((a) => a.name.toLowerCase().includes(q) || a.agency.toLowerCase().includes(q)) : ASSIGNABLE_AGENTS;
+  const filtered = q ? ASSIGNABLE_AGENTS.filter((a) => a.name.toLowerCase().includes(q)) : ASSIGNABLE_AGENTS;
   const selectedAgent = selected ? ASSIGNABLE_AGENTS.find((a) => a.name === selected) : null;
 
   useEffect(() => {
@@ -329,7 +329,7 @@ function ReassignAgentModal({ current, onCancel, onConfirm }: { current: string;
           <div className="pp-amodal__drop pp-amodal__drop--search" role="listbox" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
             <div className="pp-amodal__search">
               <Icon name="search" size={15} className="pp-amodal__search-ic" />
-              <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name or agency…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
+              <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
               {query && (
                 <button type="button" className="pp-amodal__search-clear" aria-label="Clear search" onClick={() => setQuery("")}>
                   <Icon name="x" size={14} />
@@ -356,7 +356,6 @@ function ReassignAgentModal({ current, onCancel, onConfirm }: { current: string;
                     <Avatar src={agent.img} name={agent.name} size="sm" verified={agent.verified} />
                     <span className="pp-amodal__agent-body">
                       <span className="pp-amodal__agent-name">{agent.name}</span>
-                      {agent.agency && <span className="pp-amodal__agent-agency">{agent.agency}</span>}
                     </span>
                     {current === agent.name && <span className="pp-amodal__current-tag">Current</span>}
                     {selected === agent.name && (
@@ -576,10 +575,6 @@ function AgentCard({ a, href, onReassign, agentSurface }: { a: ViewingDetail["ag
             )}
           </span>
           <span className="pd-agent__meta">
-            <span className="pd-agent__broker">
-              <Icon name="building-2" size={15} />
-              {a.agency}
-            </span>
             <span className="pd-agent__rate">
               <Icon name="star" size={15} />
               {a.rating}

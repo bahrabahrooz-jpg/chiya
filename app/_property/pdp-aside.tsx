@@ -49,10 +49,6 @@ export function ActionPanel({ onBook, onCall, onWhatsApp, className }: ActionPan
                 </Badge>
               )}
             </div>
-            <div className="pdp-agent__agency">
-              <Icon name="building-2" size={13} />
-              {agent.agency}
-            </div>
             <div className="pdp-agent__rating">
               <Icon name="star" size={14} fill="currentColor" />
               {agent.rating}
@@ -124,7 +120,7 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
       {done ? (
         <div style={{ textAlign: "center", padding: "8px 4px 12px" }}>
           <div style={{ fontFamily: "var(--font-sans)", fontSize: 15, lineHeight: "23px", color: "var(--text-secondary)" }}>
-            Thank you. {agent.name} from {agent.agency} will contact you to confirm your viewing of {property.title}.
+            Thank you. {agent.name} will contact you to confirm your viewing of {property.title}.
           </div>
         </div>
       ) : (
@@ -148,7 +144,7 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
                 </div>
               </div>
             }
-            agent={{ name: agent.name, avatar: agent.avatar, agency: agent.agency, verified: agent.verified }}
+            agent={{ name: agent.name, avatar: agent.avatar, verified: agent.verified }}
             agentLabel="Viewing agent"
             hideCta
           />

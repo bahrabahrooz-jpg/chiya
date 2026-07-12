@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { LANGS, useLang, type Lang } from "@/lib/i18n";
+import { LANGS, LANG_READY, useLang, type Lang } from "@/lib/i18n";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { Icon } from "./icon";
 import "./language-switcher.css";
@@ -54,6 +54,7 @@ export function LanguageSwitcher({ variant, className = "" }: LanguageSwitcherPr
               }}
             >
               <span>{t("lang." + l)}</span>
+              {!LANG_READY[l] && <span className="cx-langsw__soon">{t("lang.soon")}</span>}
               {lang === l && <Icon name="check" size={14} className="cx-langsw__check" />}
             </button>
           ))}

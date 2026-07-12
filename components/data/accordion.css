@@ -18,7 +18,7 @@
   color: var(--text-primary);
   transition: color .14s;
 }
-.cx-acc__trigger:hover { color: var(--brand-primary); }
+.cx-acc__trigger:hover { color: var(--text-brand); }
 .cx-acc__trigger:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
 .cx-acc__chev { flex: none; color: var(--text-tertiary); transition: transform .22s cubic-bezier(.2, .7, .2, 1); }
 .cx-acc__item--open .cx-acc__chev { transform: rotate(180deg); }

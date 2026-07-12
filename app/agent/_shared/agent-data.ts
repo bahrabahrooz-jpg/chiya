@@ -12,7 +12,6 @@ import { useAgentSession } from "@/lib/agent-session";
  *   properties → listings assigned to this agent
  *   members    → owners of those listings
  *   viewings   → viewings this agent hosts
- *   teammates  → agents at the same agency ("my team")
  */
 export function useAgentData() {
   const { agent } = useAgentSession();
@@ -22,10 +21,9 @@ export function useAgentData() {
   const properties = useMemo(() => store.properties.filter((p) => p.agent?.name === name), [store.properties, name]);
   const ownerNames = useMemo(() => new Set(properties.map((p) => p.owner.name)), [properties]);
   const members = useMemo(() => store.members.filter((m) => ownerNames.has(m.name)), [store.members, ownerNames]);
-  const teammates = useMemo(() => store.agents.filter((a) => a.agency === agent.agency), [store.agents, agent.agency]);
   const viewings = useMemo(() => VIEWINGS.filter((v) => v.agent === name), [name]);
   // this agent's record enriched with live stats (listings / sold / rented / members)
   const me = useMemo(() => store.agents.find((a) => a.id === agent.id) ?? agent, [store.agents, agent]);
 
-  return { me, properties, members, teammates, viewings, store };
+  return { me, properties, members, viewings, store };
 }

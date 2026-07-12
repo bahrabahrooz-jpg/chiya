@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 export interface AgentContactCardProps {
   name: string;
   avatar?: string;
-  agency?: string;
   verified?: boolean;
   rating?: number;
   reviews?: number;
@@ -27,7 +26,6 @@ export interface AgentContactCardProps {
 export function AgentContactCard({
   name,
   avatar,
-  agency,
   verified = true,
   rating,
   reviews,
@@ -53,12 +51,6 @@ export function AgentContactCard({
           <span className="cx-display-xs" style={{ fontSize: 18, lineHeight: "22px" }}>
             {name}
           </span>
-          {agency && (
-            <span className="cx-text-sm flex items-center gap-1.5" style={{ color: "var(--text-tertiary)" }}>
-              <Icon name="building-2" size={13} />
-              {agency}
-            </span>
-          )}
         </div>
       </div>
 

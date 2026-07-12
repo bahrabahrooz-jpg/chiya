@@ -25,11 +25,11 @@ export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; icon?: Ic
   Cancelled: { variant: "error", icon: "circle-x", cls: "vw-st--cancelled" },
 };
 
-export interface MemberAgent { name: string; verified: boolean; phone: string; email: string; img: string; agency?: string; listings?: number; rating?: string; reviews?: number }
+export interface MemberAgent { name: string; verified: boolean; phone: string; email: string; img: string; listings?: number; rating?: string; reviews?: number }
 export const AGENT: MemberAgent = {
   name: "Lana Aziz", verified: true, phone: "+964 751 880 2200", email: "lana.aziz@mail.chiya.estate",
   img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=70",
-  agency: "Chiya Premier", listings: 14, rating: "4.9", reviews: 87,
+  listings: 14, rating: "4.9", reviews: 87,
 };
 
 export interface MemberRecord {
@@ -133,7 +133,6 @@ export function memberAgentFor(properties: PropertyRecord[], name: string): Memb
       phone: roster?.phone || "+964 750 000 0000",
       email: (roster?.email as string) || owned.agent.name.toLowerCase().replace(/\s+/g, ".") + "@chiya.estate",
       img: owned.agent.img,
-      agency: roster?.agency,
     };
   }
   return AGENT;

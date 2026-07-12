@@ -43,7 +43,7 @@
 .cx-map__pill:hover { transform: scale(1.06); }
 .cx-map__pin--active .cx-map__pill { background: var(--brand-primary); color: #fff; border-color: transparent; box-shadow: var(--shadow-lg); }
 .cx-map__pin--active .cx-map__pill svg { color: var(--brand-accent); }
-.cx-map__pin--cluster .cx-map__pill { background: var(--brand-accent); color: var(--green-900); border-color: transparent; }
+.cx-map__pin--cluster .cx-map__pill { background: var(--brand-accent); color: var(--text-on-accent); border-color: transparent; }
 .cx-map__ctrls { position: absolute; inset-inline-end: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 3; }
 .cx-map__zoom { display: flex; flex-direction: column; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
 .cx-map__zoom button { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--gray-700); cursor: pointer; transition: background-color .14s; }

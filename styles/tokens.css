@@ -24,18 +24,21 @@
   --green-900: #0B2018;
   --green-950: #061410;
 
-  /* --- Accent: Warm Gold ------------------------------------ */
-  --gold-25:  #FCFAF3;
-  --gold-50:  #F9F2DF;
-  --gold-100: #F0E1B4;
-  --gold-200: #E5CB83;
-  --gold-300: #D8B45A;
-  --gold-400: #C9A24B;  /* accent base */
-  --gold-500: #B68A3A;
-  --gold-600: #997031;
-  --gold-700: #79572A;
-  --gold-800: #5C4324;
-  --gold-900: #3F2F1B;
+  /* --- Accent: retired gold, folded into Forest Green -------
+     Gold is no longer a brand color. These --gold-* tokens remain
+     only as green-mapped aliases so any existing reference resolves
+     to the single green brand; prefer --brand-accent / --green-*. */
+  --gold-25:  var(--green-25);
+  --gold-50:  var(--green-50);
+  --gold-100: var(--green-100);
+  --gold-200: var(--green-200);
+  --gold-300: var(--green-300);
+  --gold-400: var(--green-400);
+  --gold-500: var(--green-500);
+  --gold-600: var(--green-600);
+  --gold-700: var(--green-700);
+  --gold-800: var(--green-800);
+  --gold-900: var(--green-900);
 
   /* --- Neutrals: clean neutral gray ------------------------- */
   --gray-25:  #FCFCFD;
@@ -89,9 +92,13 @@
   --brand-primary-active: var(--green-900);
   --brand-subtle:         var(--green-50);
   --brand-subtle-hover:   var(--green-100);
-  --brand-accent:         var(--gold-400);
-  --brand-accent-hover:   var(--gold-500);
-  --brand-accent-subtle:  var(--gold-50);
+  --brand-accent:         var(--green-500);
+  --brand-accent-hover:   var(--green-600);
+  --brand-accent-subtle:  var(--green-50);
+
+  /* Rating stars keep an amber fill even though gold is retired as a brand
+     color — amber reads as "quality/score" and adapts via --warning-500. */
+  --rating-star:          var(--warning-500);
 
   /* Text */
   --text-primary:    var(--gray-900);
@@ -100,9 +107,10 @@
   --text-placeholder:var(--gray-400);
   --text-disabled:   var(--gray-300);
   --text-on-brand:   var(--white);
-  --text-on-accent:  var(--green-900);
+  --text-on-accent:  var(--white);
   --text-brand:      var(--green-700);
-  --text-accent:     var(--gold-700);
+  --text-brand-muted: var(--green-600); /* softer brand green for icons/secondary — lifts in dark */
+  --text-accent:     var(--green-700);
   --text-error:      var(--error-600);
   --text-success:    var(--success-600);
 
@@ -121,12 +129,12 @@
   --border-default: var(--gray-300);
   --border-strong:  var(--gray-400);
   --border-brand:   var(--green-700);
-  --border-accent:  var(--gold-400);
+  --border-accent:  var(--green-400);
   --border-focus:   var(--green-600);
 
   /* Focus rings */
   --ring-brand:  rgba(24, 64, 47, 0.18);
-  --ring-accent: rgba(201, 162, 75, 0.30);
+  --ring-accent: rgba(44, 97, 73, 0.30);
   --ring-error:  rgba(192, 57, 43, 0.18);
 
   /* ==========================================================
@@ -261,7 +269,7 @@
 
 /* ============================================================
    DARK MODE — token overrides only ("real estate at night").
-   Cool architectural slate-grays; brand green + gold preserved.
+   Cool architectural slate-grays; single green brand (gold retired).
    Component-level dark refinements (navbar glass, brand lockup,
    theme toggle) are added alongside those components later.
    ============================================================ */
@@ -289,10 +297,10 @@
   --green-500: #3E8C66;
   --green-600: #347C59;
 
-  /* Warm Gold — accent kept; light tints darkened */
-  --gold-50:  #2A2413;
-  --gold-100: #3A3115;
-  --gold-700: #D8B45A;
+  /* Accent gold retired — folded into green. The --gold-* aliases
+     inherit the green dark ramp; only the text tint needs a light
+     green so accent text stays legible on dark surfaces. */
+  --gold-700: var(--green-300);
 
   /* Status — brighter cores, dark tinted fills */
   --success-50:  #12271B;
@@ -327,9 +335,9 @@
   --brand-primary-active: #20503C;            /* mobile brandPrimaryPressed — press darkens */
   --brand-subtle:         #17271F;
   --brand-subtle-hover:   #1D3227;
-  --brand-accent:         var(--gold-400);
-  --brand-accent-hover:   var(--gold-300);
-  --brand-accent-subtle:  #241F12;
+  --brand-accent:         var(--green-600);
+  --brand-accent-hover:   var(--green-500);
+  --brand-accent-subtle:  #17271F;
 
   /* Text */
   --text-primary:     #F8FAFC;
@@ -338,9 +346,10 @@
   --text-placeholder: #64748B;
   --text-disabled:    #5A6679;
   --text-on-brand:    #FFFFFF;
-  --text-on-accent:   var(--green-900);
+  --text-on-accent:   var(--white);
   --text-brand:       #7FB99B;
-  --text-accent:      var(--gold-300);
+  --text-brand-muted: #6FA384; /* mobile brandForeground — legible green on dark surfaces */
+  --text-accent:      var(--green-300);
   --text-error:       #F87171;
   --text-success:     #4ADE80;
 
@@ -359,12 +368,12 @@
   --border-default: #364154;
   --border-strong:  #46546B;
   --border-brand:   var(--green-500);
-  --border-accent:  var(--gold-400);
+  --border-accent:  var(--green-500);
   --border-focus:   var(--green-400);
 
   /* Focus rings — green halo, brighter for dark */
   --ring-brand:  rgba(70, 128, 98, 0.45);
-  --ring-accent: rgba(216, 180, 90, 0.40);
+  --ring-accent: rgba(62, 140, 102, 0.40);
   --ring-error:  rgba(248, 113, 113, 0.40);
 
   /* Shadows — deep, black-based (no warm tint at night) */

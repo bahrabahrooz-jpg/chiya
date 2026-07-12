@@ -63,7 +63,7 @@ function ViewingCard({ viewing: v }: { viewing: Viewing }) {
       <View style={styles.agent}>
         <Image source={{ uri: v.agentPhoto }} style={styles.agentImg} resizeMode="cover" />
         <Text style={[type.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>
-          {t("viewings.withPrefix")}<Text style={{ color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }}>{v.agentName}</Text> · {v.agentAgency}
+          {t("viewings.withPrefix")}<Text style={{ color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }}>{v.agentName}</Text>
         </Text>
       </View>
     </Pressable>

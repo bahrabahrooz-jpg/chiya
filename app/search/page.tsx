@@ -4,10 +4,15 @@ import { Footer } from "@/components/layout";
 import { SrpApp } from "../_search/srp-app";
 import "./srp.css";
 
-export default function SearchPage() {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const deal = (await searchParams).deal === "rent" ? "rent" : "buy";
   return (
     <>
-      <InteriorHeader active="buy" />
+      <InteriorHeader active={deal} />
       <Suspense fallback={null}>
         <SrpApp />
       </Suspense>

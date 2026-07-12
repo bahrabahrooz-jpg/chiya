@@ -425,10 +425,10 @@ export const ar: Catalog<typeof en> = {
   },
   agents: {
     title: "الوكلاء",
-    searchPlaceholder: "ابحث عن الوكلاء والوكالات…",
+    searchPlaceholder: "ابحث عن الوكلاء…",
     head: "الوكلاء",
     noMatch: "لا يوجد وكلاء يطابقون «{query}».",
-    hint: "ابحث عن الوكلاء بالاسم أو الوكالة أو المدينة.",
+    hint: "ابحث عن الوكلاء بالاسم أو المدينة.",
     noAgentsTitle: "لا يوجد وكلاء",
   },
   viewings: {

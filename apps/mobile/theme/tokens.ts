@@ -3,7 +3,8 @@
  * (styles/tokens.css) into a typed JS theme for React Native.
  *
  * Values are 1:1 with the website so the app and site share one visual
- * language: forest-green brand, warm-gold accent, 4px spacing, the serif/sans
+ * language: forest-green brand (gold accent retired — folded into green),
+ * 4px spacing, the serif/sans
  * type pairing, and a full dark-mode override.
  */
 
@@ -22,16 +23,6 @@ const palette = {
     800: "#112E22",
     900: "#0B2018",
     950: "#061410",
-  },
-  gold: {
-    50: "#F9F2DF",
-    100: "#F0E1B4",
-    200: "#E5CB83",
-    300: "#D8B45A",
-    400: "#C9A24B", // accent base
-    500: "#B68A3A",
-    600: "#997031",
-    700: "#79572A",
   },
   gray: {
     25: "#FCFCFD",
@@ -89,7 +80,10 @@ export interface Colors {
   ringError: string;
   error: string;
   success: string;
-  /** Amber "warning" status (e.g. Pending) — surface / text / border. */
+  /** Amber "warning" status (e.g. Pending). `warning` is the solid amber core
+   *  (= web --warning-500) used for rating stars and the mid password-strength
+   *  step; the surface/text/border trio is for status chips. */
+  warning: string;
   warningSurface: string;
   warningText: string;
   warningBorder: string;
@@ -112,8 +106,8 @@ const lightColors: Colors = {
   brandHover: palette.green[500], // #2C6149 — lighter brand green
   brandForeground: palette.green[700], // same as brandPrimary in light mode
   brandSubtle: palette.green[50],
-  brandAccent: palette.gold[400],
-  brandAccentPressed: palette.gold[500],
+  brandAccent: palette.green[500], // gold retired — accent folded into green
+  brandAccentPressed: palette.green[600],
 
   textPrimary: palette.gray[900],
   textSecondary: palette.gray[600],
@@ -137,6 +131,7 @@ const lightColors: Colors = {
   ringError: "rgba(192, 57, 43, 0.18)",
   error: palette.error,
   success: palette.success,
+  warning: "#D9A441", // --warning-500 (solid amber core — ratings, mid strength)
   warningSurface: "#FBF1DC", // --warning-50
   warningText: "#8A641F", // --warning-700
   warningBorder: "#F6DFAE", // --warning-100
@@ -155,8 +150,8 @@ const darkColors: Colors = {
   brandHover: "#4E9B77",
   brandForeground: palette.green[300], // #6FA384 — legible green on dark surfaces
   brandSubtle: "#17271F",
-  brandAccent: palette.gold[400],
-  brandAccentPressed: palette.gold[300],
+  brandAccent: "#3E8C66", // gold retired — luminous green, legible on dark cards
+  brandAccentPressed: "#347C59",
 
   textPrimary: "#F8FAFC",
   textSecondary: "#CBD5E1",
@@ -180,6 +175,7 @@ const darkColors: Colors = {
   ringError: "rgba(248, 113, 113, 0.40)",
   error: "#EF4444",
   success: "#22C55E",
+  warning: "#F59E0B", // --warning-500 (dark)
   warningSurface: "#2A2110", // --warning-50 (dark)
   warningText: "#FCD34D", // --warning-700 (dark)
   warningBorder: "#3D2F12", // --warning-100 (dark)

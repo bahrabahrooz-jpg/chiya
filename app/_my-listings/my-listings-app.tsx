@@ -79,7 +79,6 @@ export function MyListingsApp() {
       <Container>
         <nav className="ml-crumb" aria-label="Breadcrumb">
           <Link href="/">
-            <Icon name="home" size={14} />
             Home
           </Link>
           <Icon name="chevron-right" size={14} />

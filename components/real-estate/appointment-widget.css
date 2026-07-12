@@ -17,7 +17,7 @@
 .cx-appt__slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cx-appt__slot { padding: 9px 4px; text-align: center; border-radius: var(--radius-md); border: 1px solid var(--border-default); font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; background: var(--surface-card); transition: all .14s; }
 .cx-appt__slot:hover { border-color: var(--border-strong); color: var(--text-primary); }
-.cx-appt__slot--active { background: var(--brand-subtle); border-color: var(--green-300); color: var(--green-800); }
+.cx-appt__slot--active { background: var(--brand-subtle); border-color: var(--green-300); color: var(--text-brand); }
 .cx-appt__slot--off { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
 .cx-appt__agentrow { display: flex; align-items: center; gap: 11px; padding: 12px; background: var(--gray-50); border-radius: var(--radius-md); }
 .cx-appt__agentrow b { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; line-height: 1.3; }

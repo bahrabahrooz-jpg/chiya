@@ -76,7 +76,7 @@
     background: var(--brand-subtle); border-color: var(--green-100);
   }
   .rb-roleitem.is-selected:hover { background: var(--brand-subtle-hover); }
-  .rb-roleitem.is-selected .rb-roleitem__name { color: var(--green-800); }
+  .rb-roleitem.is-selected .rb-roleitem__name { color: var(--text-brand); }
 
   .rb-roleicon {
     flex: none; width: 34px; height: 34px; border-radius: 9px;
@@ -84,7 +84,7 @@
     background: var(--gray-100); color: var(--gray-500);
   }
   .rb-roleicon--gold  { background: var(--gold-50);  color: var(--gold-600); }
-  .rb-roleicon--brand { background: var(--green-50); color: var(--green-600); }
+  .rb-roleicon--brand { background: var(--green-50); color: var(--text-brand-muted); }
   .rb-roleicon--info  { background: var(--info-50);  color: var(--info-500); }
   .rb-roleicon--amber { background: var(--gold-50);  color: var(--gold-600); }
 
@@ -98,7 +98,7 @@
     font-variant-numeric: tabular-nums;
   }
   .rb-roleitem__chev { flex: none; color: var(--text-placeholder); opacity: 0; transition: opacity .14s; }
-  .rb-roleitem.is-selected .rb-roleitem__chev { opacity: 1; color: var(--green-700); }
+  .rb-roleitem.is-selected .rb-roleitem__chev { opacity: 1; color: var(--text-brand); }
 
   .rb-list__create {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -108,8 +108,8 @@
     font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text-secondary);
     transition: border-color .15s, background-color .15s, color .15s;
   }
-  .rb-list__create svg { color: var(--green-600); }
-  .rb-list__create:hover { border-color: var(--brand-primary); background: var(--brand-subtle); color: var(--green-700); }
+  .rb-list__create svg { color: var(--text-brand-muted); }
+  .rb-list__create:hover { border-color: var(--brand-primary); background: var(--brand-subtle); color: var(--text-brand); }
   .rb-list__create:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
 
   /* ============================================================
@@ -139,7 +139,7 @@
   }
 
   .rb-detail__tabs { padding: 14px 28px 0; }
-  .rb-detail__tabs .cx-tabs--line .cx-tab--active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); }
+  .rb-detail__tabs .cx-tabs--line .cx-tab--active { color: var(--text-brand); border-bottom-color: var(--brand-primary); }
   .rb-detail__body { padding: 4px 28px 26px; }
 
   .rb-locknote {
@@ -168,8 +168,8 @@
     background: var(--gray-100); border-radius: var(--radius-pill); padding: 1px 7px;
     font-variant-numeric: tabular-nums; transition: background-color .14s, color .14s;
   }
-  .rb-cat.is-active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); }
-  .rb-cat.is-active .rb-cat__badge { background: var(--brand-subtle); color: var(--green-700); }
+  .rb-cat.is-active { color: var(--text-brand); border-bottom-color: var(--brand-primary); }
+  .rb-cat.is-active .rb-cat__badge { background: var(--brand-subtle); color: var(--text-brand); }
 
   /* ---------- PERMISSION SUBGROUPS (table-style cards) ---------- */
   /* sunken well so the white table cards pop off the panel */
@@ -194,7 +194,7 @@
     letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary);
   }
   .rb-group__count {
-    font-family: var(--font-sans); font-size: 11px; font-weight: 700; color: var(--green-700);
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700; color: var(--text-brand);
     background: var(--brand-subtle); border-radius: var(--radius-pill); padding: 1px 8px;
     font-variant-numeric: tabular-nums;
   }
@@ -291,7 +291,7 @@
     transition: background-color .12s, border-color .12s, color .12s;
   }
   .rb-iconpick__opt:hover { background: var(--gray-50); color: var(--text-primary); }
-  .rb-iconpick__opt.is-active { background: var(--brand-subtle); border-color: var(--green-200); color: var(--green-700); }
+  .rb-iconpick__opt.is-active { background: var(--brand-subtle); border-color: var(--green-200); color: var(--text-brand); }
 
   .rb-assigned { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .rb-assigned__meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }

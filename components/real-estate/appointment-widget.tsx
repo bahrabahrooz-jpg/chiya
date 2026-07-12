@@ -16,7 +16,6 @@ export interface ApptTime {
 export interface ApptAgent {
   name: string;
   avatar?: string;
-  agency?: string;
   verified?: boolean;
 }
 
@@ -131,7 +130,7 @@ export function AppointmentWidget({
               <Avatar src={agent.avatar} name={agent.name} size="md" verified={agent.verified} />
               <div>
                 <b>{agent.name}</b>
-                <span>{agent.agency || "Your viewing agent"}</span>
+                <span>Your viewing agent</span>
               </div>
             </div>
           </div>

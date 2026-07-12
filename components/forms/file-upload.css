@@ -24,10 +24,10 @@
   height: 48px;
   border-radius: var(--radius-xl);
   background: var(--surface-sunken);
-  color: var(--brand-primary);
+  color: var(--text-brand);
 }
 .cx-upload__title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-.cx-upload__title b { color: var(--brand-primary); }
+.cx-upload__title b { color: var(--text-brand); }
 .cx-upload__hint { font-size: 13px; color: var(--text-tertiary); }
 .cx-upload__list { display: flex; flex-direction: column; gap: 8px; }
 .cx-upload__file {

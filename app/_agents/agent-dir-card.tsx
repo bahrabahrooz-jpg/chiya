@@ -44,11 +44,6 @@ export function AgentDirCard({ agent: a, saved, onSave }: AgentDirCardProps) {
 
       <div className="agt-card__meta">
         <span className="agt-card__metaitem">
-          <Icon name="building-2" size={14} />
-          {a.agency}
-        </span>
-        <span className="agt-card__dot" />
-        <span className="agt-card__metaitem">
           <Icon name="map-pin" size={14} />
           {a.city}
         </span>

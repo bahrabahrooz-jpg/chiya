@@ -54,5 +54,5 @@
   font-weight: 600;
   transition: border-color .15s, color .15s, background-color .15s;
 }
-.cx-media__add:hover { border-color: var(--brand-primary); color: var(--brand-primary); background: var(--brand-subtle); }
+.cx-media__add:hover { border-color: var(--brand-primary); color: var(--text-brand); background: var(--brand-subtle); }
 .cx-media__add:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }

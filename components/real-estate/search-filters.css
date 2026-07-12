@@ -16,7 +16,7 @@
   transition: border-color .14s, background-color .14s, color .14s;
 }
 .cx-filterbtn:hover { border-color: var(--border-strong); color: var(--text-primary); }
-.cx-filterbtn--active { background: var(--brand-subtle); border-color: var(--green-200); color: var(--green-800); font-weight: 600; }
+.cx-filterbtn--active { background: var(--brand-subtle); border-color: var(--green-200); color: var(--text-brand); font-weight: 600; }
 .cx-filterbtn svg:last-child { color: var(--text-tertiary); }
 .cx-filterbtn__count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; background: var(--brand-primary); color: #fff; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; }
 .cx-filtertags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

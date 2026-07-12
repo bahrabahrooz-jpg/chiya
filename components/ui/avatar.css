@@ -7,7 +7,7 @@
   flex: none;
   font-family: var(--font-sans);
   font-weight: 600;
-  color: var(--green-800);
+  color: var(--text-brand);
   background: var(--green-50);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -33,7 +33,7 @@
   color: #fff;
   border: 2px solid var(--surface-card);
 }
-.cx-avatar__badge--verified { background: var(--brand-accent); color: var(--green-900); }
+.cx-avatar__badge--verified { background: var(--brand-accent); color: var(--text-on-accent); }
 .cx-avatargroup { display: inline-flex; align-items: center; }
 .cx-avatargroup > * { margin-left: -10px; box-shadow: 0 0 0 2px var(--surface-card); border-radius: var(--radius-full); }
 .cx-avatargroup > *:first-child { margin-left: 0; }

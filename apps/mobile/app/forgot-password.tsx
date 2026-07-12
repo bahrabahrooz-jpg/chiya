@@ -55,7 +55,7 @@ function StrengthMeter({ level }: { level: number }) {
   const { colors, type, space } = useTheme();
   const { t } = useTranslation();
   const color =
-    level <= 1 ? colors.error : level === 2 ? colors.brandAccent : colors.brandForeground;
+    level <= 1 ? colors.error : level === 2 ? colors.warning : colors.brandForeground;
   return (
     <View style={{ marginTop: 6, gap: 6 }}>
       <View style={styles.segRow}>

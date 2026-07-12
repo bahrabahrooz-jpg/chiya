@@ -69,7 +69,7 @@ function Toast({ message, onHide }: { message: string; onHide: () => void }) {
 function StrengthMeter({ level }: { level: number }) {
   const { colors, type } = useTheme();
   const { t } = useTranslation();
-  const color = level <= 1 ? colors.error : level === 2 ? colors.brandAccent : colors.brandForeground;
+  const color = level <= 1 ? colors.error : level === 2 ? colors.warning : colors.brandForeground;
   return (
     <View style={{ marginTop: 6, gap: 6 }}>
       <View style={styles.segRow}>

@@ -3,42 +3,16 @@
 import { useRouter } from "next/navigation";
 import { SectionHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { FeaturedPropertyCard, PropertyCard } from "@/components/real-estate";
+import { PropertyCard } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { featured, listings } from "@/lib/home-data";
+import { listings } from "@/lib/home-data";
 
-/** Featured properties — the signature listing hero + the featured grid. */
+/** Featured properties — the featured grid. */
 export function FeaturedSection() {
   const router = useRouter();
   const { t } = useLang();
   return (
     <section className="cxk-section">
-      <SectionHeader eyebrow={t("sec.feat.eyebrow")} title={t("sec.feat.title")} />
-      <FeaturedPropertyCard
-        image={featured.cover}
-        thumbs={featured.gallery}
-        price={featured.price}
-        title={featured.title}
-        address={featured.address}
-        beds={featured.beds}
-        baths={featured.baths}
-        area={featured.area}
-        description={featured.desc}
-        agent={featured.agent}
-        actions={
-          <>
-            <Button hierarchy="secondary" size="sm" iconLeading="calendar" onClick={() => router.push(`/property/${featured.id}`)}>
-              {t("sec.feat.book")}
-            </Button>
-            <Button hierarchy="primary" size="sm" onClick={() => router.push(`/property/${featured.id}`)}>
-              {t("sec.feat.view")}
-            </Button>
-          </>
-        }
-      />
-
-      <div style={{ height: 44 }} />
-
       <SectionHeader
         eyebrow={t("sec.feat2.eyebrow")}
         title={t("sec.feat2.title")}

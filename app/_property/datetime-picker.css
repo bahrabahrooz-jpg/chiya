@@ -58,7 +58,7 @@
   font-variant-numeric: tabular-nums; transition: background-color .13s, color .13s;
 }
 .cx-cal__day:hover { background: var(--gray-100); }
-.cx-cal__day.is-today { color: var(--brand-primary); font-weight: 700; }
+.cx-cal__day.is-today { color: var(--text-brand); font-weight: 700; }
 .cx-cal__day.is-selected, .cx-cal__day.is-selected:hover {
   background: var(--brand-primary); color: #fff; font-weight: 600; box-shadow: none;
 }

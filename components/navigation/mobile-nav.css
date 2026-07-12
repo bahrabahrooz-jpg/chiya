@@ -40,6 +40,14 @@
   transition: background-color .14s;
 }
 .cx-mnav__link:hover { background: var(--gray-50); }
-.cx-mnav__link--active { color: var(--brand-primary); background: var(--brand-subtle); }
+/* --text-brand == --brand-primary in light, but lifts to a legible green in dark
+   (brand-primary is a dark fill green — dark-on-dark on the brand-subtle row). */
+.cx-mnav__link--active { color: var(--text-brand); background: var(--brand-subtle); }
 .cx-mnav__foot { padding: 16px 20px; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 14px; }
 .cx-mnav__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* The brand lockup sits in the drawer head, outside the .cxh header whose
+   dark-mode rules lighten it. Mirror that treatment so the mark + CHIYA
+   wordmark stay legible on the dark sheet (matches the mobile app). */
+:root[data-theme="dark"] .cx-mnav__head .cxh-brand__name { color: #F4F8F5; }
+:root[data-theme="dark"] .cx-mnav__head .cxh-brand__mark { background-image: url("/brand/chiya-symbol-white.svg"); }

@@ -14,14 +14,14 @@
 .cx-badge--lg { font-size: 13px; padding: 6px 12px; border-radius: var(--radius-pill); }
 .cx-badge__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
 .cx-badge--neutral { background: var(--gray-100); color: var(--gray-700); border-color: var(--gray-200); }
-.cx-badge--brand { background: var(--brand-subtle); color: var(--green-700); border-color: var(--green-100); }
-.cx-badge--accent { background: var(--brand-accent-subtle); color: var(--gold-700); border-color: var(--gold-100); }
+.cx-badge--brand { background: var(--brand-subtle); color: var(--text-brand); border-color: var(--green-100); }
+.cx-badge--accent { background: var(--brand-accent-subtle); color: var(--text-accent); border-color: var(--green-100); }
 .cx-badge--success { background: var(--success-50); color: var(--success-700); border-color: var(--success-100); }
 .cx-badge--warning { background: var(--warning-50); color: var(--warning-700); border-color: var(--warning-100); }
 .cx-badge--error { background: var(--error-50); color: var(--error-700); border-color: var(--error-100); }
 .cx-badge--info { background: var(--info-50); color: var(--info-700); border-color: var(--info-100); }
 .cx-badge--solid { background: var(--brand-primary); color: #fff; border-color: transparent; }
-.cx-badge--gold { background: var(--brand-accent); color: var(--green-900); border-color: transparent; }
+.cx-badge--gold { background: var(--brand-accent); color: var(--text-on-accent); border-color: transparent; }
 
 /* Tag: removable filter chip */
 .cx-tag {

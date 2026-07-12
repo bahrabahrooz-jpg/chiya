@@ -8,7 +8,7 @@ import "./agent-card.css";
 export interface AgentCardProps {
   name: string;
   avatar?: string;
-  agency?: string;
+  city?: string;
   verified?: boolean;
   rating?: number;
   reviews?: number;
@@ -32,7 +32,7 @@ export interface AgentCardProps {
 export function AgentCard({
   name,
   avatar,
-  agency,
+  city,
   verified = true,
   rating,
   reviews,
@@ -63,8 +63,8 @@ export function AgentCard({
             {name}
           </div>
           <div className="cx-agent__agency">
-            <Icon name="building-2" size={13} />
-            {agency}
+            <Icon name="map-pin" size={13} />
+            {city}
           </div>
         </div>
         {rating != null && (
@@ -83,8 +83,8 @@ export function AgentCard({
       <div>
         <div className="cx-agent__name">{name}</div>
         <div className="cx-agent__agency">
-          <Icon name="building-2" size={14} />
-          {agency}
+          <Icon name="map-pin" size={14} />
+          {city}
         </div>
         {verified && (
           <div style={{ marginTop: 8 }}>

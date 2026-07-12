@@ -24,12 +24,30 @@
 .cx-iconbtn--brand { background: var(--brand-primary); color: #fff; }
 .cx-iconbtn--brand:hover { background: var(--brand-primary-hover); }
 .cx-iconbtn--glass {
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: var(--green-800);
+  color: #33383f;
   border-radius: var(--radius-full);
   box-shadow: var(--shadow-sm);
 }
 .cx-iconbtn--glass:hover { background: #fff; }
 .cx-iconbtn--glass.cx-iconbtn--active { color: var(--error-500); }
+
+/* cx-fav — the listing/agent "save" heart, matched 1:1 to the mobile app card
+   (34px near-white circle, no border/blur/shadow, 18px glyph, #33383F idle,
+   red when active). Overrides the shared size + glass treatment. */
+.cx-iconbtn.cx-fav {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  color: #33383f;
+}
+.cx-iconbtn.cx-fav:hover { background: #fff; }
+.cx-iconbtn.cx-fav.cx-iconbtn--active { color: var(--error-500); }
+.cx-iconbtn.cx-fav svg { width: 18px; height: 18px; }

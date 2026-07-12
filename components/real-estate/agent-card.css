@@ -17,7 +17,7 @@
 .cx-agent__name { font-family: var(--font-display); font-weight: 600; font-size: 20px; line-height: 24px; color: var(--text-primary); }
 .cx-agent__agency { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
 .cx-agent__rating { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.cx-agent__rating svg { color: var(--brand-accent); }
+.cx-agent__rating svg { color: var(--rating-star); }
 .cx-agent__rating span { color: var(--text-tertiary); font-weight: 500; }
 .cx-agent__stats { display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 14px; }
 .cx-agent__stat { flex: 1; display: flex; flex-direction: column; gap: 2px; }

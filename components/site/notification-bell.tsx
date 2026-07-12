@@ -85,7 +85,7 @@ export function NotificationBell({ variant }: { variant?: IconButtonVariant }) {
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <Icon name="bell" size={20} />
+        <Icon name="bell" size={20} strokeWidth={2} />
         {unread > 0 && <span className="cxn__dot" aria-hidden="true" />}
       </button>
       {open && (

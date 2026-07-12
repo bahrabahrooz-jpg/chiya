@@ -2,16 +2,15 @@
 
 import type { ReactNode } from "react";
 import { Icon } from "@/components/ui/icon";
-import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { FavoriteButton } from "./favorite-button";
+import { CardStatusPill } from "./property-status-badge";
 
 import "./featured-property-card.css";
 
 export interface FeaturedAgent {
   name: string;
   avatar?: string;
-  agency?: string;
   verified?: boolean;
 }
 
@@ -69,12 +68,7 @@ export function FeaturedPropertyCard({
         <img src={image} alt={title} />
         <div className="cx-feat__grad" />
         <div className="cx-feat__badges">
-          <Badge variant="gold" size="md" icon="star">
-            Featured
-          </Badge>
-          <Badge variant="solid" size="md" dot>
-            {status}
-          </Badge>
+          <CardStatusPill status={status} />
         </div>
         <div className="cx-feat__fav">
           <FavoriteButton active={favorite} onToggle={onFavorite} />
@@ -139,7 +133,7 @@ export function FeaturedPropertyCard({
               <Avatar src={agent.avatar} name={agent.name} size="md" verified={agent.verified} />
               <div className="cx-feat__agent">
                 <b>{agent.name}</b>
-                <span>{agent.agency || "Chiya verified agent"}</span>
+                <span>Chiya verified agent</span>
               </div>
             </>
           )}

@@ -78,7 +78,7 @@
   font-weight: 600;
   font-size: 21px;
   letter-spacing: 0.16em;
-  color: var(--green-700);
+  color: var(--text-brand);
 }
 
 /* headings */
@@ -209,7 +209,7 @@
 }
 .al-strength[data-level="1"] .al-strength__seg.is-on { background: var(--error-500); }
 .al-strength[data-level="2"] .al-strength__seg.is-on { background: var(--warning-500); }
-.al-strength[data-level="3"] .al-strength__seg.is-on { background: var(--gold-500); }
+.al-strength[data-level="3"] .al-strength__seg.is-on { background: var(--warning-600); }
 .al-strength[data-level="4"] .al-strength__seg.is-on { background: var(--success-500); }
 
 /* new-password requirements frame */
@@ -329,7 +329,7 @@
   font-family: var(--font-sans);
   font-size: 13.5px;
   font-weight: 600;
-  color: var(--brand-primary);
+  color: var(--text-brand);
   cursor: pointer;
   transition: color 0.15s;
 }
@@ -377,7 +377,7 @@
   border-radius: var(--radius-xl);
   background: var(--brand-subtle);
   border: 1px solid var(--green-100);
-  color: var(--green-700);
+  color: var(--text-brand);
 }
 .al-sent__icon--error {
   background: var(--error-50);

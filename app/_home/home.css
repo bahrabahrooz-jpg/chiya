@@ -26,9 +26,24 @@
 .cxhero__inner { position: relative; z-index: 2; width: 100%; max-width: 1320px; margin-inline: auto; padding: 104px 56px 78px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .cxhero__title { font-family: var(--font-display); font-weight: 600; font-size: 64px; line-height: 1.04; letter-spacing: -0.025em; color: var(--text-primary); white-space: pre-line; margin: 24px auto 18px; max-width: 900px; }
 .cxhero__sub { font-family: var(--font-sans); font-size: 19px; line-height: 29px; color: var(--text-secondary); max-width: 600px; margin: 0 auto 34px; text-wrap: pretty; }
-/* The hero photo is bright in both themes, so keep the headline dark for legibility in dark mode. */
-:root[data-theme="dark"] .cxhero__title { color: #191B20; }
-:root[data-theme="dark"] .cxhero__sub { color: #545862; }
+/* Dark mode: keep the same villa photo but dim it so the hero reads as a real dark
+   section (not a bright "light island"), switch text to light, and fade the bottom seam
+   into the dark page (#0F1115) instead of the light cream used in light mode. */
+:root[data-theme="dark"] .cxhero__bg { filter: brightness(.68) saturate(.92); }
+:root[data-theme="dark"] .cxhero__grad {
+  background: linear-gradient(to bottom,
+    rgba(15,17,21,.50) 0%,
+    rgba(15,17,21,.20) 20%,
+    rgba(15,17,21,.24) 55%,
+    rgba(15,17,21,.90) 92%,
+    #0F1115 100%);
+}
+:root[data-theme="dark"] .cxhero__grad::before {
+  background: radial-gradient(58% 54% at 50% 46%,
+    rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 74%);
+}
+:root[data-theme="dark"] .cxhero__title { color: #F8FAFC; }
+:root[data-theme="dark"] .cxhero__sub { color: #E2E8F0; }
 
 /* ---- Hero search: single unified bar, dropped to straddle hero/featured seam ---- */
 .cxsearch { width: 100%; position: relative; display: flex; justify-content: center; --cxsearch-drop: 112px; transform: translateY(var(--cxsearch-drop)); }
@@ -50,7 +65,7 @@ body.cx-pop-open .cxhero { z-index: 1000; }
   text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; }
 .cxfield__val { display: inline-flex; align-items: center; gap: 9px;
   font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text-primary); line-height: 22px; }
-.cxfield__val > svg { color: var(--green-600); flex: none; }
+.cxfield__val > svg { color: var(--text-brand-muted); flex: none; }
 .cxfield--empty .cxfield__val { color: var(--text-placeholder); font-weight: 500; }
 .cxfield--empty .cxfield__val > svg { color: var(--text-tertiary); }
 .cxfield__txt { white-space: nowrap; }
@@ -86,12 +101,12 @@ body.cx-pop-open .cxhero { z-index: 1000; }
 .cxrow--sel { background: var(--green-50); }
 .cxrow--sel:hover { background: var(--green-50); }
 .cxrow__ic { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 38px; height: 38px;
-  border-radius: 50%; background: var(--gray-100); color: var(--green-700); }
+  border-radius: 50%; background: var(--gray-100); color: var(--text-brand); }
 .cxrow__ic--tile { border-radius: var(--radius-md); background: var(--green-50); }
 .cxrow__body { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
 .cxrow__title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .cxrow__sub { font-size: 12.5px; color: var(--text-tertiary); }
-.cxrow__check { color: var(--brand-primary); flex: none; }
+.cxrow__check { color: var(--text-brand); flex: none; }
 
 @media (max-width: 880px) {
   .cxsearch { --cxsearch-drop: 56px; }
@@ -142,7 +157,7 @@ body.cx-pop-open .cxhero { z-index: 1000; }
 
 /* ============ TESTIMONIALS ============ */
 .cxtest { display: flex; flex-direction: column; gap: 18px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: 30px 28px; box-shadow: var(--shadow-card); margin: 0; }
-.cxtest__stars { display: flex; gap: 3px; color: var(--brand-accent); }
+.cxtest__stars { display: flex; gap: 3px; color: var(--rating-star); }
 .cxtest__quote { font-family: var(--font-display); font-weight: 500; font-size: 21px; line-height: 30px; letter-spacing: -0.01em; color: var(--text-primary); margin: 0; flex: 1; text-wrap: pretty; }
 .cxtest__by { display: flex; align-items: center; gap: 12px; padding-top: 18px; border-top: 1px solid var(--border-subtle); }
 .cxtest__name { font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--text-primary); }
@@ -158,7 +173,7 @@ body.cx-pop-open .cxhero { z-index: 1000; }
 .cxk-cta__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; text-align: left; }
 .cxcta-card { display: flex; flex-direction: column; gap: 12px; padding: 32px 28px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.11); border-radius: var(--radius-card-lg); transition: background-color .2s ease, transform .2s ease, border-color .2s ease; }
 .cxcta-card:hover { background: rgba(255,255,255,.08); border-color: rgba(201,162,75,.4); transform: translateY(-4px); }
-.cxcta-card__ic { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: var(--radius-lg); background: var(--brand-accent); color: var(--green-900); }
+.cxcta-card__ic { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: var(--radius-lg); background: var(--brand-accent); color: var(--text-on-accent); }
 .cxcta-card__title { font-family: var(--font-display); font-weight: 600; font-size: 25px; margin: 4px 0 0; color: #fff; }
 .cxcta-card__desc { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: rgba(255,255,255,.70); margin: 0; flex: 1; }
 .cxcta-card__btn { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 6px 0 0; font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--brand-accent); transition: gap .18s ease; }

@@ -30,7 +30,7 @@
 .cx-alert__close:hover { background: var(--gray-100); color: var(--text-secondary); }
 
 .cx-alert--brand { background: var(--brand-subtle); border-color: var(--green-100); }
-.cx-alert--brand .cx-alert__icon, .cx-alert--brand .cx-alert__title { color: var(--green-700); }
+.cx-alert--brand .cx-alert__icon, .cx-alert--brand .cx-alert__title { color: var(--text-brand); }
 .cx-alert--info { background: var(--info-50); border-color: var(--info-100); }
 .cx-alert--info .cx-alert__icon, .cx-alert--info .cx-alert__title { color: var(--info-700); }
 .cx-alert--success { background: var(--success-50); border-color: var(--success-100); }

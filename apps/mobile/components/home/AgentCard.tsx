@@ -40,7 +40,7 @@ export function AgentCard({ agent: a }: { agent: Agent }) {
           <Text numberOfLines={1} style={[type.bodySm, { color: colors.textSecondary, flex: 1 }]}>{a.city}</Text>
         </View>
         <View style={styles.stats}>
-          <Star size={14} color={colors.brandAccent} fill={colors.brandAccent} strokeWidth={0} />
+          <Star size={14} color={colors.warning} fill={colors.warning} strokeWidth={0} />
           <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansMedium }]}>{a.rating.toFixed(1)}</Text>
           <Text style={[type.bodySm, { color: colors.textTertiary }]}>· {t("card.listings", { count: a.listings })}</Text>
         </View>

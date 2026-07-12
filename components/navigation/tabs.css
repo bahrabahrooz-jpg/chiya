@@ -20,11 +20,11 @@
 /* pill */
 .cx-tabs--pill { background: var(--gray-100); padding: 4px; border-radius: var(--radius-pill); gap: 2px; }
 .cx-tabs--pill .cx-tab { padding: 7px 16px; border-radius: var(--radius-pill); }
-.cx-tabs--pill .cx-tab--active { color: var(--green-800); background: var(--surface-card); box-shadow: var(--shadow-sm); }
+.cx-tabs--pill .cx-tab--active { color: var(--text-brand); background: var(--surface-card); box-shadow: var(--shadow-sm); }
 
 /* line */
 .cx-tabs--line .cx-tab { padding: 0 1px 12px; border-bottom: 2px solid transparent; margin-bottom: -1px; border-radius: 0; }
-.cx-tabs--line .cx-tab--active { color: var(--brand-primary); border-bottom-color: var(--brand-accent); }
+.cx-tabs--line .cx-tab--active { color: var(--text-brand); border-bottom-color: var(--brand-accent); }
 
 /* segmented */
 .cx-tabs--seg { border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 0; overflow: hidden; gap: 0; }
@@ -32,7 +32,7 @@
 [dir="rtl"] .cx-tabs--seg .cx-tab { border-right: none; border-left: 1px solid var(--border-subtle); }
 .cx-tabs--seg .cx-tab:last-child { border-right: none; }
 [dir="rtl"] .cx-tabs--seg .cx-tab:last-child { border-left: none; }
-.cx-tabs--seg .cx-tab--active { color: var(--green-800); background: var(--brand-subtle); }
+.cx-tabs--seg .cx-tab--active { color: var(--text-brand); background: var(--brand-subtle); }
 
 .cx-tab__count {
   font-size: 12px;
@@ -43,4 +43,4 @@
   padding: 1px 7px;
   line-height: 16px;
 }
-.cx-tab--active .cx-tab__count { background: var(--brand-subtle); color: var(--green-700); }
+.cx-tab--active .cx-tab__count { background: var(--brand-subtle); color: var(--text-brand); }

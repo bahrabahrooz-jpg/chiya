@@ -47,7 +47,7 @@
 }
 .ml-tab:not(:last-child) { margin-right: 14px; }
 .ml-tab:hover { color: var(--text-secondary); }
-.ml-tab.is-active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); }
+.ml-tab.is-active { color: var(--text-brand); border-bottom-color: var(--brand-primary); }
 .ml-tab__count {
   min-width: 20px;
   padding: 1px 7px;
@@ -59,7 +59,7 @@
   line-height: 18px;
   text-align: center;
 }
-.ml-tab.is-active .ml-tab__count { background: var(--green-50); color: var(--green-800); }
+.ml-tab.is-active .ml-tab__count { background: var(--green-50); color: var(--text-brand); }
 
 /* ── Listings grid ──────────────────────────────────────────────────────── */
 .ml-grid {
@@ -346,7 +346,7 @@
 .ml-success__mark {
   display: inline-flex; align-items: center; justify-content: center;
   width: 88px; height: 88px; border-radius: 50%;
-  background: var(--green-50); color: var(--brand-primary); margin-bottom: 22px;
+  background: var(--green-50); color: var(--text-brand); margin-bottom: 22px;
 }
 .ml-success__title { font-family: var(--font-serif, var(--font-sans)); font-size: 28px; font-weight: 600; color: var(--text-primary); }
 .ml-success__desc { margin-top: 10px; font-size: 15px; line-height: 1.6; color: var(--text-secondary); }

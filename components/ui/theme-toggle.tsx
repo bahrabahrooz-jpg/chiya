@@ -1,50 +1,31 @@
 "use client";
 
 import { useTheme } from "@/lib/theme";
-import { Icon } from "./icon";
-import "./theme-toggle.css";
+import { IconButton, type IconButtonVariant } from "./icon-button";
 
 export interface ThemeToggleProps {
-  /** Use the translucent variant when floating over hero photography. */
-  variant?: "glass";
+  /** Button variant — `glass` when floating over hero photography. */
+  variant?: IconButtonVariant;
   className?: string;
 }
 
 /**
- * ThemeToggle — segmented sun/moon control bound to the Phase 0 theme engine.
- * Faithful to the design system's `.cx-thtog`, with an animated thumb.
+ * ThemeToggle — a single icon button bound to the theme engine's `toggle()`.
+ * The glyph reflects the current theme (sun in light, moon in dark) and the
+ * accessible label names the action; theme is a low-frequency setting, so one
+ * compact control beats a segmented pill.
  */
-export function ThemeToggle({ variant, className = "" }: ThemeToggleProps) {
-  const { theme, setTheme } = useTheme();
+export function ThemeToggle({ variant = "ghost", className }: ThemeToggleProps) {
+  const { theme, toggle } = useTheme();
   const isDark = theme === "dark";
 
   return (
-    <div
-      className={["cx-thtog", isDark ? "is-dark" : "", variant ? `cx-thtog--${variant}` : "", className]
-        .filter(Boolean)
-        .join(" ")}
-      role="group"
-      aria-label="Color theme"
-    >
-      <span className="cx-thtog__thumb" aria-hidden="true" />
-      <button
-        type="button"
-        className={"cx-thtog__opt" + (!isDark ? " is-on" : "")}
-        aria-pressed={!isDark}
-        aria-label="Light mode"
-        onClick={() => setTheme("light")}
-      >
-        <Icon name="sun" size={15} />
-      </button>
-      <button
-        type="button"
-        className={"cx-thtog__opt" + (isDark ? " is-on" : "")}
-        aria-pressed={isDark}
-        aria-label="Dark mode"
-        onClick={() => setTheme("dark")}
-      >
-        <Icon name="moon" size={15} />
-      </button>
-    </div>
+    <IconButton
+      icon={isDark ? "moon" : "sun"}
+      label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      variant={variant}
+      className={className}
+      onClick={toggle}
+    />
   );
 }

@@ -8,17 +8,16 @@ import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { useLang } from "@/lib/i18n";
-import { agents, cities, agencies, sortOptions, type DirAgent } from "./data";
+import { agents, cities, sortOptions, type DirAgent } from "./data";
 import { AgentDirCard } from "./agent-dir-card";
 
 const PER_PAGE = 12;
 
 interface Filters {
   city: string;
-  agency: string;
   verifiedOnly: boolean;
 }
-const emptyFilters: Filters = { city: "", agency: "", verifiedOnly: false };
+const emptyFilters: Filters = { city: "", verifiedOnly: false };
 
 function sortAgents(list: DirAgent[], sort: string) {
   const arr = [...list];
@@ -101,17 +100,13 @@ function CityPopover({ value, onPick }: { value: string; onPick: (v: string) => 
   );
 }
 
-function FilterControls({ filters, on }: { filters: Filters; on: { setCity: (v: string) => void; setAgency: (v: string) => void; toggleVerified: () => void } }) {
+function FilterControls({ filters, on }: { filters: Filters; on: { setCity: (v: string) => void; toggleVerified: () => void } }) {
   const { t } = useLang();
   return (
     <>
       <div className="agt-ctl agt-ctl--block">
         <label className="agt-ctl__label">{t("agents.cityCap").replace(":", "")}</label>
         <Select size="md" value={filters.city} onChange={(e) => on.setCity(e.target.value)} options={[{ value: "", label: t("agents.allCities") }, ...cities.map((c) => ({ value: c, label: t("city." + c) }))]} />
-      </div>
-      <div className="agt-ctl agt-ctl--block">
-        <label className="agt-ctl__label">{t("agents.agency")}</label>
-        <Select size="md" value={filters.agency} onChange={(e) => on.setAgency(e.target.value)} options={[{ value: "", label: t("agents.allAgencies") }, ...agencies.map((a) => ({ value: a, label: a }))]} />
       </div>
       <button type="button" className={"agt-verified agt-verified--block" + (filters.verifiedOnly ? " agt-verified--on" : "")} onClick={on.toggleVerified} aria-pressed={filters.verifiedOnly}>
         <span className="agt-verified__box">{filters.verifiedOnly && <Icon name="check" size={13} strokeWidth={3} />}</span>
@@ -136,7 +131,6 @@ export function AgentsApp() {
 
   const on = {
     setCity: (v: string) => setFilters((f) => ({ ...f, city: v })),
-    setAgency: (v: string) => setFilters((f) => ({ ...f, agency: v })),
     toggleVerified: () => setFilters((f) => ({ ...f, verifiedOnly: !f.verifiedOnly })),
   };
   const clearAll = () => {
@@ -144,15 +138,14 @@ export function AgentsApp() {
     setQuery("");
   };
 
-  const activeCount = (filters.city ? 1 : 0) + (filters.agency ? 1 : 0) + (filters.verifiedOnly ? 1 : 0);
-  const showClear = (filters.agency ? 1 : 0) + (filters.verifiedOnly ? 1 : 0) + (query ? 1 : 0) > 0;
+  const activeCount = (filters.city ? 1 : 0) + (filters.verifiedOnly ? 1 : 0);
+  const showClear = (filters.verifiedOnly ? 1 : 0) + (query ? 1 : 0) > 0;
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = agents.slice();
-    if (q) list = list.filter((a) => (a.name + " " + a.agency).toLowerCase().includes(q));
+    if (q) list = list.filter((a) => a.name.toLowerCase().includes(q));
     if (filters.city) list = list.filter((a) => a.city === filters.city);
-    if (filters.agency) list = list.filter((a) => a.agency === filters.agency);
     if (filters.verifiedOnly) list = list.filter((a) => a.verified);
     return sortAgents(list, sort);
   }, [query, filters, sort]);
@@ -160,7 +153,7 @@ export function AgentsApp() {
   const totalPages = Math.max(1, Math.ceil(results.length / PER_PAGE));
 
   // Reset to page 1 when the query/filters/sort change (adjust state during render).
-  const filterKey = `${query}|${filters.city}|${filters.agency}|${filters.verifiedOnly}|${sort}`;
+  const filterKey = `${query}|${filters.city}|${filters.verifiedOnly}|${sort}`;
   const [prevKey, setPrevKey] = useState(filterKey);
   if (filterKey !== prevKey) {
     setPrevKey(filterKey);
@@ -192,7 +185,6 @@ export function AgentsApp() {
           <nav className="agt-crumb" aria-label="Breadcrumb">
             <div className="agt-crumb__inner">
               <Link className="agt-crumb__link" href="/">
-                <Icon name="home" size={15} />
                 Home
               </Link>
               <Icon name="chevron-right" size={15} className="agt-crumb__sep" />

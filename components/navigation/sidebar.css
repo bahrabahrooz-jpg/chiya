@@ -33,7 +33,7 @@
   transition: color .14s, background-color .14s;
 }
 .cx-sidebar__item:hover { color: var(--text-primary); background: var(--gray-50); }
-.cx-sidebar__item--active { color: var(--brand-primary); background: var(--brand-subtle); font-weight: 600; }
+.cx-sidebar__item--active { color: var(--text-brand); background: var(--brand-subtle); font-weight: 600; }
 .cx-sidebar__item svg { flex: none; }
 .cx-sidebar__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cx-sidebar--collapsed .cx-sidebar__label { opacity: 0; width: 0; }

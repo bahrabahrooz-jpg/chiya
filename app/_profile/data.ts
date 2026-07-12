@@ -8,7 +8,6 @@ export const agent = {
   id: "daban-ali",
   name: "Daban Ali",
   verified: true,
-  agency: "Chiya Premier",
   city: "Erbil, Kurdistan",
   title: "Senior luxury property advisor",
   photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=640&h=720&fit=crop&crop=faces",
@@ -37,7 +36,7 @@ export const metrics: Metric[] = [
 ];
 
 export const about = [
-  "Daban Ali is a senior advisor at Chiya Premier, specialising in luxury villas and high-yield investment property across Erbil and the wider Kurdistan Region. Over the past nine years he has guided more than two hundred families and investors through confident, well-informed moves — from first viewings to handover of keys.",
+  "Daban Ali is a senior advisor specialising in luxury villas and high-yield investment property across Erbil and the wider Kurdistan Region. Over the past nine years he has guided more than two hundred families and investors through confident, well-informed moves — from first viewings to handover of keys.",
   "His approach is unhurried and precise: he leads with the home and the lifestyle, then backs every recommendation with hard local market data. Clients return to Daban for his discretion, his deep knowledge of Erbil's premier communities, and a standard of service that treats every brief as the only brief.",
 ];
 

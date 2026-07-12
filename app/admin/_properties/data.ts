@@ -15,9 +15,9 @@ export type { PropertyRecord, AgentRef, OwnerRef, PropertyCounts } from "../_dat
 
 /* Verified roster for the "Assign agent" quick action (searchable). Unverified
    agents are excluded — only verified agents can be assigned. */
-export interface AssignableAgent { name: string; verified: boolean; img: string; agency: string }
+export interface AssignableAgent { name: string; verified: boolean; img: string }
 export const ASSIGNABLE_AGENTS: AssignableAgent[] = CAT_AGENTS.filter((a) => a.verification === "Verified")
-  .map((a) => ({ name: a.name, verified: true, img: a.img || "", agency: a.agency }))
+  .map((a) => ({ name: a.name, verified: true, img: a.img || "" }))
   .sort((x, y) => x.name.localeCompare(y.name));
 
 /* Assigned-agent filter — filter the table by assignment status only

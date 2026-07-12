@@ -19,6 +19,7 @@
 .cxh__brand { flex: none; }
 .cxh__nav { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; }
 .cxh__link {
+  position: relative;
   display: inline-flex;
   align-items: center;
   padding: 9px 16px;
@@ -32,7 +33,29 @@
   border: none;
   cursor: pointer;
 }
+/* Underline indicator — a centered green brand underline, shown on hover and
+   for the active tab (no button-shape background on hover). */
+.cxh__link::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 2px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--brand-primary);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform .24s cubic-bezier(.2, .7, .2, 1);
+}
+/* Hover: a shorter, slightly thicker green underline that grows from the middle.
+   The active (clicked) tab keeps the full-width 2px underline. */
+.cxh__link:not(.cxh__link--active):hover::after { transform: scaleX(.58); background: var(--text-brand); }
+.cxh__link--active::after { transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) { .cxh__link::after { transition: none; } }
 .cxh__actions { flex: none; display: flex; align-items: center; gap: 12px; }
+/* Theme + language grouped as quiet utilities; collapse into the drawer on mobile. */
+.cxh__utils { display: inline-flex; align-items: center; gap: 8px; }
 .cxh__divider { width: 1px; height: 22px; }
 
 /* Brand lockup — arch symbol + CHIYA wordmark. */
@@ -44,7 +67,7 @@
   text-transform: uppercase;
   letter-spacing: 0.16em;
   font-weight: 600;
-  color: var(--green-700);
+  color: var(--text-brand);
   line-height: 1;
 }
 
@@ -53,15 +76,39 @@
 .cxh:not(.cxh--solid) .cxh-brand__name { color: #fff; }
 .cxh:not(.cxh--solid) .cxh-brand__mark { filter: brightness(0) invert(1); }
 .cxh:not(.cxh--solid) .cxh__link { color: #fff; font-weight: 600; }
-.cxh:not(.cxh--solid) .cxh__link:hover { color: #fff; background: rgba(255, 255, 255, .16); }
+.cxh:not(.cxh--solid) .cxh__link:not(.cxh__link--active):hover { color: var(--text-brand); background: transparent; }
 .cxh:not(.cxh--solid) .cxh__link--active { color: #fff; }
+/* On the bright hero the underline reads as a lighter green for contrast. */
+.cxh:not(.cxh--solid) .cxh__link--active::after { background: var(--green-300); }
 .cxh:not(.cxh--solid) .cxh__divider { background: rgba(255, 255, 255, .4); }
+/* Theme toggle is a bare icon (ghost), so over the hero it needs white ink and a
+   subtle hover — no solid box — matching the language switcher beside it. */
+.cxh:not(.cxh--solid) .cxh__utils .cx-iconbtn { color: #fff; }
+.cxh:not(.cxh--solid) .cxh__utils .cx-iconbtn:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+
+/* Light mode: the hero bar stays transparent over the hero, but adopts the
+   sticky bar's dark ink so both bars read the same. (Dark mode keeps the
+   white-on-hero treatment above.) */
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh-brand__name { color: var(--text-brand); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh-brand__mark { filter: none; }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh__link { color: var(--text-secondary); font-weight: 500; }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh__link:not(.cxh__link--active):hover { color: var(--text-brand); background: transparent; }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh__link--active { color: var(--text-brand); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh__link--active::after { background: var(--brand-primary); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh__divider { background: var(--border-subtle); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh__utils .cx-iconbtn { color: var(--gray-600); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxh__utils .cx-iconbtn:hover { background: var(--gray-100); color: var(--gray-800); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cx-langsw--glass .cx-langsw__trigger { color: var(--gray-600); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cx-langsw--glass .cx-langsw__trigger:hover { background: var(--gray-100); color: var(--gray-800); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxn__btn--bare { color: var(--gray-600); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxn__btn--bare:hover { background: var(--gray-100); color: var(--gray-800); }
+:root:not([data-theme="dark"]) .cxh:not(.cxh--solid) .cxn__btn--bare.is-open { background: var(--gray-100); color: var(--gray-900); }
 
 /* Solid on scroll. */
 .cxh--solid { background: var(--surface-card); border-bottom-color: var(--border-subtle); box-shadow: var(--shadow-sm); }
 .cxh--solid .cxh__link { color: var(--text-secondary); }
-.cxh--solid .cxh__link:hover { color: var(--text-primary); background: var(--gray-50); }
-.cxh--solid .cxh__link--active { color: var(--brand-primary); font-weight: 600; }
+.cxh--solid .cxh__link:not(.cxh__link--active):hover { color: var(--text-brand); background: transparent; }
+.cxh--solid .cxh__link--active { color: var(--text-brand); font-weight: 600; }
 .cxh--solid .cxh__divider { background: var(--border-subtle); }
 
 /* Dark theme: solid bar becomes translucent glass with gold active link. */
@@ -71,7 +118,12 @@
   backdrop-filter: saturate(1.4) blur(20px);
   border-bottom-color: var(--border-subtle);
 }
-:root[data-theme="dark"] .cxh--solid .cxh__link--active { color: var(--brand-accent); }
+/* Dark mode: the sticky bar carries the hero's bright treatment through on
+   scroll — white idle links, green active underline — so both bars match. */
+:root[data-theme="dark"] .cxh--solid .cxh__link { color: #fff; font-weight: 600; }
+:root[data-theme="dark"] .cxh--solid .cxh__link:not(.cxh__link--active):hover { color: var(--text-brand); background: transparent; }
+:root[data-theme="dark"] .cxh--solid .cxh__link--active { color: #fff; }
+:root[data-theme="dark"] .cxh--solid .cxh__link--active::after { background: var(--green-300); }
 :root[data-theme="dark"] .cxh .cxh-brand__name { color: #fff; }
 :root[data-theme="dark"] .cxh .cxh-brand__mark { background-image: url("/brand/chiya-symbol-white.svg"); filter: none; }
 
@@ -81,8 +133,9 @@
   .cxh__inner { padding-inline: 32px; }
   .cxh__nav { display: none; }
   .cxh__menu { display: inline-flex; }
-  /* Keep the theme + language controls in the top bar; drop the notification
-     bell and dividers to keep the actions cluster from overflowing. */
+  /* Theme + language now live in the drawer; keep only Login + menu in the top
+     bar and drop the bell + dividers so the cluster can't overflow. */
+  .cxh__actions .cxh__utils,
   .cxh__actions .cxn,
   .cxh__actions .cxh__divider { display: none; }
   .cxh__actions { gap: 8px; }
@@ -90,12 +143,9 @@
 @media (max-width: 560px) {
   .cxh__inner { padding-inline: 16px; gap: 12px; }
   .cxh__actions { gap: 6px; }
-  /* Compact the wordmark and drop the language code to a globe-only trigger so
-     brand + theme + language + login + menu all fit the narrow bar. */
+  /* Compact the wordmark so brand + login + menu sit comfortably in the narrow bar. */
   .cxh-brand__name { font-size: 18px; letter-spacing: 0.1em; }
   .cxh-brand__mark { width: 30px; height: 30px; }
-  .cxh__actions .cx-langsw__code { display: none; }
-  .cxh__actions .cx-langsw__trigger { gap: 0; padding-inline: 6px; }
 }
 
 /* Interior header — solid, non-sticky, wider gutters (search/detail/agents). */

@@ -350,7 +350,6 @@ export default function PropertyDetailScreen() {
             agentId: agent.id,
             agentName: agent.name,
             agentPhoto: agent.photo,
-            agentAgency: agent.agency,
             date: iso,
             time,
             status: "requested",

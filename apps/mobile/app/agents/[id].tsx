@@ -75,7 +75,7 @@ function StarPicker({ value, onChange, size = 30 }: { value: number; onChange: (
     <View style={styles.starPick}>
       {[1, 2, 3, 4, 5].map((i) => (
         <Pressable key={i} onPress={() => onChange(i)} hitSlop={4}>
-          <Star size={size} color={colors.brandAccent} fill={i <= value ? colors.brandAccent : "transparent"} strokeWidth={i <= value ? 0 : 1.5} />
+          <Star size={size} color={colors.warning} fill={i <= value ? colors.warning : "transparent"} strokeWidth={i <= value ? 0 : 1.5} />
         </Pressable>
       ))}
     </View>
@@ -157,7 +157,7 @@ function ReviewCard({ review: r, onEdit, onDelete }: { review: Review; onEdit?: 
         </View>
         <View style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map((i) => (
-            <Star key={i} size={13} color={colors.brandAccent} fill={i <= r.stars ? colors.brandAccent : "transparent"} strokeWidth={i <= r.stars ? 0 : 1.5} />
+            <Star key={i} size={13} color={colors.warning} fill={i <= r.stars ? colors.warning : "transparent"} strokeWidth={i <= r.stars ? 0 : 1.5} />
           ))}
         </View>
       </View>
@@ -221,10 +221,10 @@ export default function AgentDetailScreen() {
   const experience = 3 + (agent.listings % 7);
   const bio =
     locale === "ar"
-      ? `${agent.name} وكيل موثّق لدى ${agent.agency} ومقره ${agent.city}. بتقييم ${agent.rating.toFixed(
+      ? `${agent.name} وكيل موثّق ومقره ${agent.city}. بتقييم ${agent.rating.toFixed(
           1,
         )} نجمة عبر ${agent.reviews} مراجعة و${agent.listings} إعلانًا نشطًا، يساعد ${first} المشترين والبائعين والمستأجرين في العثور على المنزل المناسب في ${agent.city}.`
-      : `${agent.name} is a verified ${agent.agency} agent based in ${agent.city}. With a ${agent.rating.toFixed(
+      : `${agent.name} is a verified agent based in ${agent.city}. With a ${agent.rating.toFixed(
           1,
         )}-star rating across ${agent.reviews} client reviews and ${agent.listings} active listings, ${first} helps buyers, sellers, and renters find the right home across ${agent.city}.`;
   const agentListings = listings;
@@ -260,7 +260,7 @@ export default function AgentDetailScreen() {
             </View>
           </View>
           <View style={styles.factRow}>
-            <Star size={15} color={colors.brandAccent} fill={colors.brandAccent} strokeWidth={0} />
+            <Star size={15} color={colors.warning} fill={colors.warning} strokeWidth={0} />
             <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{agent.rating.toFixed(1)}</Text>
             <Text style={[type.bodySm, { color: colors.textTertiary }]}>{t("agentDetail.reviewsParen", { count: agent.reviews })}</Text>
           </View>

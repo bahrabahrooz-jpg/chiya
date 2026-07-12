@@ -9,7 +9,7 @@ const img = (id: string, w = 1000, h = 750) =>
 
 export interface Agent {
   name: string;
-  agency: string;
+  city: string;
   verified: boolean;
   avatar: string;
   rating: number;
@@ -22,7 +22,7 @@ export interface Agent {
 export const agents: Record<string, Agent> = {
   lana: {
     name: "Lana Hassan",
-    agency: "Chiya Premier",
+    city: "Erbil",
     verified: true,
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop",
     rating: 4.9,
@@ -33,7 +33,7 @@ export const agents: Record<string, Agent> = {
   },
   daban: {
     name: "Daban Ali",
-    agency: "Chiya Premier",
+    city: "Erbil",
     verified: true,
     avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop",
     rating: 4.8,
@@ -44,7 +44,7 @@ export const agents: Record<string, Agent> = {
   },
   shene: {
     name: "Shene Karim",
-    agency: "Erbil Estates",
+    city: "Erbil",
     verified: true,
     avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop",
     rating: 5.0,
@@ -55,7 +55,7 @@ export const agents: Record<string, Agent> = {
   },
   aram: {
     name: "Aram Botani",
-    agency: "Chiya Premier",
+    city: "Erbil",
     verified: true,
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
     rating: 4.7,
@@ -66,7 +66,7 @@ export const agents: Record<string, Agent> = {
   },
   avan: {
     name: "Avan Mahmood",
-    agency: "Suli Signature",
+    city: "Sulaymaniyah",
     verified: true,
     avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop",
     rating: 4.9,
@@ -77,7 +77,7 @@ export const agents: Record<string, Agent> = {
   },
   rebin: {
     name: "Rebin Tofiq",
-    agency: "Duhok Homes",
+    city: "Duhok",
     verified: true,
     avatar: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop",
     rating: 4.8,

@@ -1,0 +1,15 @@
+/* CardStatusPill — the listing status tag overlaid on property-card photos.
+   Matches the mobile app's badge (PropertyCard/AgentCard): a solid near-white
+   pill with brand-coloured text and no status dot. */
+.cx-statuspill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}

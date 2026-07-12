@@ -250,7 +250,7 @@ export function buildAgentRows(agents: AgentRecord[], properties: PropertyRecord
       const d = deals[a.name] || { active: 0, sold: 0, rented: 0 };
       return {
         name: a.name,
-        team: `${a.agency} · ${a.city}`,
+        team: a.city,
         active: d.active,
         sold: d.sold,
         rented: d.rented,

@@ -15,7 +15,6 @@ export function PdpSimilar({ favorites, onFavorite }: { favorites: string[]; onF
     <section className="pdp-similar">
       <div className="pdp-similar__head">
         <div>
-          <div className="pdp-similar__eyebrow">{t("pdp.keepExploring")}</div>
           <h2 className="pdp-similar__title">{t("pdp.similar")}</h2>
         </div>
         <Link className="pdp-similar__link" href="/search">

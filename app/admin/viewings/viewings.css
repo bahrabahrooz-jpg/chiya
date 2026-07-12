@@ -71,7 +71,7 @@
   .vw-tablecard__count {
     display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
     border-radius: var(--radius-pill); background: var(--brand-subtle);
-    color: var(--green-700); font-family: var(--font-sans);
+    color: var(--text-brand); font-family: var(--font-sans);
     font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; flex: none;
   }
   .vw-tablecard__resultnote {
@@ -124,7 +124,7 @@
   .vw-tabsearch input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
   .vw-tabsearch__lead {
     position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-    color: var(--green-600); display: flex; pointer-events: none;
+    color: var(--text-brand-muted); display: flex; pointer-events: none;
   }
   .vw-filterbtn {
     display: inline-flex; align-items: center; gap: 7px;
@@ -138,8 +138,8 @@
   .vw-filterbtn svg { flex: none; }
   .vw-filterbtn:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--gray-25); }
   .vw-filterbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
-  .vw-filterbtn.is-open  { border-color: var(--brand-primary); color: var(--green-700); background: var(--brand-subtle); }
-  .vw-filterbtn.has-active { border-color: var(--brand-primary); color: var(--green-700); }
+  .vw-filterbtn.is-open  { border-color: var(--brand-primary); color: var(--text-brand); background: var(--brand-subtle); }
+  .vw-filterbtn.has-active { border-color: var(--brand-primary); color: var(--text-brand); }
   .vw-filterbtn__badge {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 18px; height: 18px; padding: 0 5px; border-radius: 10px;
@@ -348,11 +348,11 @@
   .vw-act-view {
     display: inline-flex; align-items: center; height: 30px; padding: 0 10px;
     font-family: var(--font-sans); font-size: 12.5px; font-weight: 600;
-    color: var(--brand-primary); background: transparent; border: 1px solid transparent;
+    color: var(--text-brand); background: transparent; border: 1px solid transparent;
     border-radius: var(--radius-md); cursor: pointer; white-space: nowrap;
     transition: background-color .14s, color .14s, border-color .14s;
   }
-  .vw-act-view:hover { background: var(--brand-subtle); border-color: var(--green-100); color: var(--green-800); }
+  .vw-act-view:hover { background: var(--brand-subtle); border-color: var(--green-100); color: var(--text-brand); }
   .vw-act-view:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .vw-act-icon {
     display: inline-flex; align-items: center; justify-content: center;
@@ -397,7 +397,7 @@
     width: 60px; height: 60px; border-radius: var(--radius-2xl); margin-bottom: 14px;
     display: flex; align-items: center; justify-content: center;
     background: linear-gradient(160deg, var(--green-50), var(--gray-50));
-    border: 1px solid var(--border-subtle); color: var(--green-700);
+    border: 1px solid var(--border-subtle); color: var(--text-brand);
   }
   .vw-empty h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--text-primary); margin: 0; }
   .vw-empty p { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 360px; }
@@ -466,7 +466,7 @@
   .vw-modal__icon {
     flex: none; width: 48px; height: 48px; border-radius: var(--radius-lg);
     display: inline-flex; align-items: center; justify-content: center;
-    background: var(--brand-subtle); border: 1px solid var(--green-100); color: var(--green-700);
+    background: var(--brand-subtle); border: 1px solid var(--green-100); color: var(--text-brand);
   }
   .vw-modal__title {
     font-family: var(--font-display); font-weight: 600; font-size: 22px;
@@ -607,7 +607,7 @@
   .vw-combo__searchbar {
     flex: none; position: relative; padding: 10px 10px 8px; border-bottom: 1px solid var(--border-subtle);
   }
-  .vw-combo__searchbar svg { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); color: var(--green-600); pointer-events: none; }
+  .vw-combo__searchbar svg { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); color: var(--text-brand-muted); pointer-events: none; }
   .vw-combo__searchinput {
     width: 100%; height: 38px; padding: 0 12px 0 38px;
     font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
@@ -637,7 +637,7 @@
   }
   .vw-combo__opt-meta span { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
   .vw-combo__opt-meta svg { flex: none; color: var(--gray-400); }
-  .vw-combo__opt-check { flex: none; color: var(--brand-primary); margin-left: auto; }
+  .vw-combo__opt-check { flex: none; color: var(--text-brand); margin-left: auto; }
   .vw-combo__thumb {
     width: 46px; height: 38px; flex: none; border-radius: 8px; object-fit: cover;
     background: var(--gray-100); box-shadow: inset 0 0 0 1px rgba(11,32,24,.06);
@@ -649,7 +649,7 @@
   .vw-combo__create {
     display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; text-align: left;
     border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md);
-    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--brand-primary);
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text-brand);
     transition: background-color .12s;
   }
   .vw-combo__create:hover { background: var(--brand-subtle); }
@@ -697,7 +697,7 @@
     font-variant-numeric: tabular-nums; transition: background-color .13s, color .13s;
   }
   .vw-cal__day:hover { background: var(--gray-100); }
-  .vw-cal__day.is-today { color: var(--brand-primary); font-weight: 700; }
+  .vw-cal__day.is-today { color: var(--text-brand); font-weight: 700; }
   .vw-cal__day.is-selected, .vw-cal__day.is-selected:hover {
     background: var(--brand-primary); color: #fff; font-weight: 600; box-shadow: none;
   }
@@ -706,7 +706,7 @@
   .vw-cal__day:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .vw-cal__foot { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: center; }
   .vw-cal__today {
-    font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--brand-primary);
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-brand);
     background: transparent; border: none; padding: 4px 10px; border-radius: var(--radius-md); cursor: pointer;
     transition: background-color .12s;
   }
@@ -752,7 +752,7 @@
   .vw-seg__btn svg { flex: none; }
   .vw-seg__btn:hover { color: var(--text-primary); }
   .vw-seg__btn.is-active {
-    background: var(--surface-card); color: var(--brand-primary);
+    background: var(--surface-card); color: var(--text-brand);
     box-shadow: var(--shadow-xs); border-color: var(--border-subtle);
   }
   .vw-seg__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
@@ -860,7 +860,7 @@
   /* Icon tints for the status / delete confirmations */
   .vw-confirm__icon--status {
     border-radius: 14px;
-    background: var(--brand-subtle); color: var(--green-700);
+    background: var(--brand-subtle); color: var(--text-brand);
     box-shadow: inset 0 0 0 1px var(--green-100, #D3F8DF);
   }
   .vw-confirm__icon--danger {
@@ -906,7 +906,7 @@
     font-size: 11px; font-weight: 600; color: var(--text-tertiary);
     background: var(--gray-100); border-radius: var(--radius-pill); padding: 2px 8px;
   }
-  .vw-statopt__check { color: var(--brand-primary); flex: none; }
+  .vw-statopt__check { color: var(--text-brand); flex: none; }
 
   /* ============================================================
      TOAST NOTIFICATION  (vw-toast)
@@ -946,7 +946,7 @@
   }
   .vw-toast__btn--dismiss { color: var(--text-secondary); }
   .vw-toast__btn--dismiss:hover { color: var(--text-primary); }
-  .vw-toast__btn--view { color: var(--brand-primary); }
+  .vw-toast__btn--view { color: var(--text-brand); }
   .vw-toast__btn--view:hover { color: var(--brand-primary-hover); text-decoration: underline; text-underline-offset: 3px; }
   .vw-toast__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: 4px; }
   .vw-toast__close {

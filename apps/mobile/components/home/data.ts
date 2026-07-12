@@ -414,7 +414,6 @@ export function agentBannerPhoto(photo: string): string {
 export interface Agent {
   id: string;
   name: string;
-  agency: string;
   city: string;
   photo: string;
   verified: boolean;
@@ -427,18 +426,18 @@ export interface Agent {
 }
 
 export const agents: Agent[] = [
-  { id: "lana-hassan", name: "Lana Hassan", agency: "Chiya Premier", city: "Erbil", photo: portrait("1573496359142-b8d87734a5a2"), verified: true, rating: 4.9, reviews: 128, listings: 42, languages: ["Kurdish", "English", "Arabic"], experience: 12 },
-  { id: "avan-mahmood", name: "Avan Mahmood", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1573497019236-17f8177b81e8"), verified: true, rating: 4.9, reviews: 112, listings: 37, languages: ["Kurdish", "Arabic"], experience: 9 },
-  { id: "daban-ali", name: "Daban Ali", agency: "Chiya Premier", city: "Erbil", photo: portrait("1472099645785-5658abf4ff4e"), verified: true, rating: 4.8, reviews: 96, listings: 31, languages: ["Kurdish", "English"], experience: 15 },
-  { id: "nyan-salih", name: "Nyan Salih", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1573497161161-c3e73707e25c"), verified: true, rating: 4.9, reviews: 88, listings: 29, languages: ["Kurdish", "Arabic", "English"], experience: 7 },
-  { id: "dilan-aziz", name: "Dilan Aziz", agency: "Erbil Estates", city: "Erbil", photo: portrait("1573496527892-904f897eb744"), verified: true, rating: 4.8, reviews: 77, listings: 26, languages: ["Kurdish", "English"], experience: 18 },
-  { id: "aram-botani", name: "Aram Botani", agency: "Chiya Premier", city: "Erbil", photo: portrait("1537368910025-700350fe46c7"), verified: true, rating: 4.7, reviews: 73, listings: 24, languages: ["Kurdish", "Turkish"], experience: 6 },
-  { id: "sipan-rashid", name: "Sipan Rashid", agency: "Suli Signature", city: "Sulaymaniyah", photo: portrait("1519085360753-af0119f7cbe7"), verified: true, rating: 4.8, reviews: 66, listings: 23, languages: ["Kurdish", "Arabic"], experience: 11 },
-  { id: "rebin-tofiq", name: "Rebin Tofiq", agency: "Duhok Homes", city: "Duhok", photo: portrait("1537511446984-935f663eb1f4"), verified: true, rating: 4.8, reviews: 58, listings: 21, languages: ["Kurdish", "English"], experience: 4 },
-  { id: "shene-karim", name: "Shene Karim", agency: "Erbil Estates", city: "Erbil", photo: portrait("1573165850883-9b0e18c44bd2"), verified: true, rating: 5.0, reviews: 64, listings: 18, languages: ["Kurdish", "Arabic", "English"], experience: 20 },
-  { id: "karwan-jamal", name: "Karwan Jamal", agency: "Empire Realty", city: "Erbil", photo: portrait("1556157382-97eda2d62296"), verified: true, rating: 4.6, reviews: 51, listings: 19, languages: ["Kurdish", "English", "Turkish"], experience: 8 },
-  { id: "hawre-sabir", name: "Hawre Sabir", agency: "Duhok Homes", city: "Duhok", photo: portrait("1544717297-fa95b6ee9643"), verified: true, rating: 4.7, reviews: 44, listings: 15, languages: ["Kurdish", "Arabic"], experience: 5 },
-  { id: "tara-qadir", name: "Tara Qadir", agency: "Ankawa Properties", city: "Erbil", photo: portrait("1587559070757-f72a388edbba"), verified: true, rating: 5.0, reviews: 39, listings: 12, languages: ["Kurdish", "English", "Persian"], experience: 3 },
+  { id: "lana-hassan", name: "Lana Hassan", city: "Erbil", photo: portrait("1573496359142-b8d87734a5a2"), verified: true, rating: 4.9, reviews: 128, listings: 42, languages: ["Kurdish", "English", "Arabic"], experience: 12 },
+  { id: "avan-mahmood", name: "Avan Mahmood", city: "Sulaymaniyah", photo: portrait("1573497019236-17f8177b81e8"), verified: true, rating: 4.9, reviews: 112, listings: 37, languages: ["Kurdish", "Arabic"], experience: 9 },
+  { id: "daban-ali", name: "Daban Ali", city: "Erbil", photo: portrait("1472099645785-5658abf4ff4e"), verified: true, rating: 4.8, reviews: 96, listings: 31, languages: ["Kurdish", "English"], experience: 15 },
+  { id: "nyan-salih", name: "Nyan Salih", city: "Sulaymaniyah", photo: portrait("1573497161161-c3e73707e25c"), verified: true, rating: 4.9, reviews: 88, listings: 29, languages: ["Kurdish", "Arabic", "English"], experience: 7 },
+  { id: "dilan-aziz", name: "Dilan Aziz", city: "Erbil", photo: portrait("1573496527892-904f897eb744"), verified: true, rating: 4.8, reviews: 77, listings: 26, languages: ["Kurdish", "English"], experience: 18 },
+  { id: "aram-botani", name: "Aram Botani", city: "Erbil", photo: portrait("1537368910025-700350fe46c7"), verified: true, rating: 4.7, reviews: 73, listings: 24, languages: ["Kurdish", "Turkish"], experience: 6 },
+  { id: "sipan-rashid", name: "Sipan Rashid", city: "Sulaymaniyah", photo: portrait("1519085360753-af0119f7cbe7"), verified: true, rating: 4.8, reviews: 66, listings: 23, languages: ["Kurdish", "Arabic"], experience: 11 },
+  { id: "rebin-tofiq", name: "Rebin Tofiq", city: "Duhok", photo: portrait("1537511446984-935f663eb1f4"), verified: true, rating: 4.8, reviews: 58, listings: 21, languages: ["Kurdish", "English"], experience: 4 },
+  { id: "shene-karim", name: "Shene Karim", city: "Erbil", photo: portrait("1573165850883-9b0e18c44bd2"), verified: true, rating: 5.0, reviews: 64, listings: 18, languages: ["Kurdish", "Arabic", "English"], experience: 20 },
+  { id: "karwan-jamal", name: "Karwan Jamal", city: "Erbil", photo: portrait("1556157382-97eda2d62296"), verified: true, rating: 4.6, reviews: 51, listings: 19, languages: ["Kurdish", "English", "Turkish"], experience: 8 },
+  { id: "hawre-sabir", name: "Hawre Sabir", city: "Duhok", photo: portrait("1544717297-fa95b6ee9643"), verified: true, rating: 4.7, reviews: 44, listings: 15, languages: ["Kurdish", "Arabic"], experience: 5 },
+  { id: "tara-qadir", name: "Tara Qadir", city: "Erbil", photo: portrait("1587559070757-f72a388edbba"), verified: true, rating: 5.0, reviews: 39, listings: 12, languages: ["Kurdish", "English", "Persian"], experience: 3 },
 ];
 
 export const featuredAgents: Agent[] = agents.slice(0, 6);
@@ -497,7 +496,7 @@ export function filterAgents({ query, filters, sort }: { query: string; filters:
     if (filters.cities.length && !filters.cities.includes(a.city)) return false;
     if (filters.languages.length && !filters.languages.some((l) => a.languages.includes(l))) return false;
     if (filters.experience && !experienceMatch(a.experience, filters.experience)) return false;
-    if (q && !`${a.name} ${a.agency} ${a.city}`.toLowerCase().includes(q)) return false;
+    if (q && !`${a.name} ${a.city}`.toLowerCase().includes(q)) return false;
     return true;
   });
   if (sort === "rating") list.sort((x, y) => y.rating - x.rating);

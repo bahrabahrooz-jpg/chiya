@@ -34,7 +34,6 @@ export interface AgentDetail {
   id: string;
   name: string;
   title: string;
-  agency: string;
   status: string;
   verification: string;
   joinedShort: string;
@@ -52,7 +51,6 @@ export const AGENT: AgentDetail = {
   id: "A-2041",
   name: "Lana Aziz",
   title: "Senior Property Consultant",
-  agency: "Chiya Prime",
   status: "Active",
   verification: "Verified",
   joinedShort: "Mar 2023",
@@ -157,7 +155,6 @@ export function toDetailAgent(a: AgentRecord): AgentDetail {
     id: a.id,
     name: a.name,
     title: a.verification === "Verified" ? "Senior Property Consultant" : "Property Consultant",
-    agency: a.agency,
     status: a.status,
     verification: a.verification,
     joinedShort: "Mar 2023",

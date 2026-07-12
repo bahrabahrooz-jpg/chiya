@@ -71,11 +71,11 @@ export function InteriorHeader({ active = null }: InteriorHeaderProps) {
             ))}
           </nav>
           <div className="cxh__actions">
-            <ThemeToggle />
-            <span className="cxh__divider" />
-            <LanguageSwitcher />
+            <span className="cxh__utils">
+              <ThemeToggle />
+              <LanguageSwitcher />
+            </span>
             <NotificationBell variant="ghost" />
-            <span className="cxh__divider" />
             <AuthButton size="sm" />
             <span className="cxh__menu">
               <IconButton icon="menu" label="Open menu" variant="ghost" onClick={() => setMenuOpen(true)} />

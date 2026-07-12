@@ -54,8 +54,19 @@
   transition: background-color .14s;
 }
 .cx-langsw__opt:hover { background: var(--gray-50); }
-.cx-langsw__opt--sel { color: var(--brand-primary); font-weight: 600; }
-.cx-langsw__check { margin-inline-start: auto; color: var(--brand-primary); }
+.cx-langsw__opt--sel { color: var(--text-brand); font-weight: 600; }
+.cx-langsw__check { margin-inline-start: auto; color: var(--text-brand); }
+/* "Coming soon" pill for languages without a complete dictionary (e.g. ku).
+   margin-auto right-aligns it; when the row is also selected the check follows. */
+.cx-langsw__soon {
+  margin-inline-start: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cx-langsw__soon + .cx-langsw__check { margin-inline-start: 8px; }
 
 /* Footer (dark band) variant */
 .cx-langsw--footer .cx-langsw__trigger {
@@ -78,6 +89,7 @@
 .cx-langsw--footer .cx-langsw__opt:hover { background: rgba(255, 255, 255, 0.08); }
 .cx-langsw--footer .cx-langsw__opt--sel { color: var(--brand-accent); }
 .cx-langsw--footer .cx-langsw__check { color: var(--brand-accent); }
+.cx-langsw--footer .cx-langsw__soon { color: rgba(255, 255, 255, 0.5); }
 
 /* Glass variant — over hero photography */
 .cx-langsw--glass .cx-langsw__trigger { color: #fff; }

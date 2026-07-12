@@ -82,7 +82,6 @@ export const agent = {
   id: "daban-ali",
   name: "Daban Ali",
   avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
-  agency: "Chiya Premier",
   verified: true,
   rating: 4.8,
   reviews: 96,

@@ -51,11 +51,11 @@
 .cxa-close:hover { background: var(--gray-50); color: var(--text-primary); border-color: var(--border-default); }
 .cxa-brand { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 20px; }
 .cxa-brand img { width: 30px; height: 30px; display: block; }
-.cxa-brand b { font-family: var(--font-display); font-weight: 600; font-size: 19px; text-transform: uppercase; letter-spacing: .16em; color: var(--green-700); white-space: nowrap; }
+.cxa-brand b { font-family: var(--font-display); font-weight: 600; font-size: 19px; text-transform: uppercase; letter-spacing: .16em; color: var(--text-brand); white-space: nowrap; }
 .cxa-title { font-family: var(--font-display); font-weight: 600; font-size: 30px; line-height: 1.1; letter-spacing: -.02em; color: var(--text-primary); margin: 0; text-wrap: balance; }
 .cxa-sub { font-size: 15px; line-height: 22px; color: var(--text-secondary); margin: 9px 0 0; }
-.cxa-intent { display: flex; align-items: flex-start; gap: 10px; margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: var(--green-50); border: 1px solid var(--green-100); font-size: 13.5px; line-height: 19px; color: var(--green-800); }
-.cxa-intent svg { flex: none; color: var(--green-600); margin-top: 1px; }
+.cxa-intent { display: flex; align-items: flex-start; gap: 10px; margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: var(--green-50); border: 1px solid var(--green-100); font-size: 13.5px; line-height: 19px; color: var(--text-brand); }
+.cxa-intent svg { flex: none; color: var(--text-brand-muted); margin-top: 1px; }
 .cxa-form { margin-top: 24px; display: flex; flex-direction: column; gap: 16px; }
 .cxa-typesel { display: flex; flex-direction: column; gap: 9px; }
 .cxa-typesel__lab { font-size: 13px; font-weight: 600; color: var(--text-primary); }
@@ -63,7 +63,7 @@
 .cxa-type { position: relative; display: flex; gap: 11px; align-items: flex-start; text-align: left; padding: 13px 14px; cursor: pointer; background: var(--surface-card); border: 1.5px solid var(--border-default); border-radius: 13px; transition: border-color .15s, background-color .15s, box-shadow .15s; }
 .cxa-type:hover { border-color: var(--border-strong); }
 .cxa-type[aria-checked="true"] { border-color: var(--brand-primary); background: var(--green-50); box-shadow: 0 0 0 1px var(--brand-primary) inset; }
-.cxa-type__ic { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--gray-100); color: var(--green-700); transition: background-color .15s, color .15s; }
+.cxa-type__ic { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--gray-100); color: var(--text-brand); transition: background-color .15s, color .15s; }
 .cxa-type[aria-checked="true"] .cxa-type__ic { background: var(--brand-primary); color: #fff; }
 .cxa-type__t { display: block; font-size: 14.5px; font-weight: 600; color: var(--text-primary); line-height: 18px; }
 .cxa-type__d { display: block; font-size: 11.5px; line-height: 15px; color: var(--text-tertiary); margin-top: 3px; }
@@ -102,7 +102,7 @@
    field, which has no empty error row under the input). */
 .cxa-err:empty { display: none; }
 .cxa-aux { display: flex; justify-content: flex-end; margin-top: -4px; }
-.cxa-link { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--brand-primary); padding: 2px; }
+.cxa-link { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-brand); padding: 2px; }
 .cxa-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .cxa-submit { height: 52px; border: none; border-radius: var(--radius-control); background: var(--brand-primary); color: #fff; font-family: inherit; font-size: 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 9px; box-shadow: var(--shadow-xs); transition: background-color .15s, transform .06s; margin-top: 2px; }
 .cxa-submit:hover { background: var(--brand-primary-hover); }
@@ -112,7 +112,7 @@
 @keyframes cxa-rot { to { transform: rotate(360deg); } }
 
 /* ── Forgot-password flow ───────────────────────────────────────────────── */
-.cxa-back { display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 4px auto 0; border: none; background: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--brand-primary); padding: 6px; text-decoration: none; transition: color .15s; }
+.cxa-back { display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 4px auto 0; border: none; background: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text-brand); padding: 6px; text-decoration: none; transition: color .15s; }
 .cxa-back:hover { color: var(--brand-primary-hover, var(--green-800)); }
 
 .cxa-strength { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
@@ -121,7 +121,7 @@
 .cxa-strength__label { font-size: 12.5px; color: var(--text-tertiary); text-align: right; }
 .cxa-strength[data-level="1"] .cxa-strength__seg.is-on { background: var(--error-500); }
 .cxa-strength[data-level="2"] .cxa-strength__seg.is-on { background: var(--warning-500); }
-.cxa-strength[data-level="3"] .cxa-strength__seg.is-on { background: var(--gold-500); }
+.cxa-strength[data-level="3"] .cxa-strength__seg.is-on { background: var(--warning-600); }
 .cxa-strength[data-level="4"] .cxa-strength__seg.is-on { background: var(--success-500); }
 
 .cxa-reqs { list-style: none; margin: 4px 0 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: var(--surface-sunken); }
@@ -132,9 +132,9 @@
 
 .cxa-sent { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .cxa-sent .cxa-title, .cxa-sent .cxa-sub { text-align: center; }
-.cxa-sent__icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: 18px; border-radius: var(--radius-xl); background: var(--green-50); border: 1px solid var(--green-100); color: var(--green-700); }
+.cxa-sent__icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: 18px; border-radius: var(--radius-xl); background: var(--green-50); border: 1px solid var(--green-100); color: var(--text-brand); }
 .cxa-sent .cxa-sub { margin-bottom: 18px; }
-.cxa-sent__link { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--brand-primary); background: none; border: none; padding: 0; cursor: pointer; text-decoration: none; }
+.cxa-sent__link { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text-brand); background: none; border: none; padding: 0; cursor: pointer; text-decoration: none; }
 .cxa-sent__link:hover { color: var(--brand-primary-hover, var(--green-800)); text-decoration: underline; }
 .cxa-sent__resend { font-size: 14px; color: var(--text-secondary); margin: 16px 0 0; }
 .cxa-sent .cxa-back { margin-top: 20px; }
@@ -145,10 +145,10 @@
 .cxa-google { width: 100%; height: 50px; border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-card); color: var(--text-primary); font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 11px; transition: background-color .15s, border-color .15s; }
 .cxa-google:hover { background: var(--gray-50); border-color: var(--border-strong); }
 .cxa-switch { margin-top: 22px; text-align: center; font-size: 14px; color: var(--text-secondary); }
-.cxa-switch button { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; color: var(--brand-primary); padding: 2px 3px; white-space: nowrap; }
+.cxa-switch button { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; color: var(--text-brand); padding: 2px 3px; white-space: nowrap; }
 .cxa-switch button:hover { text-decoration: underline; text-underline-offset: 3px; }
 .cxa-trust { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 9px; font-size: 12.5px; line-height: 17px; color: var(--text-tertiary); }
-.cxa-trust svg { flex: none; color: var(--green-600); }
+.cxa-trust svg { flex: none; color: var(--text-brand-muted); }
 
 /* account chip (logged-in header state) */
 .cxa-acct { position: relative; display: inline-flex; align-items: center; gap: 9px; height: 42px; padding: 0 12px 0 6px; border: 1px solid var(--border-default); background: var(--surface-card); border-radius: var(--radius-pill); cursor: pointer; font-family: var(--font-sans); transition: border-color .15s; }
@@ -162,7 +162,10 @@
    with a brand-green outer ring (same treatment as the admin/agent gold ring). */
 .cxa-avbtn--icon { height: auto; min-width: 0; padding: 0; gap: 0; border-radius: 50%; }
 .cxa-avbtn--icon:hover, .cxa-avbtn--icon[aria-expanded="true"] { background: transparent; }
-.cxa-avbtn--icon .cx-avatar { box-shadow: 0 0 0 2px var(--surface-card), 0 0 0 3.5px var(--brand-primary); }
+/* Header avatar — matches the mobile app: a solid brand-green circle with white
+   initials, no ring. */
+.cxa-avbtn .cx-avatar { background: var(--brand-primary); color: #fff; letter-spacing: .5px; }
+.cxa-avbtn--icon .cx-avatar { box-shadow: none; }
 .cxa-avbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
 .cxa-avbtn__meta { display: flex; flex-direction: column; line-height: 1.2; text-align: left; min-width: 0; }
 .cxa-avbtn__name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }

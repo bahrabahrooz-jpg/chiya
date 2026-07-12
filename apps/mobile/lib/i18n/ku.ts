@@ -436,10 +436,10 @@ export const ku: Catalog<typeof en> = {
   },
   agents: {
     title: "Agents",
-    searchPlaceholder: "Search agents, agencies…",
+    searchPlaceholder: "Search agents…",
     head: "AGENTS",
     noMatch: "No agents match “{query}”.",
-    hint: "Search agents by name, agency, or city.",
+    hint: "Search agents by name or city.",
     noAgentsTitle: "No agents found",
   },
   viewings: {

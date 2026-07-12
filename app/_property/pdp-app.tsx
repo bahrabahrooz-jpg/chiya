@@ -25,14 +25,12 @@ export function PdpApp() {
   const onCall = () => toast({ title: `Calling ${agent.phone}…` });
   const onWhatsApp = () => toast({ title: `Opening WhatsApp with ${agent.name}…` });
   const onShare = () => toast({ title: "Listing link copied to clipboard", variant: "success" });
-  const onDownload = () => toast({ title: "Preparing brochure download…" });
 
   return (
     <>
       <main className="pdp pdp-wrap">
         <nav className="pdp-crumb" aria-label="Breadcrumb">
           <Link className="pdp-crumb__link" href="/">
-            <Icon name="home" size={14} />
             {t("srp.crumb.home")}
           </Link>
           <Icon name="chevron-right" size={14} className="pdp-crumb__sep" />
@@ -63,7 +61,7 @@ export function PdpApp() {
         </div>
 
         <div className="pdp-body">
-          <PdpMain onDownload={onDownload} />
+          <PdpMain />
           <aside className="pdp-aside pdp-aside--desktop">
             <ActionPanel onBook={() => setBookOpen(true)} onCall={onCall} onWhatsApp={onWhatsApp} />
           </aside>

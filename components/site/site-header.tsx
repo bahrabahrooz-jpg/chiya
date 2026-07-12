@@ -85,11 +85,11 @@ function HeaderBar({ variant, show, active, onOpenMenu }: BarProps) {
           ))}
         </nav>
         <div className="cxh__actions">
-          <ThemeToggle variant={transparent ? "glass" : undefined} />
-          <span className="cxh__divider" />
-          <LanguageSwitcher variant={transparent ? "glass" : undefined} />
+          <span className="cxh__utils">
+            <ThemeToggle />
+            <LanguageSwitcher variant={transparent ? "glass" : undefined} />
+          </span>
           <NotificationBell variant={transparent ? "glass" : "ghost"} />
-          <span className="cxh__divider" />
           <AuthButton size="sm" />
           <span className="cxh__menu">
             <IconButton
@@ -148,6 +148,15 @@ export function SiteHeader({ active = null, stickyAfterId = "properties" }: Site
         onClose={() => setMenuOpen(false)}
         links={NAV.map(({ key, href }) => ({ label: t("nav." + key), href, active: active === key, onClick: gate(key) }))}
         header={<Brand />}
+        footer={
+          <>
+            <AuthButton fullWidth />
+            <div className="cx-mnav__row">
+              <ThemeToggle />
+              <LanguageSwitcher />
+            </div>
+          </>
+        }
       />
     </>
   );

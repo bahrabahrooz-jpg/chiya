@@ -34,7 +34,9 @@ export function FavoriteButton({
         e.stopPropagation();
         onToggle?.();
       }}
-      className={className}
+      // cx-fav pins the mobile-app heart look (34px near-white circle, 18px
+      // glyph, #33383F idle / red when saved) regardless of the size prop.
+      className={["cx-fav", className].filter(Boolean).join(" ")}
     />
   );
 }

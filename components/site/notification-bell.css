@@ -25,12 +25,12 @@
 .cxn__btn--bare.is-open { background: rgba(255, 255, 255, .18); color: #fff; }
 .cxn__dot {
   position: absolute;
-  top: 7px;
-  inset-inline-end: 7px;
-  width: 8px;
-  height: 8px;
+  top: 9px;
+  inset-inline-end: 9px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: var(--gold-400);
+  background: var(--error-500);
   border: 2px solid var(--surface-card);
   pointer-events: none;
 }
@@ -123,7 +123,7 @@
   font-family: var(--font-sans);
   font-size: 13.5px;
   font-weight: 600;
-  color: var(--brand-primary);
+  color: var(--text-brand);
   transition: background-color .13s;
 }
 .cxn__markread:hover:not(:disabled) { background: var(--green-50); }

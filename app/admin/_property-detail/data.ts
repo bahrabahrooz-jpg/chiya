@@ -64,7 +64,7 @@ const GALLERY: Record<string, string[]> = {
 };
 
 export interface OwnerRef { name: string; phone: string; type: string; email?: string }
-export interface DetailAgent { name: string; verified: boolean; listings?: number; phone: string; img: string; email?: string; agency?: string; rating?: string; reviews?: number }
+export interface DetailAgent { name: string; verified: boolean; listings?: number; phone: string; img: string; email?: string; rating?: string; reviews?: number }
 interface BaseProperty {
   id: string; title: string; area: string; city: string; type: string; img: string;
   owner: OwnerRef; agent: DetailAgent | null; listing: "sale" | "rent"; status: string;
@@ -86,7 +86,7 @@ function toBase(p: PropertyRecord): BaseProperty {
     agent: p.agent
       // Only verified agents can be assigned, so an assigned agent is always
       // shown as verified — never "Pending" — regardless of any stale record.
-      ? { name: p.agent.name, verified: true, phone: roster?.phone || "+964 750 000 0000", img: p.agent.img, agency: roster?.agency, listings: roster?.listings }
+      ? { name: p.agent.name, verified: true, phone: roster?.phone || "+964 750 000 0000", img: p.agent.img, listings: roster?.listings }
       : null,
     listing: p.listing,
     status: p.status,
@@ -261,7 +261,6 @@ export const AGENTS_LIST: DetailAgent[] = CATALOG_AGENTS.filter((a) => a.verific
     phone: a.phone,
     img: a.img || "",
     email: a.email,
-    agency: a.agency,
     listings: a.listings,
   }))
   .sort((a, b) => a.name.localeCompare(b.name));

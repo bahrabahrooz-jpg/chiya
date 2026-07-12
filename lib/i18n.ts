@@ -16,6 +16,13 @@ export const LANG_KEY = "cx-lang";
 export type Lang = "en" | "ar" | "ku";
 export const LANGS: Lang[] = ["en", "ar", "ku"];
 
+/**
+ * Which languages have a complete UI dictionary. Kurdish currently only defines
+ * language names and falls back to English, so it's surfaced as "coming soon"
+ * in the switcher. Flip `ku` to true once a Sorani dictionary lands.
+ */
+export const LANG_READY: Record<Lang, boolean> = { en: true, ar: true, ku: false };
+
 export function isRtl(lang: Lang): boolean {
   return lang === "ar" || lang === "ku";
 }
@@ -29,6 +36,7 @@ const en: Dict = {
   "lang.en": "English",
   "lang.ar": "Arabic",
   "lang.ku": "Kurdish",
+  "lang.soon": "Soon",
 
   "nav.buy": "Buy",
   "nav.rent": "Rent",
@@ -297,11 +305,9 @@ const en: Dict = {
   "agents.verifiedAgents": "verified agents",
   "agents.inCity": "in",
   "agents.across": "across Kurdistan",
-  "agents.searchPh": "Search by agent name or agency",
+  "agents.searchPh": "Search by agent name",
   "agents.cityCap": "City:",
   "agents.allCities": "All cities",
-  "agents.agency": "Agency",
-  "agents.allAgencies": "All agencies",
   "agents.verifiedOnly": "Verified agents only",
   "agents.filters": "Filters",
   "agents.clearFilters": "Clear filters",
@@ -309,7 +315,7 @@ const en: Dict = {
   "agents.of": "of",
   "agents.agentsLower": "agents",
   "agents.empty.title": "No agents match your search",
-  "agents.empty.sub": "Try a different city or agency, or clear your filters to see every verified agent.",
+  "agents.empty.sub": "Try a different city, or clear your filters to see every verified agent.",
   "agents.filterTitle": "Filter agents",
   "agents.sortBy": "Sort by",
   "agents.show": "Show",
@@ -461,6 +467,7 @@ const ar: Dict = {
   "lang.en": "الإنجليزية",
   "lang.ar": "العربية",
   "lang.ku": "الكردية",
+  "lang.soon": "قريباً",
 
   "nav.buy": "شراء",
   "nav.rent": "إيجار",
@@ -723,11 +730,9 @@ const ar: Dict = {
   "agents.verifiedAgents": "وكيل موثق",
   "agents.inCity": "في",
   "agents.across": "في أرجاء كردستان",
-  "agents.searchPh": "ابحث باسم الوكيل أو الوكالة",
+  "agents.searchPh": "ابحث باسم الوكيل",
   "agents.cityCap": "المدينة:",
   "agents.allCities": "جميع المدن",
-  "agents.agency": "الوكالة",
-  "agents.allAgencies": "جميع الوكالات",
   "agents.verifiedOnly": "الوكلاء المعتمدون فقط",
   "agents.filters": "التصفية",
   "agents.clearFilters": "مسح التصفية",
@@ -735,7 +740,7 @@ const ar: Dict = {
   "agents.of": "من",
   "agents.agentsLower": "وكيل",
   "agents.empty.title": "لا يوجد وكلاء يطابقون بحثك",
-  "agents.empty.sub": "جرّب مدينة أو وكالة مختلفة، أو امسح عوامل التصفية لرؤية كل وكيل موثق.",
+  "agents.empty.sub": "جرّب مدينة مختلفة، أو امسح عوامل التصفية لرؤية كل وكيل موثق.",
   "agents.filterTitle": "تصفية الوكلاء",
   "agents.sortBy": "ترتيب حسب",
   "agents.show": "عرض",

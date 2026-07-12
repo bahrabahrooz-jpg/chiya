@@ -418,10 +418,6 @@ export function AuthModalHost() {
                   {isLogin ? t("auth.login.switchAct") : t("auth.register.switchAct")}
                 </button>
               </div>
-              <div className="cxa-trust">
-                <Icon name="shield-check" size={16} />
-                {isLogin ? t("auth.login.trust") : t("auth.register.trust")}
-              </div>
             </>
           )}
         </div>

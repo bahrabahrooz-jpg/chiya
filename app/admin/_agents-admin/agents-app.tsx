@@ -168,8 +168,8 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
         <Avatar src={a.img || undefined} name={a.name} size="xl" verified={verified} ring={!verified} />
         <div className="ag-card__name">{a.name}</div>
         <div className="ag-card__agency">
-          <Icon name="building-2" size={13} />
-          {a.agency}
+          <Icon name="map-pin" size={13} />
+          {a.city}
         </div>
         <div className="ag-card__id">{a.id}</div>
         <div className="ag-card__verify">
@@ -825,7 +825,6 @@ export function AgentsApp() {
     addAgent({
       id: "A-" + (3000 + Math.floor(Math.random() * 9000)),
       name: values.name || "New agent",
-      agency: values.agency || "Chiya Prime",
       phone: values.phone || "",
       email: values.email || "",
       city: values.city || "Erbil",
@@ -914,7 +913,7 @@ export function AgentsApp() {
       if (filters.listings === "none" && a.listings > 0) return false;
       if (filters.listings === "10+" && a.listings < 10) return false;
       if (q) {
-        const hay = [a.name, a.phone, a.email, a.agency, a.id, a.city].join(" ").toLowerCase();
+        const hay = [a.name, a.phone, a.email, a.id, a.city].join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;

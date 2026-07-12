@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/ui/icon";
-import { Button } from "@/components/ui/button";
 import { useLang } from "@/lib/i18n";
 import { property, description, features, amenities } from "./data";
 
@@ -118,43 +117,7 @@ function Location() {
   );
 }
 
-function FloorPlan({ onDownload }: { onDownload: () => void }) {
-  const { t } = useLang();
-  return (
-    <section className="pdp-sec">
-      <h2 className="pdp-sec__title">{t("pdp.floor")}</h2>
-      <div className="pdp-floor">
-        <div className="pdp-floor__plan">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=1000&h=625&fit=crop" alt="Floor plan" style={{ opacity: 0.9 }} />
-          <button className="pdp-floor__expand" type="button" onClick={onDownload}>
-            <Icon name="maximize" size={15} />
-            {t("pdp.viewFloorPlan")}
-          </button>
-        </div>
-        <div className="pdp-doc">
-          <div className="pdp-docrow">
-            <span className="pdp-docrow__ic">
-              <Icon name="file-text" size={20} />
-            </span>
-            <div className="pdp-docrow__txt">
-              <b>{t("pdp.brochure")}</b>
-              <span>{t("pdp.brochureSub")}</span>
-            </div>
-          </div>
-          <Button hierarchy="secondary" iconLeading="download" fullWidth onClick={onDownload}>
-            {t("pdp.download")}
-          </Button>
-          <Button hierarchy="tertiary" iconLeading="ruler" fullWidth onClick={onDownload}>
-            {t("pdp.sitePlan")}
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export function PdpMain({ onDownload }: { onDownload: () => void }) {
+export function PdpMain() {
   return (
     <div className="pdp-content">
       <QuickFacts />
@@ -162,7 +125,6 @@ export function PdpMain({ onDownload }: { onDownload: () => void }) {
       <Features />
       <Amenities />
       <Location />
-      <FloorPlan onDownload={onDownload} />
     </div>
   );
 }

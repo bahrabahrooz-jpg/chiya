@@ -42,7 +42,7 @@ export interface ViewingDetail {
   reminderWhen: string;
   property: { id: string; name: string; location: string; listing: string; type: string; price: string; img: string };
   member: { id: string; name: string; role: string; phone: string; email: string };
-  agent: { id: string; name: string; phone: string; email: string; experience: number; img: string; agency: string; rating: number; reviews: number; verified: boolean };
+  agent: { id: string; name: string; phone: string; email: string; experience: number; img: string; rating: number; reviews: number; verified: boolean };
 }
 
 export const VIEWING: ViewingDetail = {
@@ -63,7 +63,7 @@ export const VIEWING: ViewingDetail = {
   reminderWhen: "Jun 15, 2026 · 9:00 AM",
   property: { id: "CH-1042", name: "Marble Hill Villa", location: "Ankawa, Erbil", listing: "For sale", type: "Villa", price: "$1,450,000", img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=520&q=75" },
   member: { id: "MEM-1087", name: "Sara Hassan", role: "Buyer", phone: "+964 750 112 4408", email: "sara.hassan@gmail.com" },
-  agent: { id: "A-2041", name: "Lana Aziz", phone: "+964 770 552 1190", email: "lana.aziz@chiya.estate", experience: 8, img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=75", agency: "Chiya Prime", rating: 4.9, reviews: 87, verified: true },
+  agent: { id: "A-2041", name: "Lana Aziz", phone: "+964 770 552 1190", email: "lana.aziz@chiya.estate", experience: 8, img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=75", rating: 4.9, reviews: 87, verified: true },
 };
 
 /* Resolve a real viewing (by id) into the rich detail shape, enriching the
@@ -110,7 +110,6 @@ export function buildViewingAgent(name: string): ViewingDetail["agent"] {
     email: catAgent?.email ?? VIEWING.agent.email,
     experience: catAgent?.experience ? Number(String(catAgent.experience).replace(/\D/g, "")) || 5 : 3 + (h % 8),
     img: catAgent?.img ?? VIEWING.agent.img,
-    agency: catAgent?.agency ?? VIEWING.agent.agency,
     rating: Number((4.4 + (h % 6) / 10).toFixed(1)),
     reviews: 20 + (h % 80),
     // Only verified agents can host a viewing, so the card is never "Pending".
@@ -120,11 +119,10 @@ export function buildViewingAgent(name: string): ViewingDetail["agent"] {
 
 /* Verified roster for the reassign picker (searchable). Unverified agents are
    excluded — only verified agents can be assigned. */
-export interface AssignableAgent { name: string; agency: string; img: string; verified: boolean }
+export interface AssignableAgent { name: string; img: string; verified: boolean }
 export const ASSIGNABLE_AGENTS: AssignableAgent[] = CAT_AGENTS.filter((a) => a.verification === "Verified")
   .map((a) => ({
     name: a.name,
-    agency: a.agency,
     img: a.img || "",
     verified: true,
   }))

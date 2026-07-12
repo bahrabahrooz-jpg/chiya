@@ -32,7 +32,7 @@ export function FeaturedAgents() {
             key={ag.name}
             name={ag.name}
             avatar={ag.avatar}
-            agency={ag.agency}
+            city={ag.city}
             verified={ag.verified}
             rating={ag.rating}
             reviews={ag.reviews}

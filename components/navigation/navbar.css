@@ -31,7 +31,7 @@
   transition: color .14s, background-color .14s;
 }
 .cx-navlink:hover { color: var(--text-primary); background: var(--gray-50); }
-.cx-navlink--active { color: var(--brand-primary); font-weight: 600; }
+.cx-navlink--active { color: var(--text-brand); font-weight: 600; }
 .cx-navbar--dark .cx-navlink { color: rgba(255, 255, 255, .72); }
 .cx-navbar--dark .cx-navlink:hover { color: #fff; background: rgba(255, 255, 255, .08); }
 .cx-navbar--dark .cx-navlink--active { color: var(--brand-accent); }

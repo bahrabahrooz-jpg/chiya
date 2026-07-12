@@ -22,7 +22,6 @@ export function PremiumCta() {
   return (
     <section className="cxk-cta">
       <div className="cxk-cta__inner">
-        <div className="cx-eyebrow cxk-cta__eyebrow">{t("cta.eyebrow")}</div>
         <h2 className="cxk-cta__title">{t("cta.title")}</h2>
         <p className="cxk-cta__sub">{t("cta.sub")}</p>
         <div className="cxk-cta__grid">

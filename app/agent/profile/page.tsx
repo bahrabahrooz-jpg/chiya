@@ -34,7 +34,7 @@ export default function AgentProfilePage() {
           <div className="pf-hero__tags">
             <Badge variant="brand" size="md" icon="badge-check">Agent</Badge>
             <span className="pf-hero__dot">·</span>
-            <span className="pf-hero__job">{me.agency}</span>
+            <span className="pf-hero__job">{me.city}</span>
           </div>
         </div>
       </section>
@@ -50,7 +50,6 @@ export default function AgentProfilePage() {
           <Row label="Email address" value={me.email} />
           <Row label="Phone" value={me.phone} />
           <Row label="City" value={me.city} />
-          <Row label="Agency" value={me.agency} />
           <Row label="Verification" value={<Badge variant={me.verification === "Verified" ? "success" : "warning"} size="sm" dot>{me.verification}</Badge>} />
           <Row label="Status" value={<Badge variant={me.status === "Active" ? "success" : "warning"} size="sm" dot>{me.status}</Badge>} />
         </div>

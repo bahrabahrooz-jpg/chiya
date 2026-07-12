@@ -20,7 +20,6 @@ function Crumb() {
   return (
     <nav className="pdp-crumb" aria-label="Breadcrumb">
       <Link className="pdp-crumb__link" href="/">
-        <Icon name="home" size={15} />
         {t("srp.crumb.home")}
       </Link>
       <Icon name="chevron-right" size={15} className="pdp-crumb__sep" />
@@ -79,11 +78,6 @@ function Hero({ saved, onSave, onShare, onCall, onWhatsApp, onEmail }: {
         </div>
 
         <div className="pro-hero__meta">
-          <span className="pro-hero__metaitem">
-            <Icon name="building-2" size={16} />
-            {agent.agency}
-          </span>
-          <span className="pro-hero__dot" />
           <span className="pro-hero__metaitem">
             <Icon name="map-pin" size={16} />
             {agent.city}

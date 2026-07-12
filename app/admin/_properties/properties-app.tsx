@@ -429,13 +429,13 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
     () =>
       agents
         .filter((a) => a.verification === "Verified")
-        .map((a) => ({ name: a.name, agency: a.agency, img: a.img || "" }))
+        .map((a) => ({ name: a.name, img: a.img || "" }))
         .sort((x, y) => x.name.localeCompare(y.name)),
     [agents],
   );
 
   const q = query.trim().toLowerCase();
-  const filtered = q ? verifiedAgents.filter((a) => a.name.toLowerCase().includes(q) || a.agency.toLowerCase().includes(q)) : verifiedAgents;
+  const filtered = q ? verifiedAgents.filter((a) => a.name.toLowerCase().includes(q)) : verifiedAgents;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -516,7 +516,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
             <div className="pp-amodal__drop pp-amodal__drop--search" role="listbox" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
               <div className="pp-amodal__search">
                 <Icon name="search" size={15} className="pp-amodal__search-ic" />
-                <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name or agency…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
+                <input className="pp-amodal__search-input" type="text" autoFocus placeholder="Search agents by name…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search agents" />
                 {query && (
                   <button type="button" className="pp-amodal__search-clear" aria-label="Clear search" onClick={() => setQuery("")}>
                     <Icon name="x" size={14} />
@@ -546,7 +546,6 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: Propert
                         <Avatar src={agent.img} name={agent.name} size="sm" verified />
                         <span className="pp-amodal__agent-body">
                           <span className="pp-amodal__agent-name">{agent.name}</span>
-                          {agent.agency && <span className="pp-amodal__agent-agency">{agent.agency}</span>}
                         </span>
                         {isCurrent && <span className="pp-amodal__current-tag">Current</span>}
                         {isSelected && (

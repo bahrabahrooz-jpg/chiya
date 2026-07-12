@@ -10,12 +10,13 @@ export interface SectionHeaderProps {
   align?: "start" | "center";
 }
 
-/** SectionHeader — eyebrow + display title + subtitle, with an optional action. */
-export function SectionHeader({ eyebrow, title, subtitle, action, align = "start" }: SectionHeaderProps) {
+/** SectionHeader — display title + subtitle, with an optional action.
+ *  (The gold eyebrow/overline was removed by request; the `eyebrow` prop is
+ *  accepted for compatibility but no longer rendered.) */
+export function SectionHeader({ title, subtitle, action, align = "start" }: SectionHeaderProps) {
   return (
     <div className={"cx-sechead" + (align === "center" ? " cx-sechead--center" : "")}>
       <div className="cx-sechead__text">
-        {eyebrow && <div className="cx-eyebrow cx-sechead__eyebrow">{eyebrow}</div>}
         {title && <h2 className="cx-sectitle">{title}</h2>}
         {subtitle && <p className="cx-secsub">{subtitle}</p>}
       </div>

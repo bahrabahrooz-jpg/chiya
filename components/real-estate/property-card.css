@@ -35,14 +35,14 @@
   -webkit-backdrop-filter: blur(4px);
 }
 .cx-prop__grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(11, 32, 24, .28), transparent 38%); pointer-events: none; }
-.cx-prop__body { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
-.cx-prop__priceln { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.cx-prop__price { font-family: var(--font-sans); font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.cx-prop__price small { font-size: 14px; font-weight: 600; color: var(--text-tertiary); }
-.cx-prop__title { font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 24px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-prop__body { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.cx-prop__titleln { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.cx-prop__price { flex: none; font-family: var(--font-sans); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: var(--text-accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cx-prop__price small { font-size: 13px; font-weight: 600; color: var(--text-tertiary); }
+.cx-prop__title { flex: 1; min-width: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 24px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cx-prop__addr { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-tertiary); }
 .cx-prop__addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cx-prop__specs { display: flex; align-items: center; gap: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
 .cx-prop__spec { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
 .cx-prop__spec b { font-weight: 600; color: var(--text-primary); }
-.cx-prop__spec svg { color: var(--green-500); }
+.cx-prop__spec svg { color: var(--text-tertiary); }

@@ -16,6 +16,16 @@
   background: rgba(28, 36, 50, 0.78);
 }
 
+/* The listing "save" heart is matched 1:1 to the mobile card and must keep its
+   near-white circle in dark mode too — opt it out of the glass dark treatment. */
+:root[data-theme="dark"] .cx-iconbtn.cx-fav {
+  background: rgba(255, 255, 255, 0.94);
+  color: #33383f;
+  border: none;
+}
+:root[data-theme="dark"] .cx-iconbtn.cx-fav:hover { background: #fff; }
+:root[data-theme="dark"] .cx-iconbtn.cx-fav.cx-iconbtn--active { color: var(--error-500); }
+
 /* Brand-green used as a FOREGROUND on dark subtle surfaces would be
    near-invisible; lift these specific foregrounds to a luminous green. */
 :root[data-theme="dark"] .cx-badge--brand {
@@ -35,3 +45,60 @@
   background: rgba(70, 128, 98, 0.45);
   color: #fff;
 }
+
+/* ============================================================
+   ADMIN / AGENT WEB-APP STATUS + ROLE BADGES
+   These badges are hardcoded to light tints in the page CSS and
+   never adapt on their own. Re-tint them for dark here (classes
+   are global, so this one block covers members/agents/viewings
+   detail + list pages). Status badges reuse the dark status
+   tokens; role badges get bespoke dark tints.
+   ============================================================ */
+
+/* Role badges (member/agent role chips) */
+:root[data-theme="dark"] .cx-badge.mp-role--buyer,
+:root[data-theme="dark"] .adh__chip--buyer    { background: #241C34; color: #C9B4F7; border-color: #392C54; }
+:root[data-theme="dark"] .cx-badge.mp-role--seller,
+:root[data-theme="dark"] .adh__chip--seller   { background: #321528; color: #F4A9D6; border-color: #48213A; }
+:root[data-theme="dark"] .cx-badge.mp-role--landlord,
+:root[data-theme="dark"] .adh__chip--landlord { background: #1B1F3E; color: #AAB0F8; border-color: #2F3562; }
+:root[data-theme="dark"] .cx-badge.mp-role--tenant,
+:root[data-theme="dark"] .adh__chip--tenant   { background: #33210F; color: #F3B98F; border-color: #492F18; }
+
+/* Viewing status badges (list = vw-st, detail = vwd-st) */
+:root[data-theme="dark"] .cx-badge.vw-st--pending,
+:root[data-theme="dark"] .cx-badge.vwd-st--pending,
+:root[data-theme="dark"] .cx-badge.vw-st--noshow,
+:root[data-theme="dark"] .cx-badge.vwd-st--noshow    { background: var(--warning-50); color: var(--warning-700); border-color: var(--warning-100); }
+:root[data-theme="dark"] .cx-badge.vw-st--confirmed,
+:root[data-theme="dark"] .cx-badge.vwd-st--confirmed { background: var(--success-50); color: var(--success-700); border-color: var(--success-100); }
+:root[data-theme="dark"] .cx-badge.vw-st--cancelled,
+:root[data-theme="dark"] .cx-badge.vwd-st--cancelled { background: var(--error-50); color: var(--error-700); border-color: var(--error-100); }
+:root[data-theme="dark"] .cx-badge.vw-st--scheduled,
+:root[data-theme="dark"] .cx-badge.vwd-st--scheduled { background: var(--info-50); color: var(--info-700); border-color: var(--info-100); }
+:root[data-theme="dark"] .cx-badge.vw-st--completed,
+:root[data-theme="dark"] .cx-badge.vwd-st--completed { background: var(--surface-raised); color: var(--text-secondary); border-color: var(--border-default); }
+
+/* ============================================================
+   BRAND LOGO MARKS on dark surfaces
+   The dark-green symbol is illegible on dark panels. Swap to the
+   white mark (admin + agent sidebar, admin login); the auth-modal
+   uses an <img>, so recolor it to white via filter.
+   (Site header + mobile drawer already handle their own marks.)
+   ============================================================ */
+:root[data-theme="dark"] .ax-sb-logo::before,
+:root[data-theme="dark"] .al-brand__mark { background-image: url("/brand/chiya-symbol-white.svg"); }
+:root[data-theme="dark"] .cxa-brand img { filter: brightness(0) invert(1); }
+/* Match the whitened mark: the wordmark is brand-green by default, which read as
+   a second colour next to the white symbol. Whiten it too (same as site header). */
+:root[data-theme="dark"] .cxa-brand b { color: #fff; }
+
+/* Admin segmented-control hovers use a 55%-white wash that reads as a
+   bright flash on the dark tab bars (the active pill is dark surface-card
+   in dark). Soften to a subtle light overlay. */
+:root[data-theme="dark"] .pp-tab:hover,
+:root[data-theme="dark"] .mp-tab:hover,
+:root[data-theme="dark"] .vw-tab:hover,
+:root[data-theme="dark"] .ap-tab:hover,
+:root[data-theme="dark"] .ap-viewswitch button:hover,
+:root[data-theme="dark"] .ax-seg__btn:hover { background: rgba(255, 255, 255, 0.06); }

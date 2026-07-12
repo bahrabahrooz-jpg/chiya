@@ -31,7 +31,7 @@ function Avatar({ agent, size }: { agent: Agent; size: number }) {
   );
 }
 
-/** One agent row inside the picker sheet: avatar + name + agency · city + check. */
+/** One agent row inside the picker sheet: avatar + name + city + check. */
 function AgentRow({ agent, selected, onPress }: { agent: Agent; selected: boolean; onPress: () => void }) {
   const { colors, type, fontFamily } = useTheme();
   return (
@@ -50,7 +50,7 @@ function AgentRow({ agent, selected, onPress }: { agent: Agent; selected: boolea
           {agent.name}
         </Text>
         <Text style={[type.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>
-          {agent.agency} · {agent.city}
+          {agent.city}
         </Text>
       </View>
       {selected ? <Check size={18} color={colors.brandForeground} strokeWidth={2.5} /> : null}
@@ -78,7 +78,7 @@ function AgentSummary({ agent, onClear }: { agent: Agent; onClear: () => void })
           ) : null}
         </View>
         <Text style={[type.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>
-          {agent.agency} · {agent.city}
+          {agent.city}
         </Text>
       </View>
       <Pressable onPress={onClear} hitSlop={8} style={[styles.remove, { backgroundColor: colors.surfaceSunken }]} accessibilityRole="button">
@@ -103,7 +103,7 @@ export function AgentPicker({ value, onChange }: { value: string; onChange: (v: 
     const q = query.trim().toLowerCase();
     if (!q) return verified;
     return verified.filter(
-      (a) => a.name.toLowerCase().includes(q) || a.agency.toLowerCase().includes(q) || a.city.toLowerCase().includes(q),
+      (a) => a.name.toLowerCase().includes(q) || a.city.toLowerCase().includes(q),
     );
   }, [verified, query]);
 
