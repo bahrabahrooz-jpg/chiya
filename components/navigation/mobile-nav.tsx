@@ -2,7 +2,6 @@
 
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { IconButton } from "@/components/ui/icon-button";
 import type { NavLink } from "./navbar";
 import "./mobile-nav.css";
 
@@ -15,29 +14,23 @@ export interface MobileNavProps {
   open: boolean;
   onClose: () => void;
   links?: NavLink[];
-  /** Brand / header slot. */
-  header?: ReactNode;
   /** Footer slot (e.g. login button, theme + language controls). */
   footer?: ReactNode;
 }
 
 /**
- * MobileNav — slide-in navigation drawer for small screens. Rendered in a
- * portal; closes on Escape, scrim click, and locks body scroll while open.
+ * MobileNav — navigation dropdown for small screens: a compact panel anchored to
+ * the top-right under the burger. Rendered in a portal; closes on Escape and on
+ * an outside (scrim) click.
  */
-export function MobileNav({ open, onClose, links = [], header, footer }: MobileNavProps) {
+export function MobileNav({ open, onClose, links = [], footer }: MobileNavProps) {
   const isClient = useIsClient();
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
   if (!open || !isClient) return null;
@@ -45,11 +38,7 @@ export function MobileNav({ open, onClose, links = [], header, footer }: MobileN
   return createPortal(
     <>
       <div className="cx-mnav__scrim" onClick={onClose} />
-      <div className="cx-mnav__sheet" role="dialog" aria-modal="true" aria-label="Navigation">
-        <div className="cx-mnav__head">
-          {header}
-          <IconButton icon="x" label="Close menu" variant="ghost" onClick={onClose} />
-        </div>
+      <div className="cx-mnav__menu" role="dialog" aria-modal="true" aria-label="Navigation">
         <nav className="cx-mnav__links">
           {links.map((l, i) => (
             <a

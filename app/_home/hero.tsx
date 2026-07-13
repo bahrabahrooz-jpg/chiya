@@ -17,22 +17,21 @@ interface Option {
 }
 
 const getDeals = (t: T): Option[] => [
-  { value: "buy", label: t("deal.buy"), icon: "tag", sub: t("deal.buy.sub") },
-  { value: "rent", label: t("deal.rent"), icon: "key", sub: t("deal.rent.sub") },
+  { value: "buy", label: t("deal.buy"), icon: "tag" },
+  { value: "rent", label: t("deal.rent"), icon: "key" },
 ];
 const getLocations = (t: T): Option[] => [
-  { value: "", label: t("loc.all"), sub: t("loc.all.sub"), icon: "map" },
-  { value: "Erbil", label: t("city.Erbil"), sub: t("loc.erbil.sub"), icon: "map-pin" },
-  { value: "Duhok", label: t("city.Duhok"), sub: t("loc.duhok.sub"), icon: "map-pin" },
-  { value: "Sulaymaniyah", label: t("city.Sulaymaniyah"), sub: t("loc.sulaymaniyah.sub"), icon: "map-pin" },
-  { value: "Halabja", label: "Halabja", sub: t("loc.halabja.sub"), icon: "map-pin" },
+  { value: "", label: t("loc.all"), icon: "map" },
+  { value: "Erbil", label: t("city.Erbil"), icon: "map-pin" },
+  { value: "Sulaymaniyah", label: t("city.Sulaymaniyah"), icon: "map-pin" },
+  { value: "Duhok", label: t("city.Duhok"), icon: "map-pin" },
 ];
 const getTypes = (t: T): Option[] => [
   { value: "", label: t("type.all"), icon: "layout-grid" },
   { value: "apartment", label: t("type.apartment"), icon: "building-2" },
   { value: "villa", label: t("type.villa"), icon: "home" },
   { value: "house", label: t("type.house"), icon: "house" },
-  { value: "commercial", label: t("type.commercial"), icon: "store" },
+  { value: "office", label: t("type.office"), icon: "briefcase" },
   { value: "land", label: t("type.land"), icon: "trees" },
 ];
 const getBuyPrices = (t: T): Option[] => [
@@ -78,7 +77,7 @@ function Field({ id, label, icon, options, value, placeholder, align, openId, se
   }, [open, setOpenId]);
 
   return (
-    <div className="cxpop" ref={ref}>
+    <div className={"cxpop cxpop--" + id} ref={ref}>
       <button
         type="button"
         className={"cxfield" + (selected ? "" : " cxfield--empty") + (open ? " cxfield--open" : "")}
@@ -95,7 +94,6 @@ function Field({ id, label, icon, options, value, placeholder, align, openId, se
       {open && (
         <div className={"cxpanel" + (align === "right" ? " cxpanel--right" : "")}>
           <div className="cxpanel__scroll cxpanel__scroll--pad">
-            <div className="cxpanel__label">{label}</div>
             {options.map((o) => (
               <button
                 key={o.value || "__all"}
@@ -106,15 +104,8 @@ function Field({ id, label, icon, options, value, placeholder, align, openId, se
                   setOpenId(null);
                 }}
               >
-                {o.icon && (
-                  <span className="cxrow__ic cxrow__ic--tile">
-                    <Icon name={o.icon} size={18} />
-                  </span>
-                )}
-                <span className="cxrow__body">
-                  <span className="cxrow__title">{o.label}</span>
-                  {o.sub && <span className="cxrow__sub">{o.sub}</span>}
-                </span>
+                {o.icon && <Icon name={o.icon} size={18} className="cxrow__ic" />}
+                <span className="cxrow__title">{o.label}</span>
                 {(value || "") === o.value && o.value !== "" && (
                   <Icon name="check" size={17} className="cxrow__check" />
                 )}
@@ -204,11 +195,11 @@ function HeroSearch() {
           options={prices}
           value={price}
           placeholder={t("price.any")}
-          align="right"
           openId={openId}
           setOpenId={setOpenId}
           onPick={setPrice}
         />
+        <span className="cxbar__sep" />
         <button type="submit" className="cxbar__go">
           <Icon name="search" size={19} />
           <span>{t("search.cta")}</span>

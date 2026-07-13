@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, type ButtonProps } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export interface AuthButtonProps {
 export function AuthButton({ size = "sm", fullWidth }: AuthButtonProps) {
   const { user, openAuth, logout } = useAuth();
   const { t } = useLang();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setMenuOpen(false), menuOpen);
@@ -35,15 +37,19 @@ export function AuthButton({ size = "sm", fullWidth }: AuthButtonProps) {
     );
   }
 
+  const go = (href: string) => () => {
+    setMenuOpen(false);
+    router.push(href);
+  };
   const soon = (msgKey: string) => () => {
     setMenuOpen(false);
     toast({ title: t(msgKey) });
   };
 
   const items: { icon: IconName; label: string; onClick: () => void }[] = [
-    { icon: "user", label: t("acct.profile"), onClick: soon("acct.toast.profile") },
-    { icon: "heart", label: t("acct.savedProps"), onClick: soon("acct.toast.saved") },
-    { icon: "bell", label: t("acct.notifications"), onClick: soon("acct.toast.notifications") },
+    { icon: "user", label: t("acct.profile"), onClick: go("/account/profile") },
+    { icon: "heart", label: t("acct.savedProps"), onClick: go("/saved") },
+    { icon: "bell", label: t("acct.notifications"), onClick: go("/notifications") },
     { icon: "settings", label: t("acct.settings"), onClick: soon("acct.toast.settings") },
   ];
 
@@ -72,13 +78,6 @@ export function AuthButton({ size = "sm", fullWidth }: AuthButtonProps) {
       </button>
       {menuOpen && (
         <div className="cxa-menu" role="menu">
-          <div className="cxa-menu__card">
-            <Avatar name={user.name || t("acct.member")} size="lg" />
-            <span className="cxa-menu__meta">
-              <span className="cxa-menu__nm">{user.name || t("acct.member")}</span>
-              <span className="cxa-menu__sub">{user.type === "agent" ? t("acct.role.agent") : t("acct.role.customer")}</span>
-            </span>
-          </div>
           <div className="cxa-menu__sect">
             {items.map((it) => (
               <button key={it.label} type="button" className="cxa-menu__item" role="menuitem" onClick={it.onClick}>

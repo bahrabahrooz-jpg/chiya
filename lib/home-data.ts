@@ -146,7 +146,7 @@ export const categories: Category[] = [
   { name: "Villas", count: 184, icon: "home", image: img("1613490493576-7fde63acd811", 700, 900) },
   { name: "Apartments", count: 320, icon: "building-2", image: img("1545324418-cc1a3fa10c00", 700, 900) },
   { name: "Houses", count: 146, icon: "house", image: img("1564013799919-ab600027ffc6", 700, 900) },
-  { name: "Commercial", count: 58, icon: "store", image: img("1486406146926-c627a92ad1ab", 700, 900) },
+  { name: "Office", count: 58, icon: "briefcase", image: img("1486406146926-c627a92ad1ab", 700, 900) },
   { name: "Land", count: 71, icon: "trees", image: img("1500382017468-9049fed747ef", 700, 900) },
 ];
 

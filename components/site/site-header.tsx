@@ -18,7 +18,6 @@ const NAV: { key: string; href: string }[] = [
   { key: "sell", href: "/my-listings" },
   { key: "agents", href: "/agents" },
   { key: "about", href: "/about" },
-  { key: "blog", href: "#" },
   { key: "contact", href: "/contact" },
 ];
 
@@ -147,15 +146,11 @@ export function SiteHeader({ active = null, stickyAfterId = "properties" }: Site
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         links={NAV.map(({ key, href }) => ({ label: t("nav." + key), href, active: active === key, onClick: gate(key) }))}
-        header={<Brand />}
         footer={
-          <>
-            <AuthButton fullWidth />
-            <div className="cx-mnav__row">
-              <ThemeToggle />
-              <LanguageSwitcher />
-            </div>
-          </>
+          <div className="cx-mnav__row">
+            <ThemeToggle />
+            <LanguageSwitcher />
+          </div>
         }
       />
     </>

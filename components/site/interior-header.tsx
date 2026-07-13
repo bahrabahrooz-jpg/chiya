@@ -23,7 +23,6 @@ const NAV: NavItem[] = [
   { key: "sell", href: "/my-listings" },
   { key: "agents", href: "/agents" },
   { key: "about", href: "/about" },
-  { key: "blog", href: "#" },
   { key: "contact", href: "/contact" },
 ];
 
@@ -87,15 +86,11 @@ export function InteriorHeader({ active = null }: InteriorHeaderProps) {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         links={NAV.map((item) => ({ label: t("nav." + item.key), href: item.href, active: active === item.key, onClick: gate(item.key) }))}
-        header={<Brand />}
         footer={
-          <>
-            <AuthButton fullWidth />
-            <div className="cx-mnav__row">
-              <ThemeToggle />
-              <LanguageSwitcher />
-            </div>
-          </>
+          <div className="cx-mnav__row">
+            <ThemeToggle />
+            <LanguageSwitcher />
+          </div>
         }
       />
     </>

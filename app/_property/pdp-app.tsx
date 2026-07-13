@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
-import { property, gallery, agent } from "./data";
+import { useFavorites, type SavedProperty } from "@/lib/favorites";
+import { property, gallery, agent, similar } from "./data";
 import { PdpGallery } from "./pdp-gallery";
 import { PdpMain } from "./pdp-main";
 import { ActionPanel, BookModal } from "./pdp-aside";
@@ -13,15 +14,45 @@ import { PdpSimilar } from "./pdp-similar";
 
 export function PdpApp() {
   const { t } = useLang();
-  const [favMain, setFavMain] = useState(false);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const { properties: savedProps, isPropertySaved, toggleProperty } = useFavorites();
   const [bookOpen, setBookOpen] = useState(false);
 
+  const favMain = isPropertySaved(property.id);
+  const favorites = savedProps.map((p) => p.id);
+
   const toggleMainFav = () => {
-    setFavMain(true);
-    toast({ title: "Saved to your favourites", variant: "success" });
+    const wasSaved = isPropertySaved(property.id);
+    toggleProperty({
+      id: property.id,
+      image: gallery[0],
+      price: "$" + property.price.toLocaleString("en-US"),
+      title: property.title,
+      address: property.address,
+      beds: property.beds,
+      baths: property.baths,
+      area: property.area,
+      status: property.status,
+      href: `/property/${property.id}`,
+    });
+    if (!wasSaved) toast({ title: "Saved to your favourites", variant: "success" });
   };
-  const toggleFav = (id: string) => setFavorites((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const toggleFav = (id: string) => {
+    const s = similar.find((x) => x.id === id);
+    if (!s) return;
+    const snap: SavedProperty = {
+      id: s.id,
+      image: s.cover,
+      price: "$" + s.price.toLocaleString("en-US"),
+      title: s.title,
+      address: s.address,
+      beds: s.beds,
+      baths: s.baths,
+      area: s.area,
+      status: s.status,
+      href: `/property/${s.id}`,
+    };
+    toggleProperty(snap);
+  };
   const onCall = () => toast({ title: `Calling ${agent.phone}…` });
   const onWhatsApp = () => toast({ title: `Opening WhatsApp with ${agent.name}…` });
   const onShare = () => toast({ title: "Listing link copied to clipboard", variant: "success" });

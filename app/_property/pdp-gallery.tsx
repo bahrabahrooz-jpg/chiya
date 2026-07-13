@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { IconButton } from "@/components/ui/icon-button";
-import { Badge } from "@/components/ui/badge";
+import { CardStatusPill, FavoriteButton } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
 import { property } from "./data";
 
@@ -80,18 +80,11 @@ export function PdpGallery({ images, favorite, onFavorite, onShare }: PdpGallery
         <img key={active} className="pdp-gal__img pdp-gal__img--enter" src={images[active]} alt={`${property.title} — photo ${active + 1}`} />
         <div className="pdp-gal__grad" />
         <div className="pdp-gal__tl">
-          {property.featured && (
-            <Badge variant="gold" size="md" icon="star">
-              Featured
-            </Badge>
-          )}
-          <Badge variant="success" size="md" dot>
-            {property.status}
-          </Badge>
+          <CardStatusPill status={property.status} />
         </div>
         <div className="pdp-gal__tr">
-          <IconButton icon="share-2" label="Share" variant="glass" onClick={onShare} />
-          <IconButton icon="heart" label="Save" variant="glass" active={favorite} onClick={onFavorite} />
+          <IconButton icon="share-2" label="Share" variant="glass" className="cx-fav" onClick={onShare} />
+          <FavoriteButton active={favorite} onToggle={onFavorite} />
         </div>
         {property.hasTour && (
           <span className="pdp-gal__tour">

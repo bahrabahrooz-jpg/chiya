@@ -101,10 +101,14 @@
 .pdp-loc__map { border: 1px solid var(--border-subtle); border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-card); }
 .pdp-loc__map--real { position: relative; }
 .pdp-loc__frame { display: block; width: 100%; height: 380px; border: 0; }
-.pdp-loc__badge { position: absolute; top: 14px; left: 14px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 999px; box-shadow: var(--shadow-card); font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
-.pdp-loc__badge svg { color: var(--text-brand-muted); }
-.pdp-loc__expand { position: absolute; bottom: 14px; right: 14px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); box-shadow: var(--shadow-card); font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-primary); text-decoration: none; transition: background .15s ease; }
+/* Directions CTA — mirrors the mobile app pill (brand-coloured navigation
+   glyph on a near-white card, bottom-end corner). */
+.pdp-loc__expand { position: absolute; bottom: 14px; inset-inline-end: 14px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 999px; box-shadow: var(--shadow-card); font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-primary); text-decoration: none; transition: background .15s ease; }
+.pdp-loc__expand svg { color: var(--text-brand-muted); }
 .pdp-loc__expand:hover { background: var(--green-50); }
+/* Address row beneath the map, matching the mobile detail screen. */
+.pdp-loc__addr { display: flex; align-items: center; gap: 7px; font-family: var(--font-sans); font-size: 14px; color: var(--text-secondary); }
+.pdp-loc__addr svg { color: var(--text-tertiary); flex: none; }
 
 .pdp-floor { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
 .pdp-floor__plan { position: relative; border: 1px solid var(--border-subtle); border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-card); background: var(--surface-card); aspect-ratio: 16/10; }

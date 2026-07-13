@@ -133,12 +133,14 @@
   .cxh__inner { padding-inline: 32px; }
   .cxh__nav { display: none; }
   .cxh__menu { display: inline-flex; }
+  /* Nav (flex:1) was the spacer holding the actions on the right; with it hidden,
+     push the avatar + burger cluster to the far right so they don't crowd the brand. */
+  .cxh__actions { gap: 8px; margin-inline-start: auto; }
   /* Theme + language now live in the drawer; keep only Login + menu in the top
      bar and drop the bell + dividers so the cluster can't overflow. */
   .cxh__actions .cxh__utils,
   .cxh__actions .cxn,
   .cxh__actions .cxh__divider { display: none; }
-  .cxh__actions { gap: 8px; }
 }
 @media (max-width: 560px) {
   .cxh__inner { padding-inline: 16px; gap: 12px; }
@@ -150,5 +152,8 @@
 
 /* Interior header — solid, non-sticky, wider gutters (search/detail/agents). */
 .cxh--interior .cxh__inner { max-width: 1440px; padding: 0 48px; }
-@media (max-width: 1024px) { .cxh--interior .cxh__nav { display: none; } }
+@media (max-width: 1024px) {
+  .cxh--interior .cxh__nav { display: none; }
+  .cxh--interior .cxh__actions { margin-inline-start: auto; }
+}
 @media (max-width: 860px) { .cxh--interior .cxh__inner { padding-inline: 24px; } }

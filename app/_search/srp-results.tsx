@@ -236,11 +236,15 @@ export function SrpResults({
         </form>
         <div className="srp-rhead__tools">
           <SortMenu value={sort} onChange={setSort} />
-          <ViewToggle view={view} onChange={setView} />
-          <button type="button" className="srp-summary__filters" onClick={onOpenFilters}>
-            <Icon name="sliders-horizontal" size={18} />
-            {t("srp.filters")}
-          </button>
+          {/* Switcher + Filters stay grouped so they wrap together (and Filters
+              sits beside the view switcher) on narrow screens. */}
+          <div className="srp-rhead__viewfilter">
+            <ViewToggle view={view} onChange={setView} />
+            <button type="button" className="srp-summary__filters" onClick={onOpenFilters} aria-label={t("srp.filters")}>
+              <Icon name="sliders-horizontal" size={18} />
+              <span className="srp-summary__filters-txt">{t("srp.filters")}</span>
+            </button>
+          </div>
         </div>
       </div>
 

@@ -37,7 +37,7 @@ export const listings: SrpListing[] = [
   { id: "sarsang-house", title: "Sarsang Family House", address: "Sarsang, Duhok", city: "Duhok", deal: "buy", price: 540000, status: "For Sale", type: "house", beds: 4, baths: 4, area: 360, photoCount: 22, pstatus: "ready", amenities: ["garden", "parking", "security"], cover: img("1564013799919-ab600027ffc6") },
   { id: "azadi-villa", title: "Azadi Heights Villa", address: "Azadi, Duhok", city: "Duhok", deal: "buy", price: 760000, status: "For Sale", type: "villa", beds: 5, baths: 4, area: 520, photoCount: 26, pstatus: "construction", amenities: ["pool", "garden", "parking", "security"], cover: img("1600585154340-be6161a56a0c") },
   { id: "masike-house", title: "Masike Garden House", address: "Masike, Duhok", city: "Duhok", deal: "rent", price: 1650, status: "For Rent", type: "house", beds: 3, baths: 2, area: 240, photoCount: 15, pstatus: "ready", amenities: ["garden", "parking", "furnished"], cover: img("1576941089067-2de3c901e126") },
-  { id: "suli-commercial", title: "Salim Street Commercial Unit", address: "Salim St, Sulaymaniyah", city: "Sulaymaniyah", deal: "rent", price: 4200, status: "For Rent", type: "commercial", area: 320, photoCount: 11, pstatus: "ready", amenities: ["parking", "elevator", "security"], cover: img("1486406146926-c627a92ad1ab") },
+  { id: "suli-commercial", title: "Salim Street Office Suite", address: "Salim St, Sulaymaniyah", city: "Sulaymaniyah", deal: "rent", price: 4200, status: "For Rent", type: "office", area: 320, photoCount: 11, pstatus: "ready", amenities: ["parking", "elevator", "security"], cover: img("1486406146926-c627a92ad1ab") },
   { id: "goizha-apt", title: "Goizha View Apartment", address: "Goizha, Sulaymaniyah", city: "Sulaymaniyah", deal: "buy", price: 230000, status: "New", type: "apartment", beds: 2, baths: 1, area: 105, photoCount: 13, pstatus: "new", amenities: ["balcony", "elevator"], cover: img("1567496898669-ee935f5f647a") },
 ];
 
@@ -52,7 +52,7 @@ export const propertyTypes: Opt[] = [
   { value: "apartment", label: "Apartment", icon: "building-2" },
   { value: "house", label: "House", icon: "house" },
   { value: "land", label: "Land", icon: "trees" },
-  { value: "commercial", label: "Commercial", icon: "store" },
+  { value: "office", label: "Office", icon: "briefcase" },
 ];
 export const buyPresets: Opt[] = [
   { value: "0-150000", label: "Up to $150K" },
@@ -106,3 +106,51 @@ export const sortOptions: Opt[] = [
 ];
 
 export const BASE_COUNT: Record<string, number> = { Erbil: 248, Duhok: 86, Sulaymaniyah: 154 };
+
+/* ── Location filter (City / Area / Project) — mirrors the mobile FilterDrawer.
+   Option `value`s are exact substrings of the listing addresses so a simple
+   `address.includes(value)` matches (e.g. "Shaqlawa" covers both "Shaqlawa
+   Hills, Erbil" and "Shaqlawa, Erbil"). Areas are districts; projects are named
+   communities. */
+export const searchCities = ["Erbil", "Sulaymaniyah", "Duhok"];
+export const cityOpts: Opt[] = searchCities.map((c) => ({ value: c, label: c }));
+
+/** Districts per city. */
+export const areasByCity: Record<string, Opt[]> = {
+  Erbil: [
+    { value: "Ankawa", label: "Ankawa" },
+    { value: "Downtown", label: "Downtown" },
+    { value: "Shaqlawa", label: "Shaqlawa" },
+  ],
+  Sulaymaniyah: [
+    { value: "Salim St", label: "Salim Street" },
+    { value: "Goizha", label: "Goizha" },
+  ],
+  Duhok: [
+    { value: "Azadi", label: "Azadi" },
+    { value: "Sarsang", label: "Sarsang" },
+    { value: "Masike", label: "Masike" },
+  ],
+};
+
+/** Named communities / developments per city. */
+export const projectsByCity: Record<string, Opt[]> = {
+  Erbil: [
+    { value: "Dream City", label: "Dream City" },
+    { value: "Empire World", label: "Empire World" },
+    { value: "Empire City", label: "Empire City" },
+    { value: "Italian Village", label: "Italian Village" },
+  ],
+  Sulaymaniyah: [],
+  Duhok: [],
+};
+
+const flattenByCity = (byCity: Record<string, Opt[]>, cities: string[]): Opt[] => {
+  const keys = cities.length ? cities.filter((c) => byCity[c]) : Object.keys(byCity);
+  return keys.flatMap((c) => byCity[c] ?? []);
+};
+
+/** Area options scoped to the selected cities (all cities when none selected). */
+export const areaOptions = (cities: string[]): Opt[] => flattenByCity(areasByCity, cities);
+/** Project options scoped to the selected cities (all cities when none selected). */
+export const projectOptions = (cities: string[]): Opt[] => flattenByCity(projectsByCity, cities);

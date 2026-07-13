@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Breadcrumb } from "@/components/navigation";
 import { Icon } from "@/components/ui/icon";
 import { useLang } from "@/lib/i18n";
+import { useFavorites, type SavedProperty } from "@/lib/favorites";
 import * as D from "./data";
 import { emptyFilters, type Filters, type RangeVal } from "./types";
 import { SrpFilters } from "./srp-filters";
@@ -19,6 +20,21 @@ const detectCity = (q: string): string | null => {
 };
 
 const commasNum = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+/** Display snapshot persisted when a search result is saved. */
+const toSavedProperty = (l: D.SrpListing): SavedProperty => ({
+  id: l.id,
+  image: l.cover,
+  price: "$" + l.price.toLocaleString("en-US"),
+  period: l.deal === "rent" ? "mo" : undefined,
+  title: l.title,
+  address: l.address,
+  beds: l.beds,
+  baths: l.baths,
+  area: l.area,
+  status: l.status,
+  href: `/property/${l.id}`,
+});
 
 function rangeLabel(lo: number | null, hi: number | null, d: string, kind: string) {
   if (kind === "size") {
@@ -75,7 +91,8 @@ export function SrpApp() {
   const [sort, setSort] = useState("recommended");
   const [view, setView] = useState("grid");
   const [filters, setFilters] = useState<Filters>(init.filters);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const { properties: savedProps, toggleProperty } = useFavorites();
+  const favorites = useMemo(() => savedProps.map((p) => p.id), [savedProps]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const asideScrollRef = useRef<HTMLDivElement>(null);
@@ -103,6 +120,21 @@ export function SrpApp() {
   }, []);
 
   const on = {
+    toggleCity: (v: string) =>
+      setFilters((f) => {
+        const cities = f.cities.includes(v) ? f.cities.filter((x) => x !== v) : [...f.cities, v];
+        // Re-scope areas/projects to the new city selection; drop out-of-scope picks.
+        const validAreas = new Set(D.areaOptions(cities).map((o) => o.value));
+        const validProjects = new Set(D.projectOptions(cities).map((o) => o.value));
+        return {
+          ...f,
+          cities,
+          areas: f.areas.filter((a) => validAreas.has(a)),
+          projects: f.projects.filter((p) => validProjects.has(p)),
+        };
+      }),
+    toggleArea: (v: string) => setFilters((f) => ({ ...f, areas: f.areas.includes(v) ? f.areas.filter((x) => x !== v) : [...f.areas, v] })),
+    toggleProject: (v: string) => setFilters((f) => ({ ...f, projects: f.projects.includes(v) ? f.projects.filter((x) => x !== v) : [...f.projects, v] })),
     toggleType: (v: string) => setFilters((f) => ({ ...f, types: f.types.includes(v) ? f.types.filter((x) => x !== v) : [...f.types, v] })),
     setPrice: (p: RangeVal | null) => setFilters((f) => ({ ...f, price: p })),
     setSize: (p: RangeVal | null) => setFilters((f) => ({ ...f, size: p })),
@@ -117,9 +149,15 @@ export function SrpApp() {
     setFilters(emptyFilters);
     setQuery("");
   };
-  const toggleFav = (id: string) => setFavorites((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const toggleFav = (id: string) => {
+    const l = D.listings.find((x) => x.id === id);
+    if (l) toggleProperty(toSavedProperty(l));
+  };
 
   const activeCount =
+    filters.cities.length +
+    filters.areas.length +
+    filters.projects.length +
     filters.types.length +
     (filters.price ? 1 : 0) +
     (filters.size ? 1 : 0) +
@@ -135,6 +173,9 @@ export function SrpApp() {
     const q = query.trim().toLowerCase();
     let list = D.listings.filter((l) => l.deal === deal);
     if (q) list = list.filter((l) => (l.city + " " + l.address + " " + l.title + " " + l.type).toLowerCase().includes(q));
+    if (filters.cities.length) list = list.filter((l) => filters.cities.includes(l.city));
+    if (filters.areas.length) list = list.filter((l) => filters.areas.some((a) => l.address.toLowerCase().includes(a.toLowerCase())));
+    if (filters.projects.length) list = list.filter((l) => filters.projects.some((p) => l.address.toLowerCase().includes(p.toLowerCase())));
     if (filters.types.length) list = list.filter((l) => filters.types.includes(l.type));
     if (filters.price) list = list.filter((l) => (filters.price!.lo == null || l.price >= filters.price!.lo) && (filters.price!.hi == null || l.price <= filters.price!.hi));
     if (filters.size) list = list.filter((l) => l.area != null && (filters.size!.lo == null || l.area >= filters.size!.lo) && (filters.size!.hi == null || l.area <= filters.size!.hi));
@@ -156,6 +197,18 @@ export function SrpApp() {
 
   // active chips (filters only — never the search query)
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
+  const allAreas = D.areaOptions([]);
+  const allProjects = D.projectOptions([]);
+  const labelOf = (opts: D.Opt[], v: string) => opts.find((o) => o.value === v)?.label ?? v;
+  filters.cities.forEach((c) => {
+    chips.push({ key: "city-" + c, label: t("city." + c), onRemove: () => on.toggleCity(c) });
+  });
+  filters.areas.forEach((a) => {
+    chips.push({ key: "area-" + a, label: labelOf(allAreas, a), onRemove: () => on.toggleArea(a) });
+  });
+  filters.projects.forEach((p) => {
+    chips.push({ key: "project-" + p, label: labelOf(allProjects, p), onRemove: () => on.toggleProject(p) });
+  });
   filters.types.forEach((ty) => {
     chips.push({ key: "type-" + ty, label: t("type." + ty), onRemove: () => on.toggleType(ty) });
   });

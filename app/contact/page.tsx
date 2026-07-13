@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/site/placeholder-page";
+import { ContactApp } from "../_contact/contact-app";
 
 export default function ContactPage() {
-  return <PlaceholderPage active="contact" icon="mail" titleKey="ph.contact.title" descKey="ph.contact.desc" />;
+  return <ContactApp />;
 }

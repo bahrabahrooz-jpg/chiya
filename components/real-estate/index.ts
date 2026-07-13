@@ -21,6 +21,7 @@ export { FavoriteButton, type FavoriteButtonProps } from "./favorite-button";
 export { ShareButton, type ShareButtonProps } from "./share-button";
 export {
   PropertyStatusBadge,
+  CardStatusPill,
   STATUS_VARIANT,
   type PropertyStatus,
   type PropertyStatusBadgeProps,

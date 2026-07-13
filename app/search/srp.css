@@ -60,6 +60,11 @@
 .srp-typerow__label { flex: 1; font-family: var(--font-sans); font-size: 14.5px; font-weight: 500; color: var(--text-primary); }
 .srp-typerow__count { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 
+/* Location sub-groups (City / Area / Project) — labelled checkbox lists. */
+.srp-locgroup + .srp-locgroup { margin-top: 14px; }
+.srp-locsub { font-family: var(--font-sans); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-tertiary); margin: 0 0 6px 2px; }
+.srp-locempty { font-family: var(--font-sans); font-size: 13.5px; color: var(--text-tertiary); padding: 2px 2px 4px; }
+
 .srp-presets { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
 .srp-radio { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 9px 10px; background: none; border: none; cursor: pointer; border-radius: var(--radius-md); font-family: var(--font-sans); transition: background-color .14s; }
 .srp-radio:hover { background: var(--gray-50); }
@@ -100,6 +105,7 @@
 .srp-rhead__count b { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .srp-rhead__note { color: var(--text-tertiary); font-weight: 500; }
 .srp-rhead__tools { display: flex; align-items: center; gap: 12px; flex: none; }
+.srp-rhead__viewfilter { display: inline-flex; align-items: center; gap: 12px; }
 
 .srp-sort { position: relative; }
 .srp-sort__btn { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-control); cursor: pointer; font-family: var(--font-sans); font-size: 14px; color: var(--text-primary); transition: border-color .14s, box-shadow .14s; white-space: nowrap; }
@@ -218,6 +224,12 @@
   .srp-rhead__tools { flex-wrap: wrap; }
   .srp-grid, .srp-grid--split { grid-template-columns: 1fr; }
   .srp-rhead__title { font-size: 28px; }
+}
+/* Only collapse Filters to an icon-only button once the full text no longer
+   fits beside Sort + the switcher on one row. */
+@media (max-width: 470px) {
+  .srp-summary__filters { width: 48px; height: 48px; padding: 0; justify-content: center; }
+  .srp-summary__filters-txt { display: none; }
 }
 
 /* RTL essentials */

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useLang } from "@/lib/i18n";
 import { Icon } from "@/components/ui/icon";
 import "./footer.css";
@@ -27,20 +28,27 @@ const defaultColumns = (t: T): FooterColumn[] => [
   {
     heading: t("footer.col.properties"),
     links: [
-      { label: t("footer.col.buy") },
-      { label: t("footer.col.rent") },
-      { label: t("footer.col.luxury") },
-      { label: t("footer.col.featured") },
-      { label: t("footer.col.commercial") },
+      { label: t("footer.col.buy"), href: "/search?deal=buy" },
+      { label: t("footer.col.rent"), href: "/search?deal=rent" },
+      { label: t("footer.col.submit"), href: "/my-listings" },
+      { label: t("footer.col.featured"), href: "/search" },
     ],
   },
   {
     heading: t("footer.col.agents"),
-    links: [{ label: t("footer.col.findAgent") }, { label: t("footer.col.verified") }, { label: t("footer.col.joinAgent") }],
+    links: [
+      { label: t("footer.col.findAgent"), href: "/agents" },
+      { label: t("footer.col.verified"), href: "/agents" },
+      { label: t("footer.col.joinAgent"), href: "/contact" },
+    ],
   },
   {
     heading: t("footer.col.company"),
-    links: [{ label: t("footer.col.about") }, { label: t("footer.col.blog") }, { label: t("footer.col.faq") }, { label: t("footer.col.contact") }],
+    links: [
+      { label: t("footer.col.faq"), href: "/faq" },
+      { label: t("footer.col.about"), href: "/about" },
+      { label: t("footer.col.contact"), href: "/contact" },
+    ],
   },
 ];
 
@@ -121,6 +129,10 @@ export function Footer({ columns, contact = DEFAULT_CONTACT }: FooterProps) {
 
       <div className="cx-footer__bar">
         <span>{t("footer.copyright")}</span>
+        <div className="cx-footer__legal">
+          <Link href="/privacy">{t("footer.privacy")}</Link>
+          <Link href="/terms">{t("footer.terms")}</Link>
+        </div>
       </div>
     </footer>
   );

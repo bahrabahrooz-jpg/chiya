@@ -1,136 +1,96 @@
 "use client";
 
 import { Icon } from "@/components/ui/icon";
-import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
+import { FavoriteButton } from "./favorite-button";
+import { useLang } from "@/lib/i18n";
 import "./agent-card.css";
 
 export interface AgentCardProps {
   name: string;
-  avatar?: string;
+  photo?: string;
   city?: string;
   verified?: boolean;
   rating?: number;
-  reviews?: number;
   listings?: number;
-  sales?: number;
-  experience?: number;
-  /** "stack" (default profile card) or "row" (compact list item). */
-  layout?: "stack" | "row";
-  onCall?: () => void;
-  onMessage?: () => void;
+  favorite?: boolean;
+  onFavorite?: () => void;
+  /** Navigate to the agent profile (whole card is the link). */
+  href?: string;
   className?: string;
-  /** Make the whole card clickable (e.g. open the agent profile). */
   onClick?: React.MouseEventHandler;
   style?: React.CSSProperties;
 }
 
+/** Landscape banner variant of an agent portrait — mirrors the mobile app helper:
+    widen an Unsplash headshot to a half-body 2:1 crop, keeping the face in frame. */
+function agentBannerPhoto(photo: string): string {
+  if (!photo.includes("images.unsplash.com")) return photo;
+  return photo.replace(/\?.*$/, "?w=900&h=450&fit=crop&crop=faces");
+}
+
 /**
- * AgentCard — verified agent profile with rating, stats, and contact actions.
- * `layout="row"` renders a compact horizontal variant for lists.
+ * AgentCard — lean "browse" card matching the mobile app: a banner photo with a
+ * Verified pill + save heart, then name, city, and a `★ rating · N listings` line.
+ * The whole card links to the agent profile.
  */
 export function AgentCard({
   name,
-  avatar,
+  photo,
   city,
   verified = true,
   rating,
-  reviews,
   listings,
-  sales,
-  experience,
-  layout = "stack",
-  onCall,
-  onMessage,
+  favorite = false,
+  onFavorite,
+  href,
   className = "",
   onClick,
   style,
 }: AgentCardProps) {
-  const stop = (fn?: () => void) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    fn?.();
-  };
-  if (layout === "row") {
-    return (
-      <article
-        className={["cx-agent", "cx-agent--row", className].filter(Boolean).join(" ")}
-        onClick={onClick}
-        style={style}
-      >
-        <Avatar src={avatar} name={name} size="lg" verified={verified} />
-        <div className="cx-agent__main">
-          <div className="cx-agent__name" style={{ fontSize: 17 }}>
-            {name}
-          </div>
-          <div className="cx-agent__agency">
-            <Icon name="map-pin" size={13} />
-            {city}
-          </div>
-        </div>
-        {rating != null && (
-          <div className="cx-agent__rating">
-            <Icon name="star" size={15} fill="currentColor" />
-            {rating}
-          </div>
-        )}
-      </article>
-    );
-  }
-
+  const { t } = useLang();
+  const Tag = href ? "a" : "article";
   return (
-    <article className={["cx-agent", className].filter(Boolean).join(" ")} onClick={onClick} style={style}>
-      <Avatar src={avatar} name={name} size="xl" verified={verified} />
-      <div>
-        <div className="cx-agent__name">{name}</div>
-        <div className="cx-agent__agency">
-          <Icon name="map-pin" size={14} />
-          {city}
-        </div>
+    <Tag
+      className={["cx-agent", className].filter(Boolean).join(" ")}
+      style={style}
+      onClick={onClick}
+      {...(href ? { href } : {})}
+    >
+      <div className="cx-agent__media">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {photo && <img src={agentBannerPhoto(photo)} alt={name} loading="lazy" />}
         {verified && (
-          <div style={{ marginTop: 8 }}>
-            <Badge variant="brand" size="sm" icon="badge-check">
-              Verified Agent
-            </Badge>
+          <span className="cx-agent__verify">
+            <Icon name="badge-check" size={14} />
+            {t("pdp.verified")}
+          </span>
+        )}
+        {onFavorite && (
+          <div className="cx-agent__fav">
+            <FavoriteButton size="sm" active={favorite} onToggle={onFavorite} />
           </div>
         )}
       </div>
-      {rating != null && (
-        <div className="cx-agent__rating">
-          <Icon name="star" size={16} fill="currentColor" />
-          {rating}
-          {reviews != null && <span>({reviews} reviews)</span>}
-        </div>
-      )}
-      <div className="cx-agent__stats">
-        {listings != null && (
-          <div className="cx-agent__stat">
-            <b>{listings}</b>
-            <span>Listings</span>
+      <div className="cx-agent__body">
+        <div className="cx-agent__name">{name}</div>
+        {city && (
+          <div className="cx-agent__loc">
+            <Icon name="map-pin" size={13} />
+            <span>{city}</span>
           </div>
         )}
-        {sales != null && (
+        {rating != null && (
           <div className="cx-agent__stat">
-            <b>{sales}</b>
-            <span>Sold</span>
-          </div>
-        )}
-        {experience != null && (
-          <div className="cx-agent__stat">
-            <b>{experience}</b>
-            <span>Years</span>
+            <Icon name="star" size={14} fill="currentColor" />
+            <b>{rating.toFixed(1)}</b>
+            {listings != null && (
+              <span>
+                · {listings} {t("agents.card.listings")}
+              </span>
+            )}
           </div>
         )}
       </div>
-      <div className="cx-agent__actions">
-        <button className="cx-agent__btn cx-agent__btn--ghost" onClick={stop(onMessage)}>
-          <Icon name="message-circle" size={16} />
-          Message
-        </button>
-        <button className="cx-agent__btn cx-agent__btn--primary" onClick={stop(onCall)}>
-          <Icon name="phone" size={16} />
-          Call
-        </button>
-      </div>
-    </article>
+    </Tag>
   );
 }

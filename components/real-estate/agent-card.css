@@ -1,47 +1,48 @@
-/* AgentCard — ported from the design system (cx-agent). */
+/* AgentCard — lean "browse" card matching the mobile app (banner photo +
+   verified pill + save heart, then name / city / rating · listings). */
 .cx-agent {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 14px;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
-  padding: 24px 20px;
+  overflow: hidden;
   font-family: var(--font-sans);
   box-shadow: var(--shadow-card);
-  transition: box-shadow .22s ease, transform .22s ease;
+  text-decoration: none;
+  transition: box-shadow .22s ease, transform .22s ease, border-color .22s ease;
 }
-.cx-agent:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-2px); }
-.cx-agent__name { font-family: var(--font-display); font-weight: 600; font-size: 20px; line-height: 24px; color: var(--text-primary); }
-.cx-agent__agency { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
-.cx-agent__rating { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.cx-agent__rating svg { color: var(--rating-star); }
-.cx-agent__rating span { color: var(--text-tertiary); font-weight: 500; }
-.cx-agent__stats { display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 14px; }
-.cx-agent__stat { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.cx-agent__stat + .cx-agent__stat { border-inline-start: 1px solid var(--border-subtle); }
-.cx-agent__stat b { font-size: 18px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.cx-agent__stat span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-tertiary); }
-.cx-agent__actions { display: flex; gap: 8px; width: 100%; }
-.cx-agent__btn {
-  flex: 1;
+.cx-agent:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-2px); border-color: var(--border-default); }
+
+.cx-agent__media { position: relative; aspect-ratio: 2 / 1; overflow: hidden; background: var(--surface-sunken); }
+.cx-agent__media img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Verified pill — near-white pill with brand text, mirrors .cx-statuspill. */
+.cx-agent__verify {
+  position: absolute;
+  top: 12px;
+  inset-inline-start: 12px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  height: 40px;
-  border-radius: var(--radius-control);
-  font-size: 14px;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--brand-primary);
+  font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
-  transition: background-color .15s, border-color .15s;
-  border: 1px solid transparent;
+  line-height: 1;
+  white-space: nowrap;
 }
-.cx-agent__btn--primary { background: var(--brand-primary); color: #fff; }
-.cx-agent__btn--primary:hover { background: var(--brand-primary-hover); }
-.cx-agent__btn--ghost { background: var(--surface-card); color: var(--gray-700); border-color: var(--border-default); }
-.cx-agent__btn--ghost:hover { background: var(--gray-50); }
-.cx-agent--row { flex-direction: row; text-align: start; align-items: center; gap: 16px; padding: 16px; }
-.cx-agent--row .cx-agent__main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+.cx-agent__fav { position: absolute; top: 10px; inset-inline-end: 10px; z-index: 2; }
+
+.cx-agent__body { display: flex; flex-direction: column; gap: 6px; padding: 14px; }
+.cx-agent__name { font-family: var(--font-display); font-weight: 600; font-size: 18px; line-height: 22px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-agent__loc { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-secondary); }
+.cx-agent__loc svg { color: var(--text-tertiary); flex: none; }
+.cx-agent__loc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-agent__stat { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-primary); }
+.cx-agent__stat svg { color: var(--rating-star); flex: none; }
+.cx-agent__stat b { font-weight: 600; }
+.cx-agent__stat span { color: var(--text-tertiary); font-weight: 500; }

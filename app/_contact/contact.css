@@ -1,0 +1,60 @@
+/* ============================================================
+   CHIYA ESTATE — CONTACT PAGE
+   Message form + contact channels. Form controls come from the
+   design system (Input, Textarea, Button); tokens are shared.
+   ============================================================ */
+
+.cxct-container { width: 100%; max-width: 1320px; margin-inline: auto; padding-inline: 56px; }
+
+/* ---- Intro band ---- */
+.cxct-hero { padding: 84px 0 48px; text-align: center; }
+.cxct-hero__eyebrow { display: inline-block; font-family: var(--font-sans); font-size: 12px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text-brand); margin-bottom: 16px; }
+.cxct-hero__title { font-family: var(--font-display); font-weight: 600; font-size: 52px; line-height: 1.06;
+  letter-spacing: -0.025em; color: var(--text-primary); margin: 0 auto 18px; max-width: 720px; text-wrap: balance; }
+.cxct-hero__sub { font-family: var(--font-sans); font-size: 19px; line-height: 30px; color: var(--text-secondary);
+  margin: 0 auto; max-width: 580px; text-wrap: pretty; }
+
+/* ---- Body: form + info ---- */
+.cxct-body { padding: 16px 0 88px; }
+/* Columns stretch to the taller side (the form), so the info column matches its height. */
+.cxct-body__grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 40px; align-items: stretch; }
+
+.cxct-formcard { background: var(--surface-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card-lg); box-shadow: var(--shadow-card); padding: 36px; }
+.cxct-form { display: flex; flex-direction: column; gap: 20px; }
+.cxct-form .cx-btn { align-self: flex-start; margin-top: 4px; }
+
+/* ---- Info column: channel cards ---- */
+/* Fill the column height and split it evenly across the card rows. */
+.cxct-info { display: flex; flex-direction: column; }
+.cxct-info__cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; grid-auto-rows: 1fr; }
+.cxct-card--wide { grid-column: 1 / -1; }
+.cxct-card__body { display: flex; flex-direction: column; gap: 8px; }
+.cxct-card__ic { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; flex: none;
+  border-radius: var(--radius-md); background: var(--green-50); color: var(--text-brand); margin-bottom: 6px; }
+.cxct-card__title { font-family: var(--font-display); font-weight: 600; font-size: 19px; color: var(--text-primary); margin: 0; }
+.cxct-card__link { font-family: var(--font-sans); font-size: 15px; line-height: 22px; color: var(--text-secondary);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border-default); width: fit-content;
+  transition: color .15s ease, text-decoration-color .15s ease; }
+.cxct-card__link:hover { color: var(--text-brand); text-decoration-color: currentColor; }
+.cxct-card__text { font-family: var(--font-sans); font-size: 15px; line-height: 23px; color: var(--text-secondary);
+  margin: 0; white-space: pre-line; text-wrap: pretty; }
+
+/* ---- Responsive ---- */
+@media (max-width: 980px) {
+  .cxct-container { padding-inline: 32px; }
+  .cxct-hero__title { font-size: 42px; }
+  .cxct-body__grid { grid-template-columns: 1fr; gap: 28px; }
+  /* Stacked: cards size to content again, no forced equal heights. */
+  .cxct-info__cards { flex: none; grid-auto-rows: auto; }
+}
+@media (max-width: 620px) {
+  .cxct-container { padding-inline: 20px; }
+  .cxct-hero { padding-top: 56px; }
+  .cxct-hero__title { font-size: 34px; }
+  .cxct-hero__sub { font-size: 17px; }
+  .cxct-formcard { padding: 24px; }
+  .cxct-info__cards { grid-template-columns: 1fr; }
+  .cxct-card--wide { grid-column: auto; }
+}

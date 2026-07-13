@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SectionHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { AgentCard } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { agents } from "@/lib/home-data";
+import { useAuth } from "@/lib/auth";
+import { useFavorites } from "@/lib/favorites";
+import { agents, type Agent } from "@/lib/home-data";
 
 const list = [agents.lana, agents.daban, agents.avan, agents.shene];
 const slug = (name: string) => name.toLowerCase().replace(/\s+/g, "-");
@@ -14,6 +17,26 @@ const slug = (name: string) => name.toLowerCase().replace(/\s+/g, "-");
 export function FeaturedAgents() {
   const router = useRouter();
   const { t } = useLang();
+  const { user } = useAuth();
+  const { isAgentSaved, toggleAgent } = useFavorites();
+  const [saved, setSaved] = useState<string[]>([]);
+  const toggleSave = (ag: Agent) => {
+    const id = slug(ag.name);
+    if (user) {
+      toggleAgent({
+        id,
+        name: ag.name,
+        photo: ag.avatar,
+        city: ag.city,
+        verified: ag.verified,
+        rating: ag.rating,
+        listings: ag.listings,
+        href: `/agents/${id}`,
+      });
+      return;
+    }
+    setSaved((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
   return (
     <section className="cxk-section">
       <SectionHeader
@@ -31,16 +54,14 @@ export function FeaturedAgents() {
           <AgentCard
             key={ag.name}
             name={ag.name}
-            avatar={ag.avatar}
+            photo={ag.avatar}
             city={ag.city}
             verified={ag.verified}
             rating={ag.rating}
-            reviews={ag.reviews}
             listings={ag.listings}
-            sales={ag.sales}
-            experience={ag.experience}
-            onClick={() => router.push(`/agents/${slug(ag.name)}`)}
-            style={{ cursor: "pointer" }}
+            favorite={user ? isAgentSaved(slug(ag.name)) : saved.includes(slug(ag.name))}
+            onFavorite={() => toggleSave(ag)}
+            href={`/agents/${slug(ag.name)}`}
           />
         ))}
       </div>

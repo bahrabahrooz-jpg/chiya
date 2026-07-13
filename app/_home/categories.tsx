@@ -10,7 +10,7 @@ const TYPE_BY_CAT: Record<string, string> = {
   Villas: "villa",
   Apartments: "apartment",
   Houses: "house",
-  Commercial: "commercial",
+  Office: "office",
   Land: "land",
 };
 

@@ -33,9 +33,12 @@ export default function AdminResetPage() {
   const [err, setErr] = useState("");
 
   // Read + validate the token client-side (avoids the static-render bailout of
-  // useSearchParams, and this page is client-only anyway).
+  // useSearchParams, and this page is client-only anyway). This must run in an
+  // effect rather than a lazy initializer: `window` is absent during SSR, so
+  // reading it at render time would produce a server/client hydration mismatch.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("token") ?? "";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from a browser-only API on mount
     setToken(t);
     const res = verifyResetToken(t);
     if (res.ok) {

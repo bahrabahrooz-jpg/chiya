@@ -1,0 +1,89 @@
+/* ============================================================
+   CHIYA ESTATE — ABOUT PAGE
+   Page-local marketing bands. Chrome (header, footer, section
+   heads) comes from the design system; tokens are shared.
+   ============================================================ */
+
+.cxab-container { width: 100%; max-width: 1320px; margin-inline: auto; padding-inline: 56px; }
+
+/* ---- Intro band ---- */
+.cxab-hero { padding: 84px 0 60px; text-align: center; }
+.cxab-hero__eyebrow { display: inline-block; font-family: var(--font-sans); font-size: 12px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text-brand); margin-bottom: 16px; }
+.cxab-hero__title { font-family: var(--font-display); font-weight: 600; font-size: 52px; line-height: 1.06;
+  letter-spacing: -0.025em; color: var(--text-primary); margin: 0 auto 20px; max-width: 780px; text-wrap: balance; }
+.cxab-hero__sub { font-family: var(--font-sans); font-size: 19px; line-height: 30px; color: var(--text-secondary);
+  margin: 0 auto; max-width: 620px; text-wrap: pretty; }
+
+/* ---- Stats band ---- */
+.cxab-stats { padding: 8px 0 40px; }
+.cxab-stats__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.cxab-stat { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  padding: 30px 22px; background: var(--surface-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+.cxab-stat__value { font-family: var(--font-display); font-weight: 600; font-size: 40px; line-height: 1;
+  letter-spacing: -0.02em; color: var(--text-brand); }
+.cxab-stat__label { font-family: var(--font-sans); font-size: 14px; font-weight: 500; color: var(--text-tertiary); }
+
+/* ---- Story: image + text ---- */
+.cxab-story { padding: 64px 0; }
+.cxab-story__grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; }
+.cxab-story__media { border-radius: var(--radius-card-lg); overflow: hidden; box-shadow: var(--shadow-card);
+  aspect-ratio: 4/3; background: var(--gray-100); }
+.cxab-story__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cxab-story__eyebrow { display: inline-block; font-family: var(--font-sans); font-size: 12px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text-brand); margin-bottom: 14px; }
+.cxab-story__title { font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1.12;
+  letter-spacing: -0.02em; color: var(--text-primary); margin: 0 0 18px; }
+.cxab-story__body { font-family: var(--font-sans); font-size: 16px; line-height: 27px; color: var(--text-secondary);
+  margin: 0 0 16px; text-wrap: pretty; }
+.cxab-story__body:last-child { margin-bottom: 0; }
+
+/* ---- Values grid ---- */
+.cxab-values { padding: 64px 0; }
+.cxab-values__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.cxab-value { display: flex; flex-direction: column; gap: 14px; padding: 30px 26px; background: var(--surface-card);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+  transition: transform .2s ease, box-shadow .2s ease; }
+.cxab-value:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
+.cxab-value__ic { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px;
+  border-radius: var(--radius-lg); background: var(--green-50); color: var(--text-brand); }
+.cxab-value__title { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; color: var(--text-primary); }
+.cxab-value__desc { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: var(--text-secondary);
+  margin: 0; text-wrap: pretty; }
+
+/* ---- Closing CTA (dark band) ---- */
+.cxab-cta { background: var(--surface-brand-deep); position: relative; overflow: hidden; padding: 88px 0; margin-top: 24px; }
+.cxab-cta::after { content: ""; position: absolute; top: -120px; inset-inline-end: -80px; width: 420px; height: 420px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(201,162,75,.16), transparent 70%); pointer-events: none; }
+.cxab-cta__inner { max-width: 1320px; margin-inline: auto; padding-inline: 56px; text-align: center;
+  position: relative; z-index: 2; }
+.cxab-cta__title { font-family: var(--font-display); font-weight: 600; font-size: 40px; line-height: 1.08;
+  letter-spacing: -0.02em; color: #fff; margin: 0 0 14px; text-wrap: balance; }
+.cxab-cta__sub { font-family: var(--font-sans); font-size: 18px; line-height: 27px; color: rgba(255,255,255,.76);
+  margin: 0 auto 36px; max-width: 540px; }
+.cxab-cta__actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.cxab-cta__btn { display: inline-flex; align-items: center; gap: 9px; padding: 0 26px; height: 52px;
+  border-radius: var(--radius-md); font-family: var(--font-sans); font-size: 16px; font-weight: 600;
+  text-decoration: none; transition: background-color .16s ease, transform .12s ease, border-color .16s ease; }
+.cxab-cta__btn--primary { background: var(--brand-accent); color: var(--text-on-accent); border: 1px solid var(--brand-accent); }
+.cxab-cta__btn--primary:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.cxab-cta__btn--ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.28); }
+.cxab-cta__btn--ghost:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.5); }
+
+/* ---- Responsive ---- */
+@media (max-width: 980px) {
+  .cxab-container, .cxab-cta__inner { padding-inline: 32px; }
+  .cxab-hero__title { font-size: 42px; }
+  .cxab-stats__grid { grid-template-columns: repeat(2, 1fr); }
+  .cxab-story__grid { grid-template-columns: 1fr; gap: 32px; }
+  .cxab-values__grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 620px) {
+  .cxab-container, .cxab-cta__inner { padding-inline: 20px; }
+  .cxab-hero { padding-top: 56px; }
+  .cxab-hero__title { font-size: 34px; }
+  .cxab-hero__sub { font-size: 17px; }
+  .cxab-values__grid { grid-template-columns: 1fr; }
+  .cxab-cta__title { font-size: 30px; }
+}

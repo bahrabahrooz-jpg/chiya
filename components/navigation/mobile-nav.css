@@ -1,39 +1,38 @@
-/* MobileNav — slide-in drawer for site navigation on small screens. */
+/* MobileNav — dropdown panel anchored top-right under the burger on small screens. */
 .cx-mnav__scrim {
   position: fixed;
   inset: 0;
   z-index: 1400;
-  background: var(--surface-overlay);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  animation: cx-fade .18s ease;
 }
-.cx-mnav__sheet {
+.cx-mnav__menu {
   position: fixed;
-  top: 0;
-  inset-inline-end: 0;
+  top: 76px;
+  inset-inline-end: 16px;
   z-index: 1401;
-  height: 100%;
-  width: min(86vw, 360px);
+  width: min(84vw, 288px);
+  max-height: calc(100dvh - 92px);
   background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2xl);
   display: flex;
   flex-direction: column;
-  animation: cx-mnav-in .24s cubic-bezier(.2, .7, .2, 1);
+  overflow: hidden;
+  transform-origin: top var(--mnav-origin-x, right);
+  animation: cx-mnav-in .16s cubic-bezier(.2, .7, .2, 1);
 }
-@keyframes cx-mnav-in { from { transform: translateX(100%); } to { transform: none; } }
-[dir="rtl"] .cx-mnav__sheet { animation-name: cx-mnav-in-rtl; }
-@keyframes cx-mnav-in-rtl { from { transform: translateX(-100%); } to { transform: none; } }
-.cx-mnav__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 72px; padding: 0 20px; border-bottom: 1px solid var(--border-subtle); }
-.cx-mnav__links { display: flex; flex-direction: column; padding: 12px; gap: 2px; overflow-y: auto; flex: 1; }
+[dir="rtl"] .cx-mnav__menu { --mnav-origin-x: left; }
+@keyframes cx-mnav-in { from { opacity: 0; transform: scale(.96) translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cx-mnav__menu { animation: cx-fade .16s ease; } }
+.cx-mnav__links { display: flex; flex-direction: column; padding: 8px; gap: 2px; overflow-y: auto; }
 .cx-mnav__link {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 14px;
+  padding: 11px 14px;
   border-radius: var(--radius-md);
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
   text-decoration: none;
@@ -43,11 +42,5 @@
 /* --text-brand == --brand-primary in light, but lifts to a legible green in dark
    (brand-primary is a dark fill green — dark-on-dark on the brand-subtle row). */
 .cx-mnav__link--active { color: var(--text-brand); background: var(--brand-subtle); }
-.cx-mnav__foot { padding: 16px 20px; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 14px; }
+.cx-mnav__foot { padding: 12px; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 12px; }
 .cx-mnav__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-
-/* The brand lockup sits in the drawer head, outside the .cxh header whose
-   dark-mode rules lighten it. Mirror that treatment so the mark + CHIYA
-   wordmark stay legible on the dark sheet (matches the mobile app). */
-:root[data-theme="dark"] .cx-mnav__head .cxh-brand__name { color: #F4F8F5; }
-:root[data-theme="dark"] .cx-mnav__head .cxh-brand__mark { background-image: url("/brand/chiya-symbol-white.svg"); }

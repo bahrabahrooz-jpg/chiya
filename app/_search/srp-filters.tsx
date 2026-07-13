@@ -32,6 +32,50 @@ function Section({ title, count, children }: { title: string; count?: number; ch
   );
 }
 
+/** A labelled group of checkbox rows (used by the Location sub-groups). */
+function CheckGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+  empty,
+}: {
+  label: string;
+  options: D.Opt[];
+  selected: string[];
+  onToggle: (v: string) => void;
+  empty?: string;
+}) {
+  return (
+    <div className="srp-locgroup">
+      <div className="srp-locsub">{label}</div>
+      {options.length === 0 ? (
+        <div className="srp-locempty">{empty}</div>
+      ) : (
+        <div className="srp-typelist">
+          {options.map((o) => {
+            const on_ = selected.includes(o.value);
+            return (
+              <div
+                key={o.value}
+                role="checkbox"
+                aria-checked={on_}
+                className={"srp-typerow" + (on_ ? " srp-typerow--on" : "")}
+                onClick={() => onToggle(o.value)}
+              >
+                <span className="srp-cbox">
+                  <Checkbox checked={on_} readOnly />
+                </span>
+                <span className="srp-typerow__label">{o.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuickRow({ options, value, onPick }: { options: D.Opt[]; value: string; onPick: (v: string) => void }) {
   const { t } = useLang();
   const opts = [{ value: "", label: "Any" }, ...options];
@@ -180,6 +224,28 @@ export function SrpFilters({ deal, f, on, activeCount, onClearAll }: SrpFiltersP
           </button>
         )}
       </div>
+
+      <Section title={t("srp.sec.location")} count={f.cities.length + f.areas.length + f.projects.length}>
+        <CheckGroup
+          label={t("srp.loc.city")}
+          options={D.cityOpts.map((c) => ({ ...c, label: t("city." + c.value) }))}
+          selected={f.cities}
+          onToggle={on.toggleCity}
+        />
+        <CheckGroup
+          label={t("srp.loc.area")}
+          options={D.areaOptions(f.cities)}
+          selected={f.areas}
+          onToggle={on.toggleArea}
+        />
+        <CheckGroup
+          label={t("srp.loc.project")}
+          options={D.projectOptions(f.cities)}
+          selected={f.projects}
+          onToggle={on.toggleProject}
+          empty={t("srp.loc.noProjects")}
+        />
+      </Section>
 
       <Section title={t("srp.sec.type")} count={f.types.length}>
         <div className="srp-typelist">

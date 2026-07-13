@@ -93,24 +93,32 @@ function Location() {
   const { t } = useLang();
   const lat = 36.4078;
   const lng = 44.3239;
-  const d = 0.018;
-  const bbox = [lng - d, lat - d * 0.62, lng + d, lat + d * 0.62].join("%2C");
-  const embedSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`;
-  const fullLink = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=14/${lat}/${lng}`;
+  // Google Maps embed (keyless "output=embed" form) so the preview matches the
+  // mobile app's Google map, dropping a marker at the property's coordinates.
+  const embedSrc = `https://maps.google.com/maps?q=${lat},${lng}&z=15&hl=en&output=embed`;
+  // Matches the mobile app: opens Google Maps with a route to the property,
+  // letting Google fill in the origin from the viewer's current location.
+  const directionsLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
   return (
     <section className="pdp-sec">
       <h2 className="pdp-sec__title">{t("pdp.location")}</h2>
       <div className="pdp-loc">
         <div className="pdp-loc__map pdp-loc__map--real">
           <iframe className="pdp-loc__frame" title={`Map of ${property.address}`} src={embedSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-          <div className="pdp-loc__badge">
-            <Icon name="map-pin" size={15} />
-            <span>{property.neighborhood + ", " + property.city}</span>
-          </div>
-          <a className="pdp-loc__expand" href={fullLink} target="_blank" rel="noopener">
-            <Icon name="maximize" size={14} />
-            {t("pdp.viewLargerMap")}
+          <a
+            className="pdp-loc__expand"
+            href={directionsLink}
+            target="_blank"
+            rel="noopener"
+            aria-label={`${t("pdp.directions")} — ${property.address}`}
+          >
+            <Icon name="navigation" size={14} />
+            {t("pdp.directions")}
           </a>
+        </div>
+        <div className="pdp-loc__addr">
+          <Icon name="map-pin" size={15} />
+          <span>{property.address}</span>
         </div>
       </div>
     </section>

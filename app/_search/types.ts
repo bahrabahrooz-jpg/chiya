@@ -7,6 +7,9 @@ export interface RangeVal {
 }
 
 export interface Filters {
+  cities: string[];
+  areas: string[];
+  projects: string[];
   types: string[];
   price: RangeVal | null;
   size: RangeVal | null;
@@ -17,6 +20,9 @@ export interface Filters {
 }
 
 export interface FilterHandlers {
+  toggleCity: (v: string) => void;
+  toggleArea: (v: string) => void;
+  toggleProject: (v: string) => void;
   toggleType: (v: string) => void;
   setPrice: (p: RangeVal | null) => void;
   setSize: (p: RangeVal | null) => void;
@@ -27,6 +33,9 @@ export interface FilterHandlers {
 }
 
 export const emptyFilters: Filters = {
+  cities: [],
+  areas: [],
+  projects: [],
   types: [],
   price: null,
   size: null,

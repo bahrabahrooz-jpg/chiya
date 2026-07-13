@@ -1,7 +1,6 @@
 /* Form fields (Input / Textarea / Select) — ported from the Chiya Estate design system. */
 .cx-field { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-sans); }
 .cx-field__label { font-size: 14px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.005em; }
-.cx-field__req { color: var(--brand-accent); margin-left: 2px; }
 .cx-field__hint { font-size: 13px; line-height: 18px; color: var(--text-tertiary); }
 .cx-field__hint--error { color: var(--text-error); }
 
