@@ -52,7 +52,8 @@ export interface SortOpt {
   icon: string;
 }
 export const sortOptions: SortOpt[] = [
+  { value: "default", label: "Default", icon: "sparkles" },
+  { value: "rating", label: "Highest ratings", icon: "star" },
+  { value: "experience", label: "Most experience", icon: "calendar-check" },
   { value: "listings", label: "Most listings", icon: "building-2" },
-  { value: "rating", label: "Highest rating", icon: "star" },
-  { value: "newest", label: "Newest agents", icon: "sparkles" },
 ];

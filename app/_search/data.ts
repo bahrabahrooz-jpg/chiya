@@ -98,11 +98,11 @@ export const amenities: Opt[] = [
   { value: "furnished", label: "Furnished", icon: "sofa" },
 ];
 export const sortOptions: Opt[] = [
-  { value: "recommended", label: "Featured" },
+  { value: "default", label: "Default" },
   { value: "newest", label: "Newest" },
   { value: "price-asc", label: "Price: low to high" },
   { value: "price-desc", label: "Price: high to low" },
-  { value: "most-viewed", label: "Most viewed" },
+  { value: "recommended", label: "Featured" },
 ];
 
 export const BASE_COUNT: Record<string, number> = { Erbil: 248, Duhok: 86, Sulaymaniyah: 154 };

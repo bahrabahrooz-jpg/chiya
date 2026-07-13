@@ -49,6 +49,7 @@ export function AuthButton({ size = "sm", fullWidth }: AuthButtonProps) {
   const items: { icon: IconName; label: string; onClick: () => void }[] = [
     { icon: "user", label: t("acct.profile"), onClick: go("/account/profile") },
     { icon: "heart", label: t("acct.savedProps"), onClick: go("/saved") },
+    { icon: "calendar-check", label: t("acct.viewings"), onClick: go("/viewings") },
     { icon: "bell", label: t("acct.notifications"), onClick: go("/notifications") },
     { icon: "settings", label: t("acct.settings"), onClick: soon("acct.toast.settings") },
   ];

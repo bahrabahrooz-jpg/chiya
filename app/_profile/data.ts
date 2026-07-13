@@ -125,7 +125,8 @@ export interface SortOpt {
   icon: string;
 }
 export const sortOptions: SortOpt[] = [
+  { value: "default", label: "Default", icon: "sparkles" },
   { value: "newest", label: "Newest", icon: "sparkles" },
-  { value: "price-desc", label: "Price: high to low", icon: "arrow-down-wide-narrow" },
   { value: "price-asc", label: "Price: low to high", icon: "arrow-up-wide-narrow" },
+  { value: "price-desc", label: "Price: high to low", icon: "arrow-down-wide-narrow" },
 ];

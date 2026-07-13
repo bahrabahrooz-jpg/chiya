@@ -9,7 +9,8 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { AppointmentWidget } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { property, agent } from "./data";
+import { addViewing } from "@/lib/viewings";
+import { property, agent, gallery } from "./data";
 import { DatePicker, TimePicker } from "./datetime-picker";
 
 export interface ActionPanelProps {
@@ -90,6 +91,24 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
   const [time, setTime] = useState("");
   const [done, setDone] = useState(false);
   if (!open) return null;
+
+  const submit = () => {
+    addViewing({
+      id: "vw-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      propertyId: property.id,
+      title: property.title,
+      address: property.address,
+      cover: gallery[0],
+      agentId: agent.id,
+      agentName: agent.name,
+      agentPhoto: agent.avatar,
+      date,
+      time,
+      status: "requested",
+      createdAt: Date.now(),
+    });
+    setDone(true);
+  };
   return (
     <Modal
       open
@@ -110,7 +129,7 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
             <Button hierarchy="secondary" size="md" type="button" onClick={onClose}>
               Cancel
             </Button>
-            <Button hierarchy="primary" size="md" type="button" iconLeading="calendar-check" disabled={!date || !time} onClick={() => setDone(true)}>
+            <Button hierarchy="primary" size="md" type="button" iconLeading="calendar-check" disabled={!date || !time} onClick={submit}>
               {t("pdp.requestAViewing")}
             </Button>
           </>

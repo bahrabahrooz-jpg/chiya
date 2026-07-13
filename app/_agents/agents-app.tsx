@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
@@ -23,8 +23,9 @@ const emptyFilters: Filters = { city: "" };
 function sortAgents(list: DirAgent[], sort: string) {
   const arr = [...list];
   if (sort === "rating") return arr.sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
-  if (sort === "newest") return arr.sort((a, b) => b.since - a.since || b.rating - a.rating);
-  return arr.sort((a, b) => b.listings - a.listings);
+  if (sort === "experience") return arr.sort((a, b) => b.experience - a.experience || b.rating - a.rating);
+  if (sort === "listings") return arr.sort((a, b) => b.listings - a.listings);
+  return arr; // "default" → natural order
 }
 
 function pageList(current: number, total: number): (number | string)[] {
@@ -57,10 +58,7 @@ function AgentsSort({ sort, setSort }: { sort: string; setSort: (s: string) => v
         <div className="agt-sort__panel">
           {sortOptions.map((o) => (
             <button key={o.value} type="button" className={"agt-sort__opt" + (o.value === sort ? " agt-sort__opt--on" : "")} onClick={() => { setSort(o.value); setOpen(false); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
-                <Icon name={o.icon as IconName} size={16} />
-                {t("agents.sort." + o.value)}
-              </span>
+              <span>{t("agents.sort." + o.value)}</span>
               {o.value === sort && <Icon name="check" size={16} />}
             </button>
           ))}
@@ -115,7 +113,7 @@ export function AgentsApp() {
   const { t } = useLang();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [sort, setSort] = useState("listings");
+  const [sort, setSort] = useState("default");
   const { user } = useAuth();
   const { isAgentSaved, toggleAgent } = useFavorites();
   const [saved, setSaved] = useState<string[]>([]);

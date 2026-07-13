@@ -85,29 +85,38 @@
 .acc-empty__title { font-family: var(--font-serif, var(--font-sans)); font-size: 22px; font-weight: 600; color: var(--text-primary); }
 .acc-empty__desc { max-width: 420px; font-size: 14.5px; line-height: 1.6; color: var(--text-secondary); }
 
-/* ── My Profile ───────────────────────────────────────────────────────────── */
-.acc-card {
+/* ── My Profile — website card layout ─────────────────────────────────────────
+   A settings card: identity header (avatar + name/email on the left, edit / save
+   actions on the right) above a two-column form. Fields read as plain values
+   until edit mode. A separate danger strip carries the Delete-account action.   */
+.acc-prof3 {
+  margin-top: 24px;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-2xl, 18px);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
 }
-.acc-prof__banner {
+
+/* Header — identity vs. actions, split left/right. */
+.acc-prof3__head {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 26px;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 22px 24px;
   border-bottom: 1px solid var(--border-subtle);
-  background: linear-gradient(135deg, var(--green-50), var(--surface-card) 70%);
 }
-.acc-prof__avwrap { position: relative; flex: none; }
-.acc-prof__photobtn {
+.acc-prof3__id { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.acc-prof3__avwrap { position: relative; flex: none; }
+.acc-prof3__av { width: 72px !important; height: 72px !important; font-size: 24px !important; }
+.acc-prof3__photobtn {
   position: absolute;
-  inset-inline-end: -4px;
-  bottom: -4px;
-  width: 32px;
-  height: 32px;
+  inset-inline-end: -3px;
+  bottom: -3px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -118,39 +127,62 @@
   cursor: pointer;
   transition: filter .14s;
 }
-.acc-prof__photobtn:hover { filter: brightness(1.08); }
-.acc-prof__id { min-width: 0; }
-.acc-prof__name { font-family: var(--font-serif, var(--font-sans)); font-size: 22px; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
-.acc-prof__sub { display: inline-flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 13.5px; color: var(--text-tertiary); }
-.acc-prof__role {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 10px;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--green-50);
-  color: var(--text-brand);
-  font-size: 12px;
-  font-weight: 700;
+.acc-prof3__photobtn:hover { filter: brightness(1.08); }
+.acc-prof3__idmeta { min-width: 0; }
+.acc-prof3__name {
+  font-family: var(--font-serif, var(--font-sans));
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
-.acc-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 26px; }
-.acc-form__full { grid-column: 1 / -1; }
-/* Read-only value row (view mode) */
-.acc-ro { display: flex; flex-direction: column; gap: 6px; }
-.acc-ro__label { font-size: 13px; font-weight: 600; color: var(--text-tertiary); }
-.acc-ro__value { display: inline-flex; align-items: center; gap: 9px; font-size: 15px; color: var(--text-primary); }
-.acc-ro__value svg { color: var(--text-tertiary); flex: none; }
-.acc-ro__value--muted { color: var(--text-tertiary); font-style: italic; }
-.acc-prof__foot {
+.acc-prof3__email { margin-top: 4px; font-size: 13.5px; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.acc-prof3__actions { display: inline-flex; align-items: center; gap: 10px; flex: none; }
+
+/* Single-column form — one field per row, shared by edit inputs and read rows. */
+.acc-prof3__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  padding: 24px;
+}
+
+/* Read row — looks like a disabled input: label above, icon + value in a box. */
+.acc-rf {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   gap: 10px;
-  padding: 18px 26px;
-  border-top: 1px solid var(--border-subtle);
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
   background: var(--surface-sunken);
+  font-size: 15px;
+  color: var(--text-primary);
+  min-width: 0;
 }
-.acc-prof__danger { margin-top: 22px; display: flex; justify-content: center; }
+.acc-rf svg { color: var(--text-tertiary); flex: none; }
+.acc-rf span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-rf--muted { color: var(--text-tertiary); }
+.acc-rf--muted span { font-style: italic; }
+
+/* Danger strip — copy on the left, destructive action on the right. */
+.acc-prof3__danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding: 18px 22px;
+  border: 1px solid var(--red-200, #fecaca);
+  border-radius: var(--radius-2xl, 18px);
+  background: var(--red-50, #fef2f2);
+}
+.acc-prof3__danger-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.acc-prof3__danger-title { font-size: 15px; font-weight: 600; color: var(--text-error); }
+.acc-prof3__danger-desc { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
 
 /* ── Saved ────────────────────────────────────────────────────────────────── */
 .acc-grid {
@@ -158,6 +190,75 @@
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
 }
+
+/* ── My Viewings ──────────────────────────────────────────────────────────────
+   Mirrors the mobile app's viewing cards: thumb + "Requested" pill + title/addr
+   with a cancel ✕, a tinted date/time row, then the agent line.                 */
+.acc-viewlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+.acc-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl, 14px);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+  transition: box-shadow .15s, border-color .15s, transform .15s;
+}
+.acc-view:hover { box-shadow: var(--shadow-sm); border-color: var(--border-default); transform: translateY(-2px); }
+.acc-view:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.acc-view__top { display: flex; align-items: flex-start; gap: 12px; }
+.acc-view__thumb { width: 80px; height: 80px; flex: none; object-fit: cover; border-radius: var(--radius-md); background: var(--surface-sunken); }
+.acc-view__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.acc-view__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  background: var(--green-50);
+  color: var(--text-brand);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.acc-view__title { font-family: var(--font-sans); font-size: 15.5px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-view__addr { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-secondary); min-width: 0; }
+.acc-view__addr svg { color: var(--text-tertiary); flex: none; }
+.acc-view__addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-view__cancel {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background-color .14s, color .14s;
+}
+.acc-view__cancel:hover { background: var(--red-50, #fef2f2); color: var(--text-error); }
+.acc-view__when {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: 13.5px;
+}
+.acc-view__when svg { color: var(--text-brand); flex: none; }
+.acc-view__date { font-weight: 600; color: var(--text-primary); }
+.acc-view__time { color: var(--text-tertiary); }
+.acc-view__agent { display: flex; align-items: center; gap: 8px; }
+.acc-view__with { font-size: 13.5px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-view__with b { color: var(--text-primary); font-weight: 600; }
 
 /* ── Notifications ────────────────────────────────────────────────────────── */
 .acc-notiflist { display: flex; flex-direction: column; gap: 12px; }
@@ -271,7 +372,10 @@
 .acc-menu__item--danger:hover { background: var(--red-50, #fef2f2); }
 
 @media (max-width: 640px) {
-  .acc-form { grid-template-columns: 1fr; }
+  .acc-prof3__head { padding: 18px; }
+  .acc-prof3__actions { width: 100%; }
+  .acc-prof3__actions .cx-btn { flex: 1; }
+  .acc-prof3__grid { grid-template-columns: 1fr; padding: 18px; }
   .acc-seg { display: flex; width: 100%; }
   .acc-seg__btn { flex: 1; justify-content: center; }
 }

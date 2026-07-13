@@ -149,17 +149,17 @@ body.cx-pop-open .cxhero { z-index: 1000; }
 .cxloc:hover .cxloc__head svg { transform: translate(3px, -3px); }
 .cxloc__blurb { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: var(--text-secondary); margin: 8px 0 0; text-wrap: pretty; }
 
-/* ============ WHY CHIYA (dark band) ============ */
-.cxk-whyband { background: var(--surface-brand-deep); padding: 96px 0; position: relative; }
-.cxk-whyband .cx-sectitle { color: #fff; }
-.cxk-whyband .cx-secsub { color: rgba(255,255,255,.72); }
-.cxpillar { display: flex; flex-direction: column; gap: 14px; padding: 30px 26px; background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.10); border-radius: var(--radius-card); transition: background-color .2s ease, transform .2s ease; }
-.cxpillar:hover { background: rgba(255,255,255,.07); transform: translateY(-3px); }
-.cxpillar__ic { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-lg); background: rgba(201,162,75,.16); color: var(--brand-accent); }
-.cxpillar__title { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; color: #fff; }
-.cxpillar__desc { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: rgba(255,255,255,.70); margin: 0; text-wrap: pretty; }
+/* ============ WHY CHIYA (light band) ============ */
+.cxk-whyband { background: var(--surface-sunken); padding: 96px 0; position: relative; }
+.cxpillar { display: flex; flex-direction: column; gap: 14px; padding: 30px 26px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); box-shadow: var(--shadow-card); transition: background-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+.cxpillar:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
+.cxpillar__ic { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-lg); background: var(--brand-subtle); color: var(--brand-accent); }
+.cxpillar__title { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; color: var(--text-primary); }
+.cxpillar__desc { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: var(--text-secondary); margin: 0; text-wrap: pretty; }
 
 /* ============ TESTIMONIALS ============ */
+/* Full-width band matching the "Why Chiya" section background. */
+.cxk-reviewband { background: var(--surface-sunken); }
 .cxtest { display: flex; flex-direction: column; gap: 18px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: 30px 28px; box-shadow: var(--shadow-card); margin: 0; }
 .cxtest__stars { display: flex; gap: 3px; color: var(--rating-star); }
 .cxtest__quote { font-family: var(--font-display); font-weight: 500; font-size: 21px; line-height: 30px; letter-spacing: -0.01em; color: var(--text-primary); margin: 0; flex: 1; text-wrap: pretty; }
@@ -167,21 +167,41 @@ body.cx-pop-open .cxhero { z-index: 1000; }
 .cxtest__name { font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .cxtest__loc { font-family: var(--font-sans); font-size: 13px; color: var(--text-tertiary); margin-top: 1px; }
 
-/* ============ PREMIUM CTA (dark band) ============ */
-.cxk-cta { background: var(--surface-brand-deep); position: relative; overflow: hidden; padding: 100px 0; }
+/* ============ PREMIUM CTA (interior photo band + glass cards) ============ */
+/* Drop an interior/"inside house" photo at public/images/hero-interior.png.
+   The overlay scrim + glass cards adapt per theme; text stays light in both,
+   sitting over the photo. background-color is a graceful fallback if the
+   image is missing or still loading. */
+.cxk-cta { position: relative; overflow: hidden; box-sizing: border-box; min-height: 88vh; min-height: 88svh;
+  display: flex; align-items: center; padding: 120px 0;
+  background-color: #23282B;
+  background-image:
+    linear-gradient(180deg, rgba(22,26,28,.30) 0%, rgba(18,22,24,.40) 45%, rgba(14,17,19,.58) 100%),
+    url("/images/hero-interior.png");
+  background-size: cover; background-position: center; background-repeat: no-repeat; }
+:root[data-theme="dark"] .cxk-cta {
+  background-color: #0C0E11;
+  background-image:
+    linear-gradient(180deg, rgba(8,10,12,.80) 0%, rgba(8,10,12,.74) 45%, rgba(5,7,9,.92) 100%),
+    url("/images/hero-interior.png"); }
 .cxk-cta::after { content: ""; position: absolute; top: -120px; right: -80px; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(201,162,75,.16), transparent 70%); pointer-events: none; }
-.cxk-cta__inner { max-width: 1320px; margin-inline: auto; padding: 0 56px; text-align: center; position: relative; z-index: 2; }
+.cxk-cta__inner { width: 100%; max-width: 1320px; margin-inline: auto; padding: 0 56px; text-align: center; position: relative; z-index: 2; }
 .cxk-cta__eyebrow { color: var(--brand-accent); }
-.cxk-cta__title { font-family: var(--font-display); font-weight: 600; font-size: 48px; line-height: 1.06; letter-spacing: -0.02em; color: #fff; margin: 12px 0 14px; }
-.cxk-cta__sub { font-family: var(--font-sans); font-size: 18px; line-height: 27px; color: rgba(255,255,255,.76); margin: 0 auto 48px; max-width: 560px; }
-.cxk-cta__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; text-align: left; }
-.cxcta-card { display: flex; flex-direction: column; gap: 12px; padding: 32px 28px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.11); border-radius: var(--radius-card-lg); transition: background-color .2s ease, transform .2s ease, border-color .2s ease; }
-.cxcta-card:hover { background: rgba(255,255,255,.08); border-color: rgba(201,162,75,.4); transform: translateY(-4px); }
-.cxcta-card__ic { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: var(--radius-lg); background: var(--brand-accent); color: var(--text-on-accent); }
-.cxcta-card__title { font-family: var(--font-display); font-weight: 600; font-size: 25px; margin: 4px 0 0; color: #fff; }
-.cxcta-card__desc { font-family: var(--font-sans); font-size: 14.5px; line-height: 22px; color: rgba(255,255,255,.70); margin: 0; flex: 1; }
-.cxcta-card__btn { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 6px 0 0; font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--brand-accent); transition: gap .18s ease; }
-.cxcta-card__btn:hover { gap: 12px; }
+.cxk-cta__title { font-family: var(--font-display); font-weight: 600; font-size: 48px; line-height: 1.06; letter-spacing: -0.02em; color: #fff; margin: 12px 0 14px; text-shadow: 0 1px 20px rgba(0,0,0,.35); }
+.cxk-cta__sub { font-family: var(--font-sans); font-size: 18px; line-height: 27px; color: rgba(255,255,255,.82); margin: 0 auto 40px; max-width: 560px; text-shadow: 0 1px 14px rgba(0,0,0,.3); }
+/* Actions — one primary (solid white) + two secondary (frosted outline) pill buttons,
+   sitting directly on the dimmed photo. No cards: the copy stays the focus and the
+   photo reads through around the buttons. */
+.cxk-cta__actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+.cxk-cta__btn { display: inline-flex; align-items: center; gap: 9px; padding: 15px 26px; border-radius: 999px;
+  font-family: var(--font-sans); font-size: 15.5px; font-weight: 600; text-decoration: none;
+  transition: transform .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.cxk-cta__btn--outline { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.40);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.cxk-cta__btn--outline:hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.55); transform: translateY(-2px); }
+/* Dark theme: quieter glass so the band reads as a night scene, not a glaring island. */
+:root[data-theme="dark"] .cxk-cta__btn--outline { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.28); }
+:root[data-theme="dark"] .cxk-cta__btn--outline:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.40); }
 
 /* ============ RESPONSIVE ============ */
 @media (max-width: 1200px) {
@@ -191,7 +211,6 @@ body.cx-pop-open .cxhero { z-index: 1000; }
   .cxk-container, .cxhero__inner, .cxk-cta__inner { padding-inline: 32px; }
   .cxk-grid3, .cxk-grid4 { grid-template-columns: repeat(2, 1fr); }
   .cxhero__title { font-size: 50px; }
-  .cxk-cta__grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 680px) {
   .cxk-cats, .cxk-grid3, .cxk-grid4 { grid-template-columns: 1fr; }
@@ -199,4 +218,8 @@ body.cx-pop-open .cxhero { z-index: 1000; }
   .cxsearch { --cxsearch-drop: 28px; }
   .cxhero__inner { padding-top: 56px; }
   .cxhero__title { font-size: 40px; }
+  /* Full-height band + full-width, stacked CTA pills for comfortable tap targets on phones. */
+  .cxk-cta { padding: 88px 0; }
+  .cxk-cta__actions { flex-direction: column; align-items: stretch; }
+  .cxk-cta__btn { justify-content: center; }
 }

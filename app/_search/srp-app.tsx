@@ -59,12 +59,12 @@ function sortListings(list: D.SrpListing[], sort: string) {
   const arr = [...list];
   if (sort === "price-asc") return arr.sort((a, b) => a.price - b.price);
   if (sort === "price-desc") return arr.sort((a, b) => b.price - a.price);
-  if (sort === "most-viewed") return arr.sort((a, b) => (b.photoCount || 0) - (a.photoCount || 0));
   if (sort === "newest") {
     const rank = (l: D.SrpListing) => (l.pstatus === "new" || l.status === "New" ? 0 : 1);
     return arr.sort((a, b) => rank(a) - rank(b));
   }
-  return arr.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+  if (sort === "recommended") return arr.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+  return arr; // "default" → natural order
 }
 
 export function SrpApp() {
@@ -88,7 +88,7 @@ export function SrpApp() {
   // nav stay in sync when switching via the header links (client-side nav).
   const deal: "buy" | "rent" = params.get("deal") === "rent" ? "rent" : "buy";
   const [query, setQuery] = useState(init.query);
-  const [sort, setSort] = useState("recommended");
+  const [sort, setSort] = useState("default");
   const [view, setView] = useState("grid");
   const [filters, setFilters] = useState<Filters>(init.filters);
   const { properties: savedProps, toggleProperty } = useFavorites();

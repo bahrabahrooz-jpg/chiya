@@ -28,9 +28,7 @@ export default function HomePage() {
         <div className="cxk-container" id="agents">
           <FeaturedAgents />
         </div>
-        <div className="cxk-container">
-          <Testimonials />
-        </div>
+        <Testimonials />
         <PremiumCta />
       </main>
       <Footer />

@@ -11,6 +11,8 @@ import { PropertyCard } from "@/components/real-estate";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
+import { openAuth, useAuth } from "@/lib/auth";
+import { useProfile } from "@/lib/profile";
 import * as D from "./data";
 
 const { agent } = D;
@@ -196,6 +198,7 @@ function About() {
 }
 
 const PROFILE_SORT_KEYS: Record<string, string> = {
+  default: "sort.default",
   newest: "sort.newest",
   "price-desc": "sort.price-desc",
   "price-asc": "sort.price-asc",
@@ -219,10 +222,7 @@ function SortMenu({ value, onChange }: { value: string; onChange: (v: string) =>
         <div className="agt-sort__panel">
           {D.sortOptions.map((o) => (
             <button key={o.value} type="button" className={"agt-sort__opt" + (o.value === value ? " agt-sort__opt--on" : "")} onClick={() => { onChange(o.value); setOpen(false); }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
-                <Icon name={o.icon as IconName} size={16} />
-                {lbl(o.value)}
-              </span>
+              <span>{lbl(o.value)}</span>
               {o.value === value && <Icon name="check" size={17} />}
             </button>
           ))}
@@ -236,13 +236,14 @@ function sortListings(list: D.ProListing[], sort: string) {
   const arr = [...list];
   if (sort === "price-desc") return arr.sort((a, b) => b.price - a.price);
   if (sort === "price-asc") return arr.sort((a, b) => a.price - b.price);
-  return arr.sort((a, b) => a.since - b.since);
+  if (sort === "newest") return arr.sort((a, b) => a.since - b.since);
+  return arr; // "default" → natural order
 }
 
 function ActiveListings({ favorites, onFavorite }: { favorites: string[]; onFavorite: (id: string) => void }) {
   const router = useRouter();
   const { t } = useLang();
-  const [sort, setSort] = useState("newest");
+  const [sort, setSort] = useState("default");
   const list = useMemo(() => sortListings(D.listings, sort), [sort]);
   const fmt = (l: D.ProListing) => "$" + l.price.toLocaleString("en-US");
   return (
@@ -339,27 +340,206 @@ function Stars({ n, size = 15 }: { n: number; size?: number }) {
   );
 }
 
+/** A working member review — either seeded from data or authored by the signed-in member. */
+interface RevItem {
+  id: string;
+  name: string;
+  avatar?: string;
+  stars: number;
+  when: string;
+  deal?: string;
+  text: string;
+  own?: boolean;
+}
+
+/** Interactive 1–5 star picker used by the review composer. */
+function StarRating({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [hover, setHover] = useState(0);
+  const active = hover || value;
+  return (
+    <div className="pro-ratepick" role="radiogroup" aria-label="Rating">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button
+          key={i}
+          type="button"
+          role="radio"
+          aria-checked={i === value}
+          aria-label={`${i} / 5`}
+          className="pro-ratepick__btn"
+          onClick={() => onChange(i)}
+          onMouseEnter={() => setHover(i)}
+          onMouseLeave={() => setHover(0)}
+        >
+          <Icon name="star" size={28} fill={i <= active ? "currentColor" : "none"} className={i <= active ? "pro-ratepick__on" : "pro-ratepick__off"} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Compose a new review or edit an existing one (star rating + free text). */
+function ReviewComposer({ initial, onSubmit, onCancel }: {
+  initial?: RevItem | null;
+  onSubmit: (stars: number, text: string) => void;
+  onCancel?: () => void;
+}) {
+  const { t } = useLang();
+  const editing = !!initial;
+  const [rating, setRating] = useState(initial?.stars ?? 0);
+  const [text, setText] = useState(initial?.text ?? "");
+  const canPost = rating > 0 && text.trim().length > 0;
+
+  const submit = () => {
+    if (!canPost) return;
+    onSubmit(rating, text.trim());
+    if (!editing) {
+      setRating(0);
+      setText("");
+    }
+  };
+
+  return (
+    <div className="pro-revcomposer">
+      <div className="pro-revcomposer__head">
+        <span className="pro-revcomposer__title">{editing ? t("profile.editReviewTitle") : t("profile.rateExperience")}</span>
+        {onCancel && (
+          <button type="button" className="pro-revcomposer__cancel" onClick={onCancel}>
+            {t("profile.reviewCancel")}
+          </button>
+        )}
+      </div>
+      <StarRating value={rating} onChange={setRating} />
+      <textarea
+        className="pro-revcomposer__input"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={t("profile.reviewPlaceholder")}
+        rows={3}
+      />
+      <div className="pro-revcomposer__actions">
+        <Button hierarchy="primary" iconLeading={editing ? "check" : "send"} disabled={!canPost} onClick={submit}>
+          {editing ? t("profile.updateReview") : t("profile.postReview")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function Reviews() {
   const { t } = useLang();
+  const { user } = useAuth();
+  const { profile } = useProfile();
+
+  const seed = useMemo<RevItem[]>(
+    () => D.reviews.map((r) => ({ id: "seed-" + r.id, name: r.name, avatar: r.avatar, stars: r.stars, when: r.when, deal: r.deal, text: r.text })),
+    [],
+  );
+  const [items, setItems] = useState<RevItem[]>(seed);
+  const [editing, setEditing] = useState<RevItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+
+  const authorName = profile.fullName || user?.name || t("acct.member");
+
+  const addReview = (stars: number, text: string) =>
+    setItems((rs) => [
+      { id: "own-" + Date.now(), name: authorName, avatar: profile.avatar || undefined, stars, when: t("profile.reviewJustNow"), deal: t("profile.reviewYou"), text, own: true },
+      ...rs,
+    ]);
+  const updateReview = (id: string, stars: number, text: string) =>
+    setItems((rs) => rs.map((r) => (r.id === id ? { ...r, stars, text, when: t("profile.reviewEdited") } : r)));
+  const deleteReview = (id: string) => setItems((rs) => rs.filter((r) => r.id !== id));
+
   return (
     <section className="pdp-sec">
       <h2 className="pdp-sec__title">{t("profile.reviewsTitle")}</h2>
+
+      {user ? (
+        <ReviewComposer
+          key={editing?.id ?? "new"}
+          initial={editing}
+          onSubmit={(stars, text) => {
+            if (editing) {
+              updateReview(editing.id, stars, text);
+              toast({ title: t("profile.reviewUpdated"), variant: "success" });
+            } else {
+              addReview(stars, text);
+              toast({ title: t("profile.reviewPosted"), variant: "success" });
+            }
+            setEditing(null);
+          }}
+          onCancel={editing ? () => setEditing(null) : undefined}
+        />
+      ) : (
+        <div className="pro-revsignin">
+          <div className="pro-revsignin__txt">
+            <div className="pro-revsignin__title">{t("profile.signInToReview")}</div>
+            <p className="pro-revsignin__sub">{t("profile.signInToReviewSub")}</p>
+          </div>
+          <Button hierarchy="secondary" iconLeading="log-in" onClick={() => openAuth("login", { note: t("profile.signInToReview") })}>
+            {t("profile.signInToReviewBtn")}
+          </Button>
+        </div>
+      )}
+
       <div className="pro-rev__list">
-        {D.reviews.map((r) => (
-          <article key={r.id} className="pro-revcard">
+        {items.map((r) => (
+          <article key={r.id} className={"pro-revcard" + (r.own ? " pro-revcard--own" : "")}>
             <div className="pro-revcard__head">
               <Avatar src={r.avatar} name={r.name} size="md" />
               <div className="pro-revcard__id">
                 <div className="pro-revcard__name">{r.name}</div>
-                <div className="pro-revcard__deal">{r.deal}</div>
+                {r.deal && <div className="pro-revcard__deal">{r.deal}</div>}
               </div>
               <span className="pro-revcard__when">{r.when}</span>
             </div>
             <Stars n={r.stars} />
             <p className="pro-revcard__text">{`“${r.text}”`}</p>
+            {r.own && user && (
+              <div className="pro-revcard__actions">
+                <button type="button" className="pro-revcard__act" onClick={() => setEditing(r)}>
+                  <Icon name="pencil" size={15} />
+                  {t("profile.reviewEdit")}
+                </button>
+                <button type="button" className="pro-revcard__act pro-revcard__act--danger" onClick={() => setPendingDelete(r.id)}>
+                  <Icon name="trash-2" size={15} />
+                  {t("profile.reviewDelete")}
+                </button>
+              </div>
+            )}
           </article>
         ))}
       </div>
+
+      <Modal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        icon="trash-2"
+        title={t("profile.deleteReviewTitle")}
+        subtitle={t("profile.deleteReviewSub")}
+        size="sm"
+        footerSpread
+        footer={
+          <>
+            <Button hierarchy="secondary" onClick={() => setPendingDelete(null)}>
+              {t("profile.reviewCancel")}
+            </Button>
+            <Button
+              hierarchy="destructive"
+              iconLeading="trash-2"
+              onClick={() => {
+                if (pendingDelete) {
+                  if (editing?.id === pendingDelete) setEditing(null);
+                  deleteReview(pendingDelete);
+                  toast({ title: t("profile.reviewDeleted") });
+                }
+                setPendingDelete(null);
+              }}
+            >
+              {t("profile.reviewDelete")}
+            </Button>
+          </>
+        }
+      />
     </section>
   );
 }

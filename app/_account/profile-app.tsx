@@ -19,9 +19,12 @@ import "./account.css";
 const emailish = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 /**
- * ProfileApp — the member's "My Profile" page. A view/edit card mirroring the
- * mobile edit-profile flow (avatar, name, email, phone, location + delete
- * account), rebuilt with the website's design system and header/footer chrome.
+ * ProfileApp — the member's "My Profile" page. Mirrors the mobile app's
+ * edit-profile screen: a single centred column with a large avatar (tap the
+ * badge to change the photo), four stacked fields that read as plain values
+ * until you enter edit mode, and a Delete-account action at the foot. Rebuilt
+ * with the website's design system and header/footer chrome; the data + logic
+ * match the mobile flow, only the presentation is adapted for the web.
  */
 export function ProfileApp() {
   const { user, logout } = useAuth();
@@ -73,8 +76,6 @@ export function ProfileApp() {
     );
   }
 
-  const role = user.type === "agent" ? "Agent" : "Member";
-
   const cancel = () => {
     setFullName(profile.fullName);
     setEmail(profile.email);
@@ -121,7 +122,7 @@ export function ProfileApp() {
 
   return (
     <main className="acc-main">
-      <Container className="acc-col">
+      <Container className="acc-prof-shell" style={{ maxWidth: 780 }}>
         <nav className="acc-crumb" aria-label="Breadcrumb">
           <Link href="/">Home</Link>
           <Icon name="chevron-right" size={14} />
@@ -131,53 +132,59 @@ export function ProfileApp() {
         <PageHeader
           title="My Profile"
           subtitle="Manage your personal details and how agents can reach you."
-          actions={
-            editing ? (
-              <>
-                <Button hierarchy="secondary" onClick={cancel}>
-                  Cancel
-                </Button>
-                <Button hierarchy="primary" iconLeading="check" onClick={save}>
-                  Save changes
-                </Button>
-              </>
-            ) : (
-              <Button hierarchy="secondary" iconLeading="pencil" onClick={startEdit}>
-                Edit profile
-              </Button>
-            )
-          }
         />
 
-        <div className="acc-card" style={{ marginTop: 24 }}>
-          <div className="acc-prof__banner">
-            <div className="acc-prof__avwrap">
-              <Avatar src={avatar || undefined} name={fullName || user.name} size="xl" />
-              {editing && (
-                <button
-                  type="button"
-                  className="acc-prof__photobtn"
-                  aria-label="Change photo"
-                  onClick={() => fileRef.current?.click()}
-                >
-                  <Icon name="camera" size={15} />
-                </button>
-              )}
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
+        <div className="acc-prof3">
+          {/* Header — identity on the left, edit / save actions on the right. */}
+          <div className="acc-prof3__head">
+            <div className="acc-prof3__id">
+              <div className="acc-prof3__avwrap">
+                <Avatar
+                  src={avatar || undefined}
+                  name={fullName || user.name}
+                  size="xl"
+                  className="acc-prof3__av"
+                />
+                {editing && (
+                  <button
+                    type="button"
+                    className="acc-prof3__photobtn"
+                    aria-label="Change photo"
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    <Icon name="camera" size={15} />
+                  </button>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
+              </div>
+              <div className="acc-prof3__idmeta">
+                <div className="acc-prof3__name">{fullName || user.name}</div>
+                {profile.email && <div className="acc-prof3__email">{profile.email}</div>}
+              </div>
             </div>
-            <div className="acc-prof__id">
-              <div className="acc-prof__name">{fullName || user.name}</div>
-              {profile.email && <div className="acc-prof__sub">{profile.email}</div>}
-              <span className="acc-prof__role">
-                <Icon name="badge-check" size={13} />
-                {role}
-              </span>
+
+            <div className="acc-prof3__actions">
+              {editing ? (
+                <>
+                  <Button hierarchy="secondary" onClick={cancel}>
+                    Cancel
+                  </Button>
+                  <Button hierarchy="primary" iconLeading="check" onClick={save}>
+                    Save changes
+                  </Button>
+                </>
+              ) : (
+                <Button hierarchy="secondary" iconLeading="pencil" onClick={startEdit}>
+                  Edit profile
+                </Button>
+              )}
             </div>
           </div>
 
-          {editing ? (
-            <div className="acc-form">
-              <div className="acc-form__full">
+          {/* Fields — two-column form; editable inputs or plain read rows. */}
+          <div className="acc-prof3__grid">
+            {editing ? (
+              <>
                 <Input
                   label="Full name"
                   value={fullName}
@@ -189,28 +196,26 @@ export function ProfileApp() {
                   placeholder="Your name"
                   error={errors.fullName}
                 />
-              </div>
-              <Input
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errors.email) setErrors((x) => ({ ...x, email: undefined }));
-                }}
-                iconLeading="mail"
-                placeholder="you@email.com"
-                error={errors.email}
-              />
-              <Input
-                label="Phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                iconLeading="phone"
-                placeholder="+964 750 000 0000"
-              />
-              <div className="acc-form__full">
+                <Input
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) setErrors((x) => ({ ...x, email: undefined }));
+                  }}
+                  iconLeading="mail"
+                  placeholder="you@email.com"
+                  error={errors.email}
+                />
+                <Input
+                  label="Phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  iconLeading="phone"
+                  placeholder="+964 750 000 0000"
+                />
                 <Input
                   label="Location"
                   value={location}
@@ -218,20 +223,26 @@ export function ProfileApp() {
                   iconLeading="map-pin"
                   placeholder="City, Kurdistan"
                 />
-              </div>
-            </div>
-          ) : (
-            <div className="acc-form">
-              <ReadonlyRow label="Full name" icon="user" value={profile.fullName || user.name} />
-              <ReadonlyRow label="Email" icon="mail" value={profile.email} />
-              <ReadonlyRow label="Phone" icon="phone" value={profile.phone} placeholder="Not provided" />
-              <ReadonlyRow label="Location" icon="map-pin" value={profile.location} placeholder="Not provided" />
-            </div>
-          )}
+              </>
+            ) : (
+              <>
+                <ReadField label="Full name" icon="user" value={profile.fullName || user.name} />
+                <ReadField label="Email" icon="mail" value={profile.email} placeholder="Not provided" />
+                <ReadField label="Phone" icon="phone" value={profile.phone} placeholder="Not provided" />
+                <ReadField label="Location" icon="map-pin" value={profile.location} placeholder="Not provided" />
+              </>
+            )}
+          </div>
         </div>
 
         {!editing && (
-          <div className="acc-prof__danger">
+          <div className="acc-prof3__danger">
+            <div className="acc-prof3__danger-copy">
+              <span className="acc-prof3__danger-title">Delete account</span>
+              <span className="acc-prof3__danger-desc">
+                Permanently remove your profile from this device. This can’t be undone.
+              </span>
+            </div>
             <Button hierarchy="destructive" iconLeading="trash-2" onClick={() => setConfirmDelete(true)}>
               Delete account
             </Button>
@@ -262,26 +273,25 @@ export function ProfileApp() {
   );
 }
 
-function ReadonlyRow({
+/** Read row — a plain, non-editable field: label above, icon + value below. */
+function ReadField({
   label,
   icon,
   value,
   placeholder,
-  full,
 }: {
   label: string;
   icon: Parameters<typeof Icon>[0]["name"];
   value?: string;
   placeholder?: string;
-  full?: boolean;
 }) {
   return (
-    <div className={"acc-ro" + (full ? " acc-form__full" : "")}>
-      <span className="acc-ro__label">{label}</span>
-      <span className={"acc-ro__value" + (value ? "" : " acc-ro__value--muted")}>
-        <Icon name={icon} size={17} />
-        {value || placeholder || "—"}
-      </span>
+    <div className="cx-field">
+      <span className="cx-field__label">{label}</span>
+      <div className={"acc-rf" + (value ? "" : " acc-rf--muted")}>
+        <Icon name={icon} size={18} />
+        <span>{value || placeholder || "—"}</span>
+      </div>
     </div>
   );
 }

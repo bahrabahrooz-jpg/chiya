@@ -10,34 +10,36 @@ import { testimonials } from "@/lib/home-data";
 export function Testimonials() {
   const { t } = useLang();
   return (
-    <section className="cxk-section">
-      <SectionHeader
-        align="center"
-        eyebrow={t("sec.test.eyebrow")}
-        title={t("sec.test.title")}
-        subtitle={t("sec.test.sub")}
-      />
-      <div className="cxk-grid3">
-        {testimonials.map((item, i) => {
-          const name = t(`test.${i}.name`);
-          return (
-            <figure key={i} className="cxtest">
-              <div className="cxtest__stars">
-                {Array.from({ length: item.rating }).map((_, s) => (
-                  <Icon key={s} name="star" size={16} fill="currentColor" />
-                ))}
-              </div>
-              <blockquote className="cxtest__quote">{`“${t(`test.${i}.quote`)}”`}</blockquote>
-              <figcaption className="cxtest__by">
-                <Avatar src={item.avatar} name={name} size="md" />
-                <div>
-                  <div className="cxtest__name">{name}</div>
-                  <div className="cxtest__loc">{t(`test.${i}.loc`)}</div>
+    <section className="cxk-section cxk-reviewband">
+      <div className="cxk-container">
+        <SectionHeader
+          align="center"
+          eyebrow={t("sec.test.eyebrow")}
+          title={t("sec.test.title")}
+          subtitle={t("sec.test.sub")}
+        />
+        <div className="cxk-grid3">
+          {testimonials.map((item, i) => {
+            const name = t(`test.${i}.name`);
+            return (
+              <figure key={i} className="cxtest">
+                <div className="cxtest__stars">
+                  {Array.from({ length: item.rating }).map((_, s) => (
+                    <Icon key={s} name="star" size={16} fill="currentColor" />
+                  ))}
                 </div>
-              </figcaption>
-            </figure>
-          );
-        })}
+                <blockquote className="cxtest__quote">{`“${t(`test.${i}.quote`)}”`}</blockquote>
+                <figcaption className="cxtest__by">
+                  <Avatar src={item.avatar} name={name} size="md" />
+                  <div>
+                    <div className="cxtest__name">{name}</div>
+                    <div className="cxtest__loc">{t(`test.${i}.loc`)}</div>
+                  </div>
+                </figcaption>
+              </figure>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
