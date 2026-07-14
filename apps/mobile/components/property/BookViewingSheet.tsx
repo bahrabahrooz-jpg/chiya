@@ -12,21 +12,28 @@ import {
   Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, BadgeCheck, CalendarCheck, CircleCheck, MapPin, Star } from "lucide-react-native";
+import { X, BadgeCheck, CalendarCheck, CircleCheck, MapPin, Star, Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useTheme } from "@/theme";
 import { useTranslation } from "@/lib/i18n";
-import { dayName, monthName, formatDayMonth, formatTimeSlot } from "@/lib/i18n/format";
+import { formatDayMonth, formatTimeSlot, monthNameFull, weekdayHeaders } from "@/lib/i18n/format";
+import { toISODate, useViewings } from "@/lib/viewings";
+import { VIEWING_SLOTS, isSlot, isClosedDay, seedReservedSlots, buildReservedIndex } from "@/lib/reservations";
 import { Button } from "@/components/ui";
+
+/** "yyyy-mm-dd" → local Date. */
+function parseISODate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const WINDOW_H = Dimensions.get("window").height;
 
-// Canonical slot values (stored on the viewing); display is localized via formatTimeSlot.
-const TIME_SLOTS = ["9:00 AM", "10:30 AM", "12:00 PM", "1:30 PM", "3:00 PM", "4:30 PM", "6:00 PM"];
-
 export interface BookViewingSheetProps {
   open: boolean;
   onClose: () => void;
+  /** Property id — used to surface the member's own requests as reserved slots. */
+  propertyId: string;
   property: { title: string; address: string };
   agent: { name: string; city: string; photo: string; verified?: boolean; rating: number; reviews: number };
   /** Fired when a viewing is confirmed, with the chosen date + slot label. */
@@ -34,36 +41,67 @@ export interface BookViewingSheetProps {
 }
 
 /** BookViewingSheet — a bottom-sheet that mirrors the website's "request a
- * viewing" flow: pick a date + time, see the viewing agent, submit → confirmed. */
-export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: BookViewingSheetProps) {
+ * viewing" flow: pick a date + time, see the viewing agent, submit → confirmed.
+ * Fixed hourly slots, Fridays closed, and already-reserved slots blocked. */
+export function BookViewingSheet({ open, onClose, propertyId, property, agent, onConfirm }: BookViewingSheetProps) {
   const { colors, type, fontFamily, radius } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const viewings = useViewings();
 
   const [mounted, setMounted] = useState(open);
-  const [dateIdx, setDateIdx] = useState<number | null>(null);
-  const [timeIdx, setTimeIdx] = useState<number | null>(null);
+  const [dateISO, setDateISO] = useState(""); // "" = none; canonical yyyy-mm-dd
+  const [time, setTime] = useState(""); // "" = none; canonical slot label
+  const [openField, setOpenField] = useState<null | "date" | "time">(null);
+  const [viewMonth, setViewMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  });
   const [done, setDone] = useState(false);
 
   const ty = useRef(new Animated.Value(WINDOW_H)).current;
   const scrim = useRef(new Animated.Value(0)).current;
 
-  // Next 14 days as selectable pills.
-  const days = useMemo(() => {
-    const base = new Date();
-    base.setHours(0, 0, 0, 0);
-    return Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
-      return d;
-    });
-  }, []);
+  // Reserved slots = demo seed + the member's own requests for this property,
+  // so a slot just booked immediately shows as taken.
+  const { byDate, dayStatus } = useMemo(() => {
+    const own = viewings
+      .filter((v) => v.propertyId === propertyId && isSlot(v.time))
+      .map((v) => ({ date: v.date, time: v.time }));
+    return buildReservedIndex([...seedReservedSlots(), ...own]);
+  }, [viewings, propertyId]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = toISODate(today);
+  const reservedTimes = dateISO ? byDate.get(dateISO) : undefined;
+
+  // Picking a day sets the date and drops a time that is reserved on it.
+  const pickDay = (d: Date) => {
+    const iso = toISODate(d);
+    setDateISO(iso);
+    const taken = byDate.get(iso);
+    if (time && taken?.has(time)) setTime("");
+    setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    setOpenField(null);
+  };
+  const pickTime = (slot: string) => {
+    setTime(slot);
+    setOpenField(null);
+  };
 
   useEffect(() => {
     if (open) {
       setDone(false);
-      setDateIdx(null);
-      setTimeIdx(null);
+      setDateISO("");
+      setTime("");
+      setOpenField(null);
+      setViewMonth(() => {
+        const d = new Date();
+        d.setDate(1);
+        return d;
+      });
       setMounted(true);
       Animated.parallel([
         Animated.timing(ty, { toValue: 0, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
@@ -80,12 +118,17 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
 
   if (!mounted) return null;
 
-  const canSubmit = dateIdx !== null && timeIdx !== null;
-  const dayLabel = (d: Date, i: number) => (i === 0 ? t("bookViewing.today") : i === 1 ? t("bookViewing.tomorrow") : dayName(d));
-  const whenLabel =
-    dateIdx !== null
-      ? `${formatDayMonth(days[dateIdx])}${timeIdx !== null ? ` · ${formatTimeSlot(TIME_SLOTS[timeIdx])}` : ""}`
-      : "";
+  const canSubmit = !!dateISO && !!time;
+  const whenLabel = dateISO ? `${formatDayMonth(parseISODate(dateISO))}${time ? ` · ${formatTimeSlot(time)}` : ""}` : "";
+
+  // Calendar cells for the visible month (leading blanks + each day).
+  const year = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
+  const startOffset = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
 
   return (
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
@@ -139,69 +182,144 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
           ) : (
             <>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
-                {/* Date */}
+                {/* Date & time — two dropdown fields, mirroring the website */}
                 <View style={styles.section}>
-                  <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("bookViewing.selectDate")}</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
-                    {days.map((d, i) => {
-                      const on = dateIdx === i;
-                      return (
-                        <Pressable
-                          key={i}
-                          onPress={() => setDateIdx(i)}
-                          style={[
-                            styles.datePill,
-                            {
-                              borderRadius: radius.md,
-                              backgroundColor: on ? colors.brandPrimary : colors.surfaceCard,
-                              borderColor: on ? colors.brandPrimary : colors.borderSubtle,
-                            },
-                          ]}
-                        >
-                          <Text style={[type.caption, { color: on ? colors.textOnBrand : colors.textTertiary, fontFamily: fontFamily.sansSemibold }]}>
-                            {dayLabel(d, i)}
-                          </Text>
-                          <Text style={[styles.dateNum, { color: on ? colors.textOnBrand : colors.textPrimary, fontFamily: fontFamily.sansBold }]}>
-                            {d.getDate()}
-                          </Text>
-                          <Text style={[type.caption, { color: on ? colors.textOnBrand : colors.textTertiary }]}>{monthName(d)}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-
-                {/* Time */}
-                <View style={styles.section}>
-                  <Text style={[type.bodyLg, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("bookViewing.availableTimes")}</Text>
-                  <View style={styles.slots}>
-                    {TIME_SLOTS.map((slot, i) => {
-                      const on = timeIdx === i;
-                      return (
-                        <Pressable
-                          key={slot}
-                          onPress={() => setTimeIdx(i)}
-                          style={[
-                            styles.slot,
-                            {
-                              borderRadius: radius.pill,
-                              backgroundColor: on ? colors.brandSubtle : colors.surfaceCard,
-                              borderColor: on ? colors.brandForeground : colors.borderSubtle,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              type.bodySm,
-                              { color: on ? colors.brandForeground : colors.textSecondary, fontFamily: on ? fontFamily.sansSemibold : fontFamily.sansMedium },
-                            ]}
-                          >
-                            {formatTimeSlot(slot)}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
+                  <View style={styles.dtRow}>
+                    <View style={styles.dtField}>
+                      <Text style={[type.label, styles.dtLabel, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("bookViewing.viewingDate")}</Text>
+                      <Pressable
+                        onPress={() => setOpenField((f) => (f === "date" ? null : "date"))}
+                        style={[
+                          styles.trigger,
+                          { borderRadius: radius.control, backgroundColor: colors.surfaceCard, borderColor: openField === "date" ? colors.borderFocus : colors.borderDefault },
+                        ]}
+                      >
+                        <Text numberOfLines={1} style={[type.bodySm, styles.triggerText, { color: dateISO ? colors.textPrimary : colors.textPlaceholder, fontFamily: dateISO ? fontFamily.sansMedium : fontFamily.sans }]}>
+                          {dateISO ? formatDayMonth(parseISODate(dateISO)) : t("bookViewing.selectDate")}
+                        </Text>
+                        <CalendarIcon size={16} color={colors.textTertiary} strokeWidth={2} />
+                      </Pressable>
+                    </View>
+                    <View style={styles.dtField}>
+                      <Text style={[type.label, styles.dtLabel, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("bookViewing.viewingTime")}</Text>
+                      <Pressable
+                        disabled={!dateISO}
+                        onPress={() => setOpenField((f) => (f === "time" ? null : "time"))}
+                        style={[
+                          styles.trigger,
+                          { borderRadius: radius.control, backgroundColor: colors.surfaceCard, borderColor: openField === "time" ? colors.borderFocus : colors.borderDefault, opacity: dateISO ? 1 : 0.55 },
+                        ]}
+                      >
+                        <Text numberOfLines={1} style={[type.bodySm, styles.triggerText, { color: time ? colors.textPrimary : colors.textPlaceholder, fontFamily: time ? fontFamily.sansMedium : fontFamily.sans }]}>
+                          {time ? formatTimeSlot(time) : dateISO ? t("bookViewing.selectTime") : t("bookViewing.pickDateFirst")}
+                        </Text>
+                        <Clock size={16} color={colors.textTertiary} strokeWidth={2} />
+                      </Pressable>
+                    </View>
                   </View>
+
+                  {/* Calendar dropdown */}
+                  {openField === "date" ? (
+                    <View style={[styles.dropdown, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.lg }]}>
+                      <View style={styles.calHead}>
+                        <Pressable onPress={() => setViewMonth(new Date(year, month - 1, 1))} hitSlop={8} style={styles.calNav}>
+                          <ChevronLeft size={18} color={colors.textSecondary} strokeWidth={2} />
+                        </Pressable>
+                        <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
+                          {monthNameFull(viewMonth)} {year}
+                        </Text>
+                        <Pressable onPress={() => setViewMonth(new Date(year, month + 1, 1))} hitSlop={8} style={styles.calNav}>
+                          <ChevronRight size={18} color={colors.textSecondary} strokeWidth={2} />
+                        </Pressable>
+                      </View>
+                      <View style={styles.calGrid}>
+                        {weekdayHeaders().map((w) => (
+                          <View key={w} style={styles.calCell}>
+                            <Text style={[type.caption, { color: colors.textTertiary, fontFamily: fontFamily.sansBold, fontSize: 10.5 }]}>{w}</Text>
+                          </View>
+                        ))}
+                        {cells.map((d, i) => {
+                          if (!d) return <View key={"e" + i} style={styles.calCell} />;
+                          const iso = toISODate(d);
+                          const past = d < today;
+                          const closed = isClosedDay(d);
+                          const status = dayStatus.get(iso);
+                          const full = status === "full";
+                          const disabled = past || closed || full;
+                          const selected = iso === dateISO;
+                          const isToday = iso === todayISO;
+                          return (
+                            <View key={iso} style={styles.calCell}>
+                              <Pressable
+                                disabled={disabled}
+                                onPress={() => pickDay(d)}
+                                style={[styles.calDay, { borderRadius: radius.sm, backgroundColor: selected ? colors.brandSubtle : full ? colors.ringError : "transparent" }]}
+                              >
+                                <Text
+                                  style={[
+                                    type.bodySm,
+                                    {
+                                      color: full ? colors.textError : selected || isToday ? colors.brandForeground : past || closed ? colors.textPlaceholder : colors.textPrimary,
+                                      fontFamily: selected || isToday ? fontFamily.sansSemibold : fontFamily.sansMedium,
+                                      textDecorationLine: full ? "line-through" : "none",
+                                    },
+                                  ]}
+                                >
+                                  {d.getDate()}
+                                </Text>
+                                {status === "partial" && !selected ? <View style={[styles.calDot, { backgroundColor: colors.error }]} /> : null}
+                              </Pressable>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {/* Time dropdown — single-column slot list */}
+                  {openField === "time" ? (
+                    <View style={[styles.dropdown, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.lg }]}>
+                      <ScrollView style={{ maxHeight: 244 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} nestedScrollEnabled>
+                        {VIEWING_SLOTS.map((slot) => {
+                          const reserved = reservedTimes?.has(slot) ?? false;
+                          const selected = slot === time;
+                          return (
+                            <Pressable
+                              key={slot}
+                              disabled={reserved}
+                              onPress={() => pickTime(slot)}
+                              style={[
+                                styles.slotRow,
+                                {
+                                  borderRadius: radius.md,
+                                  backgroundColor: reserved ? colors.ringError : selected ? colors.brandSubtle : colors.surfaceCard,
+                                  borderColor: reserved ? colors.ringError : selected ? colors.brandForeground : colors.borderSubtle,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  type.bodySm,
+                                  {
+                                    color: reserved ? colors.textError : selected ? colors.brandForeground : colors.textPrimary,
+                                    fontFamily: selected ? fontFamily.sansSemibold : fontFamily.sansMedium,
+                                    textDecorationLine: reserved ? "line-through" : "none",
+                                  },
+                                ]}
+                              >
+                                {formatTimeSlot(slot)}
+                              </Text>
+                              {reserved ? (
+                                <Text style={[type.caption, { color: colors.textError, fontFamily: fontFamily.sansSemibold, fontSize: 10, letterSpacing: 0.4 }]}>
+                                  {t("bookViewing.reserved").toUpperCase()}
+                                </Text>
+                              ) : null}
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Agent */}
@@ -235,8 +353,8 @@ export function BookViewingSheet({ open, onClose, property, agent, onConfirm }: 
                   disabled={!canSubmit}
                   left={<CalendarCheck size={19} color={colors.textOnBrand} strokeWidth={2} />}
                   onPress={() => {
-                    if (dateIdx === null || timeIdx === null) return;
-                    onConfirm?.({ date: days[dateIdx], time: TIME_SLOTS[timeIdx] });
+                    if (!dateISO || !time) return;
+                    onConfirm?.({ date: parseISODate(dateISO), time });
                     setDone(true);
                   }}
                 />
@@ -257,11 +375,19 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingHorizontal: 20, paddingBottom: 8 },
   close: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: 2 },
   section: { paddingHorizontal: 20, paddingTop: 18, gap: 12 },
-  dateRow: { gap: 10, paddingRight: 4 },
-  datePill: { width: 66, paddingVertical: 12, borderWidth: 1, alignItems: "center", gap: 3 },
-  dateNum: { fontSize: 20 },
-  slots: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  slot: { paddingHorizontal: 16, height: 40, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  dtRow: { flexDirection: "row", gap: 12 },
+  dtField: { flex: 1, gap: 6 },
+  dtLabel: { fontSize: 12.5 },
+  trigger: { minHeight: 44, paddingHorizontal: 12, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  triggerText: { flex: 1 },
+  dropdown: { marginTop: 12, borderWidth: 1, padding: 10 },
+  calHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, paddingHorizontal: 2 },
+  calNav: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
+  calGrid: { flexDirection: "row", flexWrap: "wrap" },
+  calCell: { width: `${100 / 7}%`, alignItems: "center", justifyContent: "center", paddingVertical: 2 },
+  calDay: { position: "relative", width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  calDot: { position: "absolute", bottom: 5, width: 5, height: 5, borderRadius: 2.5 },
+  slotRow: { minHeight: 40, paddingHorizontal: 14, borderWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   agentRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderWidth: 1 },
   agentImg: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#e9edf0" },
   agentNameRow: { flexDirection: "row", alignItems: "center", gap: 5 },

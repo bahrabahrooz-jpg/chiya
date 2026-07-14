@@ -6,8 +6,24 @@ import { PROPERTIES as CAT_PROPS, MEMBERS as CAT_MEMBERS, AGENTS as CAT_AGENTS }
 export const VIEWINGS_PER_PAGE = 10;
 const FALLBACK_PORTRAIT = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=96&q=80";
 
+/* ---------------- bookable slots ----------------
+   Viewings are booked in fixed 1-hour slots during working hours; Fridays are
+   closed. This is the single source of truth shared by every booking surface
+   (public PDP, admin/agent scheduler, mobile) so the experience is identical. */
+export const VIEWING_SLOTS = ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+const VIEWING_SLOT_SET = new Set(VIEWING_SLOTS);
+/** True when a "HH:MM" value is one of the offered viewing slots. */
+export function isViewingSlot(time: string): boolean {
+  return VIEWING_SLOT_SET.has(time);
+}
+/** Fridays (getDay() === 5) are closed — no viewings can be booked. */
+export function isClosedDay(d: Date): boolean {
+  return d.getDay() === 5;
+}
+export type DayStatus = "partial" | "full";
+
 export const VIEWING_STATUS: Record<string, { variant: BadgeVariant; icon: IconName; cls: string }> = {
-  Scheduled: { variant: "info", icon: "clock", cls: "vw-st--scheduled" },
+  Requested: { variant: "info", icon: "clock", cls: "vw-st--scheduled" },
   Confirmed: { variant: "success", icon: "calendar-check", cls: "vw-st--confirmed" },
   Completed: { variant: "brand", icon: "check-check", cls: "vw-st--completed" },
   Cancelled: { variant: "error", icon: "circle-x", cls: "vw-st--cancelled" },
@@ -43,8 +59,10 @@ export interface ViewingRecord {
 }
 
 const GEN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const GEN_TIMES = ["9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM"];
-const GEN_STATUS = ["Scheduled", "Scheduled", "Confirmed", "Confirmed", "Completed", "Completed", "Completed", "Cancelled", "No Show"];
+/* Generated viewings sit on the same fixed hourly slots the booking pickers
+   offer, so an existing record always maps back to a selectable slot on edit. */
+const GEN_TIMES = VIEWING_SLOTS.map((s) => fmtTimeLabel(s)!);
+const GEN_STATUS = ["Requested", "Requested", "Confirmed", "Confirmed", "Completed", "Completed", "Completed", "Cancelled", "No Show"];
 const GEN_TODAY = new Date(2026, 5, 30);
 function gvRng(seed: number) {
   let s = seed >>> 0;
@@ -56,6 +74,7 @@ function gvRng(seed: number) {
 function gvDate(offset: number): string {
   const d = new Date(GEN_TODAY);
   d.setDate(d.getDate() + offset);
+  if (isClosedDay(d)) d.setDate(d.getDate() + 1); // no Friday viewings — bump to Saturday
   return `${GEN_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
@@ -106,7 +125,7 @@ export function computeViewingKpis(list: ViewingRecord[]): ViewKpiCounts {
     if (d) {
       const diff = Math.round((d.getTime() - GEN_TODAY.getTime()) / 86400000);
       if (diff === 0) c.today++;
-      if (diff >= 1 && diff <= 7 && (v.status === "Scheduled" || v.status === "Confirmed")) c.upcoming++;
+      if (diff >= 1 && diff <= 7 && (v.status === "Requested" || v.status === "Confirmed")) c.upcoming++;
     }
     if (v.status === "Completed") c.completed++;
     if (v.status === "Cancelled" || v.status === "No Show") c.cancelled++;
@@ -130,35 +149,20 @@ export const KPI_CARDS: KpiCard[] = [
   { key: "cancelled", field: "cancelled", label: "Cancelled", icon: "circle-x", tone: "brand", sub: "Including no-shows" },
 ];
 
-export const DURATIONS = [
-  { value: "30", label: "30 min" },
-  { value: "45", label: "45 min" },
-  { value: "60", label: "1 hour" },
-  { value: "90", label: "1.5 hr" },
-];
-export const RESCHED_DURATIONS = [
-  { value: "30", label: "30 minutes" },
-  { value: "45", label: "45 minutes" },
-  { value: "60", label: "1 hour" },
-  { value: "90", label: "1.5 hours" },
-];
-
 export interface ScheduleForm {
   property: string | null;
   member: string | null;
   agent: string | null;
   date: string;
   time: string;
-  duration: string;
   contact: string;
   notes: string;
 }
-export const EMPTY_FORM: ScheduleForm = { property: null, member: null, agent: null, date: "", time: "", duration: "60", contact: "phone", notes: "" };
+export const EMPTY_FORM: ScheduleForm = { property: null, member: null, agent: null, date: "", time: "", contact: "phone", notes: "" };
 
 export interface RescheduleForm {
   date: string;
   time: string;
-  duration: string;
   agent: string | null;
   notify: boolean;
   reason: string;
@@ -235,7 +239,48 @@ export function viewingToForm(v: ViewingRecord): ScheduleForm {
   }
   return { ...EMPTY_FORM, property: prop ? prop.id : null, member: mem ? mem.id : null, agent: agt ? agt.id : null, date, time };
 }
+/** "9:00 AM" → "09:00" (24h slot value), or "" when unparseable. */
+export function timeLabelToSlot(label: string): string {
+  const tm = /^(\d+):(\d+)\s*(AM|PM)$/i.exec(label || "");
+  if (!tm) return "";
+  let H = Number(tm[1]) % 12;
+  if (/pm/i.test(tm[3])) H += 12;
+  return `${String(H).padStart(2, "0")}:${tm[2]}`;
+}
+
+/** Reserved slots per ISO date + each day's booked/full status, for one
+ *  property. Only live bookings (Requested / Confirmed) hold a slot; an
+ *  optional viewing id is excluded so editing a record never blocks its own
+ *  slot. Mirrors the public PDP's buildReservedIndex, scoped to a property. */
+export interface PropertyReservedIndex {
+  byDate: Map<string, Set<string>>;
+  dayStatus: Map<string, DayStatus>;
+}
+const SLOT_HOLDING_STATUS = new Set(["Requested", "Confirmed"]);
+export function buildPropertyReservedIndex(list: ViewingRecord[], propertyTitle: string | null, excludeId?: string): PropertyReservedIndex {
+  const byDate = new Map<string, Set<string>>();
+  if (propertyTitle) {
+    for (const v of list) {
+      if (v.id === excludeId) continue;
+      if (v.property.title !== propertyTitle) continue;
+      if (!SLOT_HOLDING_STATUS.has(v.status)) continue;
+      const d = parseViewDate(v.date);
+      const slot = timeLabelToSlot(v.time);
+      if (!d || !isViewingSlot(slot)) continue;
+      const iso = toISODate(d);
+      let set = byDate.get(iso);
+      if (!set) byDate.set(iso, (set = new Set()));
+      set.add(slot);
+    }
+  }
+  const dayStatus = new Map<string, DayStatus>();
+  for (const [iso, set] of byDate) {
+    dayStatus.set(iso, set.size >= VIEWING_SLOTS.length ? "full" : "partial");
+  }
+  return { byDate, dayStatus };
+}
+
 export function viewingToReschedule(v: ViewingRecord): RescheduleForm {
   const base = viewingToForm(v);
-  return { date: base.date, time: base.time, duration: "60", agent: base.agent, notify: true, reason: "" };
+  return { date: base.date, time: base.time, agent: base.agent, notify: true, reason: "" };
 }

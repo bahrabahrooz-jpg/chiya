@@ -790,7 +790,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
   const shownPortfolio = useMemo(() => (scopeAgent ? portfolio.filter((r) => r.agent === scopeAgent) : portfolio), [portfolio, scopeAgent]);
   const shownViewings = useMemo(() => {
     if (!scopeAgent) return VIEWINGS;
-    const SMAP: Record<string, string> = { Scheduled: "Pending", Confirmed: "Confirmed", Completed: "Completed", Cancelled: "Cancelled", "No Show": "Cancelled" };
+    const SMAP: Record<string, string> = { Requested: "Pending", Confirmed: "Confirmed", Completed: "Completed", Cancelled: "Cancelled", "No Show": "Cancelled" };
     // Viewings under this agent that touch this member: on the member's own
     // listings (same properties as the portfolio) or requested by the member.
     const memberTitles = new Set(shownPortfolio.map((r) => r.title));

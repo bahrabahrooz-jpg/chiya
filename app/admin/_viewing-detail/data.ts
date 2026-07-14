@@ -4,14 +4,14 @@ import { VIEWINGS, PROPERTIES as VW_PROPS } from "../_viewings/data";
 import { AGENTS as CAT_AGENTS, MEMBERS as CAT_MEMBERS, fmtUSD, getAgentByName, getPropertyById } from "../_data/catalog";
 
 export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; icon: IconName; cls: string }> = {
-  Scheduled: { variant: "info", icon: "clock", cls: "vwd-st--scheduled" },
+  Requested: { variant: "info", icon: "clock", cls: "vwd-st--scheduled" },
   Confirmed: { variant: "success", icon: "calendar-check", cls: "vwd-st--confirmed" },
   Completed: { variant: "brand", icon: "check-check", cls: "vwd-st--completed" },
   Cancelled: { variant: "error", icon: "circle-x", cls: "vwd-st--cancelled" },
   "No Show": { variant: "warning", icon: "user-x", cls: "vwd-st--noshow" },
 };
 export const VIEW_STATUS_DOT: Record<string, string> = {
-  Scheduled: "var(--info-500)",
+  Requested: "var(--info-500)",
   Confirmed: "var(--success-500)",
   Completed: "var(--green-600)",
   Cancelled: "var(--error-500)",
@@ -31,7 +31,6 @@ export interface ViewingDetail {
   dateLong: string;
   time: string;
   endTime: string;
-  duration: string;
   created: string;
   updated: string;
   contactMethod: string;
@@ -47,12 +46,11 @@ export interface ViewingDetail {
 
 export const VIEWING: ViewingDetail = {
   id: "VW-1025",
-  status: "Scheduled",
+  status: "Requested",
   date: "Jun 16, 2026",
   dateLong: "Monday, June 16, 2026",
   time: "10:00 AM",
   endTime: "10:45 AM",
-  duration: "45 minutes",
   created: "Jun 12, 2026 · 2:10 PM",
   updated: "Jun 15, 2026 · 9:02 AM",
   contactMethod: "Phone call",

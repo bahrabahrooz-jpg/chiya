@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { useAdminAuth } from "@/lib/admin-auth";
 import { useAdminProfile } from "@/lib/admin-profile";
-import { ADMIN, LANGUAGES, NOTIFICATIONS } from "./admin-data";
+import { useAdminNotifications } from "@/lib/admin-notifications";
+import { NotifBell } from "./notif-bell";
+import { ADMIN } from "./admin-data";
 
 type MenuId = "notif" | "profile" | "lang" | null;
 
@@ -41,80 +43,6 @@ function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; ava
           <Icon name="log-out" size={18} />
           Log out
         </button>
-      </div>
-    </div>
-  );
-}
-
-function LanguageMenu({ current, onPick }: { current: string; onPick: (code: string) => void }) {
-  return (
-    <div className="ax-menu ax-menu--lang" role="menu">
-      <div className="ax-menu__head">
-        <h4>Language</h4>
-      </div>
-      <div className="ax-menu__sect">
-        {LANGUAGES.map((l) => (
-          <button
-            key={l.code}
-            type="button"
-            className="ax-menu-item"
-            role="menuitemradio"
-            aria-checked={current === l.code}
-            onClick={() => onPick(l.code)}
-          >
-            <span
-              className="ax-flag"
-              style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}
-            >
-              {l.code}
-            </span>
-            <span className="ax-menu-item__lbl">
-              {l.label}
-              <span className="ax-menu-item__sub">{l.native}</span>
-            </span>
-            {current === l.code && (
-              <span className="ax-menu-item__check">
-                <Icon name="check" size={17} strokeWidth={2.5} />
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function NotifMenu({ onClose }: { onClose: () => void }) {
-  const unread = NOTIFICATIONS.filter((n) => n.unread).length;
-  return (
-    <div className="ax-menu ax-menu--notif" role="menu">
-      <div className="ax-menu__head">
-        <h4>Notifications</h4>
-        {unread > 0 && (
-          <Badge variant="brand" size="sm">
-            {unread} new
-          </Badge>
-        )}
-      </div>
-      <div className="ax-notif-list">
-        {NOTIFICATIONS.map((n) => (
-          <div key={n.id} className={"ax-notif" + (n.unread ? " is-unread" : "")} onClick={onClose}>
-            <span className={"ax-notif__ic ax-notif__ic--" + n.kind}>
-              <Icon name={n.icon} size={18} />
-            </span>
-            <div className="ax-notif__body">
-              <p className="ax-notif__title">{n.title}</p>
-              <p className="ax-notif__desc">{n.desc}</p>
-              <div className="ax-notif__time">{n.time}</div>
-            </div>
-            {n.unread && <span className="ax-notif__udot" />}
-          </div>
-        ))}
-      </div>
-      <div className="ax-menu__foot">
-        <Button hierarchy="secondary" size="sm" onClick={onClose}>
-          Mark all as read
-        </Button>
       </div>
     </div>
   );
@@ -158,7 +86,7 @@ export function AdminTopbar({
   const router = useRouter();
   const { logout } = useAdminAuth();
   const { profile } = useAdminProfile();
-  const [lang, setLang] = useState("EN");
+  const notifications = useAdminNotifications();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const toggle = (m: Exclude<MenuId, null>) => setOpenMenu(openMenu === m ? null : m);
 
@@ -185,44 +113,10 @@ export function AdminTopbar({
         <div className="ax-tb-divider" />
 
         {/* language */}
-        <div style={{ position: "relative" }}>
-          <button
-            type="button"
-            className={"ax-tb-btn" + (openMenu === "lang" ? " is-open" : "")}
-            aria-label="Language"
-            aria-haspopup="true"
-            aria-expanded={openMenu === "lang"}
-            onClick={() => toggle("lang")}
-          >
-            <Icon name="globe" size={20} />
-            <span className="ax-lbl">{lang}</span>
-          </button>
-          {openMenu === "lang" && (
-            <LanguageMenu
-              current={lang}
-              onPick={(code) => {
-                setLang(code);
-                setOpenMenu(null);
-              }}
-            />
-          )}
-        </div>
+        <LanguageSwitcher />
 
         {/* notifications */}
-        <div style={{ position: "relative" }}>
-          <button
-            type="button"
-            className={"ax-tb-btn" + (openMenu === "notif" ? " is-open" : "")}
-            aria-label="Notifications"
-            aria-haspopup="true"
-            aria-expanded={openMenu === "notif"}
-            onClick={() => toggle("notif")}
-          >
-            <Icon name="bell" size={20} />
-            <span className="ax-tb-dot" />
-          </button>
-          {openMenu === "notif" && <NotifMenu onClose={() => setOpenMenu(null)} />}
-        </div>
+        <NotifBell data={notifications} viewAllHref="/admin/notifications" />
 
         <div className="ax-tb-divider" />
 

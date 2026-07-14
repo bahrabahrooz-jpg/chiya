@@ -16,17 +16,13 @@ import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/icon";
 import {
   CAL_DOW,
-  HOURS_12,
-  MERIDIEM,
-  MINUTES_60,
   MONTHS_FULL,
-  composeTime,
   fmtDateLabel,
   fmtTimeLabel,
   parseISODate,
-  splitTime,
   toISODate,
 } from "@/app/admin/_viewings/data";
+import { VIEWING_SLOTS, slotLabel, type DayStatus } from "./reservations";
 import "./datetime-picker.css";
 
 /* ---------------- anchored panel positioning ---------------- */
@@ -65,7 +61,20 @@ function useAnchoredPanel(open: boolean, triggerRef: React.RefObject<HTMLButtonE
   return pos;
 }
 
-export function DatePicker({ id, value, onChange, placeholder }: { id?: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+export function DatePicker({
+  id,
+  value,
+  onChange,
+  placeholder,
+  dayStatus,
+}: {
+  id?: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  /** ISO date → whether that day is partially or fully booked. */
+  dayStatus?: Map<string, DayStatus>;
+}) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const pos = useAnchoredPanel(open, triggerRef, () => setOpen(false));
@@ -116,10 +125,27 @@ export function DatePicker({ id, value, onChange, placeholder }: { id?: string; 
               if (!d) return <span key={"e" + i} className="cx-cal__pad" />;
               const iso = toISODate(d);
               const past = d < today;
-              const cls = "cx-cal__day" + (selDate && iso === toISODate(selDate) ? " is-selected" : "") + (iso === toISODate(today) ? " is-today" : "") + (past ? " is-past" : "");
+              const closed = d.getDay() === 5; // Fridays are off
+              const status = dayStatus?.get(iso);
+              const full = status === "full";
+              const disabled = past || closed || full;
+              const cls =
+                "cx-cal__day" +
+                (selDate && iso === toISODate(selDate) ? " is-selected" : "") +
+                (iso === toISODate(today) ? " is-today" : "") +
+                (past || closed ? " is-past" : "") +
+                (full ? " is-full" : status === "partial" ? " is-reserved" : "");
               return (
-                <button key={iso} type="button" className={cls} disabled={past} onClick={() => !past && choose(d)}>
+                <button
+                  key={iso}
+                  type="button"
+                  className={cls}
+                  disabled={disabled}
+                  aria-label={closed ? `${d.getDate()} — closed` : full ? `${d.getDate()} — fully booked` : status === "partial" ? `${d.getDate()} — some times reserved` : undefined}
+                  onClick={() => !disabled && choose(d)}
+                >
                   {d.getDate()}
+                  {!closed && status === "partial" && <span className="cx-cal__dot" aria-hidden="true" />}
                 </button>
               );
             })}
@@ -151,30 +177,38 @@ export function DatePicker({ id, value, onChange, placeholder }: { id?: string; 
   );
 }
 
-export function TimePicker({ id, value, onChange, placeholder }: { id?: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+export function TimePicker({
+  id,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  reservedTimes,
+}: {
+  id?: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  /** Disabled until a viewing date is chosen. */
+  disabled?: boolean;
+  /** Slot times ("HH:MM") already reserved on the selected date. */
+  reservedTimes?: Set<string>;
+}) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const hRef = useRef<HTMLDivElement>(null),
-    mRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const pos = useAnchoredPanel(open, triggerRef, () => setOpen(false));
-  const { h, m, ap } = splitTime(value);
 
   useEffect(() => {
-    if (!open) return;
-    [hRef, mRef].forEach((ref) => {
-      if (!ref.current) return;
-      const el = ref.current.querySelector<HTMLElement>(".is-selected");
-      if (el) ref.current.scrollTop = el.offsetTop - ref.current.clientHeight / 2 + el.clientHeight / 2;
-    });
+    if (!open || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(".is-selected");
+    if (el) listRef.current.scrollTop = el.offsetTop - listRef.current.clientHeight / 2 + el.clientHeight / 2;
   }, [open]);
 
-  const update = (nh: number, nm: number, nap: string) => {
-    const next = composeTime(nh, nm, nap);
-    if (next) onChange(next);
+  const choose = (slot: string) => {
+    onChange(slot);
+    setOpen(false);
   };
-  const pickH = (v: number) => update(v, m == null ? 0 : m, ap || "AM");
-  const pickM = (v: number) => update(h == null ? 12 : h, v, ap || "AM");
-  const pickAp = (v: string) => update(h == null ? 12 : h, m == null ? 0 : m, v);
 
   const panel =
     open &&
@@ -182,32 +216,25 @@ export function TimePicker({ id, value, onChange, placeholder }: { id?: string; 
     createPortal(
       <>
         <div className="cx-dtp__backdrop" style={{ position: "fixed", inset: 0, zIndex: 1090 }} onMouseDown={() => setOpen(false)} />
-        <div className="cx-dtp__pop cx-timepop" style={{ left: pos.left, top: pos.top, width: Math.max(pos.width, 236) }} onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Choose time">
-          <div className="cx-timepop__cols">
-            <div className="cx-timepop__col" ref={hRef}>
-              <div className="cx-timepop__colhd">Hour</div>
-              {HOURS_12.map((v) => (
-                <button key={v} type="button" className={"cx-timeopt" + (v === h ? " is-selected" : "")} aria-pressed={v === h} onClick={() => pickH(v)}>
-                  {v}
+        <div className="cx-dtp__pop cx-slotpop" style={{ left: pos.left, top: pos.top, width: pos.width }} onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Choose time">
+          <div className="cx-slotpop__list" ref={listRef}>
+            {VIEWING_SLOTS.map((slot) => {
+              const reserved = reservedTimes?.has(slot) ?? false;
+              const selected = slot === value;
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  className={"cx-slot" + (selected ? " is-selected" : "") + (reserved ? " is-reserved" : "")}
+                  aria-pressed={selected}
+                  disabled={reserved}
+                  onClick={() => !reserved && choose(slot)}
+                >
+                  <span className="cx-slot__time">{slotLabel(slot)}</span>
+                  {reserved && <span className="cx-slot__tag">Reserved</span>}
                 </button>
-              ))}
-            </div>
-            <div className="cx-timepop__col" ref={mRef}>
-              <div className="cx-timepop__colhd">Min</div>
-              {MINUTES_60.map((v) => (
-                <button key={v} type="button" className={"cx-timeopt" + (v === m ? " is-selected" : "")} aria-pressed={v === m} onClick={() => pickM(v)}>
-                  {String(v).padStart(2, "0")}
-                </button>
-              ))}
-            </div>
-            <div className="cx-timepop__col cx-timepop__col--ap">
-              <div className="cx-timepop__colhd">AM/PM</div>
-              {MERIDIEM.map((v) => (
-                <button key={v} type="button" className={"cx-timeopt" + (v === ap ? " is-selected" : "")} aria-pressed={v === ap} onClick={() => pickAp(v)}>
-                  {v}
-                </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       </>,
@@ -216,7 +243,16 @@ export function TimePicker({ id, value, onChange, placeholder }: { id?: string; 
 
   return (
     <div className="cx-dtp">
-      <button ref={triggerRef} type="button" id={id} className={"cx-dtp__trigger" + (open ? " is-open" : "")} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        id={id}
+        className={"cx-dtp__trigger" + (open ? " is-open" : "")}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+      >
         {value ? <span className="cx-dtp__value">{fmtTimeLabel(value)}</span> : <span className="cx-dtp__placeholder">{placeholder}</span>}
         <Icon name="clock" size={17} className="cx-dtp__trail" />
       </button>

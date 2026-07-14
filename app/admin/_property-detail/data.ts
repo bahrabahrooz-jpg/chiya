@@ -270,7 +270,7 @@ export function getProperty(id: string): DetailProperty {
 }
 
 export const VIEWING_STATUS: Record<string, { variant: BadgeVariant; icon: IconName }> = {
-  Scheduled: { variant: "info", icon: "clock" },
+  Requested: { variant: "info", icon: "clock" },
   Confirmed: { variant: "success", icon: "circle-check" },
   Completed: { variant: "brand", icon: "check" },
   Cancelled: { variant: "error", icon: "circle-x" },
@@ -281,12 +281,12 @@ export interface ViewingReq { id: string; member: string; img: string; phone: st
 const VIEWING_REQUESTS: Record<string, ViewingReq[]> = {
   "CH-2041": [
     { id: "VW-1042", member: "Sara Hassan", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=70", phone: "+964 750 112 4408", date: "Jun 24, 2026", time: "11:00 AM", status: "Confirmed" },
-    { id: "VW-1039", member: "Karzan Omar", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=70", phone: "+964 750 663 2204", date: "Jun 25, 2026", time: "2:30 PM", status: "Scheduled" },
+    { id: "VW-1039", member: "Karzan Omar", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=70", phone: "+964 750 663 2204", date: "Jun 25, 2026", time: "2:30 PM", status: "Requested" },
     { id: "VW-1031", member: "Nadia Farid", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=70", phone: "+964 770 884 1196", date: "Jun 20, 2026", time: "10:00 AM", status: "Completed" },
     { id: "VW-1024", member: "Ahmad Karimi", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=70", phone: "+964 751 339 7720", date: "Jun 16, 2026", time: "4:00 PM", status: "Cancelled" },
   ],
   "CH-2038": [
-    { id: "VW-1040", member: "Zana Rashid", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=70", phone: "+964 750 226 5531", date: "Jun 24, 2026", time: "9:30 AM", status: "Scheduled" },
+    { id: "VW-1040", member: "Zana Rashid", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=70", phone: "+964 750 226 5531", date: "Jun 24, 2026", time: "9:30 AM", status: "Requested" },
     { id: "VW-1033", member: "Hana Bakr", img: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=160&q=70", phone: "+964 751 447 9082", date: "Jun 21, 2026", time: "1:00 PM", status: "Completed" },
   ],
   "CH-2029": [{ id: "VW-1037", member: "Dara Karim", img: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=160&q=70", phone: "+964 750 770 1184", date: "Jun 23, 2026", time: "3:30 PM", status: "Confirmed" }],

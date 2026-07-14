@@ -33,9 +33,9 @@ function ViewingCard({ viewing: v }: { viewing: Viewing }) {
       <View style={styles.top}>
         <Image source={{ uri: v.cover }} style={[styles.thumb, { borderRadius: radius.md, backgroundColor: colors.surfaceSunken }]} resizeMode="cover" />
         <View style={styles.info}>
-          <View style={[styles.badge, { backgroundColor: colors.brandSubtle }]}>
-            <Clock size={11} color={colors.brandForeground} strokeWidth={2.5} />
-            <Text style={[type.caption, { color: colors.brandForeground, fontFamily: fontFamily.sansSemibold }]}>{t("viewings.requested")}</Text>
+          <View style={[styles.badge, { backgroundColor: colors.infoSurface }]}>
+            <Clock size={11} color={colors.infoText} strokeWidth={2.5} />
+            <Text style={[type.caption, { color: colors.infoText, fontFamily: fontFamily.sansSemibold }]}>{t("viewings.requested")}</Text>
           </View>
           <Text numberOfLines={1} style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>
             {v.title}

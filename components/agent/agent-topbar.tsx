@@ -5,49 +5,14 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { NOTIFICATIONS } from "@/components/admin/admin-data";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { NotifBell } from "@/components/admin/notif-bell";
+import { useAgentNotifications } from "@/lib/admin-notifications";
 import { useAgentSession } from "@/lib/agent-session";
 
-type MenuId = "notif" | "profile" | null;
-
-function NotifMenu({ onClose }: { onClose: () => void }) {
-  const unread = NOTIFICATIONS.filter((n) => n.unread).length;
-  return (
-    <div className="ax-menu ax-menu--notif" role="menu">
-      <div className="ax-menu__head">
-        <h4>Notifications</h4>
-        {unread > 0 && (
-          <Badge variant="brand" size="sm">
-            {unread} new
-          </Badge>
-        )}
-      </div>
-      <div className="ax-notif-list">
-        {NOTIFICATIONS.map((n) => (
-          <div key={n.id} className={"ax-notif" + (n.unread ? " is-unread" : "")} onClick={onClose}>
-            <span className={"ax-notif__ic ax-notif__ic--" + n.kind}>
-              <Icon name={n.icon} size={18} />
-            </span>
-            <div className="ax-notif__body">
-              <p className="ax-notif__title">{n.title}</p>
-              <p className="ax-notif__desc">{n.desc}</p>
-              <div className="ax-notif__time">{n.time}</div>
-            </div>
-            {n.unread && <span className="ax-notif__udot" />}
-          </div>
-        ))}
-      </div>
-      <div className="ax-menu__foot">
-        <Button hierarchy="secondary" size="sm" onClick={onClose}>
-          Mark all as read
-        </Button>
-      </div>
-    </div>
-  );
-}
+type MenuId = "profile" | null;
 
 function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; avatar: string; onNavigate: (path: string) => void; onLogout: () => void }) {
   return (
@@ -78,6 +43,7 @@ function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; ava
 export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
   const router = useRouter();
   const { agent, logout } = useAgentSession();
+  const notifications = useAgentNotifications();
   const [openMenu, setOpenMenu] = useState<MenuId>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const toggle = (m: Exclude<MenuId, null>) => setOpenMenu(openMenu === m ? null : m);
@@ -101,20 +67,11 @@ export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
         <ThemeToggle />
         <div className="ax-tb-divider" />
 
-        <div style={{ position: "relative" }}>
-          <button
-            type="button"
-            className={"ax-tb-btn" + (openMenu === "notif" ? " is-open" : "")}
-            aria-label="Notifications"
-            aria-haspopup="true"
-            aria-expanded={openMenu === "notif"}
-            onClick={() => toggle("notif")}
-          >
-            <Icon name="bell" size={20} />
-            <span className="ax-tb-dot" />
-          </button>
-          {openMenu === "notif" && <NotifMenu onClose={() => setOpenMenu(null)} />}
-        </div>
+        {/* language */}
+        <LanguageSwitcher />
+
+        {/* notifications */}
+        <NotifBell data={notifications} viewAllHref="/agent/notifications" />
 
         <div className="ax-tb-divider" />
 

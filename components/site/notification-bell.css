@@ -126,6 +126,13 @@
   border: 1px solid var(--green-100);
   color: var(--text-brand);
 }
+/* Dark mode: match the mobile app — neutral tile, legible green glyph. Mirrors
+   the full notifications screen tile (.acc-notif__ic). */
+:root[data-theme="dark"] .cxn__ic {
+  background: var(--surface-sunken);
+  border-color: var(--border-subtle);
+  color: var(--text-brand-muted);
+}
 .cxn__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cxn__title { font-size: 13.5px; font-weight: 600; color: var(--text-primary); line-height: 1.35; }
 .cxn__desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }

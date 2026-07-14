@@ -17,7 +17,7 @@ export function PropStatus({ status }: { status: string }) {
 }
 
 const VIEW_VARIANT: Record<string, BadgeVariant> = {
-  Scheduled: "info",
+  Requested: "info",
   Confirmed: "success",
   Completed: "brand",
   Cancelled: "error",

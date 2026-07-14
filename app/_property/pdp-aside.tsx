@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
@@ -9,9 +9,10 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { AppointmentWidget } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { addViewing } from "@/lib/viewings";
+import { addViewing, useViewings } from "@/lib/viewings";
 import { property, agent, gallery } from "./data";
 import { DatePicker, TimePicker } from "./datetime-picker";
+import { buildReservedIndex, seedReservedSlots, isSlot } from "./reservations";
 
 export interface ActionPanelProps {
   onBook: () => void;
@@ -87,9 +88,28 @@ export function ActionPanel({ onBook, onCall, onWhatsApp, className }: ActionPan
 
 export function BookModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLang();
+  const { items } = useViewings();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [done, setDone] = useState(false);
+
+  /* Reserved slots = demo seed + the member's own requests for this property,
+     so a slot the member just booked immediately shows as taken. */
+  const { byDate, dayStatus } = useMemo(() => {
+    const own = items
+      .filter((v) => v.propertyId === property.id && isSlot(v.time))
+      .map((v) => ({ date: v.date, time: v.time }));
+    return buildReservedIndex([...seedReservedSlots(), ...own]);
+  }, [items]);
+  const reservedTimes = date ? byDate.get(date) : undefined;
+
+  /* Picking a new date clears a time that is reserved (or not a valid slot). */
+  const pickDate = (d: string) => {
+    setDate(d);
+    const taken = byDate.get(d);
+    if (time && (!isSlot(time) || taken?.has(time))) setTime("");
+  };
+
   if (!open) return null;
 
   const submit = () => {
@@ -152,13 +172,13 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
                     <label className="pdp-book-dt__flabel" htmlFor="book-date">
                       Viewing date
                     </label>
-                    <DatePicker id="book-date" value={date} onChange={setDate} placeholder="Select date" />
+                    <DatePicker id="book-date" value={date} onChange={pickDate} placeholder="Select date" dayStatus={dayStatus} />
                   </div>
                   <div className="pdp-book-dt__field">
                     <label className="pdp-book-dt__flabel" htmlFor="book-time">
                       Viewing time
                     </label>
-                    <TimePicker id="book-time" value={time} onChange={setTime} placeholder="Select time" />
+                    <TimePicker id="book-time" value={time} onChange={setTime} placeholder={date ? "Select time" : "Pick a date first"} disabled={!date} reservedTimes={reservedTimes} />
                   </div>
                 </div>
               </div>

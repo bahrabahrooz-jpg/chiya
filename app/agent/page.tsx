@@ -17,7 +17,7 @@ export default function AgentDashboardPage() {
 
   const recent = [...properties].sort((a, b) => a.daysAgo - b.daysAgo).slice(0, 6);
   const upcoming = viewings
-    .filter((v) => v.status === "Scheduled" || v.status === "Confirmed")
+    .filter((v) => v.status === "Requested" || v.status === "Confirmed")
     .slice(0, 6);
 
   const cols: TableColumn<PropertyRecord>[] = [

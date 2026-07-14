@@ -337,6 +337,7 @@ export default function PropertyDetailScreen() {
       <BookViewingSheet
         open={bookOpen}
         onClose={() => setBookOpen(false)}
+        propertyId={listing.id}
         property={{ title: listing.title, address: listing.address }}
         agent={{ name: agent.name, city: agent.city, photo: agent.photo, verified: agent.verified, rating: agent.rating, reviews: agent.reviews }}
         onConfirm={({ date, time }) => {

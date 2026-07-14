@@ -87,6 +87,9 @@ export interface Colors {
   warningSurface: string;
   warningText: string;
   warningBorder: string;
+  /** Blue "info" status (e.g. a requested viewing) — surface + text trio, mirrors web --info-*. */
+  infoSurface: string;
+  infoText: string;
   /** Icon tile (rounded square behind a brand icon): green-tinted in light mode,
    *  a neutral surface in dark mode (green icons read better on neutral). */
   iconTileBg: string;
@@ -135,6 +138,8 @@ const lightColors: Colors = {
   warningSurface: "#FBF1DC", // --warning-50
   warningText: "#8A641F", // --warning-700
   warningBorder: "#F6DFAE", // --warning-100
+  infoSurface: "#E8F0FB", // --info-50
+  infoText: "#194288", // --info-700
   iconTileBg: palette.green[50], // same as brandSubtle — unchanged in light mode
   iconTileBorder: palette.green[100], // subtle outline so the tile shows on tinted (unread) cards
 
@@ -179,6 +184,8 @@ const darkColors: Colors = {
   warningSurface: "#2A2110", // --warning-50 (dark)
   warningText: "#FCD34D", // --warning-700 (dark)
   warningBorder: "#3D2F12", // --warning-100 (dark)
+  infoSurface: "#142339", // --info-50 (dark)
+  infoText: "#93C5FD", // --info-700 (dark)
   iconTileBg: "#151922", // neutral surface (= surfaceSunken) so green icons pop
   iconTileBorder: "#2B3446", // borderSubtle — defines the tile on any background
 

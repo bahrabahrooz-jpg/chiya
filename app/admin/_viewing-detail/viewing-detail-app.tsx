@@ -23,7 +23,7 @@ import {
   type ViewingDetail,
 } from "./data";
 import { ScheduleModal } from "../_viewings/viewings-app";
-import { AGENTS, type ViewingRecord } from "../_viewings/data";
+import { AGENTS, VIEWINGS, type ViewingRecord } from "../_viewings/data";
 
 const NOTE_MAX = 500;
 
@@ -449,9 +449,6 @@ function Overview({ v, status }: { v: ViewingDetail; status: string }) {
         <Fact icon="calendar-plus" label="Created">
           {v.created}
         </Fact>
-        <Fact icon="clock" label="Duration">
-          {v.duration}
-        </Fact>
         <Fact icon="history" label="Last updated">
           {v.updated}
         </Fact>
@@ -816,11 +813,6 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
                 <Icon name="clock" size={14} />
                 {v.time} – {v.endTime}
               </span>
-              <span className="pd-head__sep" />
-              <span className="pd-head__metaitem">
-                <Icon name="hourglass" size={14} />
-                {v.duration}
-              </span>
             </div>
           </div>
 
@@ -921,6 +913,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
       <ScheduleModal
         open={modal === "edit"}
         editViewing={editRecord}
+        viewings={VIEWINGS}
         lockedAgentId={agentSurface ? (AGENTS.find((a) => a.name === v.agent.name)?.id ?? null) : null}
         onClose={() => setModal(null)}
         onSuccess={(rec) => {

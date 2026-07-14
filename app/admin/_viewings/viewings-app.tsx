@@ -13,30 +13,28 @@ import {
   AGENTS,
   AGENT_IMG,
   CAL_DOW,
-  DURATIONS,
   EMPTY_FILTERS,
   EMPTY_FORM,
-  HOURS_12,
   KPI_CARDS,
   MEMBERS,
-  MERIDIEM,
-  MINUTES_60,
   MONTHS_FULL,
   PROPERTIES,
   STATUSES,
   STATUS_TABS,
   VIEWINGS,
   VIEWINGS_PER_PAGE,
+  VIEWING_SLOTS,
   VIEWING_STATUS,
+  buildPropertyReservedIndex,
   computeViewingKpis,
-  composeTime,
   fmtDateLabel,
   fmtDateShort,
   fmtTimeLabel,
+  isClosedDay,
   parseISODate,
-  splitTime,
   toISODate,
   viewingToForm,
+  type DayStatus,
   type ScheduleForm,
   type ViewingFilters,
   type ViewingRecord,
@@ -223,20 +221,7 @@ function Combobox<T extends { id: string }>({
   );
 }
 
-function SegControl({ options, value, onChange, ariaLabel }: { options: { value: string; label: string; icon?: string }[]; value: string; onChange: (v: string) => void; ariaLabel: string }) {
-  return (
-    <div className="vw-seg" role="radiogroup" aria-label={ariaLabel}>
-      {options.map((o) => (
-        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} className={"vw-seg__btn" + (value === o.value ? " is-active" : "")} onClick={() => onChange(o.value)}>
-          {o.icon && <Icon name={o.icon as never} size={16} />}
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function DatePicker({ id, value, onChange, placeholder }: { id?: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+function DatePicker({ id, value, onChange, placeholder, dayStatus }: { id?: string; value: string; onChange: (v: string) => void; placeholder: string; dayStatus?: Map<string, DayStatus> }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const pos = useAnchoredPanel(open, triggerRef, () => setOpen(false));
@@ -287,10 +272,27 @@ function DatePicker({ id, value, onChange, placeholder }: { id?: string; value: 
               if (!d) return <span key={"e" + i} className="vw-cal__pad" />;
               const iso = toISODate(d);
               const past = d < today;
-              const cls = "vw-cal__day" + (selDate && iso === toISODate(selDate) ? " is-selected" : "") + (iso === toISODate(today) ? " is-today" : "") + (past ? " is-past" : "");
+              const closed = isClosedDay(d); // Fridays are off
+              const status = dayStatus?.get(iso);
+              const full = status === "full";
+              const disabled = past || closed || full;
+              const cls =
+                "vw-cal__day" +
+                (selDate && iso === toISODate(selDate) ? " is-selected" : "") +
+                (iso === toISODate(today) ? " is-today" : "") +
+                (past || closed ? " is-past" : "") +
+                (full ? " is-full" : status === "partial" ? " is-reserved" : "");
               return (
-                <button key={iso} type="button" className={cls} disabled={past} onClick={() => !past && choose(d)}>
+                <button
+                  key={iso}
+                  type="button"
+                  className={cls}
+                  disabled={disabled}
+                  aria-label={closed ? `${d.getDate()} — closed` : full ? `${d.getDate()} — fully booked` : status === "partial" ? `${d.getDate()} — some times reserved` : undefined}
+                  onClick={() => !disabled && choose(d)}
+                >
                   {d.getDate()}
+                  {!closed && status === "partial" && <span className="vw-cal__dot" aria-hidden="true" />}
                 </button>
               );
             })}
@@ -481,30 +483,22 @@ function FilterDatePicker({ value, onChange, placeholder = "Date" }: { value: st
   );
 }
 
-function TimePicker({ id, value, onChange, placeholder }: { id?: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+function TimePicker({ id, value, onChange, placeholder, disabled, reservedTimes }: { id?: string; value: string; onChange: (v: string) => void; placeholder: string; disabled?: boolean; reservedTimes?: Set<string> }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const hRef = useRef<HTMLDivElement>(null),
-    mRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const pos = useAnchoredPanel(open, triggerRef, () => setOpen(false));
-  const { h, m, ap } = splitTime(value);
 
   useEffect(() => {
-    if (!open) return;
-    [hRef, mRef].forEach((ref) => {
-      if (!ref.current) return;
-      const el = ref.current.querySelector<HTMLElement>(".is-selected");
-      if (el) ref.current.scrollTop = el.offsetTop - ref.current.clientHeight / 2 + el.clientHeight / 2;
-    });
+    if (!open || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(".is-selected");
+    if (el) listRef.current.scrollTop = el.offsetTop - listRef.current.clientHeight / 2 + el.clientHeight / 2;
   }, [open]);
 
-  const update = (nh: number, nm: number, nap: string) => {
-    const next = composeTime(nh, nm, nap);
-    if (next) onChange(next);
+  const choose = (slot: string) => {
+    onChange(slot);
+    setOpen(false);
   };
-  const pickH = (v: number) => update(v, m == null ? 0 : m, ap || "AM");
-  const pickM = (v: number) => update(h == null ? 12 : h, v, ap || "AM");
-  const pickAp = (v: string) => update(h == null ? 12 : h, m == null ? 0 : m, v);
 
   const panel =
     open &&
@@ -512,32 +506,26 @@ function TimePicker({ id, value, onChange, placeholder }: { id?: string; value: 
     createPortal(
       <>
         <div className="vw-combo__backdrop" style={{ position: "fixed", inset: 0, zIndex: 590 }} onMouseDown={() => setOpen(false)} />
-        <div className="vw-pop vw-timepop" style={{ left: pos.left, top: pos.top, width: Math.max(pos.width, 236) }} onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Choose time">
-          <div className="vw-timepop__cols">
-            <div className="vw-timepop__col" ref={hRef}>
-              <div className="vw-timepop__colhd">Hour</div>
-              {HOURS_12.map((v) => (
-                <button key={v} type="button" className={"vw-timeopt" + (v === h ? " is-selected" : "")} aria-pressed={v === h} onClick={() => pickH(v)}>
-                  {v}
+        <div className="vw-pop vw-slotpop" style={{ left: pos.left, top: pos.top, width: pos.width }} onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Choose time">
+          <div className="vw-slotpop__list" ref={listRef}>
+            {VIEWING_SLOTS.map((slot) => {
+              // The record's own slot is never "reserved" against itself (excluded upstream).
+              const reserved = (reservedTimes?.has(slot) ?? false) && slot !== value;
+              const selected = slot === value;
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  className={"vw-slot" + (selected ? " is-selected" : "") + (reserved ? " is-reserved" : "")}
+                  aria-pressed={selected}
+                  disabled={reserved}
+                  onClick={() => !reserved && choose(slot)}
+                >
+                  <span className="vw-slot__time">{fmtTimeLabel(slot)}</span>
+                  {reserved && <span className="vw-slot__tag">Reserved</span>}
                 </button>
-              ))}
-            </div>
-            <div className="vw-timepop__col" ref={mRef}>
-              <div className="vw-timepop__colhd">Min</div>
-              {MINUTES_60.map((v) => (
-                <button key={v} type="button" className={"vw-timeopt" + (v === m ? " is-selected" : "")} aria-pressed={v === m} onClick={() => pickM(v)}>
-                  {String(v).padStart(2, "0")}
-                </button>
-              ))}
-            </div>
-            <div className="vw-timepop__col vw-timepop__col--ap">
-              <div className="vw-timepop__colhd">AM/PM</div>
-              {MERIDIEM.map((v) => (
-                <button key={v} type="button" className={"vw-timeopt" + (v === ap ? " is-selected" : "")} aria-pressed={v === ap} onClick={() => pickAp(v)}>
-                  {v}
-                </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       </>,
@@ -546,7 +534,7 @@ function TimePicker({ id, value, onChange, placeholder }: { id?: string; value: 
 
   return (
     <div className="vw-combo">
-      <button ref={triggerRef} type="button" id={id} className={"vw-combo__trigger" + (open ? " is-open" : "")} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button ref={triggerRef} type="button" id={id} className={"vw-combo__trigger" + (open ? " is-open" : "")} aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={() => setOpen((o) => !o)}>
         {value ? <span className="vw-combo__value">{fmtTimeLabel(value)}</span> : <span className="vw-combo__placeholder">{placeholder}</span>}
         <Icon name="clock" size={17} className="vw-combo__trail" />
       </button>
@@ -592,12 +580,12 @@ function DiscardDialog({ onCancel, onDiscard }: { onCancel: () => void; onDiscar
 }
 
 /* ---------------- Schedule modal ---------------- */
-export function ScheduleModal({ open, editViewing, onClose, onSuccess, lockedAgentId }: { open: boolean; editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void; lockedAgentId?: string | null }) {
+export function ScheduleModal({ open, editViewing, viewings, onClose, onSuccess, lockedAgentId }: { open: boolean; editViewing: ViewingRecord | null; viewings: ViewingRecord[]; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void; lockedAgentId?: string | null }) {
   if (!open) return null;
-  return <ScheduleModalInner key={editViewing?.id || "new"} editViewing={editViewing} onClose={onClose} onSuccess={onSuccess} lockedAgentId={lockedAgentId} />;
+  return <ScheduleModalInner key={editViewing?.id || "new"} editViewing={editViewing} viewings={viewings} onClose={onClose} onSuccess={onSuccess} lockedAgentId={lockedAgentId} />;
 }
 
-function ScheduleModalInner({ editViewing, onClose, onSuccess, lockedAgentId }: { editViewing: ViewingRecord | null; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void; lockedAgentId?: string | null }) {
+function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedAgentId }: { editViewing: ViewingRecord | null; viewings: ViewingRecord[]; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void; lockedAgentId?: string | null }) {
   const isEdit = !!editViewing;
   // In the agent surface the assigned agent is fixed to the signed-in agent.
   const initial = useMemo(() => {
@@ -608,7 +596,29 @@ function ScheduleModalInner({ editViewing, onClose, onSuccess, lockedAgentId }: 
   const [confirm, setConfirm] = useState(false);
   const set = (k: keyof ScheduleForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  // mandatory: property, member, agent, date, time (duration has a default; notes is optional)
+  // Slots already booked for the chosen property (excluding this record when
+  // editing) drive the calendar's reserved/full days and block taken times —
+  // mirroring the public "request a viewing" flow.
+  const reserved = useMemo(() => {
+    const prop = PROPERTIES.find((p) => p.id === form.property);
+    return buildPropertyReservedIndex(viewings, prop?.title ?? null, editViewing?.id);
+  }, [viewings, form.property, editViewing]);
+  const reservedTimes = form.date ? reserved.byDate.get(form.date) : undefined;
+  // Changing the date (or property) can make the chosen time unavailable — drop
+  // it in the same update, mirroring the public "request a viewing" flow.
+  const pickDate = (v: string) =>
+    setForm((f) => {
+      const taken = reserved.byDate.get(v);
+      return { ...f, date: v, time: f.time && taken?.has(f.time) ? "" : f.time };
+    });
+  const pickProperty = (v: string) =>
+    setForm((f) => {
+      const prop = PROPERTIES.find((p) => p.id === v);
+      const taken = f.date ? buildPropertyReservedIndex(viewings, prop?.title ?? null, editViewing?.id).byDate.get(f.date) : undefined;
+      return { ...f, property: v, time: f.time && taken?.has(f.time) ? "" : f.time };
+    });
+
+  // mandatory: property, member, agent, date, time (notes is optional)
   const isValid = !!form.property && !!form.member && !!form.agent && !!form.date && !!form.time;
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
   // editing requires an actual change before saving; scheduling just needs the required fields
@@ -644,7 +654,7 @@ function ScheduleModalInner({ editViewing, onClose, onSuccess, lockedAgentId }: 
       agent: agt?.name ?? editViewing?.agent ?? "",
       date: fmtDateShort(form.date) ?? editViewing?.date ?? "",
       time: fmtTimeLabel(form.time) ?? editViewing?.time ?? "",
-      status: editViewing ? editViewing.status : "Scheduled",
+      status: editViewing ? editViewing.status : "Requested",
     };
     onSuccess(record, isEdit);
     onClose();
@@ -687,7 +697,7 @@ function ScheduleModalInner({ editViewing, onClose, onSuccess, lockedAgentId }: 
                     id="cb-property"
                     items={PROPERTIES}
                     value={form.property}
-                    onSelect={(v) => set("property", v)}
+                    onSelect={pickProperty}
                     placeholder="Search for a property"
                     searchPlaceholder="Search by title or location…"
                     filterKeys={["title", "location"]}
@@ -816,18 +826,14 @@ function ScheduleModalInner({ editViewing, onClose, onSuccess, lockedAgentId }: 
                     <label className="vw-field__label" htmlFor="vw-date">
                       Viewing date
                     </label>
-                    <DatePicker id="vw-date" value={form.date} onChange={(v) => set("date", v)} placeholder="Select date" />
+                    <DatePicker id="vw-date" value={form.date} onChange={pickDate} placeholder="Select date" dayStatus={reserved.dayStatus} />
                   </div>
                   <div className="vw-field">
                     <label className="vw-field__label" htmlFor="vw-time">
                       Viewing time
                     </label>
-                    <TimePicker id="vw-time" value={form.time} onChange={(v) => set("time", v)} placeholder="Select time" />
+                    <TimePicker id="vw-time" value={form.time} onChange={(v) => set("time", v)} placeholder={form.date ? "Select time" : "Pick a date first"} disabled={!form.date} reservedTimes={reservedTimes} />
                   </div>
-                </div>
-                <div className="vw-field">
-                  <label className="vw-field__label">Duration</label>
-                  <SegControl options={DURATIONS} value={form.duration} onChange={(v) => set("duration", v)} ariaLabel="Viewing duration" />
                 </div>
               </div>
             </section>
@@ -1192,7 +1198,7 @@ function Toast({ toast, onDismiss }: { toast: { title: string; message: string }
 
 /* ---------------- Change status modal ---------------- */
 const VIEW_STATUS_DOT: Record<string, string> = {
-  Scheduled: "var(--info-500)",
+  Requested: "var(--info-500)",
   Confirmed: "var(--success-500)",
   Completed: "var(--green-700)",
   Cancelled: "var(--error-500)",
@@ -1446,7 +1452,7 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
       </section>
 
       {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}
-      <ScheduleModal open={modalOpen} editViewing={editViewing} onClose={closeModal} onSuccess={handleScheduled} lockedAgentId={lockedAgentId} />
+      <ScheduleModal open={modalOpen} editViewing={editViewing} viewings={viewings} onClose={closeModal} onSuccess={handleScheduled} lockedAgentId={lockedAgentId} />
       {statusTarget && <ChangeStatusModal viewing={statusTarget} onCancel={() => setStatusTarget(null)} onConfirm={handleStatusConfirm} />}
       {deleteTarget && <DeleteViewingModal viewing={deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
       {toast && <Toast toast={toast} onDismiss={() => setToast(null)} />}

@@ -980,7 +980,7 @@ function Ownership({ p }: { p: DetailProperty }) {
 
 function ViewingRequests({ p, onViewAll }: { p: DetailProperty; onViewAll: () => void }) {
   const rows = getViewings(p.id);
-  const upcoming = rows.filter((r) => r.status === "Scheduled" || r.status === "Confirmed").length;
+  const upcoming = rows.filter((r) => r.status === "Requested" || r.status === "Confirmed").length;
   return (
     <SectionCard
       title="Viewing requests"
