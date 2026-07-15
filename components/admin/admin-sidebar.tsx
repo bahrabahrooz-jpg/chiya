@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
+import { useLang } from "@/lib/i18n";
 import { NAV_GROUPS, type NavGroupDef, type NavItemDef } from "./admin-data";
 
 function NavItem({
@@ -17,16 +18,19 @@ function NavItem({
   collapsed: boolean;
   onNavigate: () => void;
 }) {
+  const { t, dir } = useLang();
   const cls = ["ax-nav-item", active ? "is-active" : "", item.disabled ? "is-disabled" : ""]
     .filter(Boolean)
     .join(" ");
   const ref = useRef<HTMLAnchorElement>(null);
   const [tip, setTip] = useState<{ top: number; left: number } | null>(null);
+  const label = t(item.labelKey);
 
   const showTip = () => {
     if (!collapsed || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    setTip({ top: r.top + r.height / 2, left: r.right + 14 });
+    // Flyout sits on the inline-end side of the rail — mirror it in RTL.
+    setTip({ top: r.top + r.height / 2, left: dir === "rtl" ? r.left - 14 : r.right + 14 });
   };
   const hideTip = () => setTip(null);
 
@@ -50,13 +54,17 @@ function NavItem({
       onBlur={hideTip}
     >
       <Icon name={item.icon} size={20} />
-      <span className="ax-nav-text">{item.label}</span>
+      <span className="ax-nav-text">{label}</span>
       {item.tag && <span className="ax-nav-item__tag">{item.tag}</span>}
       {tip &&
         collapsed &&
         createPortal(
-          <span className="ax-nav-tip" role="tooltip" style={{ top: tip.top, left: tip.left }}>
-            {item.label}
+          <span
+            className="ax-nav-tip"
+            role="tooltip"
+            style={{ top: tip.top, left: tip.left, transform: dir === "rtl" ? "translate(-100%, -50%)" : undefined }}
+          >
+            {label}
           </span>,
           document.body,
         )}
@@ -81,12 +89,18 @@ export function AdminSidebar({
   groups?: NavGroupDef[];
   homeHref?: string;
 }) {
+  const { t, dir } = useLang();
+  const rtl = dir === "rtl";
   const cls = ["ax-sidebar", collapsed ? "is-collapsed" : "", drawerOpen ? "is-drawer-open" : ""]
     .filter(Boolean)
     .join(" ");
+  // The chevron points "outward" toward the collapse direction, which flips in RTL.
+  const collapseIcon = collapsed
+    ? rtl ? "chevron-left" : "chevron-right"
+    : rtl ? "chevron-right" : "chevron-left";
 
   return (
-    <aside className={cls} aria-label="Primary navigation">
+    <aside className={cls} aria-label={t("admin.sidebar.primaryNav")}>
       <div className="ax-sb-head">
         <Link className="ax-sb-logo" href={homeHref} onClick={onNavigate}>
           <span className="ax-sb-logo__txt">
@@ -100,17 +114,17 @@ export function AdminSidebar({
       <button
         type="button"
         className="ax-collapse-btn"
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-label={collapsed ? t("admin.sidebar.expand") : t("admin.sidebar.collapse")}
+        title={collapsed ? t("admin.sidebar.expand") : t("admin.sidebar.collapse")}
         onClick={onToggleCollapse}
       >
-        <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={15} strokeWidth={2.25} />
+        <Icon name={collapseIcon} size={15} strokeWidth={2.25} />
       </button>
 
       <nav className="ax-nav">
         {groups.map((g) => (
           <div className="ax-nav-group" key={g.label}>
-            <div className="ax-nav-label">{g.label}</div>
+            <div className="ax-nav-label">{t(g.labelKey)}</div>
             {g.items.map((it) => (
               <NavItem
                 key={it.id}

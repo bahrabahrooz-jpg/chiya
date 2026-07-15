@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
+import { useLang } from "@/lib/i18n";
 import { useClickOutside } from "@/lib/use-click-outside";
 import type { AdminNotification } from "@/lib/admin-notifications";
 // Reuse the public site's bell styling so admin / agent match the website 1:1.
@@ -25,6 +26,7 @@ export interface NotifBellData {
  */
 export function NotifBell({ data, viewAllHref }: { data: NotifBellData; viewAllHref: string }) {
   const { all, unread, markRead, markAllRead } = data;
+  const { t } = useLang();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -42,7 +44,7 @@ export function NotifBell({ data, viewAllHref }: { data: NotifBellData; viewAllH
       <button
         type="button"
         className={"cxn__btn" + (open ? " is-open" : "")}
-        aria-label="Notifications"
+        aria-label={t("admin.notif.title")}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -54,7 +56,7 @@ export function NotifBell({ data, viewAllHref }: { data: NotifBellData; viewAllH
         <div className="cxn__menu" role="menu">
           <div className="cxn__head">
             <div className="cxn__head-l">
-              <h4>Notifications</h4>
+              <h4>{t("admin.notif.title")}</h4>
               {unread > 0 && <span className="cxn__count">{unread}</span>}
             </div>
             {unread > 0 && (
@@ -64,7 +66,7 @@ export function NotifBell({ data, viewAllHref }: { data: NotifBellData; viewAllH
                 onClick={() => markAllRead(all.map((n) => n.id))}
               >
                 <Icon name="check-check" size={15} />
-                Mark all as read
+                {t("admin.notif.markAll")}
               </button>
             )}
           </div>
@@ -74,8 +76,8 @@ export function NotifBell({ data, viewAllHref }: { data: NotifBellData; viewAllH
                 <span className="cxn__empty-ic">
                   <Icon name="bell" size={22} strokeWidth={1.75} />
                 </span>
-                <p className="cxn__empty-title">You&apos;re all caught up</p>
-                <p className="cxn__empty-desc">New notifications will show up here.</p>
+                <p className="cxn__empty-title">{t("admin.notif.caughtUp")}</p>
+                <p className="cxn__empty-desc">{t("admin.notif.empty")}</p>
               </div>
             )}
             {preview.map((n) => (
@@ -100,7 +102,7 @@ export function NotifBell({ data, viewAllHref }: { data: NotifBellData; viewAllH
           </div>
           <div className="cxn__foot">
             <Link href={viewAllHref} className="cxn__seeall" onClick={() => setOpen(false)}>
-              View all notifications
+              {t("admin.notif.viewAllNotifs")}
               <Icon name="arrow-right" size={15} />
             </Link>
           </div>

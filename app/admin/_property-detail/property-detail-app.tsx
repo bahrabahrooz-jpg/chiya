@@ -10,13 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
+import { useLang, isRtl } from "@/lib/i18n";
+import { fmtNum, fmtCurrency, fmtDate, fmtStamp, localizeDigits, roleKey, valueKey } from "@/lib/fmt";
 import {
   STATUS_DOT_COLOR,
   STATUS_META,
   STATUS_OPTIONS,
   VIEWING_STATUS,
   statusRequiresAgent,
-  fmtUSD,
   getProperty,
   getViewings,
   toDetailProperty,
@@ -28,6 +29,14 @@ import { useProperties } from "../_shared/properties-store";
 
 const ADMIN = { name: "Rêbîn Kawa", role: "Super Admin" };
 
+/**
+ * Note timestamps are usually parseable stamps ("Jun 14, 2026 · 09:42"), but an
+ * edit records a relative marker instead. Store it as a catalog key behind "@" —
+ * the same convention the audit log uses — so it renders in whatever language is
+ * active when the note is read, not the one it was edited in.
+ */
+const EDITED_STAMP = "@admin.vd.editedJustNow";
+
 function nowStamp() {
   const d = new Date();
   const M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -38,6 +47,7 @@ function nowStamp() {
 /* ---------------- toast ---------------- */
 interface ToastData { id: number; tone?: "danger" | "brand" | "success"; icon: IconName; title: string; msg: string; out?: boolean; onUndo?: () => void }
 function PropToast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => void }) {
+  const { t } = useLang();
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true));
@@ -55,7 +65,7 @@ function PropToast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => vo
         {toast.onUndo && (
           <div className="pp-toast__actions">
             <button type="button" className="pp-toast__btn pp-toast__btn--dismiss" onClick={onDismiss}>
-              Dismiss
+              {t("admin.props.dismiss")}
             </button>
             <button
               type="button"
@@ -66,12 +76,12 @@ function PropToast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => vo
               }}
             >
               <Icon name="undo-2" size={15} />
-              Undo
+              {t("admin.props.undo")}
             </button>
           </div>
         )}
       </div>
-      <button type="button" className="pp-toast__close" aria-label="Close" onClick={onDismiss}>
+      <button type="button" className="pp-toast__close" aria-label={t("admin.props.close")} onClick={onDismiss}>
         <Icon name="x" size={16} strokeWidth={2} />
       </button>
       <div className="pp-toast__progress" />
@@ -96,6 +106,11 @@ function useToasts(): [ToastData[], (t: Omit<ToastData, "id">) => void, (id: num
 
 /* ---------------- modals ---------------- */
 function ChangeStatusModal({ property, onCancel, onConfirm }: { property: DetailProperty; onCancel: () => void; onConfirm: (s: string) => void }) {
+  const { t } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   const [selected, setSelected] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -146,19 +161,19 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
           <Icon name="refresh-cw" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="status-modal-title">
-          Change status
+          {t("admin.props.changeStatus")}
         </h2>
-        <p className="pp-modal__sublabel">Select new status</p>
+        <p className="pp-modal__sublabel">{t("admin.props.selectNewStatus")}</p>
         <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} onClick={toggleDrop}>
           {selected ? (
             <>
               <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[STATUS_META[selected].variant] }} />
-              <span className="pp-smodal__label">{selected}</span>
+              <span className="pp-smodal__label">{tOr(valueKey("status", selected), selected)}</span>
             </>
           ) : (
             <span className="pp-amodal__trigger-placeholder">
               <Icon name="tag" size={16} />
-              Choose a status…
+              {t("admin.props.chooseStatus")}
             </span>
           )}
           <Icon name="chevron-down" size={15} className="pp-amodal__trigger-chev" />
@@ -186,10 +201,10 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
                     <span className="pp-smodal__label">{status}</span>
                     <span className="pp-smodal__spacer" />
                     {blocked ? (
-                      <span className="pp-smodal__req">Needs agent</span>
+                      <span className="pp-smodal__req">{t("admin.props.needsAgent")}</span>
                     ) : (
                       <>
-                        {property.status === status && <span className="pp-amodal__current-tag">Current</span>}
+                        {property.status === status && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
                         {selected === status && (
                           <span className="pp-smodal__check">
                             <Icon name="check" size={16} strokeWidth={2.5} />
@@ -205,11 +220,11 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
           )}
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           <button type="button" className="pp-modal__confirm" disabled={!canConfirm} onClick={() => selected && onConfirm(selected)}>
             <Icon name="refresh-cw" size={15} />
-            Change status
+            {t("admin.props.changeStatus")}
           </button>
         </div>
       </div>
@@ -219,6 +234,7 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
 }
 
 function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailProperty; onCancel: () => void; onConfirm: (a: DetailAgent) => void }) {
+  const { t } = useLang();
   const hasAgent = !!property.agent;
   const [selected, setSelected] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
@@ -290,9 +306,9 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
           <Icon name={hasAgent ? "user-cog" : "user-plus"} size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="agent-modal-title">
-          {hasAgent ? "Change assigned agent" : "Assign agent"}
+          {t(hasAgent ? "admin.pd.changeAssignedAgent" : "admin.props.assignAgent")}
         </h2>
-        <p className="pp-modal__sublabel">{hasAgent ? "Select new agent" : "Select agent"}</p>
+        <p className="pp-modal__sublabel">{t(hasAgent ? "admin.props.selectNewAgent" : "admin.props.selectAgent")}</p>
         <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} onClick={toggleDrop}>
           {selectedAgent ? (
             <>
@@ -341,7 +357,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
                       <span className="pp-amodal__agent-body">
                         <span className="pp-amodal__agent-name">{agent.name}</span>
                       </span>
-                      {property.agent?.name === agent.name && <span className="pp-amodal__current-tag">Current</span>}
+                      {property.agent?.name === agent.name && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
                       {selected === agent.name && (
                         <span className="pp-amodal__check">
                           <Icon name="check" size={16} strokeWidth={2.5} />
@@ -356,7 +372,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
           )}
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           <button
             type="button"
@@ -368,7 +384,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
             }}
           >
             <Icon name={hasAgent ? "user-check" : "user-plus"} size={15} />
-            {hasAgent ? "Change agent" : "Assign agent"}
+            {t(hasAgent ? "admin.props.changeAgent" : "admin.props.assignAgent")}
           </button>
         </div>
       </div>
@@ -378,6 +394,7 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
 }
 
 function ConfirmModal({ kind, property, onCancel, onConfirm }: { kind: "archive" | "delete"; property: DetailProperty; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   const danger = kind === "delete";
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -393,7 +410,7 @@ function ConfirmModal({ kind, property, onCancel, onConfirm }: { kind: "archive"
           <Icon name={danger ? "trash-2" : "archive"} size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="confirm-modal-title">
-          {danger ? "Delete property?" : "Archive property?"}
+          {t(danger ? "admin.props.deleteTitle" : "admin.props.archiveTitle")}
         </h2>
         <p className="pp-modal__body">
           {danger ? (
@@ -408,17 +425,17 @@ function ConfirmModal({ kind, property, onCancel, onConfirm }: { kind: "archive"
         </p>
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           {danger ? (
             <button type="button" className="pp-modal__delete" onClick={onConfirm}>
               <Icon name="trash-2" size={15} />
-              Delete property
+              {t("admin.props.deleteConfirm")}
             </button>
           ) : (
             <button type="button" className="pp-modal__confirm" onClick={onConfirm}>
               <Icon name="archive" size={15} />
-              Archive property
+              {t("admin.props.archiveProperty")}
             </button>
           )}
         </div>
@@ -429,6 +446,11 @@ function ConfirmModal({ kind, property, onCancel, onConfirm }: { kind: "archive"
 }
 
 function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -437,7 +459,10 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
     return () => document.removeEventListener("keydown", onKey);
   }, [onCancel]);
   const r = (note.role || "").trim();
-  const roleLabel = r ? r.charAt(0).toUpperCase() + r.slice(1).toLowerCase() + " note" : "note";
+  const roleLabel = r ? t("admin.pd.roleNote", { role: tOr(roleKey(r), r) }) : t("admin.pd.noteLabel");
+  // Split the translated sentence on its {note} slot so each language decides where
+  // the emphasised phrase sits, rather than inheriting English word order.
+  const [before, after] = t("admin.pd.deleteNoteBody").split("{note}");
   return createPortal(
     <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="pp-modal" role="dialog" aria-modal="true" aria-labelledby="delnote-modal-title">
@@ -445,18 +470,20 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
           <Icon name="trash-2" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="delnote-modal-title">
-          Delete note?
+          {t("admin.vd.deleteNoteTitle")}
         </h2>
         <p className="pp-modal__body">
-          Are you sure you want to delete this <strong>{roleLabel.toLowerCase()}</strong>? This action cannot be undone and will permanently remove it from this property.
+          {before}
+          <strong>{roleLabel.toLowerCase()}</strong>
+          {after}
         </p>
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           <button type="button" className="pp-modal__delete" onClick={onConfirm}>
             <Icon name="trash-2" size={15} />
-            Delete note
+            {t("admin.vd.deleteNote")}
           </button>
         </div>
       </div>
@@ -510,6 +537,11 @@ function DGroup({ title, desc, children, cols, noRowDivider }: { title: string; 
 }
 
 function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onDelete, agentSurface }: { p: DetailProperty; onEdit: () => void; onChangeStatus: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void; agentSurface?: boolean }) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -524,9 +556,9 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
   const st = STATUS_META[p.status] || { variant: "neutral" as const };
   return (
     <header className="pd-head">
-      <nav className="pd-breadcrumb" aria-label="Breadcrumb">
-        <Link href="/admin/properties">Properties</Link>
-        <Icon name="chevron-right" size={14} />
+      <nav className="pd-breadcrumb" aria-label={t("admin.common.breadcrumb")}>
+        <Link href="/admin/properties">{t("admin.nav.properties")}</Link>
+        <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={14} />
         <span aria-current="page">{p.title}</span>
       </nav>
 
@@ -535,46 +567,46 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
           <div className="pd-head__titlerow">
             <h1 className="pd-head__title">{p.title}</h1>
             <Badge variant={st.variant} size="md" dot={st.dot} icon={st.icon}>
-              {p.status}
+              {t(valueKey("status", p.status))}
             </Badge>
           </div>
           <div className="pd-head__meta">
             <span className="pd-head__metaitem pd-head__metaitem--id">
               <Icon name="hash" size={14} />
-              {p.id}
+              {localizeDigits(lang, p.id)}
             </span>
             <span className="pd-head__sep" />
             <span className="pd-head__metaitem">
               <Icon name="building-2" size={14} />
-              {p.type}
+              {tOr(valueKey("type", p.type), p.type)}
             </span>
             <span className="pd-head__sep" />
             <span className="pd-head__metaitem">
               <Icon name={p.listing === "sale" ? "tag" : "key"} size={14} />
-              {p.listing === "sale" ? "For sale" : "For rent"}
+              {t(p.listing === "sale" ? "admin.pd.forSale" : "admin.pd.forRent")}
             </span>
             <span className="pd-head__sep" />
             <span className="pd-head__metaitem">
               <Icon name="map-pin" size={14} />
-              {p.location}
+              {tOr(`loc.${p.location}`, p.location)}
             </span>
             <span className="pd-head__sep" />
             <span className="pd-head__metaitem">
               <Icon name="calendar" size={14} />
-              Added {p.date}
+              {t("admin.pd.addedOn", { date: fmtDate(lang, new Date(p.date)) })}
             </span>
           </div>
         </div>
 
         <div className="pd-head__actions">
           <Button hierarchy="secondary" size="md" iconLeading="refresh-cw" onClick={onChangeStatus}>
-            Change status
+            {t("admin.props.changeStatus")}
           </Button>
           <Button hierarchy="primary" size="md" iconLeading="pencil" onClick={onEdit}>
-            Edit property
+            {t("admin.props.editProperty")}
           </Button>
           <div className="pd-morewrap" ref={menuRef}>
-            <button type="button" className={"pd-morebtn" + (menuOpen ? " is-open" : "")} aria-label="More actions" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}>
+            <button type="button" className={"pd-morebtn" + (menuOpen ? " is-open" : "")} aria-label={t("admin.props.actions")} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}>
               <Icon name="more-horizontal" size={19} />
             </button>
             {menuOpen && (
@@ -590,7 +622,7 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
                     }}
                   >
                     <Icon name={p.agent ? "user-cog" : "user-plus"} size={17} />
-                    {p.agent ? "Reassign agent" : "Assign agent"}
+                    {t(p.agent ? "admin.pd.reassignAgent" : "admin.props.assignAgent")}
                   </button>
                 )}
                 <button
@@ -603,7 +635,7 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
                   }}
                 >
                   <Icon name="archive" size={17} />
-                  Archive property
+                  {t("admin.props.archiveProperty")}
                 </button>
                 <div className="pd-moremenu__sep" />
                 <button
@@ -616,7 +648,7 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
                   }}
                 >
                   <Icon name="trash-2" size={17} />
-                  Delete property
+                  {t("admin.props.deleteConfirm")}
                 </button>
               </div>
             )}
@@ -628,16 +660,17 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
 }
 
 function Gallery({ p }: { p: DetailProperty }) {
+  const { t, lang } = useLang();
   const [active, setActive] = useState(0);
   const imgs = p.gallery;
   return (
-    <SectionCard title="Property gallery" desc={`${imgs.length} photos · cover image set`} id="gallery">
+    <SectionCard title={t("admin.pd.gallery")} desc={t("admin.pd.galleryDesc", { count: fmtNum(lang, imgs.length) })} id="gallery">
       <div className="pd-gallery">
         <div className="pd-gallery__main">
           <img src={imgs[active]} alt={p.title} />
           <span className="pd-gallery__cover">
             <Icon name="star" size={13} />
-            {active === 0 ? "Cover image" : "Photo " + (active + 1)}
+            {active === 0 ? t("admin.pd.coverImage") : t("admin.pd.photoN", { n: fmtNum(lang, active + 1) })}
           </span>
         </div>
         <div className="pd-gallery__thumbs">
@@ -658,31 +691,46 @@ function Gallery({ p }: { p: DetailProperty }) {
 }
 
 function PropertyInfo({ p }: { p: DetailProperty }) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   const s = p.specs;
   const dash = (v: ReactNode) => (v || v === 0 ? v : "—");
-  const num = (v: number | null, suffix?: string) => (v || v === 0 ? v.toLocaleString("en-US") + (suffix || "") : "—");
+  const num = (v: number | null, unitKey?: string) =>
+    v || v === 0 ? fmtNum(lang, v) + (unitKey ? " " + t(unitKey) : "") : "—";
   return (
-    <SectionCard title="Property information" desc="Core attributes, location, and specifications for this listing." id="info" flush>
+    <SectionCard title={t("admin.pd.info")} desc={t("admin.pd.infoDesc")} id="info" flush>
       <div className="pd-detailgroups">
-        <DGroup title="Basic information" desc="Identity and how the listing is classified." noRowDivider>
-          <Field icon="type" label="Property name" value={p.title} />
-          <Field icon="hash" label="Property ID" value={p.id} mono />
-          <Field icon="building-2" label="Property type" value={p.type} />
-          <Field icon={p.listing === "sale" ? "tag" : "key"} label="Listing type" value={p.listing === "sale" ? "For sale" : "For rent"} />
+        <DGroup title={t("admin.pd.basic")} desc={t("admin.pd.basicDesc")} noRowDivider>
+          <Field icon="type" label={t("admin.pd.f.name")} value={p.title} />
+          <Field icon="hash" label={t("admin.pd.f.id")} value={p.id} mono />
+          <Field icon="building-2" label={t("admin.pd.f.type")} value={tOr(valueKey("type", p.type), p.type)} />
+          <Field
+            icon={p.listing === "sale" ? "tag" : "key"}
+            label={t("admin.pd.f.listingType")}
+            value={t(p.listing === "sale" ? "admin.pd.forSale" : "admin.pd.forRent")}
+          />
         </DGroup>
 
-        <DGroup title="Pricing" desc="Listed price and valuation.">
-          <Field icon="wallet" label={p.listing === "sale" ? "Asking price" : "Monthly rent"} value={fmtUSD(p.price) + (p.per || "")} em />
-          <Field icon="banknote" label="Currency" value={s.currency} />
+        <DGroup title={t("admin.pd.pricing")} desc={t("admin.pd.pricingDesc")}>
+          <Field
+            icon="wallet"
+            label={t(p.listing === "sale" ? "admin.pd.f.askingPrice" : "admin.pd.f.monthlyRent")}
+            value={fmtCurrency(lang, p.price, s.currency) + (p.per ? t("admin.pd.perMonth") : "")}
+            em
+          />
+          <Field icon="banknote" label={t("admin.pd.f.currency")} value={s.currency} />
         </DGroup>
 
-        <DGroup title="Location" desc="Where this property sits on the map." noRowDivider>
-          <Field icon="building" label="City" value={p.city} />
-          <Field icon="map-pin" label="Area / District" value={p.area} />
-          <Field icon="navigation" label="Full address" value={s.address} />
+        <DGroup title={t("admin.pd.location")} desc={t("admin.pd.locationDesc")} noRowDivider>
+          <Field icon="building" label={t("admin.pd.f.city")} value={tOr(`city.${p.city}`, p.city)} />
+          <Field icon="map-pin" label={t("admin.pd.f.area")} value={tOr(`loc.${p.area}`, p.area)} />
+          <Field icon="navigation" label={t("admin.pd.f.address")} value={s.address} />
           <Field
             icon="map"
-            label="Map location"
+            label={t("admin.pd.f.map")}
             value={
               <a className="pd-maplink" href={s.mapUrl} target="_blank" rel="noopener noreferrer">
                 {s.coords}
@@ -692,22 +740,22 @@ function PropertyInfo({ p }: { p: DetailProperty }) {
           />
         </DGroup>
 
-        <DGroup title="Property features" desc="Size, layout, and build details." noRowDivider>
-          <Field icon="bed-double" label="Bedrooms" value={p.beds ? p.beds : "—"} />
-          <Field icon="bath" label="Bathrooms" value={p.baths ? p.baths : "—"} />
-          <Field icon="maximize-2" label="Area" value={num(p.size, " m²")} />
-          <Field icon="land-plot" label="Land size" value={num(s.landSize, " m²")} />
-          <Field icon="car" label="Garage spaces" value={dash(s.garages)} />
-          <Field icon="calendar" label="Year built" value={dash(s.yearBuilt)} />
-          <Field icon="sofa" label="Furnished" value={dash(s.furnished)} />
-          <Field icon="layers" label="Floor" value={dash(s.floor)} />
+        <DGroup title={t("admin.pd.features")} desc={t("admin.pd.featuresDesc")} noRowDivider>
+          <Field icon="bed-double" label={t("admin.pd.f.beds")} value={p.beds ? fmtNum(lang, p.beds) : "—"} />
+          <Field icon="bath" label={t("admin.pd.f.baths")} value={p.baths ? fmtNum(lang, p.baths) : "—"} />
+          <Field icon="maximize-2" label={t("admin.pd.f.size")} value={num(p.size, "unit.sqm")} />
+          <Field icon="land-plot" label={t("admin.pd.f.landSize")} value={num(s.landSize, "unit.sqm")} />
+          <Field icon="car" label={t("admin.pd.f.garages")} value={num(s.garages)} />
+          <Field icon="calendar" label={t("admin.pd.f.yearBuilt")} value={s.yearBuilt ? localizeDigits(lang, String(s.yearBuilt)) : "—"} />
+          <Field icon="sofa" label={t("admin.pd.f.furnished")} value={s.furnished ? tOr(valueKey("furnished", s.furnished), s.furnished) : "—"} />
+          <Field icon="layers" label={t("admin.pd.f.floor")} value={dash(s.floor && localizeDigits(lang, String(s.floor)))} />
         </DGroup>
 
         {s.amenities && s.amenities.length > 0 && (
           <section className="pd-dgroup">
             <header className="pd-dgroup__head">
-              <h3 className="pd-dgroup__title">Amenities</h3>
-              <p className="pd-dgroup__desc">Features and facilities included with this property.</p>
+              <h3 className="pd-dgroup__title">{t("admin.pd.amenities")}</h3>
+              <p className="pd-dgroup__desc">{t("admin.pd.amenitiesDesc")}</p>
             </header>
             <div className="pd-amen">
               {s.amenities.map((a) => (
@@ -715,7 +763,7 @@ function PropertyInfo({ p }: { p: DetailProperty }) {
                   <span className="pd-amenrow__ic">
                     <Icon name={a.icon} size={17} />
                   </span>
-                  {a.label}
+                  {a.labelKey ? t(a.labelKey) : a.label}
                 </div>
               ))}
             </div>
@@ -727,43 +775,44 @@ function PropertyInfo({ p }: { p: DetailProperty }) {
 }
 
 function ListingInfo({ p }: { p: DetailProperty }) {
+  const { t, lang } = useLang();
   const st = STATUS_META[p.status] || { variant: "neutral" as const };
   return (
-    <SectionCard title="Listing information" desc="Visibility, placement, and listing timeline." id="listing" flush>
+    <SectionCard title={t("admin.pd.listingInfo")} desc={t("admin.pd.listingInfoDesc")} id="listing" flush>
       <div className="pd-detailgroups">
-        <DGroup title="Listing details" desc="How and when this listing is presented." noRowDivider>
+        <DGroup title={t("admin.pd.listingDetails")} desc={t("admin.pd.listingDetailsDesc")} noRowDivider>
           <Field
             icon={p.listing === "sale" ? "tag" : "key"}
-            label="Listing type"
+            label={t("admin.pd.f.listingType")}
             value={
               <Badge variant={p.listing === "sale" ? "brand" : "info"} size="sm" icon={p.listing === "sale" ? "tag" : "key"}>
-                {p.listing === "sale" ? "For sale" : "For rent"}
+                {t(p.listing === "sale" ? "admin.pd.forSale" : "admin.pd.forRent")}
               </Badge>
             }
           />
-          <Field icon="calendar-plus" label="Date created" value={p.specs.dateCreated} />
+          <Field icon="calendar-plus" label={t("admin.pd.f.dateCreated")} value={fmtDate(lang, new Date(p.specs.dateCreated))} />
           <Field
             icon="sparkles"
-            label="Featured"
+            label={t("admin.pd.f.featured")}
             value={
               p.featured ? (
                 <Badge variant="gold" size="sm" icon="sparkles">
-                  Featured
+                  {t("admin.pd.featured")}
                 </Badge>
               ) : (
                 <Badge variant="neutral" size="sm" icon="minus">
-                  Standard
+                  {t("admin.pd.standard")}
                 </Badge>
               )
             }
           />
-          <Field icon="clock" label="Last updated" value={p.updated} />
+          <Field icon="clock" label={t("admin.pd.f.lastUpdated")} value={fmtDate(lang, new Date(p.updated))} />
           <Field
             icon="circle-dot"
-            label="Status"
+            label={t("admin.props.th.status")}
             value={
               <Badge variant={st.variant} size="sm" dot={st.dot} icon={st.icon}>
-                {p.status}
+                {t(valueKey("status", p.status))}
               </Badge>
             }
           />
@@ -780,6 +829,7 @@ const NOTE_KIND: Record<string, { icon: IconName; cls: string }> = {
 };
 const NOTE_MAX = 500;
 function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spaced: boolean; initial?: string; submitLabel?: string; onSave: (t: string) => void; onCancel: () => void }) {
+  const { t, lang } = useLang();
   const [draft, setDraft] = useState(initial || "");
   const text = draft.trim();
   const remaining = NOTE_MAX - draft.length;
@@ -797,15 +847,17 @@ function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spac
   };
   return (
     <div className={"pd-notecomposer" + (spaced ? " is-spaced" : "")}>
-      <Textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKeyDown} rows={3} maxLength={NOTE_MAX} aria-label="New internal note" placeholder="Write a note about verification, approvals, pricing, or reminders for this listing…" />
+      <Textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKeyDown} rows={3} maxLength={NOTE_MAX} aria-label={t("admin.pd.noteAria")} placeholder={t("admin.pd.notePh")} />
       <div className="pd-notecomposer__foot">
-        <span className={"pd-notecomposer__hint" + (remaining <= 50 ? " is-low" : "")}>{remaining} characters left</span>
+        <span className={"pd-notecomposer__hint" + (remaining <= 50 ? " is-low" : "")}>
+          {t("admin.pd.charsLeft", { count: fmtNum(lang, remaining) })}
+        </span>
         <div className="pd-notecomposer__actions">
           <Button hierarchy="tertiary" size="sm" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </Button>
           <Button hierarchy="primary" size="sm" disabled={!text} onClick={save}>
-            {submitLabel || "Add note"}
+            {submitLabel || t("admin.pd.addNote")}
           </Button>
         </div>
       </div>
@@ -814,12 +866,15 @@ function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spac
 }
 
 function InternalNotes({ p, onAdd, onEdit, onDelete }: { p: DetailProperty; onAdd: (t: string) => void; onEdit: (i: number, t: string) => void; onDelete: (i: number) => void }) {
+  const { t, lang } = useLang();
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const roleLabel = (role: string) => {
     const r = (role || "").trim();
-    if (!r) return "Note";
-    return r.charAt(0).toUpperCase() + r.slice(1).toLowerCase() + " note";
+    if (!r) return t("admin.pd.noteLabel");
+    const key = roleKey(r);
+    const name = t(key);
+    return t("admin.pd.roleNote", { role: name === key ? r : name });
   };
   const handleSave = (text: string) => {
     onAdd(text);
@@ -827,13 +882,13 @@ function InternalNotes({ p, onAdd, onEdit, onDelete }: { p: DetailProperty; onAd
   };
   return (
     <SectionCard
-      title="Internal notes"
-      desc="Staff-only. Not visible to members or on the public site."
+      title={t("admin.pd.notes")}
+      desc={t("admin.pd.notesDesc")}
       action={
         !composing &&
         editing == null && (
           <Button hierarchy="secondary" size="sm" iconLeading="plus" onClick={() => setComposing(true)}>
-            Add note
+            {t("admin.pd.addNote")}
           </Button>
         )
       }
@@ -846,7 +901,7 @@ function InternalNotes({ p, onAdd, onEdit, onDelete }: { p: DetailProperty; onAd
               <span className="pd-noagent__art">
                 <Icon name="sticky-note" size={24} strokeWidth={1.6} />
               </span>
-              <p>No internal notes yet. Add a staff-only note to track verification, approvals, or reminders for this listing.</p>
+              <p>{t("admin.pd.notesEmpty")}</p>
             </div>
           )
         : (
@@ -859,7 +914,7 @@ function InternalNotes({ p, onAdd, onEdit, onDelete }: { p: DetailProperty; onAd
                       <NoteComposer
                         spaced={false}
                         initial={n.text}
-                        submitLabel="Save note"
+                        submitLabel={t("admin.vd.saveNote")}
                         onSave={(text) => {
                           onEdit(i, text);
                           setEditing(null);
@@ -877,8 +932,8 @@ function InternalNotes({ p, onAdd, onEdit, onDelete }: { p: DetailProperty; onAd
                         <button
                           type="button"
                           className="pd-note__delete pd-note__edit"
-                          aria-label={"Edit note from " + n.author}
-                          title="Edit note"
+                          aria-label={t("admin.pd.editNoteFrom", { author: n.author })}
+                          title={t("admin.vd.editNote")}
                           onClick={() => {
                             setComposing(false);
                             setEditing(i);
@@ -886,7 +941,7 @@ function InternalNotes({ p, onAdd, onEdit, onDelete }: { p: DetailProperty; onAd
                         >
                           <Icon name="pencil" size={14} />
                         </button>
-                        <button type="button" className="pd-note__delete" aria-label={"Delete note from " + n.author} title="Delete note" onClick={() => onDelete(i)}>
+                        <button type="button" className="pd-note__delete" aria-label={t("admin.pd.deleteNoteFrom", { author: n.author })} title={t("admin.vd.deleteNote")} onClick={() => onDelete(i)}>
                           <Icon name="trash-2" size={15} />
                         </button>
                       </div>
@@ -894,7 +949,7 @@ function InternalNotes({ p, onAdd, onEdit, onDelete }: { p: DetailProperty; onAd
                     <div className="pd-note">
                       <div className="pd-note__body">
                         <p className="pd-note__text">{n.text}</p>
-                        <span className="pd-note__time">{n.time}</span>
+                        <span className="pd-note__time">{n.time.startsWith("@") ? t(n.time.slice(1)) : fmtStamp(lang, n.time)}</span>
                       </div>
                     </div>
                   </div>
@@ -908,13 +963,14 @@ function InternalNotes({ p, onAdd, onEdit, onDelete }: { p: DetailProperty; onAd
 
 const TL_TONE: Record<string, string> = { brand: "#7F56D9", success: "#15B79E", info: "#2E90FA", warning: "#EAB308", error: "#F04438", gold: "#EE46BC", neutral: "#6172F3" };
 function Timeline({ p, onViewAll }: { p: DetailProperty; onViewAll: () => void }) {
+  const { t, lang } = useLang();
   return (
     <SectionCard
-      title="Activity timeline"
-      desc="Chronological log of every change to this listing."
+      title={t("admin.pd.timeline")}
+      desc={t("admin.pd.timelineDesc")}
       action={
         <Button hierarchy="link" size="sm" iconTrailing="arrow-right" style={{ color: "var(--text-secondary)" }} onClick={onViewAll}>
-          View all
+          {t("admin.common.viewAll")}
         </Button>
       }
       id="activity"
@@ -927,10 +983,15 @@ function Timeline({ p, onViewAll }: { p: DetailProperty; onViewAll: () => void }
             </span>
             <div className="pd-tl__body">
               <div className="pd-tl__top">
-                <span className="pd-tl__title">{e.title}</span>
-                <span className="pd-tl__time">{e.time}</span>
+                <span className="pd-tl__title">{t(e.titleKey)}</span>
+                <span className="pd-tl__time">{fmtStamp(lang, e.time)}</span>
               </div>
-              <p className="pd-tl__desc">{e.desc}</p>
+              <p className="pd-tl__desc">
+                {t(e.descKey, {
+                  ...e.params,
+                  ...(e.price !== undefined ? { price: fmtCurrency(lang, e.price) + (e.per ? t("admin.pd.perMonth") : "") } : {}),
+                })}
+              </p>
             </div>
           </li>
         ))}
@@ -940,15 +1001,20 @@ function Timeline({ p, onViewAll }: { p: DetailProperty; onViewAll: () => void }
 }
 
 function Ownership({ p }: { p: DetailProperty }) {
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
+  const { t } = useLang();
   return (
-    <SectionCard title="Ownership" desc="Private owner contact details." id="owner">
+    <SectionCard title={t("admin.pd.ownership")} desc={t("admin.pd.ownershipDesc")} id="owner">
       <div className="pd-owner">
         <Avatar name={p.owner.name} size="lg" />
         <div className="pd-owner__id">
           <span className="pd-owner__name">{p.owner.name}</span>
           <span className="pd-owner__type">
             <Icon name={p.owner.type.startsWith("Company") ? "building" : "user"} size={13} />
-            {p.owner.type}
+            {tOr(valueKey("admin.pd.ownerType", p.owner.type), p.owner.type)}
           </span>
         </div>
       </div>
@@ -958,7 +1024,7 @@ function Ownership({ p }: { p: DetailProperty }) {
             <Icon name="phone" size={16} />
           </span>
           <div className="pd-contact__text">
-            <span className="pd-contact__label">Phone</span>
+            <span className="pd-contact__label">{t("admin.pd.phone")}</span>
             <span className="pd-contact__value">{p.owner.phone}</span>
           </div>
           <Icon name="external-link" size={15} className="pd-contact__go" />
@@ -968,7 +1034,7 @@ function Ownership({ p }: { p: DetailProperty }) {
             <Icon name="mail" size={16} />
           </span>
           <div className="pd-contact__text">
-            <span className="pd-contact__label">Email</span>
+            <span className="pd-contact__label">{t("admin.pd.email")}</span>
             <span className="pd-contact__value">{p.owner.email}</span>
           </div>
           <Icon name="external-link" size={15} className="pd-contact__go" />
@@ -979,16 +1045,24 @@ function Ownership({ p }: { p: DetailProperty }) {
 }
 
 function ViewingRequests({ p, onViewAll }: { p: DetailProperty; onViewAll: () => void }) {
+  const { t, lang } = useLang();
   const rows = getViewings(p.id);
   const upcoming = rows.filter((r) => r.status === "Requested" || r.status === "Confirmed").length;
   return (
     <SectionCard
-      title="Viewing requests"
-      desc={rows.length ? `${rows.length} request${rows.length > 1 ? "s" : ""} · ${upcoming} upcoming` : "Requests to view this property will appear here."}
+      title={t("admin.pd.viewingRequests")}
+      desc={
+        rows.length
+          ? t(rows.length === 1 ? "admin.pd.viewingsCountOne" : "admin.pd.viewingsCount", {
+              count: fmtNum(lang, rows.length),
+              upcoming: fmtNum(lang, upcoming),
+            })
+          : t("admin.pd.viewingsEmptyDesc")
+      }
       action={
         rows.length ? (
           <Button hierarchy="link" size="sm" iconTrailing="arrow-right" style={{ color: "var(--text-secondary)" }} onClick={onViewAll}>
-            View all
+            {t("admin.common.viewAll")}
           </Button>
         ) : null
       }
@@ -999,7 +1073,7 @@ function ViewingRequests({ p, onViewAll }: { p: DetailProperty; onViewAll: () =>
           <span className="pd-noagent__art">
             <Icon name="calendar" size={24} strokeWidth={1.6} />
           </span>
-          <p>No viewing requests yet. New requests from members and agents will show up here.</p>
+          <p>{t("admin.pd.viewingsEmpty")}</p>
         </div>
       ) : (
         <div className="pd-viewings">
@@ -1010,10 +1084,10 @@ function ViewingRequests({ p, onViewAll }: { p: DetailProperty; onViewAll: () =>
                 <Avatar src={r.img} name={r.member} size="lg" />
                 <div className="pd-viewing__main">
                   <span className="pd-viewing__name">{r.member}</span>
-                  <span className="pd-viewing__meta">{r.date + " · " + r.time}</span>
+                  <span className="pd-viewing__meta">{fmtStamp(lang, r.date) + " · " + localizeDigits(lang, r.time)}</span>
                 </div>
                 <Badge variant={st.variant} size="sm" icon={st.icon}>
-                  {r.status}
+                  {t(valueKey("status", r.status))}
                 </Badge>
               </div>
             );
@@ -1025,17 +1099,18 @@ function ViewingRequests({ p, onViewAll }: { p: DetailProperty; onViewAll: () =>
 }
 
 function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; onAssignAgent: () => void; agentSurface?: boolean }) {
+  const { t, lang } = useLang();
   if (!p.agent) {
     return (
-      <SectionCard title="Assigned agent" desc="No agent is managing this listing yet." id="agent">
+      <SectionCard title={t("admin.pd.assignedAgent")} desc={t("admin.pd.noAgentDesc")} id="agent">
         <div className="pd-noagent">
           <span className="pd-noagent__art">
             <Icon name="user-plus" size={24} strokeWidth={1.6} />
           </span>
-          <p>Assign a verified agent to handle viewings, enquiries, and the sale.</p>
+          <p>{t("admin.pd.noAgentBody")}</p>
           {!agentSurface && (
             <Button hierarchy="primary" size="sm" iconLeading="user-plus" onClick={onAssignAgent}>
-              Assign agent
+              {t("admin.props.assignAgent")}
             </Button>
           )}
         </div>
@@ -1049,46 +1124,46 @@ function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; 
   const reviews = a.reviews || 96;
   return (
     <SectionCard
-      title="Assigned agent"
-      desc="Manages viewings and enquiries."
+      title={t("admin.pd.assignedAgent")}
+      desc={t("admin.pd.agentDesc")}
       action={
         agentSurface ? undefined : (
           <Button hierarchy="tertiary" size="sm" iconLeading="user-cog" onClick={onAssignAgent}>
-            Reassign
+            {t("admin.pd.reassign")}
           </Button>
         )
       }
       id="agent"
     >
-      <Link className="pd-agent pd-agent--link" href="/admin/agents" title={"View " + a.name + "’s details"}>
+      <Link className="pd-agent pd-agent--link" href="/admin/agents" title={t("admin.pd.viewAgentDetails", { name: a.name })}>
         <Avatar src={a.img} name={a.name} size="xl" verified={a.verified} />
         <div className="pd-agent__id">
           <span className="pd-agent__nrow">
             <span className="pd-agent__name">{a.name}</span>
             {a.verified ? (
               <Badge variant="brand" size="sm" icon="badge-check">
-                Verified
+                {t("status.verified")}
               </Badge>
             ) : (
               <Badge variant="warning" size="sm" icon="clock">
-                Pending
+                {t("status.pending")}
               </Badge>
             )}
           </span>
           <span className="pd-agent__meta">
             <span className="pd-agent__rate">
               <Icon name="star" size={15} />
-              {rating}
+              {localizeDigits(lang, String(rating))}
             </span>
-            <span className="pd-agent__reviews">({reviews} reviews)</span>
+            <span className="pd-agent__reviews">({t("admin.pd.reviewsCount", { count: fmtNum(lang, Number(reviews)) })})</span>
           </span>
         </div>
-        <Icon name="chevron-right" size={18} className="pd-agent__go" />
+        <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={18} className="pd-agent__go" />
       </Link>
       <div className="pd-agent__actions">
         <a className="pd-agentbtn" href={phoneHref}>
           <Icon name="phone" size={18} />
-          Call
+          {t("admin.pd.call")}
         </a>
         <a className="pd-agentbtn" href={waHref} target="_blank" rel="noopener noreferrer">
           <Icon name="message-circle" size={18} />
@@ -1097,13 +1172,14 @@ function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; 
       </div>
       <p className="pd-agent__trust">
         <Icon name="shield-check" size={15} />
-        Verified agent · no obligation · ID-checked
+        {t("admin.pd.trustLine")}
       </p>
     </SectionCard>
   );
 }
 
 export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurface?: boolean }) {
+  const { t } = useLang();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { properties } = useProperties();
@@ -1136,7 +1212,7 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
     if (toastShown.current) return;
     if (searchParams.get("toast") === "updated") {
       toastShown.current = true;
-      const raf = requestAnimationFrame(() => pushToast({ tone: "success", icon: "circle-check", title: "Property updated", msg: `“${property.title}” has been updated successfully.` }));
+      const raf = requestAnimationFrame(() => pushToast({ tone: "success", icon: "circle-check", title: t("admin.props.toast.updatedTitle"), msg: t("admin.pd.toast.updatedMsg", { title: property.title }) }));
       return () => cancelAnimationFrame(raf);
     }
   }, [searchParams, property.title]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1144,33 +1220,33 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
   const handleStatus = (status: string) => {
     setProperty((p) => ({ ...p, status, published: status === "Published" ? true : p.published }));
     setStatusOpen(false);
-    pushToast({ tone: "brand", icon: "refresh-cw", title: "Status updated", msg: `“${property.title}” is now marked as ${status}.` });
+    pushToast({ tone: "brand", icon: "refresh-cw", title: t("admin.props.toast.statusTitle"), msg: t("admin.pd.toast.statusMsg", { title: property.title, status: t(valueKey("status", status)) }) });
   };
   const handleAssign = (agent: DetailAgent) => {
     const wasAssigned = !!property.agent;
     const enriched = { ...agent, email: agent.email || agent.name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@mail.chiya.estate", listings: agent.listings || 8 };
     setProperty((p) => ({ ...p, agent: enriched }));
     setAgentOpen(false);
-    pushToast({ tone: "success", icon: "user-check", title: wasAssigned ? "Agent changed" : "Agent assigned", msg: `${agent.name} is now the assigned agent for “${property.title}”.` });
+    pushToast({ tone: "success", icon: "user-check", title: t(wasAssigned ? "admin.pd.toast.agentChangedTitle" : "admin.pd.toast.agentAssignedTitle"), msg: t("admin.pd.toast.agentMsg", { name: agent.name, title: property.title }) });
   };
   const handleArchive = () => {
     setProperty((p) => ({ ...p, status: "Archived", published: false }));
     setConfirm(null);
-    pushToast({ tone: "brand", icon: "archive", title: "Property archived", msg: `“${property.title}” has been moved to the archive.` });
+    pushToast({ tone: "brand", icon: "archive", title: t("admin.pd.toast.archivedTitle"), msg: t("admin.pd.toast.archivedMsg", { title: property.title }) });
   };
   const handleDelete = () => {
     setConfirm(null);
-    pushToast({ tone: "danger", icon: "trash-2", title: "Property deleted", msg: `“${property.title}” has been permanently removed. Returning to Properties…` });
+    pushToast({ tone: "danger", icon: "trash-2", title: t("admin.props.toast.deletedTitle"), msg: t("admin.pd.toast.deletedMsg", { title: property.title }) });
     setTimeout(() => router.push("/admin/properties"), 1400);
   };
   const handleAddNote = (text: string) => {
     const note: NoteItem = { author: ADMIN.name, role: ADMIN.role, kind: "note", time: nowStamp(), text };
     setProperty((p) => ({ ...p, notes: [note, ...p.notes] }));
-    pushToast({ tone: "success", icon: "circle-check", title: "Note added", msg: "Your internal note has been added to this property." });
+    pushToast({ tone: "success", icon: "circle-check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.pd.toast.noteAddedMsg") });
   };
   const handleEditNote = (idx: number, text: string) => {
-    setProperty((p) => ({ ...p, notes: p.notes.map((n, i) => (i === idx ? { ...n, text, time: "Edited just now" } : n)) }));
-    pushToast({ tone: "brand", icon: "pencil", title: "Note updated", msg: "Your changes to the internal note were saved." });
+    setProperty((p) => ({ ...p, notes: p.notes.map((n, i) => (i === idx ? { ...n, text, time: EDITED_STAMP } : n)) }));
+    pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
   };
   const handleDeleteNote = () => {
     const idx = noteToDelete!;
@@ -1180,8 +1256,8 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
     pushToast({
       tone: "danger",
       icon: "trash-2",
-      title: "Note deleted",
-      msg: "The internal note has been removed.",
+      title: t("admin.vd.toast.noteDeletedTitle"),
+      msg: t("admin.pd.toast.noteDeletedMsg"),
       onUndo: () =>
         setProperty((p) => {
           const notes = [...p.notes];

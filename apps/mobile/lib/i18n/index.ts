@@ -4,25 +4,30 @@ import { useProfile, STORAGE_KEY, type Language } from "@/lib/profile";
 import { setActiveLocale, type Locale } from "@/lib/locale-state";
 import { en } from "./en";
 import { ar } from "./ar";
+import { ku } from "./ku";
 
 /**
  * i18n — a tiny translation layer keyed off the member's `profile.language`
  * (the single source of truth). No library: `en` is the reference catalog and
- * `ar` mirrors its shape. Kurdish ("ku") falls back to English for now.
+ * `ar`/`ku` mirror its shape. Kurdish ("ku") is Sorani (Arabic script, RTL).
  *
  * Usage: `const { t, locale, isRTL } = useTranslation();` then `t("profile.title")`.
  * Interpolate with `t("stats.results", { count: 12 })` against `{count}` tokens.
  */
 export type { Locale } from "@/lib/locale-state";
 
-const catalogs = { en, ar } as const;
+const catalogs = { en, ar, ku } as const;
 
 /**
- * Map a stored language to a catalog locale. Kurdish ("ku") falls back to English
- * until its scaffold (./ku.ts) is translated and activated — see that file's header.
+ * Locales that read right-to-left and use Arabic-script fonts. Arabic and
+ * Kurdish (Sorani) both qualify. Single source of truth for RTL/font decisions.
  */
+const RTL_LOCALES = new Set<Locale>(["ar", "ku"]);
+export const isRtlLocale = (locale: Locale): boolean => RTL_LOCALES.has(locale);
+
+/** Map a stored language to its catalog locale (each language has its own catalog). */
 export function localeFor(language: Language): Locale {
-  return language === "ar" ? "ar" : "en";
+  return language === "ar" ? "ar" : language === "ku" ? "ku" : "en";
 }
 
 type Params = Record<string, string | number>;
@@ -56,7 +61,7 @@ export function translate(locale: Locale, key: string, params?: Params): string 
 export function useTranslation() {
   const profile = useProfile();
   const locale = localeFor(profile.language);
-  const isRTL = locale === "ar";
+  const isRTL = isRtlLocale(locale);
   const t = (key: TKey, params?: Params) => translate(locale, key, params);
   return { t, locale, isRTL };
 }
@@ -85,12 +90,12 @@ export async function loadPersistedLocale(): Promise<Locale> {
 
 /** Whether switching to `locale` crosses the LTR⇄RTL boundary (needs a reload). */
 export function needsDirectionReload(locale: Locale): boolean {
-  return I18nManager.isRTL !== (locale === "ar");
+  return I18nManager.isRTL !== isRtlLocale(locale);
 }
 
 /** Apply a locale's writing direction to the native layout manager. */
 export function applyDirection(locale: Locale): void {
-  const rtl = locale === "ar";
+  const rtl = isRtlLocale(locale);
   I18nManager.allowRTL(true);
   I18nManager.swapLeftAndRightInRTL(true);
   I18nManager.forceRTL(rtl);

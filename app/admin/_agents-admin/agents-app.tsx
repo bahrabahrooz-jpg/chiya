@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/choice";
 import { StatCard } from "@/components/data/stat-card";
+import { useLang, isRtl, interleave } from "@/lib/i18n";
+import { fmtNum, popupLeft } from "@/lib/fmt";
 import {
   AGENTS_PER_PAGE,
   AGENT_STATUS,
@@ -25,7 +27,7 @@ import {
   type AgentRecord,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
-import { AvatarUpload, CustomSelect, EditAgentModal, Field, MultiSelect, type AgentEditSeed, type SelectOption } from "../_shared/agent-edit-modal";
+import { AvatarUpload, CustomSelect, EditAgentModal, Field, MultiSelect, type AgentEditSeed } from "../_shared/agent-edit-modal";
 
 function ActionMenu({
   open,
@@ -54,6 +56,7 @@ function ActionMenu({
   onEdit?: () => void;
   onView?: () => void;
 }) {
+  const { t, lang } = useLang();
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const suspended = status === "Suspended";
@@ -66,10 +69,10 @@ function ActionMenu({
     const update = () => {
       if (!btnRef.current) return;
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: Math.max(12, r.right - 196) });
+      setPos({ top: r.bottom + 6, left: popupLeft(r, 196, isRtl(lang)) });
     };
     update();
-  }, [open]);
+  }, [open, lang]);
   const menu =
     pos &&
     createPortal(
@@ -77,25 +80,25 @@ function ActionMenu({
         <div className="ag-amenu__sect">
           <button type="button" className="ag-aitem" role="menuitem" onClick={onView || onClose}>
             <Icon name="id-card" size={17} />
-            View details
+            {t("admin.props.viewDetails")}
           </button>
           <button type="button" className="ag-aitem" role="menuitem" onClick={onEdit || onClose}>
             <Icon name="pencil" size={17} />
-            Edit agent
+            {t("admin.agents.editAgent")}
           </button>
           <button type="button" className="ag-aitem" role="menuitem" onClick={onStatus}>
             <Icon name={suspended ? "circle-check" : "circle-pause"} size={17} />
-            {suspended ? "Activate agent" : "Suspend agent"}
+            {suspended ? t("admin.agents.activate") : t("admin.agents.suspend")}
           </button>
           <button type="button" className="ag-aitem" role="menuitem" onClick={onVerify}>
             <Icon name={verified ? "shield-x" : "badge-check"} size={17} />
-            {verified ? "Revoke verification" : "Verify agent"}
+            {verified ? t("admin.agents.revokeVerification") : t("admin.agents.verifyAgent")}
           </button>
         </div>
         <div className="ag-amenu__sect">
           <button type="button" className="ag-aitem mp-aitem--danger ag-aitem--danger" role="menuitem" onClick={onDelete}>
             <Icon name="trash-2" size={17} />
-            Delete agent
+            {t("admin.agents.deleteAgent")}
           </button>
         </div>
       </div>,
@@ -103,7 +106,7 @@ function ActionMenu({
     );
   return (
     <>
-      <button ref={btnRef} type="button" className={(btnClass || "") + (open ? " is-open" : "")} aria-label={ariaLabel || "Agent actions"} aria-haspopup="menu" aria-expanded={open} onClick={onToggle}>
+      <button ref={btnRef} type="button" className={(btnClass || "") + (open ? " is-open" : "")} aria-label={ariaLabel || t("admin.agents.agentActions")} aria-haspopup="menu" aria-expanded={open} onClick={onToggle}>
         <Icon name="more-horizontal" size={19} />
       </button>
       {open && menu}
@@ -122,6 +125,11 @@ interface CardHandlers {
 }
 
 function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRequest, onVerifyRequest, onDeleteRequest }: { a: AgentRecord } & CardHandlers) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
   const ver = VERIFICATION[a.verification] || VERIFICATION.Pending;
   const st = AGENT_STATUS[a.status] || { variant: "neutral" as const, dot: false };
   const verified = a.verification === "Verified";
@@ -129,7 +137,7 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
     <article className="ag-card">
       <div className="ag-card__status">
         <Badge variant={st.variant} size="sm" dot={st.dot} className="ag-statusbadge">
-          {a.status}
+          {tOr(`status.${a.status.toLowerCase()}`, a.status)}
         </Badge>
       </div>
       <div className="ag-actions">
@@ -158,7 +166,7 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
             onDeleteRequest(a);
           }}
           btnClass="ag-card__kebab"
-          ariaLabel={"Actions for " + a.name}
+          ariaLabel={t("admin.agents.actionsFor", { name: a.name })}
           status={a.status}
           verification={a.verification}
         />
@@ -174,7 +182,7 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
         <div className="ag-card__id">{a.id}</div>
         <div className="ag-card__verify">
           <Badge variant={ver.variant} size="sm" icon={ver.icon}>
-            {ver.label}
+            {tOr(`status.${a.verification.toLowerCase()}`, ver.label)}
           </Badge>
         </div>
       </div>
@@ -198,29 +206,29 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
 
       <div className="ag-card__stats">
         <div className="ag-stat ag-stat--listings">
-          <b>{a.listings}</b>
-          <span>Listings</span>
+          <b>{fmtNum(lang, a.listings)}</b>
+          <span>{t("admin.agents.stat.listings")}</span>
         </div>
         <div className="ag-stat">
-          <b>{a.sold}</b>
-          <span>Sold</span>
+          <b>{fmtNum(lang, a.sold)}</b>
+          <span>{t("admin.agents.stat.sold")}</span>
         </div>
         <div className="ag-stat">
-          <b>{a.rented}</b>
-          <span>Rented</span>
+          <b>{fmtNum(lang, a.rented)}</b>
+          <span>{t("admin.agents.stat.rented")}</span>
         </div>
         <div className="ag-stat">
-          <b>{a.members}</b>
-          <span>Members</span>
+          <b>{fmtNum(lang, a.members)}</b>
+          <span>{t("admin.agents.stat.members")}</span>
         </div>
       </div>
 
       <div className="ag-card__foot">
         <Button hierarchy="primary" size="md" iconLeading="id-card" onClick={() => onView(a)}>
-          View details
+          {t("admin.props.viewDetails")}
         </Button>
         <Button hierarchy="secondary" size="md" iconLeading="pencil" onClick={() => onEditRequest(a)}>
-          Edit
+          {t("admin.props.edit")}
         </Button>
       </div>
     </article>
@@ -228,13 +236,14 @@ function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRe
 }
 
 function NoResults({ inset }: { inset?: boolean }) {
+  const { t } = useLang();
   return (
     <div className="ag-noresults" style={inset ? { border: "none", boxShadow: "none", background: "transparent" } : undefined}>
       <span className="ag-noresults__art">
         <Icon name="search-x" size={26} strokeWidth={1.6} />
       </span>
-      <h3>No agents found</h3>
-      <p>Try adjusting your search or clearing the filters to see more agents.</p>
+      <h3>{t("admin.agents.empty.title")}</h3>
+      <p>{t("admin.agents.empty.sub")}</p>
     </div>
   );
 }
@@ -354,6 +363,8 @@ function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusReq
 }
 
 function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPage: number; totalItems: number; onPageChange: (p: number) => void }) {
+  const { t, lang } = useLang();
+  const rtl = isRtl(lang);
   const totalPages = Math.max(1, Math.ceil(totalItems / AGENTS_PER_PAGE));
   const start = Math.min((currentPage - 1) * AGENTS_PER_PAGE + 1, totalItems);
   const end = Math.min(currentPage * AGENTS_PER_PAGE, totalItems);
@@ -367,16 +378,17 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
   return (
     <div className="ag-tablefooter">
       <span className="ag-pagination__info">
-        Showing{" "}
-        <b>
-          {start.toLocaleString("en-US")}–{end.toLocaleString("en-US")}
-        </b>{" "}
-        of <b>{totalItems.toLocaleString("en-US")}</b> agents
+        {/* Split the translated sentence on its slots so the two counts keep their
+            emphasis without pinning the surrounding words to English order. */}
+        {interleave(t("admin.agents.showing"), {
+          range: <b key="r">{fmtNum(lang, start) + "–" + fmtNum(lang, end)}</b>,
+          total: <b key="t">{fmtNum(lang, totalItems)}</b>,
+        })}
       </span>
       <div className="ag-pagination">
         <button type="button" className="ag-page-btn ag-page-btn--nav" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>
-          <Icon name="chevron-left" size={15} />
-          Previous
+          <Icon name={rtl ? "chevron-right" : "chevron-left"} size={15} />
+          {t("admin.ap.prev")}
         </button>
         {getPages().map((p, i) =>
           p === "…" ? (
@@ -385,13 +397,13 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
             </span>
           ) : (
             <button key={p} type="button" className={"ag-page-btn" + (p === currentPage ? " is-active" : "")} onClick={() => onPageChange(p)}>
-              {p}
+              {fmtNum(lang, p)}
             </button>
           ),
         )}
         <button type="button" className="ag-page-btn ag-page-btn--nav" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)}>
-          Next
-          <Icon name="chevron-right" size={15} />
+          {t("admin.ap.nextBtn")}
+          <Icon name={rtl ? "chevron-left" : "chevron-right"} size={15} />
         </button>
       </div>
     </div>
@@ -451,7 +463,11 @@ function AgentsPanel({
   filtersOpen: boolean;
   onToggleFilters: () => void;
 }) {
-  const opt = (arr: string[]): SelectOption[] => arr.map((v) => ({ value: v, label: v }));
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
   const shown = hasActive ? rows.length : totalCount;
   const activeAdvCount = (["city", "listings", "status"] as const).filter((k) => filters[k]).length;
   return (
@@ -459,20 +475,18 @@ function AgentsPanel({
       <header className="ap-panel__head">
         <div className="ap-panel__titlerow">
           <div className="ap-panel__heading">
-            <h2 className="ap-panel__title">All agents</h2>
-            <span className="ap-panel__count">{shown.toLocaleString("en-US")}</span>
+            <h2 className="ap-panel__title">{t("admin.agents.tableTitle")}</h2>
+            <span className="ap-panel__count">{fmtNum(lang, shown)}</span>
           </div>
           {hasActive && (
             <div className="ap-resultnote">
-              <span>
-                <b>{rows.length}</b> of {totalCount.toLocaleString("en-US")} agents shown
-              </span>
+              <span>{t("admin.props.shownOf", { shown: fmtNum(lang, rows.length), total: fmtNum(lang, totalCount) })}</span>
             </div>
           )}
         </div>
 
         <div className="ap-tabrow">
-          <div className="ap-tabs" role="tablist" aria-label="Filter by verification">
+          <div className="ap-tabs" role="tablist" aria-label={t("admin.agents.filter.verification")}>
             {VERIFICATION_TABS.map((tab) => (
               <button
                 key={tab.id || "all"}
@@ -482,7 +496,7 @@ function AgentsPanel({
                 className={"ap-tab" + (filters.verification === tab.id ? " is-active" : "")}
                 onClick={() => setFilter("verification", tab.id)}
               >
-                {tab.label}
+                {tab.id === "" ? t("admin.props.tab.all") : tOr(`status.${tab.id.toLowerCase()}`, tab.label)}
               </button>
             ))}
           </div>
@@ -491,7 +505,7 @@ function AgentsPanel({
               <span className="ap-tabsearch__lead">
                 <Icon name="search" size={16} />
               </span>
-              <input type="text" value={filters.q} onChange={(e) => setFilter("q", e.target.value)} placeholder="Search agents…" aria-label="Search agents" />
+              <input type="text" value={filters.q} onChange={(e) => setFilter("q", e.target.value)} placeholder={t("admin.agents.searchPh")} aria-label={t("admin.agents.searchAria")} />
             </div>
             <button
               type="button"
@@ -500,14 +514,14 @@ function AgentsPanel({
               onClick={onToggleFilters}
             >
               <Icon name="sliders-horizontal" size={15} />
-              Filters
-              {activeAdvCount > 0 && <span className="ap-filterbtn__badge">{activeAdvCount}</span>}
+              {t("admin.props.filters")}
+              {activeAdvCount > 0 && <span className="ap-filterbtn__badge">{fmtNum(lang, activeAdvCount)}</span>}
             </button>
-            <div className="ap-viewswitch" role="tablist" aria-label="View mode">
-              <button type="button" role="tab" aria-label="Cards" aria-selected={view === "cards"} className={view === "cards" ? "is-active" : ""} onClick={() => setView("cards")}>
+            <div className="ap-viewswitch" role="tablist" aria-label={t("admin.agents.viewMode")}>
+              <button type="button" role="tab" aria-label={t("admin.agents.viewCards")} aria-selected={view === "cards"} className={view === "cards" ? "is-active" : ""} onClick={() => setView("cards")}>
                 <Icon name="layout-grid" size={16} />
               </button>
-              <button type="button" role="tab" aria-selected={view === "table"} className={view === "table" ? "is-active" : ""} onClick={() => setView("table")} aria-label="Table">
+              <button type="button" role="tab" aria-selected={view === "table"} className={view === "table" ? "is-active" : ""} onClick={() => setView("table")} aria-label={t("admin.agents.viewTable")}>
                 <Icon name="list" size={16} />
               </button>
             </div>
@@ -517,12 +531,22 @@ function AgentsPanel({
         <div className={"ap-filterbar" + (filtersOpen ? " is-open" : "")}>
           <div className="ap-filterbar__inner">
             <div className="ap-filterbar__row">
-              <CustomSelect value={filters.city} onChange={(v) => setFilter("city", v)} options={[{ value: "", label: "Location" }, ...opt(cityOptions)]} clearable />
-              <CustomSelect value={filters.status} onChange={(v) => setFilter("status", v)} options={[{ value: "", label: "Status" }, ...opt(["Active", "Suspended"])]} clearable />
+              <CustomSelect
+                value={filters.city}
+                onChange={(v) => setFilter("city", v)}
+                options={[{ value: "", label: t("admin.agents.filter.location") }, ...cityOptions.map((v) => ({ value: v, label: tOr(`city.${v}`, v) }))]}
+                clearable
+              />
+              <CustomSelect
+                value={filters.status}
+                onChange={(v) => setFilter("status", v)}
+                options={[{ value: "", label: t("admin.agents.filter.status") }, ...["Active", "Suspended"].map((v) => ({ value: v, label: t(`status.${v.toLowerCase()}`) }))]}
+                clearable
+              />
               <div className="ap-filterbar__actions">
                 <button type="button" className="ap-clearbtn" onClick={onClear}>
                   <Icon name="x" size={14} />
-                  Clear all
+                  {t("admin.props.clearAll")}
                 </button>
               </div>
             </div>
@@ -534,6 +558,7 @@ function AgentsPanel({
 }
 
 function StatusAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -543,8 +568,8 @@ function StatusAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; 
   }, [onCancel]);
   const suspending = agent.status !== "Suspended";
   const copy = suspending
-    ? { icon: "circle-pause" as IconName, iconCls: "mp-modal__icon--warn", title: "Suspend agent", body: "Are you sure you want to suspend this agent? They will no longer be able to access their account or appear to clients until reactivated.", cta: "Suspend agent", ctaCls: "mp-modal__confirm--warn" }
-    : { icon: "circle-check" as IconName, iconCls: "mp-modal__icon--brand", title: "Activate agent", body: "Are you sure you want to activate this agent? They will regain access to their account and become visible to clients again.", cta: "Activate agent", ctaCls: "mp-modal__confirm--brand" };
+    ? { icon: "circle-pause" as IconName, iconCls: "mp-modal__icon--warn", title: t("admin.agents.suspend"), body: t("admin.agents.suspendBody"), cta: t("admin.agents.suspend"), ctaCls: "mp-modal__confirm--warn" }
+    : { icon: "circle-check" as IconName, iconCls: "mp-modal__icon--brand", title: t("admin.agents.activate"), body: t("admin.agents.activateBody"), cta: t("admin.agents.activate"), ctaCls: "mp-modal__confirm--brand" };
   return createPortal(
     <div
       className="mp-modal-backdrop"
@@ -562,7 +587,7 @@ function StatusAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; 
         <p className="mp-modal__body">{copy.body}</p>
         <div className="mp-modal__actions">
           <button type="button" className="mp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           <button type="button" className={"mp-modal__confirm " + copy.ctaCls} onClick={onConfirm}>
             {copy.cta}
@@ -575,6 +600,7 @@ function StatusAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; 
 }
 
 function DeleteAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -594,18 +620,16 @@ function DeleteAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; 
           <Icon name="trash-2" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="mp-modal__title" id="ag-del-title">
-          Delete agent?
+          {t("admin.agents.deleteTitle")}
         </h2>
-        <p className="mp-modal__body">
-          Are you sure you want to delete <strong>{agent.name}</strong>? This action cannot be undone and will permanently remove the agent profile.
-        </p>
+        <p className="mp-modal__body">{t("admin.agents.deleteBody", { name: agent.name })}</p>
         <div className="mp-modal__actions">
           <button type="button" className="mp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           <button type="button" className="mp-modal__delete" onClick={onConfirm}>
             <Icon name="trash-2" size={15} />
-            Delete agent
+            {t("admin.agents.deleteAgent")}
           </button>
         </div>
       </div>
@@ -690,6 +714,7 @@ function Toast({ toast, onDismiss, onView, onUndo }: { toast: AgToast; onDismiss
 }
 
 function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate: (a: Partial<AgentRecord>) => void }) {
+  const { t } = useLang();
   const [photo, setPhoto] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -730,12 +755,12 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
             </span>
             <div>
               <h2 className="aa-modal__title" id="aa-title">
-                Add Agent
+                {t("admin.agents.addTitle")}
               </h2>
-              <p className="aa-modal__desc">Create a new agent profile and invite them to access the platform.</p>
+              <p className="aa-modal__desc">{t("admin.agents.addDesc")}</p>
             </div>
           </div>
-          <button type="button" className="aa-modal__close" aria-label="Close" onClick={onCancel}>
+          <button type="button" className="aa-modal__close" aria-label={t("admin.props.close")} onClick={onCancel}>
             <Icon name="x" size={18} />
           </button>
         </header>
@@ -744,45 +769,53 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
           <AvatarUpload value={photo} onChange={setPhoto} />
 
           <section className="aa-sect">
-            <Input label="Full Name" id="aa-name" placeholder="e.g. Lana Aziz" iconLeading="user" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <Input label={t("admin.agents.form.name")} id="aa-name" placeholder={t("admin.agents.form.namePh")} iconLeading="user" value={fullName} onChange={(e) => setFullName(e.target.value)} />
             <div className="aa-grid2">
-              <Input label="Phone Number" id="aa-phone" type="tel" placeholder="+964 770 000 0000" iconLeading="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              <Input label="Email Address" id="aa-email" type="email" placeholder="name@chiya.estate" iconLeading="mail" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input label={t("admin.agents.form.phone")} id="aa-phone" type="tel" placeholder="+964 770 000 0000" iconLeading="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input label={t("admin.agents.form.email")} id="aa-email" type="email" placeholder="name@chiya.estate" iconLeading="mail" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
           </section>
 
           <section className="aa-sect">
             <div className="aa-stack">
-              <Field label="Languages Spoken">
-                <MultiSelect values={languages} onChange={setLanguages} options={LANGUAGE_OPTIONS} placeholder="Select languages" />
+              <Field label={t("admin.agents.form.languages")}>
+                <MultiSelect values={languages} onChange={setLanguages} options={LANGUAGE_OPTIONS} placeholder={t("admin.agents.form.selectLangs")} />
               </Field>
-              <Field label="Service Areas">
-                <MultiSelect values={areas} onChange={setAreas} options={SERVICE_AREA_OPTIONS} placeholder="Select areas" />
+              <Field label={t("admin.agents.form.serviceAreas")}>
+                <MultiSelect values={areas} onChange={setAreas} options={SERVICE_AREA_OPTIONS} placeholder={t("admin.agents.form.selectAreas")} />
               </Field>
             </div>
           </section>
 
           <section className="aa-sect">
             <div className="aa-grid2">
-              <Field label="Years of Experience" htmlFor="aa-exp">
-                <CustomSelect value={experience} onChange={setExperience} options={[{ value: "", label: "Select" }, ...EXPERIENCE_OPTIONS]} />
+              <Field label={t("admin.agents.form.experience")} htmlFor="aa-exp">
+                <CustomSelect
+                  value={experience}
+                  onChange={setExperience}
+                  options={[{ value: "", label: t("admin.agents.form.select") }, ...EXPERIENCE_OPTIONS.map((o) => ({ value: o.value, label: t(`admin.agents.exp.${o.value === "<1" ? "lt1" : o.value}`) }))]}
+                />
               </Field>
-              <Field label="Status" htmlFor="aa-status">
-                <CustomSelect value={status} onChange={(v) => setStatus(v || "Active")} options={[{ value: "", label: "Select status" }, { value: "Active", label: "Active" }, { value: "Suspended", label: "Suspended" }]} />
+              <Field label={t("admin.agents.filter.status")} htmlFor="aa-status">
+                <CustomSelect
+                  value={status}
+                  onChange={(v) => setStatus(v || "Active")}
+                  options={[{ value: "", label: t("admin.agents.form.selectStatus") }, { value: "Active", label: t("status.active") }, { value: "Suspended", label: t("status.suspended") }]}
+                />
               </Field>
             </div>
             <div className="aa-invitebox">
-              <Checkbox id="aa-invite" checked={invite} onChange={(e) => setInvite(e.target.checked)} label="Send Invitation Email" description="The agent will receive an email invitation to create their password and access the platform." />
+              <Checkbox id="aa-invite" checked={invite} onChange={(e) => setInvite(e.target.checked)} label={t("admin.agents.form.invite")} description={t("admin.agents.form.inviteDesc")} />
             </div>
           </section>
         </div>
 
         <footer className="aa-modal__foot">
           <button type="button" className="mp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           <Button hierarchy="primary" size="md" type="submit" disabled={!canCreate}>
-            Create Agent
+            {t("admin.agents.createAgent")}
           </Button>
         </footer>
       </form>
@@ -792,6 +825,7 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
 }
 
 export function AgentsApp() {
+  const { t, lang } = useLang();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { agents, agentCounts, addAgent, removeAgent, updateAgent, locationTree } = useProperties();
@@ -837,7 +871,7 @@ export function AgentsApp() {
       status: values.status || "Active",
       img: values.img ?? null,
     });
-    setToast({ variant: "success", icon: "badge-check", title: "Agent Created Successfully", message: "The agent profile has been created and an invitation email has been sent." });
+    setToast({ variant: "success", icon: "badge-check", title: t("admin.agents.toast.createdTitle"), message: t("admin.agents.toast.createdMsg") });
   };
 
   const handleSaveEdit = (values: AgentEditSeed) => {
@@ -854,7 +888,7 @@ export function AgentsApp() {
       });
     }
     setEditTarget(null);
-    setToast({ variant: "success", icon: "badge-check", title: "Agent Updated Successfully", message: "The agent profile has been updated." });
+    setToast({ variant: "success", icon: "badge-check", title: t("admin.agents.toast.updatedTitle"), message: t("admin.agents.toast.updatedMsg") });
   };
 
   const handleStatusConfirm = () => {
@@ -865,8 +899,8 @@ export function AgentsApp() {
     setStatusTarget(null);
     setToast(
       suspending
-        ? { variant: "warn", icon: "circle-pause", title: "Agent suspended", message: "The agent account has been suspended successfully." }
-        : { variant: "success", icon: "circle-check", title: "Agent activated", message: "The agent account has been activated successfully." },
+        ? { variant: "warn", icon: "circle-pause", title: t("admin.agents.toast.suspendedTitle"), message: t("admin.agents.toast.suspendedMsg") }
+        : { variant: "success", icon: "circle-check", title: t("admin.agents.toast.activatedTitle"), message: t("admin.agents.toast.activatedMsg") },
     );
   };
   const handleVerifyToggle = (target: AgentRecord) => {
@@ -875,8 +909,8 @@ export function AgentsApp() {
     updateAgent(target.id, { verification: next });
     setToast(
       verifying
-        ? { variant: "success", icon: "badge-check", title: "Agent verified", message: `${target.name} is now verified and can be assigned to listings.` }
-        : { variant: "warn", icon: "shield-x", title: "Verification revoked", message: `${target.name} is now pending and can no longer be assigned to listings.` },
+        ? { variant: "success", icon: "badge-check", title: t("admin.agents.toast.verifiedTitle"), message: t("admin.agents.toast.verifiedMsg", { name: target.name }) }
+        : { variant: "warn", icon: "shield-x", title: t("admin.agents.toast.revokedTitle"), message: t("admin.agents.toast.revokedMsg", { name: target.name }) },
     );
   };
   const handleDeleteConfirm = () => {
@@ -885,7 +919,7 @@ export function AgentsApp() {
     lastDeleted.current = { agent: target, index };
     removeAgent(target.id);
     setDeleteTarget(null);
-    setToast({ variant: "danger", undo: true, title: "Agent deleted", message: target.name + " has been permanently removed from the Agents directory." });
+    setToast({ variant: "danger", undo: true, title: t("admin.agents.toast.deletedTitle"), message: t("admin.agents.toast.deletedMsg", { name: target.name }) });
   };
   const handleUndo = () => {
     const d = lastDeleted.current;
@@ -893,7 +927,12 @@ export function AgentsApp() {
       addAgent(d.agent);
       lastDeleted.current = null;
     }
-    setToast({ variant: "success", icon: "rotate-ccw", title: "Deletion undone", message: (d ? d.agent.name : "The agent") + " has been restored to the Agents directory." });
+    setToast({
+      variant: "success",
+      icon: "rotate-ccw",
+      title: t("admin.agents.toast.undoneTitle"),
+      message: t("admin.agents.toast.undoneMsg", { name: d ? d.agent.name : t("admin.agents.theAgent") }),
+    });
   };
 
   useEffect(() => {
@@ -946,19 +985,26 @@ export function AgentsApp() {
     <>
       <header className="ap-head">
         <div className="ap-head__intro">
-          <h1 className="ap-head__title">Agents</h1>
-          <p className="ap-head__sub">Manage agent profiles, verification status, assigned listings, and performance.</p>
+          <h1 className="ap-head__title">{t("admin.agents.title")}</h1>
+          <p className="ap-head__sub">{t("admin.agents.sub")}</p>
         </div>
         <div className="ap-head__action">
           <Button hierarchy="primary" size="lg" iconLeading="user-plus" onClick={() => setAddOpen(true)}>
-            Add agent
+            {t("admin.agents.add")}
           </Button>
         </div>
       </header>
 
       <div className="ap-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={agentCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard
+            key={c.key}
+            label={t(`admin.agents.kpi.${c.key}`)}
+            value={fmtNum(lang, agentCounts[c.field])}
+            icon={c.icon}
+            tone={c.tone}
+            sub={t(`admin.agents.kpiSub.${c.key}`)}
+          />
         ))}
       </div>
 

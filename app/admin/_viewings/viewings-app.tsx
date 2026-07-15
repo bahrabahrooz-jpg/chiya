@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
+import { useLang, isRtl } from "@/lib/i18n";
+import { fmtNum, monthName, valueKey, weekdayName, popupLeft } from "@/lib/fmt";
 import {
   AGENTS,
   AGENT_IMG,
@@ -17,7 +19,6 @@ import {
   EMPTY_FORM,
   KPI_CARDS,
   MEMBERS,
-  MONTHS_FULL,
   PROPERTIES,
   STATUSES,
   STATUS_TABS,
@@ -222,6 +223,7 @@ function Combobox<T extends { id: string }>({
 }
 
 function DatePicker({ id, value, onChange, placeholder, dayStatus }: { id?: string; value: string; onChange: (v: string) => void; placeholder: string; dayStatus?: Map<string, DayStatus> }) {
+  const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const pos = useAnchoredPanel(open, triggerRef, () => setOpen(false));
@@ -254,16 +256,16 @@ function DatePicker({ id, value, onChange, placeholder, dayStatus }: { id?: stri
               <Icon name="chevron-left" size={18} />
             </button>
             <span className="vw-cal__title">
-              {MONTHS_FULL[month]} {year}
+              {monthName(lang, month, true)} {fmtNum(lang, year)}
             </span>
             <button type="button" className="vw-cal__nav" aria-label="Next month" onClick={() => setView(new Date(year, month + 1, 1))}>
               <Icon name="chevron-right" size={18} />
             </button>
           </div>
           <div className="vw-cal__grid vw-cal__dow">
-            {CAL_DOW.map((w) => (
+            {CAL_DOW.map((w, i) => (
               <span key={w} className="vw-cal__dowcell">
-                {w}
+                {weekdayName(lang, i).slice(0, lang === "en" ? 2 : 3)}
               </span>
             ))}
           </div>
@@ -326,6 +328,7 @@ function DatePicker({ id, value, onChange, placeholder, dayStatus }: { id?: stri
 
 /* Custom select for the filter bar — matches the app's dropdown design. */
 function FilterSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder: string }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const pos = useAnchoredPanel(open, triggerRef, () => setOpen(false));
@@ -370,7 +373,7 @@ function FilterSelect({ value, onChange, options, placeholder }: { value: string
             className="vw-filterdate__clear"
             role="button"
             tabIndex={0}
-            aria-label="Clear location"
+            aria-label={t("admin.viewings.clearLocation")}
             onClick={(e) => {
               e.stopPropagation();
               onChange("");
@@ -387,7 +390,9 @@ function FilterSelect({ value, onChange, options, placeholder }: { value: string
   );
 }
 
-function FilterDatePicker({ value, onChange, placeholder = "Date" }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+function FilterDatePicker({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const { t, lang } = useLang();
+  const ph = placeholder ?? t("admin.viewings.filter.date");
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const pos = useAnchoredPanel(open, triggerRef, () => setOpen(false));
@@ -418,16 +423,16 @@ function FilterDatePicker({ value, onChange, placeholder = "Date" }: { value: st
               <Icon name="chevron-left" size={18} />
             </button>
             <span className="vw-cal__title">
-              {MONTHS_FULL[month]} {year}
+              {monthName(lang, month, true)} {fmtNum(lang, year)}
             </span>
             <button type="button" className="vw-cal__nav" aria-label="Next month" onClick={() => setView(new Date(year, month + 1, 1))}>
               <Icon name="chevron-right" size={18} />
             </button>
           </div>
           <div className="vw-cal__grid vw-cal__dow">
-            {CAL_DOW.map((w) => (
+            {CAL_DOW.map((w, i) => (
               <span key={w} className="vw-cal__dowcell">
-                {w}
+                {weekdayName(lang, i).slice(0, lang === "en" ? 2 : 3)}
               </span>
             ))}
           </div>
@@ -461,13 +466,13 @@ function FilterDatePicker({ value, onChange, placeholder = "Date" }: { value: st
           setOpen((o) => !o);
         }}
       >
-        <span className="vw-filterdate__label">{value ? fmtDateShort(value) : placeholder}</span>
+        <span className="vw-filterdate__label">{value ? fmtDateShort(value) : ph}</span>
         {value && (
           <span
             className="vw-filterdate__clear"
             role="button"
             tabIndex={0}
-            aria-label="Clear date"
+            aria-label={t("admin.props.clearDate")}
             onClick={(e) => {
               e.stopPropagation();
               onChange("");
@@ -586,6 +591,7 @@ export function ScheduleModal({ open, editViewing, viewings, onClose, onSuccess,
 }
 
 function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedAgentId }: { editViewing: ViewingRecord | null; viewings: ViewingRecord[]; onClose: () => void; onSuccess: (record: ViewingRecord, isEdit: boolean) => void; lockedAgentId?: string | null }) {
+  const { t } = useLang();
   const isEdit = !!editViewing;
   // In the agent surface the assigned agent is fixed to the signed-in agent.
   const initial = useMemo(() => {
@@ -675,31 +681,31 @@ function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedA
             </span>
             <div className="vw-modal__heading">
               <h2 id="vw-modal-ttl" className="vw-modal__title">
-                {isEdit ? "Edit viewing" : "Schedule viewing"}
+                {isEdit ? t("admin.viewings.editViewing") : t("admin.viewings.schedule")}
               </h2>
-              <p className="vw-modal__desc">{isEdit ? "Update this viewing's details, agent assignment, or schedule." : "Create a property viewing appointment and assign it to an agent."}</p>
+              <p className="vw-modal__desc">{isEdit ? t("admin.viewings.editDesc") : t("admin.viewings.scheduleDesc")}</p>
             </div>
           </div>
-          <button type="button" className="vw-modal__close" aria-label="Close" onClick={attemptClose}>
+          <button type="button" className="vw-modal__close" aria-label={t("admin.props.close")} onClick={attemptClose}>
             <Icon name="x" size={20} />
           </button>
         </header>
         <form className="vw-modal__form" onSubmit={submit}>
           <div className="vw-modal__body">
             <section className="vw-section">
-              <p className="vw-section__label">Viewing information</p>
+              <p className="vw-section__label">{t("admin.viewings.sectionInfo")}</p>
               <div className="vw-fields">
                 <div className="vw-field">
                   <label className="vw-field__label" htmlFor="cb-property">
-                    Property
+                    {t("admin.viewings.field.property")}
                   </label>
                   <Combobox
                     id="cb-property"
                     items={PROPERTIES}
                     value={form.property}
                     onSelect={pickProperty}
-                    placeholder="Search for a property"
-                    searchPlaceholder="Search by title or location…"
+                    placeholder={t("admin.viewings.searchProperty")}
+                    searchPlaceholder={t("admin.viewings.searchPropertyPh")}
                     filterKeys={["title", "location"]}
                     renderValue={(p) => (
                       <span className="vw-combo__prop">
@@ -739,10 +745,10 @@ function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedA
                     items={MEMBERS}
                     value={form.member}
                     onSelect={(v) => set("member", v)}
-                    placeholder="Search for a member"
-                    searchPlaceholder="Search by name, phone, or email…"
+                    placeholder={t("admin.viewings.searchMember")}
+                    searchPlaceholder={t("admin.viewings.searchMemberPh")}
                     filterKeys={["name", "phone", "email"]}
-                    createLabel="Create new member"
+                    createLabel={t("admin.viewings.createMember")}
                     onCreate={() => {}}
                     renderValue={(m) => (
                       <span className="vw-combo__person">
@@ -783,8 +789,8 @@ function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedA
                     items={AGENTS}
                     value={form.agent}
                     onSelect={(v) => set("agent", v)}
-                    placeholder="Assign an agent"
-                    searchPlaceholder="Search agents…"
+                    placeholder={t("admin.viewings.assignAgent")}
+                    searchPlaceholder={t("admin.viewings.searchAgentsPh")}
                     filterKeys={["name", "phone"]}
                     disabled={!!lockedAgentId}
                     renderValue={(a) => (
@@ -826,13 +832,13 @@ function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedA
                     <label className="vw-field__label" htmlFor="vw-date">
                       Viewing date
                     </label>
-                    <DatePicker id="vw-date" value={form.date} onChange={pickDate} placeholder="Select date" dayStatus={reserved.dayStatus} />
+                    <DatePicker id="vw-date" value={form.date} onChange={pickDate} placeholder={t("admin.viewings.selectDate")} dayStatus={reserved.dayStatus} />
                   </div>
                   <div className="vw-field">
                     <label className="vw-field__label" htmlFor="vw-time">
                       Viewing time
                     </label>
-                    <TimePicker id="vw-time" value={form.time} onChange={(v) => set("time", v)} placeholder={form.date ? "Select time" : "Pick a date first"} disabled={!form.date} reservedTimes={reservedTimes} />
+                    <TimePicker id="vw-time" value={form.time} onChange={(v) => set("time", v)} placeholder={form.date ? t("admin.viewings.selectTime") : t("admin.viewings.pickDateFirst")} disabled={!form.date} reservedTimes={reservedTimes} />
                   </div>
                 </div>
               </div>
@@ -856,7 +862,7 @@ function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedA
             </Button>
             <div className="vw-modal__foot-right">
               <Button hierarchy="primary" size="md" type="submit" disabled={!canSubmit}>
-                {isEdit ? "Save changes" : "Schedule viewing"}
+                {isEdit ? t("admin.profile.save") : t("admin.viewings.schedule")}
               </Button>
             </div>
           </footer>
@@ -872,6 +878,7 @@ function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedA
 
 /* ---------------- Row action menu ---------------- */
 function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelete }: { open: boolean; onToggle: () => void; onEdit: () => void; onView: () => void; onChangeStatus: () => void; onDelete: () => void }) {
+  const { t, lang } = useLang();
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   useEffect(() => {
@@ -882,10 +889,10 @@ function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelet
     const update = () => {
       if (!btnRef.current) return;
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: Math.max(12, r.right - 204) });
+      setPos({ top: r.bottom + 6, left: popupLeft(r, 204, isRtl(lang)) });
     };
     update();
-  }, [open]);
+  }, [open, lang]);
 
   const menu =
     pos &&
@@ -894,21 +901,21 @@ function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelet
         <div className="vw-amenu__sect">
           <button type="button" className="vw-aitem" role="menuitem" onClick={onView}>
             <Icon name="eye" size={16} />
-            View details
+            {t("admin.props.viewDetails")}
           </button>
           <button type="button" className="vw-aitem" role="menuitem" onClick={onEdit}>
             <Icon name="pencil" size={16} />
-            Edit viewing
+            {t("admin.viewings.editViewing")}
           </button>
           <button type="button" className="vw-aitem" role="menuitem" onClick={onChangeStatus}>
             <Icon name="refresh-cw" size={16} />
-            Change status
+            {t("admin.props.changeStatus")}
           </button>
         </div>
         <div className="vw-amenu__sect">
           <button type="button" className="vw-aitem vw-aitem--danger" role="menuitem" onClick={onDelete}>
             <Icon name="trash-2" size={16} />
-            Delete viewing
+            {t("admin.viewings.deleteViewing")}
           </button>
         </div>
       </div>,
@@ -917,7 +924,7 @@ function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelet
 
   return (
     <>
-      <button ref={btnRef} type="button" className={"vw-act-icon" + (open ? " is-open" : "")} aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={onToggle}>
+      <button ref={btnRef} type="button" className={"vw-act-icon" + (open ? " is-open" : "")} aria-label={t("admin.viewings.moreActions")} aria-haspopup="menu" aria-expanded={open} onClick={onToggle}>
         <Icon name="more-horizontal" size={18} />
       </button>
       {open && menu}
@@ -926,6 +933,11 @@ function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelet
 }
 
 function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, onDelete, hideAgent }: { v: ViewingRecord; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onChangeStatus: (v: ViewingRecord) => void; onDelete: (v: ViewingRecord) => void; hideAgent: boolean }) {
+  const { t } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const val = t(key);
+    return val === key ? fallback : val;
+  };
   const st = VIEWING_STATUS[v.status] || { variant: "neutral" as const, icon: "circle" as const, cls: "" };
   const city = v.property.location.split(",").pop()?.trim();
   return (
@@ -952,14 +964,14 @@ function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, 
         </div>
       </div>
       <div className="vw-col--loc">
-        <span className="vw-celllabel">Location</span>
+        <span className="vw-celllabel">{t("admin.props.th.location")}</span>
         <div className="vw-loc">
           <Icon name="map-pin" size={13} />
-          {city}
+          {city ? tOr(`city.${city}`, city) : city}
         </div>
       </div>
       <div className="vw-col--member">
-        <span className="vw-celllabel">Member</span>
+        <span className="vw-celllabel">{t("admin.members.th.member")}</span>
         <div className="vw-person">
           <Avatar name={v.member} size="sm" />
           <span className="vw-person__name">{v.member}</span>
@@ -967,7 +979,7 @@ function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, 
       </div>
       {!hideAgent && (
         <div className="vw-col--agent">
-          <span className="vw-celllabel">Agent</span>
+          <span className="vw-celllabel">{t("admin.props.th.agentShort")}</span>
           <div className="vw-person">
             <Avatar src={AGENT_IMG[v.agent] || undefined} name={v.agent} size="sm" verified />
             <span className="vw-person__name">{v.agent}</span>
@@ -975,7 +987,7 @@ function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, 
         </div>
       )}
       <div className="vw-col--dt">
-        <span className="vw-celllabel">Date &amp; Time</span>
+        <span className="vw-celllabel">{t("admin.viewings.th.dateTime")}</span>
         <div className="vw-dt">
           <span className="vw-dt__date">{v.date}</span>
           <span className="vw-dt__time">
@@ -985,9 +997,9 @@ function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, 
         </div>
       </div>
       <div className="vw-col--status">
-        <span className="vw-celllabel">Status</span>
+        <span className="vw-celllabel">{t("admin.props.th.status")}</span>
         <Badge variant={st.variant} size="sm" icon={st.icon} className={st.cls}>
-          {v.status}
+          {tOr(valueKey("status", v.status), v.status)}
         </Badge>
       </div>
       <div className="vw-col--acts" onClick={(e) => e.stopPropagation()}>
@@ -1007,28 +1019,30 @@ function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, 
 }
 
 function NoResults() {
+  const { t } = useLang();
   return (
     <div className="vw-empty">
       <span className="vw-empty__art">
         <Icon name="calendar-x" size={26} strokeWidth={1.6} />
       </span>
-      <h3>No viewings found</h3>
-      <p>Try adjusting your search or clearing the filters to see more viewings.</p>
+      <h3>{t("admin.viewings.empty.title")}</h3>
+      <p>{t("admin.viewings.empty.sub")}</p>
     </div>
   );
 }
 
 function ViewingsTable({ rows, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, onDelete, hideAgent }: { rows: ViewingRecord[]; openMenu: string | null; setOpenMenu: (x: string | null) => void; onEdit: (v: ViewingRecord) => void; onView: (v: ViewingRecord) => void; onChangeStatus: (v: ViewingRecord) => void; onDelete: (v: ViewingRecord) => void; hideAgent: boolean }) {
+  const { t } = useLang();
   return (
     <div className={"vw-table" + (hideAgent ? " vw-table--noagent" : "")}>
       <div className="vw-thead" role="row">
-        <span className="vw-th vw-col--prop">Property</span>
-        <span className="vw-th vw-col--loc">Location</span>
-        <span className="vw-th vw-col--member">Member</span>
-        {!hideAgent && <span className="vw-th vw-col--agent">Agent</span>}
-        <span className="vw-th vw-col--dt">Date &amp; Time</span>
-        <span className="vw-th vw-col--status">Status</span>
-        <span className="vw-th vw-col--acts">Actions</span>
+        <span className="vw-th vw-col--prop">{t("admin.props.th.property")}</span>
+        <span className="vw-th vw-col--loc">{t("admin.props.th.location")}</span>
+        <span className="vw-th vw-col--member">{t("admin.members.th.member")}</span>
+        {!hideAgent && <span className="vw-th vw-col--agent">{t("admin.props.th.agentShort")}</span>}
+        <span className="vw-th vw-col--dt">{t("admin.viewings.th.dateTime")}</span>
+        <span className="vw-th vw-col--status">{t("admin.props.th.status")}</span>
+        <span className="vw-th vw-col--acts">{t("admin.members.th.actions")}</span>
       </div>
       {rows.length > 0 ? rows.map((v) => <ViewingRow key={v.id} v={v} openMenu={openMenu} setOpenMenu={setOpenMenu} onEdit={onEdit} onView={onView} onChangeStatus={onChangeStatus} onDelete={onDelete} hideAgent={hideAgent} />) : <NoResults />}
     </div>
@@ -1036,6 +1050,7 @@ function ViewingsTable({ rows, openMenu, setOpenMenu, onEdit, onView, onChangeSt
 }
 
 function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPage: number; totalItems: number; onPageChange: (p: number) => void }) {
+  const { t, lang } = useLang();
   const totalPages = Math.max(1, Math.ceil(totalItems / VIEWINGS_PER_PAGE));
   const start = Math.min((currentPage - 1) * VIEWINGS_PER_PAGE + 1, totalItems);
   const end = Math.min(currentPage * VIEWINGS_PER_PAGE, totalItems);
@@ -1051,16 +1066,12 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
   return (
     <div className="vw-tablefooter">
       <span className="vw-pagination__info">
-        Showing{" "}
-        <b>
-          {start.toLocaleString("en-US")}–{end.toLocaleString("en-US")}
-        </b>{" "}
-        of <b>{totalItems.toLocaleString("en-US")}</b> viewings
+        {t("admin.viewings.showingRange", { start: fmtNum(lang, start), end: fmtNum(lang, end), total: fmtNum(lang, totalItems) })}
       </span>
       <div className="vw-pagination">
         <button type="button" className="vw-page-btn vw-page-btn--nav" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>
           <Icon name="chevron-left" size={15} />
-          Previous
+          {t("admin.props.prev")}
         </button>
         {getPages().map((p, i) =>
           p === "…" ? (
@@ -1069,12 +1080,12 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
             </span>
           ) : (
             <button key={p} type="button" className={"vw-page-btn" + (p === currentPage ? " is-active" : "")} onClick={() => onPageChange(p)}>
-              {p}
+              {fmtNum(lang, p)}
             </button>
           ),
         )}
         <button type="button" className="vw-page-btn vw-page-btn--nav" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)}>
-          Next
+          {t("admin.props.next")}
           <Icon name="chevron-right" size={15} />
         </button>
       </div>
@@ -1083,6 +1094,11 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
 }
 
 function ViewingsPanel({ filters, setFilter, onClear, hasActive, filteredCount, totalAll, cityOptions }: { filters: ViewingFilters; setFilter: (k: keyof ViewingFilters, v: string) => void; onClear: () => void; hasActive: boolean; filteredCount: number; totalAll: number; cityOptions: string[] }) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const val = t(key);
+    return val === key ? fallback : val;
+  };
   const shown = hasActive ? filteredCount : totalAll;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeAdvCount = [filters.location, filters.dateRange].filter(Boolean).length;
@@ -1090,21 +1106,21 @@ function ViewingsPanel({ filters, setFilter, onClear, hasActive, filteredCount, 
     <header className="vw-tablecard__head">
       <div className="vw-tablecard__titlerow">
         <div className="vw-tablecard__heading">
-          <h2 className="vw-tablecard__title">All viewings</h2>
-          <span className="vw-tablecard__count">{shown.toLocaleString("en-US")}</span>
+          <h2 className="vw-tablecard__title">{t("admin.viewings.tableTitle")}</h2>
+          <span className="vw-tablecard__count">{fmtNum(lang, shown)}</span>
         </div>
         {hasActive && (
           <div className="vw-tablecard__resultnote">
-            Showing <b>{filteredCount.toLocaleString("en-US")}</b> of {totalAll.toLocaleString("en-US")} viewings
+            {t("admin.viewings.showingOf", { shown: fmtNum(lang, filteredCount), total: fmtNum(lang, totalAll) })}
           </div>
         )}
       </div>
 
       <div className="vw-tabrow">
-        <div className="vw-tabs" role="tablist" aria-label="Filter by status">
+        <div className="vw-tabs" role="tablist" aria-label={t("admin.props.tabsAria")}>
           {STATUS_TABS.map((tab) => (
             <button key={tab.id} type="button" role="tab" aria-selected={filters.status === tab.id} className={"vw-tab" + (filters.status === tab.id ? " is-active" : "")} onClick={() => setFilter("status", tab.id)}>
-              {tab.label}
+              {tab.id === "" ? t("admin.viewings.tabAll") : tOr(valueKey("status", tab.id), tab.label)}
             </button>
           ))}
         </div>
@@ -1113,12 +1129,12 @@ function ViewingsPanel({ filters, setFilter, onClear, hasActive, filteredCount, 
             <span className="vw-tabsearch__lead">
               <Icon name="search" size={16} />
             </span>
-            <input type="text" value={filters.q} onChange={(e) => setFilter("q", e.target.value)} placeholder="Search viewings…" aria-label="Search viewings" />
+            <input type="text" value={filters.q} onChange={(e) => setFilter("q", e.target.value)} placeholder={t("admin.viewings.searchPh")} aria-label={t("admin.viewings.searchAria")} />
           </div>
           <button type="button" className={"vw-filterbtn" + (filtersOpen ? " is-open" : "") + (activeAdvCount > 0 && !filtersOpen ? " has-active" : "")} aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)}>
             <Icon name="sliders-horizontal" size={15} />
-            Filters
-            {activeAdvCount > 0 && <span className="vw-filterbtn__badge">{activeAdvCount}</span>}
+            {t("admin.props.filters")}
+            {activeAdvCount > 0 && <span className="vw-filterbtn__badge">{fmtNum(lang, activeAdvCount)}</span>}
           </button>
         </div>
       </div>
@@ -1126,12 +1142,12 @@ function ViewingsPanel({ filters, setFilter, onClear, hasActive, filteredCount, 
       <div className={"vw-filterbar" + (filtersOpen ? " is-open" : "")}>
         <div className="vw-filterbar__inner">
           <div className="vw-filterbar__row">
-            <FilterSelect value={filters.location} onChange={(v) => setFilter("location", v)} options={cityOptions} placeholder="Location" />
-            <FilterDatePicker value={filters.dateRange} onChange={(v) => setFilter("dateRange", v)} placeholder="Date" />
+            <FilterSelect value={filters.location} onChange={(v) => setFilter("location", v)} options={cityOptions} placeholder={t("admin.viewings.filter.location")} />
+            <FilterDatePicker value={filters.dateRange} onChange={(v) => setFilter("dateRange", v)} placeholder={t("admin.viewings.filter.date")} />
             <div className="vw-filterbar__actions">
               <button type="button" className="vw-clearbtn" onClick={onClear}>
                 <Icon name="x" size={14} />
-                Clear all
+                {t("admin.props.clearAll")}
               </button>
             </div>
           </div>
@@ -1205,6 +1221,11 @@ const VIEW_STATUS_DOT: Record<string, string> = {
   "No Show": "var(--warning-500)",
 };
 function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingRecord; onCancel: () => void; onConfirm: (status: string) => void }) {
+  const { t } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const val = t(key);
+    return val === key ? fallback : val;
+  };
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -1237,27 +1258,27 @@ function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingR
           <Icon name="refresh-cw" size={22} strokeWidth={1.9} />
         </span>
         <h3 id="vw-status-ttl" className="vw-confirm__title">
-          Change viewing status
+          {t("admin.viewings.changeStatusTitle")}
         </h3>
-        <p className="vw-confirm__msg">Select a new status for {viewing.id}.</p>
+        <p className="vw-confirm__msg">{t("admin.viewings.changeStatusMsg", { id: viewing.id })}</p>
 
         <div className="vw-statusfield" ref={fieldRef}>
           <button type="button" className={"vw-statustrigger" + (open ? " is-open" : "")} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {selected ? (
               <span className="vw-statopt__val">
                 <span className="vw-statopt__dot" style={{ background: VIEW_STATUS_DOT[selected] }} />
-                <span className="vw-statopt__text">{selected}</span>
+                <span className="vw-statopt__text">{tOr(valueKey("status", selected), selected)}</span>
               </span>
             ) : (
               <span className="vw-statustrigger__placeholder">
                 <Icon name="tag" size={16} />
-                Choose a status…
+                {t("admin.props.chooseStatus")}
               </span>
             )}
             <Icon name="chevron-down" size={16} className="vw-statustrigger__chev" />
           </button>
           {open && (
-            <div className="vw-statusdrop" role="listbox" aria-label="Viewing status">
+            <div className="vw-statusdrop" role="listbox" aria-label={t("admin.viewings.statusAria")}>
               {STATUSES.map((s) => (
                 <button
                   key={s}
@@ -1271,9 +1292,9 @@ function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingR
                   }}
                 >
                   <span className="vw-statopt__dot" style={{ background: VIEW_STATUS_DOT[s] }} />
-                  <span className="vw-statopt__text">{s}</span>
+                  <span className="vw-statopt__text">{tOr(valueKey("status", s), s)}</span>
                   <span className="vw-statopt__spacer" />
-                  {viewing.status === s && <span className="vw-statopt__current">Current</span>}
+                  {viewing.status === s && <span className="vw-statopt__current">{t("admin.props.current")}</span>}
                   {selected === s && <Icon name="check" size={16} strokeWidth={2.5} className="vw-statopt__check" />}
                 </button>
               ))}
@@ -1283,10 +1304,10 @@ function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingR
 
         <div className="vw-confirm__actions">
           <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </Button>
           <Button hierarchy="primary" size="md" type="button" iconLeading="refresh-cw" disabled={!canConfirm} onClick={() => selected && onConfirm(selected)}>
-            Change status
+            {t("admin.props.changeStatus")}
           </Button>
         </div>
       </div>
@@ -1297,6 +1318,7 @@ function ChangeStatusModal({ viewing, onCancel, onConfirm }: { viewing: ViewingR
 
 /* ---------------- Delete viewing modal ---------------- */
 function DeleteViewingModal({ viewing, onCancel, onConfirm }: { viewing: ViewingRecord; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -1311,17 +1333,15 @@ function DeleteViewingModal({ viewing, onCancel, onConfirm }: { viewing: Viewing
           <Icon name="trash-2" size={22} strokeWidth={1.9} />
         </span>
         <h3 id="vw-del-ttl" className="vw-confirm__title">
-          Delete viewing?
+          {t("admin.viewings.deleteTitle")}
         </h3>
-        <p className="vw-confirm__msg">
-          Are you sure you want to delete the viewing for <strong>{viewing.property.title}</strong> ({viewing.id})? This action cannot be undone.
-        </p>
+        <p className="vw-confirm__msg">{t("admin.viewings.deleteBody", { title: viewing.property.title, id: viewing.id })}</p>
         <div className="vw-confirm__actions">
           <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </Button>
           <Button hierarchy="destructive" size="md" type="button" iconLeading="trash-2" onClick={onConfirm}>
-            Delete viewing
+            {t("admin.viewings.deleteViewing")}
           </Button>
         </div>
       </div>
@@ -1331,6 +1351,7 @@ function DeleteViewingModal({ viewing, onCancel, onConfirm }: { viewing: Viewing
 }
 
 export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scopeAgent?: string; basePath?: string } = {}) {
+  const { t, lang } = useLang();
   const router = useRouter();
   const { locationTree } = useProperties();
   const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
@@ -1379,23 +1400,29 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
   const handleScheduled = (record: ViewingRecord, isEdit: boolean) => {
     if (isEdit) {
       setViewings((prev) => prev.map((v) => (v.id === record.id ? record : v)));
-      setToast({ title: "Viewing Updated Successfully", message: "The viewing details have been saved and the schedule refreshed." });
+      setToast({ title: t("admin.viewings.toast.updatedTitle"), message: t("admin.viewings.toast.updatedMsg") });
     } else {
       setViewings((prev) => [record, ...prev]);
-      setToast({ title: "Viewing Scheduled Successfully", message: "The viewing appointment has been created and added to the schedule." });
+      setToast({ title: t("admin.viewings.toast.scheduledTitle"), message: t("admin.viewings.toast.scheduledMsg") });
     }
   };
   const handleStatusConfirm = (status: string) => {
     const target = statusTarget!;
     setViewings((prev) => prev.map((v) => (v.id === target.id ? { ...v, status } : v)));
     setStatusTarget(null);
-    setToast({ title: "Status updated", message: `“${target.property.title}” (${target.id}) is now marked as ${status}.` });
+    setToast({
+      title: t("admin.viewings.toast.statusTitle"),
+      message: t("admin.viewings.toast.statusMsg", { title: target.property.title, id: target.id, status: t(valueKey("status", status)) }),
+    });
   };
   const handleDeleteConfirm = () => {
     const target = deleteTarget!;
     setViewings((prev) => prev.filter((v) => v.id !== target.id));
     setDeleteTarget(null);
-    setToast({ title: "Viewing deleted", message: `The viewing for “${target.property.title}” (${target.id}) has been removed.` });
+    setToast({
+      title: t("admin.viewings.toast.deletedTitle"),
+      message: t("admin.viewings.toast.deletedMsg", { title: target.property.title, id: target.id }),
+    });
   };
 
   useEffect(() => {
@@ -1429,19 +1456,26 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
     <>
       <header className="vw-head">
         <div className="vw-head__intro">
-          <h1 className="vw-head__title">Viewings</h1>
-          <p className="vw-head__sub">Manage property viewing appointments, schedules, and follow-ups.</p>
+          <h1 className="vw-head__title">{t("admin.viewings.title")}</h1>
+          <p className="vw-head__sub">{t("admin.viewings.sub")}</p>
         </div>
         <div className="vw-head__action">
           <Button hierarchy="primary" size="lg" iconLeading="calendar-plus" onClick={openSchedule}>
-            Schedule viewing
+            {t("admin.viewings.schedule")}
           </Button>
         </div>
       </header>
 
       <div className="vw-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={kpiCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard
+            key={c.key}
+            label={t(`admin.viewings.kpi.${c.key}`)}
+            value={fmtNum(lang, kpiCounts[c.field])}
+            icon={c.icon}
+            tone={c.tone}
+            sub={t(`admin.viewings.kpiSub.${c.key}`)}
+          />
         ))}
       </div>
 

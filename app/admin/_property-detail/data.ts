@@ -17,10 +17,6 @@ export const STATUS_DOT_COLOR: Record<string, string> = {
   error: "var(--error-500)", info: "var(--info-500)", gold: "var(--gold-500)", brand: "var(--brand-primary)",
 };
 
-export function fmtUSD(n: number) {
-  return "$" + n.toLocaleString("en-US");
-}
-
 const GALLERY: Record<string, string[]> = {
   villa: [
     "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1100&q=75",
@@ -124,28 +120,58 @@ function buildNotes(p: BaseProperty): NoteItem[] {
   return notes;
 }
 
-export interface TimelineEvent { icon: IconName; tone: string; title: string; desc: string; time: string }
+/**
+ * Timeline rows carry catalog keys, not sentences: `params` holds real data
+ * (ids, names) plus the raw price, which the component renders with the active
+ * locale's currency format. Titles/descriptions resolve at render time.
+ */
+export interface TimelineEvent {
+  icon: IconName;
+  tone: string;
+  titleKey: string;
+  descKey: string;
+  params?: Record<string, string>;
+  price?: number;
+  per?: string;
+  time: string;
+}
 function buildTimeline(p: BaseProperty): TimelineEvent[] {
-  const t: TimelineEvent[] = [{ icon: "plus-circle", tone: "brand", title: "Property created", desc: `Listing ${p.id} added to the platform.`, time: p.date }];
-  if (p.agent) t.push({ icon: "user-check", tone: "info", title: "Agent assigned", desc: `${p.agent.name} assigned as the listing agent.`, time: p.date });
-  t.push({ icon: "image", tone: "neutral", title: "Media uploaded", desc: "Cover image and gallery set added.", time: p.date });
-  t.push({ icon: "dollar-sign", tone: "gold", title: "Price updated", desc: `Asking price set to ${fmtUSD(p.price)}${p.per || ""}.`, time: p.listingDate !== "—" ? p.listingDate : p.date });
-  if (p.published) t.push({ icon: "globe", tone: "success", title: "Listing published", desc: "Made visible on the public website and apps.", time: p.listingDate });
-  if (p.status === "Pending") t.push({ icon: "clock", tone: "warning", title: "Submitted for approval", desc: "Awaiting admin review before publishing.", time: p.updated });
-  if (p.status === "Sold") t.push({ icon: "key", tone: "error", title: "Marked as sold", desc: "Closed and removed from active search.", time: p.updated });
-  if (p.status === "Rented") t.push({ icon: "key-round", tone: "info", title: "Marked as rented", desc: "Active rental contract recorded.", time: p.updated });
+  const t: TimelineEvent[] = [
+    { icon: "plus-circle", tone: "brand", titleKey: "admin.pd.tl.created", descKey: "admin.pd.tl.createdDesc", params: { id: p.id }, time: p.date },
+  ];
+  if (p.agent) t.push({ icon: "user-check", tone: "info", titleKey: "admin.pd.tl.agentAssigned", descKey: "admin.pd.tl.agentAssignedDesc", params: { name: p.agent.name }, time: p.date });
+  t.push({ icon: "image", tone: "neutral", titleKey: "admin.pd.tl.media", descKey: "admin.pd.tl.mediaDesc", time: p.date });
+  t.push({ icon: "dollar-sign", tone: "gold", titleKey: "admin.pd.tl.price", descKey: "admin.pd.tl.priceDesc", price: p.price, per: p.per || "", time: p.listingDate !== "—" ? p.listingDate : p.date });
+  if (p.published) t.push({ icon: "globe", tone: "success", titleKey: "admin.pd.tl.published", descKey: "admin.pd.tl.publishedDesc", time: p.listingDate });
+  if (p.status === "Pending") t.push({ icon: "clock", tone: "warning", titleKey: "admin.pd.tl.submitted", descKey: "admin.pd.tl.submittedDesc", time: p.updated });
+  if (p.status === "Sold") t.push({ icon: "key", tone: "error", titleKey: "admin.pd.tl.sold", descKey: "admin.pd.tl.soldDesc", time: p.updated });
+  if (p.status === "Rented") t.push({ icon: "key-round", tone: "info", titleKey: "admin.pd.tl.rented", descKey: "admin.pd.tl.rentedDesc", time: p.updated });
   return t.reverse();
 }
 
 const CITY_COORDS: Record<string, [number, number]> = { Erbil: [36.1901, 43.993], Sulaymaniyah: [35.5616, 45.4329], Duhok: [36.8674, 42.988] };
 
-export interface Amenity { icon: IconName; label: string }
+/**
+ * `label` stays the canonical English text (it keys de-duplication, and properties
+ * edited in-app can carry amenities the catalog never saw). Seeded amenities also
+ * get a `labelKey` so they render translated; custom ones fall back to `label`.
+ */
+export interface Amenity { icon: IconName; label: string; labelKey?: string }
 const AMENITY_POOL: Amenity[] = [
-  { icon: "waves", label: "Swimming pool" }, { icon: "trees", label: "Private garden" }, { icon: "shield-check", label: "24/7 gated security" },
-  { icon: "sun", label: "Terraces & balconies" }, { icon: "chevrons-up", label: "Elevator" }, { icon: "cpu", label: "Smart-home system" },
-  { icon: "dumbbell", label: "Home gym" }, { icon: "thermometer-sun", label: "Central heating & cooling" }, { icon: "square-parking", label: "Covered parking" },
-  { icon: "cctv", label: "CCTV surveillance" }, { icon: "zap", label: "Backup generator" }, { icon: "wifi", label: "High-speed internet" },
-  { icon: "flame", label: "Fireplace" }, { icon: "droplets", label: "Water tank & filtration" },
+  { icon: "waves", label: "Swimming pool", labelKey: "admin.pd.am.pool" },
+  { icon: "trees", label: "Private garden", labelKey: "admin.pd.am.garden" },
+  { icon: "shield-check", label: "24/7 gated security", labelKey: "admin.pd.am.security" },
+  { icon: "sun", label: "Terraces & balconies", labelKey: "admin.pd.am.terraces" },
+  { icon: "chevrons-up", label: "Elevator", labelKey: "admin.pd.am.elevator" },
+  { icon: "cpu", label: "Smart-home system", labelKey: "admin.pd.am.smartHome" },
+  { icon: "dumbbell", label: "Home gym", labelKey: "admin.pd.am.gym" },
+  { icon: "thermometer-sun", label: "Central heating & cooling", labelKey: "admin.pd.am.hvac" },
+  { icon: "square-parking", label: "Covered parking", labelKey: "admin.pd.am.parking" },
+  { icon: "cctv", label: "CCTV surveillance", labelKey: "admin.pd.am.cctv" },
+  { icon: "zap", label: "Backup generator", labelKey: "admin.pd.am.generator" },
+  { icon: "wifi", label: "High-speed internet", labelKey: "admin.pd.am.internet" },
+  { icon: "flame", label: "Fireplace", labelKey: "admin.pd.am.fireplace" },
+  { icon: "droplets", label: "Water tank & filtration", labelKey: "admin.pd.am.water" },
 ];
 function buildAmenities(p: BaseProperty, seed: number): Amenity[] {
   const t = p.type.toLowerCase();

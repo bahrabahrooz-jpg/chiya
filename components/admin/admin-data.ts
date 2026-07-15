@@ -7,7 +7,10 @@ import type { IconName } from "@/components/ui/icon";
 
 export interface NavItemDef {
   id: string;
+  /** Canonical English label (also the React key); display uses `labelKey` via t(). */
   label: string;
+  /** i18n key resolved with `t()` at render time. */
+  labelKey: string;
   icon: IconName;
   href: string;
   disabled?: boolean;
@@ -16,6 +19,7 @@ export interface NavItemDef {
 
 export interface NavGroupDef {
   label: string;
+  labelKey: string;
   items: NavItemDef[];
 }
 
@@ -23,24 +27,29 @@ export interface NavGroupDef {
 export const NAV_GROUPS: NavGroupDef[] = [
   {
     label: "Overview",
-    items: [{ id: "dashboard", label: "Dashboard", icon: "layout-dashboard", href: "/admin" }],
+    labelKey: "admin.nav.overview",
+    items: [{ id: "dashboard", label: "Dashboard", labelKey: "admin.nav.dashboard", icon: "layout-dashboard", href: "/admin" }],
   },
   {
     label: "Management",
+    labelKey: "admin.nav.management",
     items: [
-      { id: "properties", label: "Properties", icon: "building-2", href: "/admin/properties" },
-      { id: "members", label: "Members", icon: "users", href: "/admin/members" },
-      { id: "agents", label: "Agents", icon: "badge-check", href: "/admin/agents" },
-      { id: "viewings", label: "Viewings", icon: "calendar-check", href: "/admin/viewings" },
-      { id: "locations", label: "Locations", icon: "map-pin", href: "/admin/locations" },
+      { id: "properties", label: "Properties", labelKey: "admin.nav.properties", icon: "building-2", href: "/admin/properties" },
+      { id: "members", label: "Members", labelKey: "admin.nav.members", icon: "users", href: "/admin/members" },
+      { id: "agents", label: "Agents", labelKey: "admin.nav.agents", icon: "badge-check", href: "/admin/agents" },
+      { id: "reviews", label: "Reviews", labelKey: "admin.nav.reviews", icon: "star", href: "/admin/reviews" },
+      { id: "viewings", label: "Viewings", labelKey: "admin.nav.viewings", icon: "calendar-check", href: "/admin/viewings" },
+      { id: "locations", label: "Locations", labelKey: "admin.nav.locations", icon: "map-pin", href: "/admin/locations" },
     ],
   },
   {
     label: "Platform",
+    labelKey: "admin.nav.platform",
     items: [
-      { id: "reports", label: "Reports", icon: "chart-column", href: "/admin/reports" },
-      { id: "roles", label: "Roles & permissions", icon: "key-round", href: "/admin/roles" },
-      { id: "settings", label: "Settings", icon: "settings", href: "/admin/settings" },
+      { id: "reports", label: "Reports", labelKey: "admin.nav.reports", icon: "chart-column", href: "/admin/reports" },
+      { id: "roles", label: "Roles & permissions", labelKey: "admin.nav.roles", icon: "key-round", href: "/admin/roles" },
+      { id: "audit", label: "Audit log", labelKey: "admin.nav.audit", icon: "scroll-text", href: "/admin/audit" },
+      { id: "settings", label: "Settings", labelKey: "admin.nav.settings", icon: "settings", href: "/admin/settings" },
     ],
   },
 ];

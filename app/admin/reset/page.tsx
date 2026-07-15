@@ -5,24 +5,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import { useLang } from "@/lib/i18n";
 import { verifyResetToken, consumeResetToken } from "@/lib/admin-reset";
 import "../login/login.css";
 
 type Status = "checking" | "valid" | "invalid" | "expired" | "done";
 
 /** Live requirements for a new password, evaluated as the user types. */
-const CHECKS: { label: string; test: (v: string) => boolean }[] = [
-  { label: "At least 8 characters", test: (v) => v.length >= 8 },
-  { label: "One uppercase letter", test: (v) => /[A-Z]/.test(v) },
-  { label: "One lowercase letter", test: (v) => /[a-z]/.test(v) },
-  { label: "One number", test: (v) => /\d/.test(v) },
-  { label: "One special character", test: (v) => /[^A-Za-z0-9]/.test(v) },
+const CHECKS: { labelKey: string; test: (v: string) => boolean }[] = [
+  { labelKey: "admin.auth.check.len8", test: (v) => v.length >= 8 },
+  { labelKey: "admin.auth.check.upper", test: (v) => /[A-Z]/.test(v) },
+  { labelKey: "admin.auth.check.lower", test: (v) => /[a-z]/.test(v) },
+  { labelKey: "admin.auth.check.number", test: (v) => /\d/.test(v) },
+  { labelKey: "admin.auth.check.special", test: (v) => /[^A-Za-z0-9]/.test(v) },
 ];
-
-const STRENGTH_LABELS = ["Not determined", "Weak", "Fair", "Good", "Strong"];
 
 export default function AdminResetPage() {
   const router = useRouter();
+  const { t } = useLang();
   const [status, setStatus] = useState<Status>("checking");
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -49,7 +49,7 @@ export default function AdminResetPage() {
     }
   }, []);
 
-  const results = CHECKS.map((c) => ({ label: c.label, met: c.test(pw) }));
+  const results = CHECKS.map((c) => ({ labelKey: c.labelKey, met: c.test(pw) }));
   const passed = results.filter((r) => r.met).length;
   const level = pw.length === 0 ? 0 : passed <= 2 ? 1 : passed === 3 ? 2 : passed === 4 ? 3 : 4;
   const allMet = passed === CHECKS.length;
@@ -57,11 +57,11 @@ export default function AdminResetPage() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!allMet) {
-      setErr("Password doesn’t meet all the requirements.");
+      setErr("admin.auth.pwNotMet");
       return;
     }
     if (pw !== confirm) {
-      setErr("Passwords don’t match.");
+      setErr("admin.auth.pwNoMatch");
       return;
     }
     // No backend: a real API would hash + persist the new password here, then
@@ -89,19 +89,19 @@ export default function AdminResetPage() {
           <div className="al-form-inner">
             {status === "checking" && (
               <div className="al-sent">
-                <p className="al-desc">Checking your reset link…</p>
+                <p className="al-desc">{t("admin.auth.checking")}</p>
               </div>
             )}
 
             {status === "valid" && (
               <>
-                <h1 className="al-title">Create new password</h1>
+                <h1 className="al-title">{t("admin.auth.newPwTitle")}</h1>
                 <p className="al-desc">
-                  Choose a new password for <b>{email}</b>.
+                  {t("admin.auth.newPwDescPre")} <b>{email}</b>.
                 </p>
                 <form className="al-form al-form--tight" onSubmit={submit} noValidate>
                   <label className="al-field">
-                    <span className="al-label">New password</span>
+                    <span className="al-label">{t("admin.auth.newPw")}</span>
                     <span className="al-inputwrap">
                       <Icon name="lock" size={18} className="al-input__lead" />
                       <input
@@ -119,7 +119,7 @@ export default function AdminResetPage() {
                       <button
                         type="button"
                         className="al-pwtoggle"
-                        aria-label={showPw ? "Hide password" : "Show password"}
+                        aria-label={showPw ? t("admin.auth.hidePw") : t("admin.auth.showPw")}
                         onClick={() => setShowPw((v) => !v)}
                       >
                         <Icon name={showPw ? "eye-off" : "eye"} size={17} />
@@ -131,12 +131,12 @@ export default function AdminResetPage() {
                           <span key={i} className={"al-strength__seg" + (i < level ? " is-on" : "")} />
                         ))}
                       </div>
-                      <span className="al-strength__label">{STRENGTH_LABELS[level]}</span>
+                      <span className="al-strength__label">{t(`admin.auth.strength.${level}`)}</span>
                     </div>
                   </label>
 
                   <label className="al-field">
-                    <span className="al-label">Confirm new password</span>
+                    <span className="al-label">{t("admin.auth.confirmPw")}</span>
                     <span className="al-inputwrap">
                       <Icon name="lock" size={18} className="al-input__lead" />
                       <input
@@ -154,31 +154,31 @@ export default function AdminResetPage() {
                       <button
                         type="button"
                         className="al-pwtoggle"
-                        aria-label={showConfirm ? "Hide password" : "Show password"}
+                        aria-label={showConfirm ? t("admin.auth.hidePw") : t("admin.auth.showPw")}
                         onClick={() => setShowConfirm((v) => !v)}
                       >
                         <Icon name={showConfirm ? "eye-off" : "eye"} size={17} />
                       </button>
                     </span>
-                    {err && <span className="al-errhint">{err}</span>}
+                    {err && <span className="al-errhint">{t(err)}</span>}
                     <ul className="al-reqs">
                       {results.map((r) => (
-                        <li key={r.label} className={"al-reqs__item" + (r.met ? " is-met" : "")}>
+                        <li key={r.labelKey} className={"al-reqs__item" + (r.met ? " is-met" : "")}>
                           <span className="al-reqs__icon">
                             <Icon name="check" size={11} strokeWidth={3} />
                           </span>
-                          {r.label}
+                          {t(r.labelKey)}
                         </li>
                       ))}
                     </ul>
                   </label>
 
                   <Button type="submit" hierarchy="primary" size="lg" fullWidth disabled={!allMet || !confirm.trim()}>
-                    Update password
+                    {t("admin.auth.updatePw")}
                   </Button>
                   <Link className="al-back" href="/admin/login">
                     <Icon name="arrow-left" size={15} />
-                    Back to log in
+                    {t("admin.auth.backToLogin")}
                   </Link>
                 </form>
               </>
@@ -189,15 +189,13 @@ export default function AdminResetPage() {
                 <span className="al-sent__icon al-sent__icon--error">
                   <Icon name="circle-alert" size={22} />
                 </span>
-                <h1 className="al-title">{status === "expired" ? "Link expired" : "Invalid link"}</h1>
+                <h1 className="al-title">{status === "expired" ? t("admin.auth.linkExpired") : t("admin.auth.linkInvalid")}</h1>
                 <p className="al-desc">
-                  {status === "expired"
-                    ? "This reset link has expired. Request a new one to continue."
-                    : "This reset link is invalid or has already been used. Request a new one to continue."}
+                  {status === "expired" ? t("admin.auth.expiredDesc") : t("admin.auth.invalidDesc")}
                 </p>
                 <Link className="al-back" href="/admin/login">
                   <Icon name="arrow-left" size={15} />
-                  Back to log in
+                  {t("admin.auth.backToLogin")}
                 </Link>
               </div>
             )}
@@ -207,10 +205,10 @@ export default function AdminResetPage() {
                 <span className="al-sent__icon">
                   <Icon name="circle-check" size={22} />
                 </span>
-                <h1 className="al-title">Password updated</h1>
-                <p className="al-desc">You can now log in with your new password.</p>
+                <h1 className="al-title">{t("admin.auth.updatedTitle")}</h1>
+                <p className="al-desc">{t("admin.auth.updatedDesc")}</p>
                 <Button hierarchy="primary" size="lg" fullWidth onClick={() => router.push("/admin/login")}>
-                  Log in
+                  {t("admin.auth.login")}
                 </Button>
               </div>
             )}

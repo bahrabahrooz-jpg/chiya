@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/layout/page-header";
+import { useLang } from "@/lib/i18n";
 import { useClickOutside } from "@/lib/use-click-outside";
 import type { AdminNotification } from "@/lib/admin-notifications";
 // Reuse the member account screen styling so the full notifications screen
@@ -37,6 +38,7 @@ function NotifItemMenu({
   onUnread: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false), open);
@@ -51,7 +53,7 @@ function NotifItemMenu({
       <button
         type="button"
         className="acc-notif__menu"
-        aria-label="Notification actions"
+        aria-label={t("admin.notif.actions")}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -63,17 +65,17 @@ function NotifItemMenu({
           {read ? (
             <button type="button" className="acc-menu__item" role="menuitem" onClick={() => { setOpen(false); onUnread(); }}>
               <Icon name="mail" size={17} />
-              Mark as unread
+              {t("admin.notif.markUnread")}
             </button>
           ) : (
             <button type="button" className="acc-menu__item" role="menuitem" onClick={() => { setOpen(false); onRead(); }}>
               <Icon name="check" size={17} />
-              Mark as read
+              {t("admin.notif.markRead")}
             </button>
           )}
           <button type="button" className="acc-menu__item acc-menu__item--danger" role="menuitem" onClick={() => { setOpen(false); onDelete(); }}>
             <Icon name="trash-2" size={17} />
-            Delete
+            {t("admin.notif.delete")}
           </button>
         </div>
       )}
@@ -91,6 +93,7 @@ function NotifHeaderMenu({
   onMarkAll: () => void;
   onClearAll: () => void;
 }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false), open);
@@ -100,7 +103,7 @@ function NotifHeaderMenu({
       <button
         type="button"
         className="acc-hmenu"
-        aria-label="Notification options"
+        aria-label={t("admin.notif.options")}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -112,12 +115,12 @@ function NotifHeaderMenu({
           {unread > 0 && (
             <button type="button" className="acc-menu__item" role="menuitem" onClick={() => { setOpen(false); onMarkAll(); }}>
               <Icon name="check-check" size={17} />
-              Mark all as read
+              {t("admin.notif.markAll")}
             </button>
           )}
           <button type="button" className="acc-menu__item acc-menu__item--danger" role="menuitem" onClick={() => { setOpen(false); onClearAll(); }}>
             <Icon name="trash-2" size={17} />
-            Clear all
+            {t("admin.notif.clearAll")}
           </button>
         </div>
       )}
@@ -144,6 +147,7 @@ export function NotifScreen({
   subtitle: string;
 }) {
   const { all, unread, markRead, markUnread, markAllRead, remove, clear } = data;
+  const { t } = useLang();
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [confirmClear, setConfirmClear] = useState(false);
@@ -156,21 +160,21 @@ export function NotifScreen({
   };
 
   const tabs: { key: Filter; label: string; count?: number }[] = [
-    { key: "all", label: "All" },
-    { key: "unread", label: "Unread", count: unread || undefined },
+    { key: "all", label: t("admin.notif.filterAll") },
+    { key: "unread", label: t("admin.notif.filterUnread"), count: unread || undefined },
   ];
 
   return (
     <div className="acc-col">
       <PageHeader
         breadcrumb={
-          <nav className="acc-crumb" aria-label="Breadcrumb">
+          <nav className="acc-crumb" aria-label={t("admin.common.breadcrumb")}>
             <Link href={homeHref}>{homeLabel}</Link>
             <Icon name="chevron-right" size={14} />
-            <span>Notifications</span>
+            <span>{t("admin.notif.title")}</span>
           </nav>
         }
-        title="Notifications"
+        title={t("admin.notif.title")}
         subtitle={subtitle}
         actions={
           all.length > 0 ? (
@@ -184,7 +188,7 @@ export function NotifScreen({
       />
 
       {all.length > 0 && (
-        <div className="acc-seg" role="tablist" aria-label="Notification filter">
+        <div className="acc-seg" role="tablist" aria-label={t("admin.notif.filterAria")}>
           {tabs.map((tk) => (
             <button
               key={tk.key}
@@ -206,18 +210,16 @@ export function NotifScreen({
           <span className="acc-empty__ic" aria-hidden="true">
             <Icon name="bell" size={30} />
           </span>
-          <h2 className="acc-empty__title">You&rsquo;re all caught up</h2>
-          <p className="acc-empty__desc">
-            We&rsquo;ll let you know here when there&rsquo;s new activity across the platform.
-          </p>
+          <h2 className="acc-empty__title">{t("admin.notif.caughtUp")}</h2>
+          <p className="acc-empty__desc">{t("admin.notif.caughtUpDesc")}</p>
         </div>
       ) : list.length === 0 ? (
         <div className="acc-empty">
           <span className="acc-empty__ic" aria-hidden="true">
             <Icon name="check-check" size={30} />
           </span>
-          <h2 className="acc-empty__title">No unread notifications</h2>
-          <p className="acc-empty__desc">You&rsquo;ve read everything &mdash; nice work.</p>
+          <h2 className="acc-empty__title">{t("admin.notif.noUnread")}</h2>
+          <p className="acc-empty__desc">{t("admin.notif.noUnreadDesc")}</p>
         </div>
       ) : (
         <div className="acc-notiflist">
@@ -261,14 +263,14 @@ export function NotifScreen({
         open={confirmClear}
         onClose={() => setConfirmClear(false)}
         icon="trash-2"
-        title="Clear all notifications?"
-        subtitle="This removes every notification from your inbox. This can&rsquo;t be undone."
+        title={t("admin.notif.clearTitle")}
+        subtitle={t("admin.notif.clearBody")}
         size="sm"
         footerSpread
         footer={
           <>
             <Button hierarchy="secondary" onClick={() => setConfirmClear(false)}>
-              Cancel
+              {t("admin.topbar.cancel")}
             </Button>
             <Button
               hierarchy="destructive"
@@ -278,7 +280,7 @@ export function NotifScreen({
                 setConfirmClear(false);
               }}
             >
-              Clear all
+              {t("admin.notif.clearAll")}
             </Button>
           </>
         }

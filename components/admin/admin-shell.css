@@ -21,7 +21,7 @@
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--border-subtle);
+    border-inline-end: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-sm);
     z-index: 60;
   }
@@ -58,7 +58,7 @@
 
   /* collapse handle on sidebar edge — always visible, expanded & collapsed */
   .ax-collapse-btn {
-    position: absolute; bottom: 24px; right: -13px;
+    position: absolute; bottom: 24px; inset-inline-end: -13px;
     width: 26px; height: 26px; border-radius: var(--radius-full);
     display: flex; align-items: center; justify-content: center;
     background: var(--surface-card); color: var(--gray-600);
@@ -107,7 +107,7 @@
     border-radius: var(--radius-md);
     color: var(--text-secondary);
     font-family: var(--font-sans); font-size: 14.5px; font-weight: 500; letter-spacing: -.005em;
-    text-align: left; white-space: nowrap;
+    text-align: start; white-space: nowrap;
     transition: background-color .15s ease, color .15s ease;
     -webkit-tap-highlight-color: transparent;
   }
@@ -133,7 +133,7 @@
   .ax-sidebar.is-collapsed .ax-nav-item { justify-content: center; padding: 11px 0; }
   .ax-sidebar.is-collapsed .ax-nav-text,
   .ax-sidebar.is-collapsed .ax-nav-item__tag { display: none; }
-  .ax-sidebar.is-collapsed .ax-nav-item.is-active::before { left: -12px; }
+  .ax-sidebar.is-collapsed .ax-nav-item.is-active::before { inset-inline-start: -12px; }
   /* collapsed icon tooltip — rendered via portal at <body> so the
      scrolling nav can't clip it; positioned with JS (fixed). */
   .ax-nav-tip {
@@ -145,10 +145,14 @@
     animation: ax-tip-in .12s cubic-bezier(.2,.7,.2,1);
   }
   .ax-nav-tip::before {
-    content: ""; position: absolute; top: 50%; left: -4px; transform: translateY(-50%) rotate(45deg);
+    content: ""; position: absolute; top: 50%; inset-inline-start: -4px; transform: translateY(-50%) rotate(45deg);
     width: 8px; height: 8px; background: var(--gray-900); border-radius: 1px;
   }
+  /* The tip is placed by JS at the sidebar's inline-end, so its entry slide has
+     to come from that side too; keyframe transforms don't follow `direction`. */
   @keyframes ax-tip-in { from { opacity: 0; transform: translateY(-50%) translateX(-4px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+  @keyframes ax-tip-in-rtl { from { opacity: 0; transform: translateY(-50%) translateX(4px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+  [dir="rtl"] .ax-nav-tip { animation-name: ax-tip-in-rtl; }
 
   /* ---------- SIDEBAR SEARCH (Version C) ---------- */
   .ax-sb-search { flex: none; padding: 4px 16px 10px; }
@@ -163,19 +167,19 @@
   .ax-sb-search__field input::placeholder { color: var(--text-placeholder); }
   .ax-sb-search__field input:hover { border-color: var(--border-strong); }
   .ax-sb-search__field input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
-  .ax-sb-search__lead { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-brand-muted); display: flex; pointer-events: none; }
+  .ax-sb-search__lead { position: absolute; inset-inline-start: 14px; top: 50%; transform: translateY(-50%); color: var(--text-brand-muted); display: flex; pointer-events: none; }
   /* collapsed: icon-only search */
   .ax-sidebar.is-collapsed .ax-sb-search { padding: 4px 12px 10px; }
   .ax-sidebar.is-collapsed .ax-sb-search__field input { padding: 0; color: transparent; }
   .ax-sidebar.is-collapsed .ax-sb-search__field input::placeholder { color: transparent; }
-  .ax-sidebar.is-collapsed .ax-sb-search__lead { left: 50%; transform: translate(-50%,-50%); }
+  .ax-sidebar.is-collapsed .ax-sb-search__lead { inset-inline-start: 50%; transform: translate(-50%,-50%); }
 
   /* ---------- SIDEBAR FOOTER PROFILE (Version C) ---------- */
   .ax-sb-foot { flex: none; border-top: 1px solid var(--border-subtle); padding: 10px 12px; position: relative; }
   .ax-sb-profile {
     display: flex; align-items: center; gap: 11px; width: 100%;
     padding: 8px; border: 1px solid transparent; background: transparent; cursor: pointer;
-    border-radius: var(--radius-md); text-align: left; font-family: var(--font-sans);
+    border-radius: var(--radius-md); text-align: start; font-family: var(--font-sans);
     transition: background-color .15s, border-color .15s;
   }
   .ax-sb-profile:hover { background: var(--gray-50); }
@@ -192,7 +196,7 @@
 
   /* upward-opening profile dropdown */
   .ax-sb-menu {
-    position: absolute; bottom: calc(100% + 6px); left: 12px; right: 12px; z-index: 90;
+    position: absolute; bottom: calc(100% + 6px); inset-inline-start: 12px; inset-inline-end: 12px; z-index: 90;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
     overflow: hidden; transform-origin: bottom center;
@@ -200,7 +204,7 @@
   }
   @keyframes ax-pop-up { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
   .ax-sb-menu .ax-menu-item__count {
-    margin-left: auto; font-size: 11px; font-weight: 700; color: #fff;
+    margin-inline-start: auto; font-size: 11px; font-weight: 700; color: #fff;
     background: var(--brand-primary); border-radius: var(--radius-full);
     min-width: 20px; height: 20px; padding: 0 6px;
     display: inline-flex; align-items: center; justify-content: center;
@@ -244,7 +248,7 @@
   .ax-tb-search input::placeholder { color: var(--text-placeholder); }
   .ax-tb-search input:hover { border-color: var(--border-strong); }
   .ax-tb-search input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
-  .ax-tb-search__lead { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-brand-muted); pointer-events: none; display: flex; }
+  .ax-tb-search__lead { position: absolute; inset-inline-start: 14px; top: 50%; transform: translateY(-50%); color: var(--text-brand-muted); pointer-events: none; display: flex; }
 
   /* topbar action buttons */
   .ax-tb-actions { display: flex; align-items: center; gap: 6px; }
@@ -260,7 +264,7 @@
   .ax-tb-btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .ax-tb-btn.is-open { background: var(--gray-100); color: var(--gray-900); }
   .ax-tb-dot {
-    position: absolute; top: 7px; right: 7px; width: 8px; height: 8px; border-radius: 50%;
+    position: absolute; top: 7px; inset-inline-end: 7px; width: 8px; height: 8px; border-radius: 50%;
     background: var(--gold-400); border: 2px solid var(--surface-card);
   }
   .ax-tb-divider { width: 1px; height: 28px; background: var(--border-subtle); margin: 0 4px; flex: none; }
@@ -274,7 +278,7 @@
   .ax-tb-profile:hover { background: var(--gray-100); }
   .ax-tb-profile.is-open { background: var(--gray-100); }
   .ax-tb-profile:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
-  .ax-tb-profile__meta { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
+  .ax-tb-profile__meta { display: flex; flex-direction: column; line-height: 1.2; text-align: start; }
   .ax-tb-profile__name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
   .ax-tb-profile__role { font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
 
@@ -283,7 +287,7 @@
 
   /* ---------- DROPDOWNS / PANELS ---------- */
   .ax-menu {
-    position: absolute; top: calc(100% + 8px); right: 0; z-index: 90;
+    position: absolute; top: calc(100% + 8px); inset-inline-end: 0; z-index: 90;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
     overflow: hidden; transform-origin: top right;
@@ -302,7 +306,7 @@
     display: flex; align-items: center; gap: 11px; width: 100%;
     padding: 9px 11px; border: none; background: transparent; cursor: pointer;
     border-radius: var(--radius-md); color: var(--gray-700);
-    font-family: var(--font-sans); font-size: 14px; font-weight: 500; text-align: left;
+    font-family: var(--font-sans); font-size: 14px; font-weight: 500; text-align: start;
     transition: background-color .13s, color .13s;
   }
   .ax-menu-item svg { flex: none; color: var(--text-tertiary); }
@@ -312,7 +316,7 @@
   .ax-menu-item.is-danger { color: var(--error-600); }
   .ax-menu-item.is-danger svg { color: var(--error-500); }
   .ax-menu-item.is-danger:hover { background: var(--error-50); }
-  .ax-menu-item__check { margin-left: auto; color: var(--text-brand); display: flex; }
+  .ax-menu-item__check { margin-inline-start: auto; color: var(--text-brand); display: flex; }
   .ax-menu-item .ax-flag { font-size: 17px; line-height: 1; flex: none; width: 22px; text-align: center; }
   .ax-menu-item__sub { display: block; font-size: 12px; font-weight: 500; color: var(--text-tertiary); }
   .ax-menu-item__lbl { display: flex; flex-direction: column; line-height: 1.3; }
@@ -366,7 +370,7 @@
     box-shadow: var(--shadow-card);
   }
   .ax-empty__badge {
-    position: absolute; right: -10px; bottom: -10px; z-index: 2;
+    position: absolute; inset-inline-end: -10px; bottom: -10px; z-index: 2;
     width: 40px; height: 40px; border-radius: var(--radius-lg);
     display: flex; align-items: center; justify-content: center;
     background: var(--gold-400); color: var(--text-on-accent); box-shadow: var(--shadow-md);
@@ -402,14 +406,19 @@
   /* Mobile: sidebar becomes an off-canvas drawer */
   @media (max-width: 767px) {
     .ax-sidebar {
-      position: fixed; top: 0; left: 0; height: 100vh;
+      position: fixed; top: 0; inset-inline-start: 0; height: 100vh;
       width: 280px;
+      /* transform ignores `direction`, so the off-canvas offset is flipped
+         explicitly below — inset-inline-start alone would park the drawer on
+         the correct edge but still slide it out towards the wrong one. */
       transform: translateX(-105%);
       box-shadow: var(--shadow-2xl);
       transition: transform .24s cubic-bezier(.2,.7,.2,1);
     }
+    [dir="rtl"] .ax-sidebar { transform: translateX(105%); }
     .ax-sidebar.is-collapsed { width: 280px; }       /* never icon-rail on mobile */
-    .ax-sidebar.is-drawer-open { transform: translateX(0); }
+    .ax-sidebar.is-drawer-open,
+    [dir="rtl"] .ax-sidebar.is-drawer-open { transform: translateX(0); }
     .ax-sidebar .ax-collapse-btn { display: none; }   /* no collapse on mobile */
     .ax-sidebar.is-collapsed .ax-sb-logo__txt,
     .ax-sidebar.is-collapsed .ax-nav-text,
@@ -432,7 +441,7 @@
 
     /* Version C has no topbar — show a floating menu trigger to open the drawer */
     .ax-app[data-layout="C"] .ax-floating-menu {
-      display: inline-flex; position: fixed; top: 12px; left: 12px; z-index: 50;
+      display: inline-flex; position: fixed; top: 12px; inset-inline-start: 12px; z-index: 50;
       width: 44px; height: 44px; align-items: center; justify-content: center;
       background: var(--surface-card); border: 1px solid var(--border-default);
       border-radius: var(--radius-md); box-shadow: var(--shadow-md);
@@ -480,7 +489,7 @@
     color: var(--text-primary); margin: 0;
   }
   .ax-welcome__wave {
-    display: inline-block; margin-left: 8px;
+    display: inline-block; margin-inline-start: 8px;
     font-family: var(--font-sans); /* render emoji in system glyph, slightly smaller */
     font-size: .82em; vertical-align: baseline;
   }
@@ -538,7 +547,7 @@
   .ax-period__btn.is-open .ax-period__chev { transform: rotate(180deg); }
 
   .ax-period__menu {
-    position: absolute; top: calc(100% + 8px); right: 0; z-index: 30;
+    position: absolute; top: calc(100% + 8px); inset-inline-end: 0; z-index: 30;
     width: 208px; padding: 6px;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
@@ -797,7 +806,7 @@
     font-size: 12.5px; color: var(--text-tertiary); white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
-  .ax-row__end { flex: none; margin-left: auto; display: flex; align-items: center; }
+  .ax-row__end { flex: none; margin-inline-start: auto; display: flex; align-items: center; }
 
   /* tighter rhythm on small screens */
   @media (max-width: 600px) {

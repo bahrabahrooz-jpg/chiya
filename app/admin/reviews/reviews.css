@@ -1,0 +1,108 @@
+  /* ============================================================
+     REVIEWS PAGE — reuses the Members table chrome (mp- namespace)
+     and adds review-specific columns/cells (rv- namespace).
+     ============================================================ */
+
+  /* ---------- TAB ROW SPACING ----------
+     Members has a collapsible filter bar (margin-top:16px) that spaces the
+     tabs off the table. Reviews has no filter bar, so add that gap here when
+     the tab row is the last thing in the card header. */
+  .mp-tablecard__head > .mp-tabrow:last-child { padding-bottom: 16px; }
+
+  /* ---------- COLUMN TEMPLATE (overrides the members grid) ---------- */
+  .mp-table--reviews .mp-thead,
+  .mp-table--reviews .mp-row {
+    grid-template-columns:
+      minmax(184px, 1.8fr)   /* member */
+      112px                  /* rating */
+      minmax(240px, 3fr)     /* review */
+      minmax(150px, 1.4fr)   /* agent */
+      124px                  /* submitted */
+      110px                  /* status */
+      140px;                 /* actions */
+    gap: 24px;
+    min-width: 1200px;
+  }
+
+  /* ---------- RATING (stars) ---------- */
+  .rv-stars { display: inline-flex; align-items: center; gap: 2px; }
+  .rv-star { color: var(--gray-300); }
+  .rv-star.is-on { color: var(--rating-star); }
+
+  /* ---------- REVIEW TEXT (clamped to 2 lines) ---------- */
+  .rv-reviewtext {
+    margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-secondary);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; text-wrap: pretty;
+  }
+
+  /* ---------- AGENT CELL ---------- */
+  .rv-agent { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+  .rv-agent__name {
+    font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ---------- STATUS BADGE (adds the warning/pending tone) ---------- */
+  .cx-badge--warning.mp-statusbadge { color: var(--warning-600, #b54708); }
+
+  /* ---------- ACTIONS ---------- */
+  .rv-col--actions { display: flex; align-items: center; justify-content: flex-end; }
+  .rv-quickactions { display: inline-flex; align-items: center; gap: 6px; }
+  .rv-approve {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+    border: 1px solid var(--green-200); background: var(--brand-subtle); color: var(--text-brand);
+    border-radius: var(--radius-control); cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600; white-space: nowrap;
+    transition: background-color .15s, border-color .15s, color .15s;
+  }
+  .rv-approve:hover { background: var(--green-100); border-color: var(--brand-primary); }
+  .rv-approve:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .rv-reject {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex: none;
+    border: 1px solid var(--border-default); background: var(--surface-card); color: var(--text-tertiary);
+    border-radius: var(--radius-control); cursor: pointer;
+    transition: background-color .15s, border-color .15s, color .15s;
+  }
+  .rv-reject:hover { background: var(--error-50); border-color: var(--error-200); color: var(--error-600); }
+  .rv-reject:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ============================================================
+     TABLET — fold agent + submitted, tighten spacing
+     ============================================================ */
+  @media (max-width: 1180px) and (min-width: 768px) {
+    .mp-table--reviews .mp-thead,
+    .mp-table--reviews .mp-row {
+      grid-template-columns:
+        minmax(150px, 1.6fr)
+        104px
+        minmax(200px, 3fr)
+        110px
+        130px;
+      gap: 14px;
+      min-width: 0;
+    }
+    .mp-table--reviews .rv-col--agent,
+    .mp-table--reviews .mp-col--joined { display: none; }
+  }
+
+  /* ============================================================
+     MOBILE — the members card layout, with review rows labelled
+     ============================================================ */
+  @media (max-width: 767px) {
+    .mp-table--reviews .rv-col--rating,
+    .mp-table--reviews .rv-col--review,
+    .mp-table--reviews .rv-col--agent {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 9px 0; border-top: 1px solid var(--border-subtle);
+    }
+    .mp-table--reviews .rv-reviewtext { text-align: end; -webkit-line-clamp: 3; }
+    .mp-table--reviews .rv-col--actions {
+      justify-content: flex-end; padding-top: 14px; margin-top: 4px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .mp-table--reviews .rv-quickactions { width: 100%; }
+    .mp-table--reviews .rv-approve { flex: 1 1 auto; justify-content: center; height: 40px; }
+    .mp-table--reviews .rv-reject { width: 44px; height: 40px; }
+  }

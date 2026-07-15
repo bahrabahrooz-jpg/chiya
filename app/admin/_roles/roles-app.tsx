@@ -6,35 +6,41 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Switch } from "@/components/ui/choice";
+import { Modal } from "@/components/ui/modal";
 import { Tabs } from "@/components/navigation/tabs";
 import { ADMIN } from "@/components/admin";
+import { useLang } from "@/lib/i18n";
+import { fmtNum, permKey } from "@/lib/fmt";
+import { logAudit } from "../_shared/audit-log";
 import {
-  CATS,
-  CAT_FLAT,
   MATRIX_ROWS,
   ROLES_SEED,
-  TOTAL_PERMS,
   buildRole,
+  catsFor,
   cellLevel,
   countGrant,
+  flatFor,
+  totalPermsFor,
   type Cat,
   type Group,
   type RoleState,
+  type Surface,
 } from "./data";
 
 function RolesHeader({ view, onView }: { view: string; onView: (v: string) => void }) {
+  const { t } = useLang();
   return (
     <div className="rb-head">
       <div className="rb-head__intro">
-        <h1 className="rb-head__title">Roles &amp; permissions</h1>
-        <p className="rb-head__sub">Manage your team and access control across the Chiya Estate platform.</p>
+        <h1 className="rb-head__title">{t("admin.roles.title")}</h1>
+        <p className="rb-head__sub">{t("admin.roles.sub")}</p>
       </div>
-      <div className="rb-seg" role="tablist" aria-label="View">
+      <div className="rb-seg" role="tablist" aria-label={t("admin.agents.viewMode")}>
         <button type="button" role="tab" aria-selected={view === "detail"} className={"rb-seg__btn" + (view === "detail" ? " is-active" : "")} onClick={() => onView("detail")}>
-          Detail
+          {t("admin.roles.viewDetail")}
         </button>
         <button type="button" role="tab" aria-selected={view === "matrix"} className={"rb-seg__btn" + (view === "matrix" ? " is-active" : "")} onClick={() => onView("matrix")}>
-          Role matrix
+          {t("admin.roles.viewMatrix")}
         </button>
       </div>
     </div>
@@ -42,9 +48,10 @@ function RolesHeader({ view, onView }: { view: string; onView: (v: string) => vo
 }
 
 function RoleList({ roles, selectedId, onSelect, onCreate }: { roles: RoleState[]; selectedId: string; onSelect: (id: string) => void; onCreate: () => void }) {
+  const { t, lang, dir } = useLang();
   return (
-    <aside className="rb-list" aria-label="Roles">
-      <div className="rb-list__eyebrow">Select role</div>
+    <aside className="rb-list" aria-label={t("admin.roles.rolesAria")}>
+      <div className="rb-list__eyebrow">{t("admin.roles.selectRole")}</div>
       <div className="rb-list__items">
         {roles.map((r) => {
           const sel = r.id === selectedId;
@@ -56,67 +63,80 @@ function RoleList({ roles, selectedId, onSelect, onCreate }: { roles: RoleState[
               <span className="rb-roleitem__body">
                 <span className="rb-roleitem__name">{r.name}</span>
                 <span className="rb-roleitem__meta">
-                  {r.users} {r.users === 1 ? "member" : "members"}
+                  {fmtNum(lang, r.users)} {t(r.users === 1 ? "admin.roles.memberOne" : "admin.roles.memberMany")}
                 </span>
               </span>
               <span className="rb-roleitem__chev">
-                <Icon name="chevron-right" size={16} />
+                <Icon name={dir === "rtl" ? "chevron-left" : "chevron-right"} size={16} />
               </span>
             </button>
           );
         })}
       </div>
       <button type="button" className="rb-list__create" onClick={onCreate}>
-        <Icon name="plus" size={16} /> Create new role
+        <Icon name="plus" size={16} /> {t("admin.roles.createNew")}
       </button>
     </aside>
   );
 }
 
 function PermissionGroup({ cat, group, role, locked, onToggle }: { cat: Cat; group: Group; role: RoleState; locked: boolean; onToggle: (id: string, v: boolean) => void }) {
-  const perms = CAT_FLAT[cat.key].filter((p) => p.groupId === group.id);
+  const { t, lang } = useLang();
+  const surface = (role.surface ?? "admin") === "member" ? "member" : "staff";
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
+  const perms = flatFor(role.surface ?? "admin")[cat.key].filter((p) => p.groupId === group.id);
   const on = perms.filter((p) => role.grant[p.permId]).length;
   const total = perms.length;
   const allOn = on === total;
   const anyOn = on > 0;
   const setMaster = (checked: boolean) => perms.forEach((p) => onToggle(p.permId, checked));
+  const groupLabel = tOr(`perm.group.${group.id}`, group.label);
   return (
     <section className={"rb-group" + (anyOn ? "" : " is-off")}>
       <header className="rb-group__head">
-        <span className="rb-group__label">{group.label}</span>
+        <span className="rb-group__label">{groupLabel}</span>
         <span className="rb-group__count">
-          {on}/{total}
+          {fmtNum(lang, on)}/{fmtNum(lang, total)}
         </span>
         <span className="rb-group__ctrl">
-          <Switch checked={allOn} disabled={locked} aria-label={"Enable all " + group.label + " permissions"} onChange={(e) => setMaster(e.target.checked)} />
+          <Switch checked={allOn} disabled={locked} aria-label={t("admin.roles.enableAll", { group: groupLabel })} onChange={(e) => setMaster(e.target.checked)} />
         </span>
       </header>
       <div className="rb-rows">
-        {perms.map((p) => (
-          <div className="rb-row" key={p.permId}>
-            <span className="rb-row__text">
-              <span className="rb-row__label">{p.label}</span>
-              <span className="rb-row__desc">{p.desc}</span>
-            </span>
-            <span className="rb-row__sw">
-              <Switch checked={!!role.grant[p.permId]} disabled={locked} aria-label={p.label} onChange={(e) => onToggle(p.permId, e.target.checked)} />
-            </span>
-          </div>
-        ))}
+        {perms.map((p) => {
+          const label = tOr(permKey(surface, p.label) + ".label", p.label);
+          return (
+            <div className="rb-row" key={p.permId}>
+              <span className="rb-row__text">
+                <span className="rb-row__label">{label}</span>
+                <span className="rb-row__desc">{tOr(permKey(surface, p.label) + ".desc", p.desc)}</span>
+              </span>
+              <span className="rb-row__sw">
+                <Switch checked={!!role.grant[p.permId]} disabled={locked} aria-label={label} onChange={(e) => onToggle(p.permId, e.target.checked)} />
+              </span>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
 
 function PermissionsTab({ role, locked, activeCat, onCat, onToggle }: { role: RoleState; locked: boolean; activeCat: string; onCat: (k: string) => void; onToggle: (id: string, v: boolean) => void }) {
-  const cat = CATS.find((c) => c.key === activeCat) || CATS[0];
+  const surface = role.surface ?? "admin";
+  const cats = catsFor(surface);
+  const catFlat = flatFor(surface);
+  const cat = cats.find((c) => c.key === activeCat) || cats[0];
   return (
     <div className="rb-permissions">
       <nav className="rb-catnav" aria-label="Permission categories">
-        {CATS.map((c) => (
+        {cats.map((c) => (
           <button key={c.key} type="button" className={"rb-cat" + (c.key === activeCat ? " is-active" : "")} onClick={() => onCat(c.key)} aria-pressed={c.key === activeCat}>
             {c.label}
-            <span className="rb-cat__badge">{CAT_FLAT[c.key].length}</span>
+            <span className="rb-cat__badge">{catFlat[c.key].length}</span>
           </button>
         ))}
       </nav>
@@ -169,12 +189,13 @@ function IconPicker({ role, onIcon }: { role: RoleState; onIcon: (v: IconName) =
 const DESC_MAX = 240;
 
 function DescriptionField({ defaultValue, readOnly }: { defaultValue: string; readOnly?: boolean }) {
+  const { t, lang } = useLang();
   const [val, setVal] = useState(defaultValue);
   const remaining = DESC_MAX - val.length;
   return (
     <div className="rb-descfield">
-      <Textarea label="Role description" rows={3} value={val} maxLength={DESC_MAX} readOnly={readOnly} onChange={(e) => setVal(e.target.value)} />
-      <span className={"rb-desccount" + (remaining <= 20 ? " is-low" : "")}>{remaining} characters left</span>
+      <Textarea label={t("admin.roles.roleDesc")} rows={3} value={val} maxLength={DESC_MAX} readOnly={readOnly} onChange={(e) => setVal(e.target.value)} />
+      <span className={"rb-desccount" + (remaining <= 20 ? " is-low" : "")}>{t("admin.roles.charsLeft", { count: fmtNum(lang, remaining) })}</span>
     </div>
   );
 }
@@ -214,21 +235,22 @@ function DeleteRoleModal({ role, onCancel, onConfirm }: { role: RoleState; onCan
 }
 
 function RoleSettingsTab({ role, onIcon, onDelete }: { role: RoleState; onIcon: (v: IconName) => void; onDelete: () => void }) {
+  const { t } = useLang();
   const canDelete = ADMIN.role === "Super Admin" && !role.locked;
   const [confirmOpen, setConfirmOpen] = useState(false);
   return (
     <div className="rb-settings">
       <section className="rb-setblock">
         <header className="rb-setblock__head">
-          <h3 className="rb-setblock__title">Role detail</h3>
-          <p className="rb-setblock__sub">Basic identity for this role — its name, icon and description.</p>
+          <h3 className="rb-setblock__title">{t("admin.roles.detailTitle")}</h3>
+          <p className="rb-setblock__sub">{t("admin.roles.detailSub")}</p>
         </header>
         <div className="rb-setrow">
           <div className="rb-setrow__field">
-            <Input label="Role name" defaultValue={role.name} disabled={role.id === "super-admin"} />
+            <Input label={t("admin.roles.roleName")} defaultValue={role.name} disabled={role.id === "super-admin"} />
           </div>
           <div className="rb-setfield">
-            <span className="rb-setfield__label">Icon</span>
+            <span className="rb-setfield__label">{t("admin.roles.icon")}</span>
             <IconPicker role={role} onIcon={onIcon} />
           </div>
         </div>
@@ -243,11 +265,11 @@ function RoleSettingsTab({ role, onIcon, onDelete }: { role: RoleState; onIcon: 
         <section className="rb-setblock">
           <div className="rb-setbody rb-dangerrow">
             <div className="rb-danger__text">
-              <h3 className="rb-danger__title">Delete this role</h3>
-              <p className="rb-danger__sub">Permanently remove this role. Members assigned to it will lose its permissions.</p>
+              <h3 className="rb-danger__title">{t("admin.roles.deleteTitle")}</h3>
+              <p className="rb-danger__sub">{t("admin.roles.deleteSub")}</p>
             </div>
-            <Button hierarchy="secondary-destructive" iconLeading="trash-2" disabled={!canDelete} title={canDelete ? undefined : "System roles can't be deleted"} onClick={() => setConfirmOpen(true)}>
-              Delete role
+            <Button hierarchy="secondary-destructive" iconLeading="trash-2" disabled={!canDelete} title={canDelete ? undefined : t("admin.roles.systemLocked")} onClick={() => setConfirmOpen(true)}>
+              {t("admin.roles.deleteRole")}
             </Button>
           </div>
         </section>
@@ -286,15 +308,17 @@ function RoleDetail({
   onIcon: (v: IconName) => void;
   onDelete: () => void;
 }) {
+  const { t, lang } = useLang();
   const locked = !!role.locked;
-  const enabled = countGrant(role.grant);
+  const surface = role.surface ?? "admin";
+  const enabled = countGrant(role.grant, surface);
   return (
-    <section className="rb-detail" aria-label={role.name + " details"}>
+    <section className="rb-detail" aria-label={t("admin.roles.detailsAria", { name: role.name })}>
       <header className="rb-detail__head">
         <h2 className="rb-detail__name">
-          {role.name} permissions
+          {t("admin.roles.rolePermissions", { name: role.name })}
           <span className="rb-grantbadge">
-            <Icon name="shield-check" size={13} /> {enabled}/{TOTAL_PERMS} granted
+            <Icon name="shield-check" size={13} /> {t("admin.roles.granted", { on: fmtNum(lang, enabled), total: fmtNum(lang, totalPermsFor(surface)) })}
           </span>
         </h2>
         <p className="rb-detail__desc">{role.desc}</p>
@@ -305,8 +329,8 @@ function RoleDetail({
           value={detailTab}
           onChange={onDetailTab}
           items={[
-            { value: "permissions", label: "Permissions", icon: "shield-check" },
-            { value: "settings", label: "Role setting", icon: "settings" },
+            { value: "permissions", label: t("admin.roles.tab.permissions"), icon: "shield-check" },
+            { value: "settings", label: t("admin.roles.tab.settings"), icon: "settings" },
           ]}
         />
       </div>
@@ -388,24 +412,135 @@ function RoleMatrix({ roles }: { roles: RoleState[] }) {
   );
 }
 
+const ROLE_TYPES: { value: Surface; labelKey: string; icon: IconName; hintKey: string }[] = [
+  { value: "admin", labelKey: "admin.roles.surface.staff", icon: "users", hintKey: "admin.roles.surface.staffHint" },
+  { value: "member", labelKey: "admin.roles.surface.member", icon: "user", hintKey: "admin.roles.surface.memberHint" },
+];
+
+/** Gate on `open` so the form resets each time the modal is opened. */
+function CreateRoleModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (v: { name: string; desc: string; icon: IconName; surface: Surface }) => void }) {
+  if (!open) return null;
+  return <CreateRoleForm open={open} onClose={onClose} onCreate={onCreate} />;
+}
+
+function CreateRoleForm({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (v: { name: string; desc: string; icon: IconName; surface: Surface }) => void }) {
+  const { t } = useLang();
+  const [surface, setSurface] = useState<Surface>("admin");
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState<IconName>("shield-check");
+  const [desc, setDesc] = useState("");
+  const canSubmit = name.trim().length > 0;
+
+  const footer = (
+    <>
+      <Button hierarchy="secondary" size="lg" onClick={onClose}>
+        Cancel
+      </Button>
+      <Button hierarchy="primary" size="lg" iconLeading="plus" disabled={!canSubmit} onClick={() => onCreate({ name, desc, icon, surface })}>
+        Create role
+      </Button>
+    </>
+  );
+
+  return (
+    <Modal open={open} onClose={onClose} size="lg" icon="shield-check" title={t("admin.roles.createNew")} subtitle={t("admin.roles.createSub")} footer={footer} className="rb-createmodal">
+      <div className="rb-create">
+        <div className="rb-create__field">
+          <span className="rb-create__label">{t("admin.roles.roleType")}</span>
+          <div className="rb-typegrid" role="radiogroup" aria-label={t("admin.roles.roleType")}>
+            {ROLE_TYPES.map((rt) => (
+              <button key={rt.value} type="button" role="radio" aria-checked={surface === rt.value} className={"rb-typecard" + (surface === rt.value ? " is-active" : "")} onClick={() => setSurface(rt.value)}>
+                <span className="rb-typecard__icon">
+                  <Icon name={rt.icon} size={18} />
+                </span>
+                <span className="rb-typecard__body">
+                  <span className="rb-typecard__label">{t(rt.labelKey)}</span>
+                  <span className="rb-typecard__hint">{t(rt.hintKey)}</span>
+                </span>
+                {surface === rt.value && (
+                  <span className="rb-typecard__check">
+                    <Icon name="check" size={15} strokeWidth={2.6} />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Input label={t("admin.roles.roleName")} value={name} autoFocus iconLeading="shield" placeholder={t("admin.roles.roleNamePh")} onChange={(e) => setName(e.target.value)} />
+
+        <div className="rb-create__field">
+          <span className="rb-create__label">{t("admin.roles.icon")}</span>
+          <div className="rb-create__icons" role="radiogroup" aria-label={t("admin.roles.roleIcon")}>
+            {ROLE_ICONS.map((name) => (
+              <button key={name} type="button" role="radio" aria-checked={name === icon} className={"rb-iconpick__opt" + (name === icon ? " is-active" : "")} onClick={() => setIcon(name)} aria-label={name}>
+                <Icon name={name} size={18} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Textarea label={t("admin.roles.roleDesc")} rows={3} value={desc} maxLength={DESC_MAX} placeholder={t("admin.roles.roleDescPh")} onChange={(e) => setDesc(e.target.value)} />
+      </div>
+    </Modal>
+  );
+}
+
 export function RolesApp() {
-  const [roles, setRoles] = useState<RoleState[]>(() => ROLES_SEED.map((r) => ({ ...r, ...buildRole(r.spec) })));
+  const [roles, setRoles] = useState<RoleState[]>(() => ROLES_SEED.map((r) => ({ ...r, surface: r.surface ?? "admin", ...buildRole(r.spec, r.surface ?? "admin") })));
   const [view, setView] = useState("detail");
   const [selectedId, setSelectedId] = useState("super-admin");
   const [detailTab, setDetailTab] = useState("permissions");
   const [activeCat, setActiveCat] = useState("dashboard");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const selectRole = (id: string) => {
+    const role = roles.find((r) => r.id === id);
     setSelectedId(id);
     setDetailTab("permissions");
-    setActiveCat("dashboard");
+    setActiveCat(catsFor(role?.surface ?? "admin")[0].key);
   };
   const toggle = (permId: string, val: boolean) => setRoles((rs) => rs.map((r) => (r.id === selectedId ? { ...r, grant: { ...r.grant, [permId]: val } } : r)));
   const setIcon = (icon: IconName) => setRoles((rs) => rs.map((r) => (r.id === selectedId ? { ...r, icon } : r)));
   const deleteRole = () => {
+    const removed = roles.find((r) => r.id === selectedId);
     const next = roles.find((r) => r.id !== selectedId);
+    logAudit({ category: "role", actionKey: "audit.action.deletedRole", target: removed?.name ?? selectedId, targetId: selectedId });
     setRoles((rs) => rs.filter((r) => r.id !== selectedId));
     if (next) selectRole(next.id);
+  };
+  const createRole = (v: { name: string; desc: string; icon: IconName; surface: Surface }) => {
+    const id = "role-" + Date.now().toString(36);
+    const created = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const tone = v.surface === "member" ? "info" : "brand";
+    const newRole: RoleState = {
+      id,
+      name: v.name.trim(),
+      tone,
+      dot: tone,
+      icon: v.icon,
+      system: false,
+      surface: v.surface,
+      status: "Active",
+      users: 0,
+      created,
+      desc: v.desc.trim(),
+      spec: {},
+      ...buildRole({}, v.surface),
+    };
+    logAudit({
+      category: "role",
+      actionKey: "audit.action.createdRole",
+      target: newRole.name,
+      targetId: id,
+      metaKey: v.surface === "member" ? "audit.meta.memberSurface" : "audit.meta.adminSurface",
+    });
+    setRoles((rs) => [...rs, newRole]);
+    setCreateOpen(false);
+    setView("detail");
+    setSelectedId(id);
+    setDetailTab("permissions");
+    setActiveCat(catsFor(v.surface)[0].key);
   };
 
   const selectedRole = roles.find((r) => r.id === selectedId) || roles[0];
@@ -415,12 +550,13 @@ export function RolesApp() {
       <RolesHeader view={view} onView={setView} />
       {view === "detail" ? (
         <div className="rb-split">
-          <RoleList roles={roles} selectedId={selectedId} onSelect={selectRole} onCreate={() => {}} />
+          <RoleList roles={roles} selectedId={selectedId} onSelect={selectRole} onCreate={() => setCreateOpen(true)} />
           <RoleDetail role={selectedRole} detailTab={detailTab} onDetailTab={setDetailTab} activeCat={activeCat} onCat={setActiveCat} onToggle={toggle} onIcon={setIcon} onDelete={deleteRole} />
         </div>
       ) : (
         <RoleMatrix roles={roles} />
       )}
+      <CreateRoleModal open={createOpen} onClose={() => setCreateOpen(false)} onCreate={createRole} />
     </>
   );
 }

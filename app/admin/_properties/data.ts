@@ -9,7 +9,6 @@ export {
   PROPERTIES,
   AGENTS_LIST,
   countProperties,
-  fmtUSD,
 } from "../_data/catalog";
 export type { PropertyRecord, AgentRef, OwnerRef, PropertyCounts } from "../_data/catalog";
 

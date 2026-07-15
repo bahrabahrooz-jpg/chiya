@@ -4,6 +4,8 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import { Icon } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { StatCard } from "@/components/data/stat-card";
+import { useLang } from "@/lib/i18n";
+import { fmtNum, localizeDigits } from "@/lib/fmt";
 import { useProperties } from "../_shared/properties-store";
 import { VIEWINGS } from "../_viewings/data";
 import {
@@ -54,12 +56,13 @@ function ChartCard({ title, desc, right, children, className }: { title: string;
   );
 }
 
-function Segmented({ options, value, onChange, ariaLabel }: { options: string[]; value: string; onChange: (v: string) => void; ariaLabel: string }) {
+/** `options` are stable ids; `labelFor` renders their display text. */
+function Segmented({ options, value, onChange, ariaLabel, labelFor }: { options: string[]; value: string; onChange: (v: string) => void; ariaLabel: string; labelFor?: (o: string) => string }) {
   return (
     <div className="ax-seg" role="tablist" aria-label={ariaLabel}>
       {options.map((o) => (
         <button key={o} type="button" role="tab" aria-selected={o === value} className={"ax-seg__btn" + (o === value ? " is-active" : "")} onClick={() => onChange(o)}>
-          {o}
+          {labelFor ? labelFor(o) : o}
         </button>
       ))}
     </div>
@@ -67,6 +70,7 @@ function Segmented({ options, value, onChange, ariaLabel }: { options: string[];
 }
 
 function LineChart({ labels, series }: { labels: string[]; series: Series[] }) {
+  const { t, lang } = useLang();
   const wrapRef = useRef<HTMLDivElement>(null);
   const W = useElementWidth(wrapRef);
   const [hover, setHover] = useState<number | null>(null);
@@ -94,7 +98,7 @@ function LineChart({ labels, series }: { labels: string[]; series: Series[] }) {
   return (
     <div className="ax-chart" ref={wrapRef}>
       {W > 0 && primary && (
-        <svg width={W} height={H} role="img" aria-label="Properties added by month">
+        <svg width={W} height={H} role="img" aria-label={t("admin.reports.perf.aria")}>
           <defs>
             <linearGradient id="rp-area" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--green-700)" stopOpacity="0.14" />
@@ -105,7 +109,7 @@ function LineChart({ labels, series }: { labels: string[]; series: Series[] }) {
             <g key={k}>
               <line className={"ax-grid-line" + (k === 0 ? " ax-grid-base" : "")} x1={PAD.l} x2={W - PAD.r} y1={yAt(g)} y2={yAt(g)} />
               <text className="ax-chart__ylab" x={PAD.l - 10} y={yAt(g) + 4} textAnchor="end">
-                {g.toLocaleString()}
+                {fmtNum(lang, g)}
               </text>
             </g>
           ))}
@@ -137,8 +141,8 @@ function LineChart({ labels, series }: { labels: string[]; series: Series[] }) {
           {series.map((s) => (
             <div className="ax-chart__tip-row" key={s.key}>
               <span className="ax-chart__tip-dot" style={{ background: s.color }} />
-              <span className="ax-chart__tip-label">{s.label}</span>
-              <span className="ax-chart__tip-val">{s.data[hover].toLocaleString()}</span>
+              <span className="ax-chart__tip-label">{t(`admin.reports.series.${s.key}`)}</span>
+              <span className="ax-chart__tip-val">{fmtNum(lang, s.data[hover])}</span>
             </div>
           ))}
         </div>
@@ -148,12 +152,13 @@ function LineChart({ labels, series }: { labels: string[]; series: Series[] }) {
 }
 
 function Legend({ series, visible, onToggle }: { series: Series[]; visible: Record<string, boolean>; onToggle: (k: string) => void }) {
+  const { t } = useLang();
   return (
-    <div className="ax-legend" role="group" aria-label="Toggle metrics" style={{ margin: 0 }}>
+    <div className="ax-legend" role="group" aria-label={t("admin.dash.legendAria")} style={{ margin: 0 }}>
       {series.map((s) => (
         <button key={s.key} type="button" className={"ax-legend__item" + (visible[s.key] ? "" : " is-off")} aria-pressed={visible[s.key]} onClick={() => onToggle(s.key)}>
           <span className="ax-legend__dot" style={{ background: visible[s.key] ? s.color : "var(--gray-300)" }} />
-          {s.label}
+          {t(`admin.reports.series.${s.key}`)}
         </button>
       ))}
     </div>
@@ -161,6 +166,7 @@ function Legend({ series, visible, onToggle }: { series: Series[]; visible: Reco
 }
 
 function PropertyPerformance({ labels, series }: { labels: string[]; series: Series[] }) {
+  const { t } = useLang();
   const [visible, setVisible] = useState<Record<string, boolean>>(() => Object.fromEntries(series.map((s) => [s.key, true])));
   const toggle = (k: string) =>
     setVisible((v) => {
@@ -170,13 +176,14 @@ function PropertyPerformance({ labels, series }: { labels: string[]; series: Ser
     });
   const shown = series.filter((s) => visible[s.key] ?? true);
   return (
-    <ChartCard title="Property performance" desc="New listings added over the selected period." right={series.length > 1 ? <Legend series={series} visible={visible} onToggle={toggle} /> : undefined}>
+    <ChartCard title={t("admin.reports.perf.title")} desc={t("admin.reports.perf.desc")} right={series.length > 1 ? <Legend series={series} visible={visible} onToggle={toggle} /> : undefined}>
       <LineChart labels={labels} series={shown} />
     </ChartCard>
   );
 }
 
 function Donut({ status }: { status: StatusSlice[] }) {
+  const { t, lang } = useLang();
   const total = status.reduce((a, s) => a + s.value, 0);
   const [active, setActive] = useState<number | null>(null);
   const size = 200,
@@ -194,7 +201,7 @@ function Donut({ status }: { status: StatusSlice[] }) {
   const center = active != null ? status[active] : null;
   return (
     <div className="rp-donut">
-      <div className="rp-donut__chart" role="img" aria-label="Property status breakdown">
+      <div className="rp-donut__chart" role="img" aria-label={t("admin.reports.status.title")}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--gray-100)" strokeWidth={stroke} />
           <g transform={`rotate(-90 ${cx} ${cy})`}>
@@ -218,7 +225,7 @@ function Donut({ status }: { status: StatusSlice[] }) {
           </g>
         </svg>
         <div className="rp-donut__center">
-          <span className="rp-donut__num">{(center ? center.value : total).toLocaleString()}</span>
+          <span className="rp-donut__num">{fmtNum(lang, center ? center.value : total)}</span>
           <span className="rp-donut__lbl">{center ? center.label : "Total properties"}</span>
         </div>
       </div>
@@ -226,9 +233,9 @@ function Donut({ status }: { status: StatusSlice[] }) {
         {status.map((s, i) => (
           <li key={s.key} className={"rp-legrow" + (active === i ? " is-active" : "")} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)}>
             <span className="rp-legrow__dot" style={{ background: s.color }} />
-            <span className="rp-legrow__label">{s.label}</span>
+            <span className="rp-legrow__label">{t(`admin.reports.slice.${s.key}`)}</span>
             <span className="rp-legrow__pct">{total ? Math.round((s.value / total) * 100) : 0}%</span>
-            <span className="rp-legrow__val">{s.value.toLocaleString()}</span>
+            <span className="rp-legrow__val">{fmtNum(lang, s.value)}</span>
           </li>
         ))}
       </ul>
@@ -237,6 +244,7 @@ function Donut({ status }: { status: StatusSlice[] }) {
 }
 
 function GroupedBars({ labels, series }: { labels: string[]; series: Series[] }) {
+  const { t, lang } = useLang();
   const wrapRef = useRef<HTMLDivElement>(null);
   const W = useElementWidth(wrapRef);
   const [hover, setHover] = useState<number | null>(null);
@@ -257,12 +265,12 @@ function GroupedBars({ labels, series }: { labels: string[]; series: Series[] })
   return (
     <div className="ax-chart" ref={wrapRef}>
       {W > 0 && (
-        <svg width={W} height={H} role="img" aria-label="Sales and rentals by month">
+        <svg width={W} height={H} role="img" aria-label={t("admin.reports.trends.aria")}>
           {gridYs.map((g, k) => (
             <g key={k}>
               <line className={"ax-grid-line" + (k === 0 ? " ax-grid-base" : "")} x1={PAD.l} x2={W - PAD.r} y1={yAt(g)} y2={yAt(g)} />
               <text className="ax-chart__ylab" x={PAD.l - 10} y={yAt(g) + 4} textAnchor="end">
-                {g.toLocaleString()}
+                {fmtNum(lang, g)}
               </text>
             </g>
           ))}
@@ -295,8 +303,8 @@ function GroupedBars({ labels, series }: { labels: string[]; series: Series[] })
           {series.map((s) => (
             <div className="ax-chart__tip-row" key={s.key}>
               <span className="ax-chart__tip-dot" style={{ background: s.color }} />
-              <span className="ax-chart__tip-label">{s.label}</span>
-              <span className="ax-chart__tip-val">{s.data[hover].toLocaleString()}</span>
+              <span className="ax-chart__tip-label">{t(`admin.reports.series.${s.key}`)}</span>
+              <span className="ax-chart__tip-val">{fmtNum(lang, s.data[hover])}</span>
             </div>
           ))}
         </div>
@@ -306,16 +314,17 @@ function GroupedBars({ labels, series }: { labels: string[]; series: Series[] })
 }
 
 function SalesRentals({ labels, series }: { labels: string[]; series: Series[] }) {
+  const { t } = useLang();
   return (
     <ChartCard
-      title="Sales & rentals trends"
-      desc="Closed sales against rentals over the selected period."
+      title={t("admin.reports.trends.title")}
+      desc={t("admin.reports.trends.desc")}
       right={
         <div className="ax-legend" style={{ margin: 0 }}>
           {series.map((s) => (
             <span key={s.key} className="ax-legend__item" style={{ cursor: "default" }}>
               <span className="ax-legend__dot" style={{ background: s.color }} />
-              {s.label}
+              {t(`admin.reports.series.${s.key}`)}
             </span>
           ))}
         </div>
@@ -327,20 +336,37 @@ function SalesRentals({ labels, series }: { labels: string[]; series: Series[] }
 }
 
 function TopLocations({ data }: { data: Record<string, LocationRow[]> }) {
+  const { t, lang } = useLang();
   const [scope, setScope] = useState("Cities");
   const rows = data[scope] ?? [];
   const max = Math.max(1, ...rows.map((r) => r.value));
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
   return (
-    <ChartCard title="Top performing locations" desc="Listings ranked by activity across the selected geography." right={<Segmented options={["Cities", "Areas", "Projects"]} value={scope} onChange={setScope} ariaLabel="Location scope" />}>
+    <ChartCard
+      title={t("admin.reports.locations.title")}
+      desc={t("admin.reports.locations.desc")}
+      right={
+        <Segmented
+          options={["Cities", "Areas", "Projects"]}
+          labelFor={(o) => t(`admin.reports.scope.${o}`)}
+          value={scope}
+          onChange={setScope}
+          ariaLabel={t("admin.reports.locations.aria")}
+        />
+      }
+    >
       <ul className="rp-hbars">
         {rows.map((r, i) => (
           <li className="rp-hbar" key={r.name}>
-            <span className="rp-hbar__rank">{i + 1}</span>
-            <span className="rp-hbar__name">{r.name}</span>
+            <span className="rp-hbar__rank">{fmtNum(lang, i + 1)}</span>
+            <span className="rp-hbar__name">{tOr(`city.${r.name}`, r.name)}</span>
             <span className="rp-hbar__track">
               <span className="rp-hbar__fill" style={{ width: `${(r.value / max) * 100}%`, background: i === 0 ? C.green : "var(--green-300)" }} />
             </span>
-            <span className="rp-hbar__val">{r.value.toLocaleString()}</span>
+            <span className="rp-hbar__val">{fmtNum(lang, r.value)}</span>
           </li>
         ))}
       </ul>
@@ -460,16 +486,17 @@ function MemberActivity({ trends }: { trends: MemberTrend[] }) {
 
 interface ToastItem { id: number; kind: string; rangeLabel: string }
 function ExportToast({ toast, onDone }: { toast: ToastItem; onDone: () => void }) {
+  const { t } = useLang();
   const [show, setShow] = useState(false);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setShow(true));
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setShow(false);
       setTimeout(onDone, 320);
     }, 3600);
     return () => {
       cancelAnimationFrame(raf);
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -478,8 +505,8 @@ function ExportToast({ toast, onDone }: { toast: ToastItem; onDone: () => void }
         <Icon name={toast.kind === "Excel" ? "sheet" : "file-text"} size={18} />
       </span>
       <div className="rp-toast__body">
-        <p className="rp-toast__title">Preparing {toast.kind} export</p>
-        <p className="rp-toast__msg">Your report for “{toast.rangeLabel}” is being generated.</p>
+        <p className="rp-toast__title">{t("admin.reports.toast.title")}</p>
+        <p className="rp-toast__msg">{t("admin.reports.toast.msg", { range: toast.rangeLabel })}</p>
       </div>
       <button
         type="button"
@@ -496,11 +523,14 @@ function ExportToast({ toast, onDone }: { toast: ToastItem; onDone: () => void }
 }
 
 export function ReportsApp() {
+  const { t, lang } = useLang();
   const [periodId, setPeriodId] = useState("Month");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const { properties, members, agents } = useProperties();
 
   const period = PERIODS.find((p) => p.short === periodId) ?? PERIODS[1];
+  /** The period as a noun ("week") for the "vs previous …" sub-labels. */
+  const periodWord = t(`admin.reports.periodWord.${period.short}`);
   const days = period.days;
   const kpis = useMemo(() => buildPeriodKpis(properties, members, VIEWINGS, days, period.label), [properties, members, days, period.label]);
   const perf = useMemo(() => buildListingsTrend(properties, days), [properties, days]);
@@ -511,39 +541,54 @@ export function ReportsApp() {
   const memberTrends = useMemo(() => buildMemberTrends(members, VIEWINGS, days), [members, days]);
 
   const onExport = (kind: string) => {
-    setToasts((ts) => [...ts, { id: Date.now(), kind, rangeLabel: `the last ${period.label}` }]);
+    setToasts((ts) => [...ts, { id: Date.now(), kind, rangeLabel: t("admin.reports.lastPeriod", { period: periodWord }) }]);
   };
 
   return (
     <>
       <div className="rp-head">
         <div className="rp-head__intro">
-          <h1 className="rp-head__title">Reports</h1>
-          <p className="rp-head__sub">Track business performance, property activity, sales, rentals, agent performance, and member engagement.</p>
+          <h1 className="rp-head__title">{t("admin.reports.title")}</h1>
+          <p className="rp-head__sub">{t("admin.reports.sub")}</p>
         </div>
         <div className="rp-head__tools">
           <div className="rp-head__exports">
             <button type="button" className="rp-xbtn" onClick={() => onExport("data")}>
-              <Icon name="download" size={17} /> Export data
+              <Icon name="download" size={17} /> {t("admin.reports.exportData")}
             </button>
           </div>
         </div>
       </div>
 
       <div className="rp-periodbar">
-        <Segmented options={PERIODS.map((p) => p.short)} value={periodId} onChange={setPeriodId} ariaLabel="Reporting period" />
+        <Segmented
+          options={PERIODS.map((p) => p.short)}
+          labelFor={(o) => t(`admin.reports.period.${o}`)}
+          value={periodId}
+          onChange={setPeriodId}
+          ariaLabel={t("admin.reports.periodAria")}
+        />
       </div>
 
-      <section className="rp-kpis" aria-label="Summary metrics">
+      <section className="rp-kpis" aria-label={t("admin.reports.summaryAria")}>
         {kpis.map((c) => (
-          <StatCard key={c.key} label={c.label} value={c.value} icon={c.icon} tone={c.tone} delta={c.delta} deltaDir={c.dir} sub={c.sub} />
+          <StatCard
+            key={c.key}
+            label={t(`admin.reports.kpi.${c.key}`)}
+            value={localizeDigits(lang, c.value)}
+            icon={c.icon}
+            tone={c.tone}
+            delta={c.delta ? localizeDigits(lang, c.delta) : undefined}
+            deltaDir={c.dir}
+            sub={t(c.key === "agents" ? "admin.reports.inLast" : "admin.reports.vsPrev", { period: periodWord })}
+          />
         ))}
       </section>
 
       <div className="rp-stack">
         <PropertyPerformance labels={perf.labels} series={perf.series} />
         <div className="rp-split">
-          <ChartCard title="Property status breakdown" desc="Share of inventory by lifecycle status.">
+          <ChartCard title={t("admin.reports.status.title")} desc={t("admin.reports.status.desc")}>
             <Donut status={status} />
           </ChartCard>
           <SalesRentals labels={sr.labels} series={sr.series} />

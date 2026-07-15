@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import { useLang } from "@/lib/i18n";
 import { useAdminAuth } from "@/lib/admin-auth";
 import { createResetToken } from "@/lib/admin-reset";
 import "./login.css";
@@ -12,6 +13,7 @@ type Mode = "signin" | "forgot";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { t } = useLang();
   const { login } = useAdminAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -80,18 +82,18 @@ export default function AdminLoginPage() {
           <div className="al-form-inner">
             {mode === "signin" && (
               <>
-                <h1 className="al-title">Welcome back</h1>
-                <p className="al-desc">Log in to access the admin dashboard.</p>
+                <h1 className="al-title">{t("admin.auth.welcome")}</h1>
+                <p className="al-desc">{t("admin.auth.loginDesc")}</p>
                 <form className="al-form" onSubmit={signIn} noValidate>
                   <label className="al-field">
-                    <span className="al-label">Email</span>
+                    <span className="al-label">{t("admin.auth.email")}</span>
                     <span className="al-inputwrap">
                       <Icon name="mail" size={18} className="al-input__lead" />
                       <input
                         type="email"
                         required
                         className={"al-input" + (emailErr ? " al-input--error" : "")}
-                        placeholder="you@chiya.estate"
+                        placeholder={t("admin.auth.emailPh")}
                         value={email}
                         onChange={(e) => {
                           setEmail(e.target.value);
@@ -101,11 +103,11 @@ export default function AdminLoginPage() {
                         autoComplete="email"
                       />
                     </span>
-                    {emailErr && <span className="al-errhint">Enter a valid email address.</span>}
+                    {emailErr && <span className="al-errhint">{t("admin.auth.emailErr")}</span>}
                   </label>
 
                   <label className="al-field">
-                    <span className="al-label">Password</span>
+                    <span className="al-label">{t("admin.auth.password")}</span>
                     <span className="al-inputwrap">
                       <Icon name="lock" size={18} className="al-input__lead" />
                       <input
@@ -121,11 +123,11 @@ export default function AdminLoginPage() {
                         aria-invalid={pwErr}
                         autoComplete="current-password"
                       />
-                      <button type="button" className="al-pwtoggle" aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((v) => !v)}>
+                      <button type="button" className="al-pwtoggle" aria-label={showPw ? t("admin.auth.hidePw") : t("admin.auth.showPw")} onClick={() => setShowPw((v) => !v)}>
                         <Icon name={showPw ? "eye-off" : "eye"} size={17} />
                       </button>
                     </span>
-                    {pwErr && <span className="al-errhint">Password must be at least 6 characters.</span>}
+                    {pwErr && <span className="al-errhint">{t("admin.auth.pwErr")}</span>}
                   </label>
 
                   <div className="al-row">
@@ -134,15 +136,15 @@ export default function AdminLoginPage() {
                       <span className="al-check__box">
                         <Icon name="check" size={12} strokeWidth={3} />
                       </span>
-                      Remember me
+                      {t("admin.auth.remember")}
                     </label>
                     <button type="button" className="al-link" onClick={toForgot}>
-                      Forgot password?
+                      {t("admin.auth.forgot")}
                     </button>
                   </div>
 
                   <Button type="submit" hierarchy="primary" size="lg" fullWidth disabled={!email.trim() || !password.trim()}>
-                    Log in
+                    {t("admin.auth.login")}
                   </Button>
                 </form>
               </>
@@ -150,18 +152,18 @@ export default function AdminLoginPage() {
 
             {mode === "forgot" && !sent && (
               <>
-                <h1 className="al-title">Reset password</h1>
-                <p className="al-desc">Enter the email linked to your account and we&apos;ll send you a reset link.</p>
+                <h1 className="al-title">{t("admin.auth.resetTitle")}</h1>
+                <p className="al-desc">{t("admin.auth.resetDesc")}</p>
                 <form className="al-form" onSubmit={sendReset} noValidate>
                   <label className="al-field">
-                    <span className="al-label">Email</span>
+                    <span className="al-label">{t("admin.auth.email")}</span>
                     <span className="al-inputwrap">
                       <Icon name="mail" size={18} className="al-input__lead" />
                       <input
                         type="email"
                         required
                         className={"al-input" + (emailErr ? " al-input--error" : "")}
-                        placeholder="you@chiya.estate"
+                        placeholder={t("admin.auth.emailPh")}
                         value={email}
                         onChange={(e) => {
                           setEmail(e.target.value);
@@ -171,14 +173,14 @@ export default function AdminLoginPage() {
                         autoComplete="email"
                       />
                     </span>
-                    {emailErr && <span className="al-errhint">Enter a valid email address.</span>}
+                    {emailErr && <span className="al-errhint">{t("admin.auth.emailErr")}</span>}
                   </label>
                   <Button type="submit" hierarchy="primary" size="lg" fullWidth disabled={!email.trim()}>
-                    Reset password
+                    {t("admin.auth.resetTitle")}
                   </Button>
                   <button type="button" className="al-back" onClick={toSignIn}>
                     <Icon name="arrow-left" size={15} />
-                    Back to log in
+                    {t("admin.auth.backToLogin")}
                   </button>
                 </form>
               </>
@@ -189,25 +191,25 @@ export default function AdminLoginPage() {
                 <span className="al-sent__icon">
                   <Icon name="mail" size={22} />
                 </span>
-                <h1 className="al-title">Check your inbox</h1>
+                <h1 className="al-title">{t("admin.auth.checkInbox")}</h1>
                 <p className="al-desc">
-                  We sent a reset link to <b>{email || "your email"}</b>.<br />
-                  Click the link in the email.
+                  {t("admin.auth.sentPre")} <b>{email || t("admin.auth.yourEmail")}</b>.<br />
+                  {t("admin.auth.sentPost")}
                 </p>
                 {/* No real email is sent — "Open email app" stands in for opening the
                     inbox and clicking the reset link, so it jumps straight to reset. */}
                 <a className="al-sent__link" href={`/admin/reset?token=${resetToken}`}>
-                  Open email app
+                  {t("admin.auth.openEmail")}
                 </a>
                 <p className="al-sent__resend">
-                  Didn&apos;t receive the email?{" "}
+                  {t("admin.auth.noEmail")}{" "}
                   <button type="button" className="al-sent__link" onClick={resend}>
-                    Click to resend
+                    {t("admin.auth.resend")}
                   </button>
                 </p>
                 <button type="button" className="al-back" onClick={toSignIn}>
                   <Icon name="arrow-left" size={15} />
-                  Back to log in
+                  {t("admin.auth.backToLogin")}
                 </button>
               </div>
             )}

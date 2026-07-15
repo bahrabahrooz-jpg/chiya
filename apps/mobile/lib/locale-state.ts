@@ -6,7 +6,7 @@
  * option labels without a circular import. Writes always precede the profile
  * store's emit, so subscribers re-render after the locale is current.
  */
-export type Locale = "en" | "ar";
+export type Locale = "en" | "ar" | "ku";
 
 let active: Locale = "en";
 

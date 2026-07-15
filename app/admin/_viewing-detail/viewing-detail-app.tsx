@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeSize } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
+import { useLang } from "@/lib/i18n";
+import { fmtCurrency, fmtNum, valueKey } from "@/lib/fmt";
 import {
   ASSIGNABLE_AGENTS,
   INIT_NOTES,
@@ -30,6 +32,7 @@ const NOTE_MAX = 500;
 /* ---------------- toast ---------------- */
 interface ToastData { id: number; tone?: string; icon: IconName; title: string; msg: string; out?: boolean }
 function ProfToast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => void }) {
+  const { t } = useLang();
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true));
@@ -45,7 +48,7 @@ function ProfToast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => vo
         <p className="pp-toast__title">{toast.title}</p>
         <p className="pp-toast__msg">{toast.msg}</p>
       </div>
-      <button type="button" className="pp-toast__close" aria-label="Close" onClick={onDismiss}>
+      <button type="button" className="pp-toast__close" aria-label={t("admin.props.close")} onClick={onDismiss}>
         <Icon name="x" size={16} strokeWidth={2} />
       </button>
       <div className="pp-toast__progress" />
@@ -69,6 +72,7 @@ function useToasts(): [ToastData[], (t: Omit<ToastData, "id">) => void, (id: num
 
 /* ---------------- modals ---------------- */
 function ConfirmModal({ icon, title, body, confirmLabel, confirmIcon, tone, onCancel, onConfirm }: { icon: IconName; title: string; body: ReactNode; confirmLabel: string; confirmIcon: IconName; tone: string; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -89,7 +93,7 @@ function ConfirmModal({ icon, title, body, confirmLabel, confirmIcon, tone, onCa
         <p className="pp-modal__body">{body}</p>
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           {danger ? (
             <button type="button" className="pp-modal__delete" onClick={onConfirm}>
@@ -109,6 +113,7 @@ function ConfirmModal({ icon, title, body, confirmLabel, confirmIcon, tone, onCa
 }
 
 function ViewingStatusModal({ current, onCancel, onConfirm }: { current: string; onCancel: () => void; onConfirm: (s: string) => void }) {
+  const { t } = useLang();
   const [selected, setSelected] = useState<string>(current);
   const [dropOpen, setDropOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -158,14 +163,14 @@ function ViewingStatusModal({ current, onCancel, onConfirm }: { current: string;
           <Icon name="refresh-cw" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="vwd-status-title">
-          Change viewing status
+          {t("admin.viewings.changeStatusTitle")}
         </h2>
-        <p className="pp-modal__sublabel">Select new status</p>
+        <p className="pp-modal__sublabel">{t("admin.props.selectNewStatus")}</p>
         <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} style={{ marginBottom: 22 }} aria-haspopup="listbox" aria-expanded={dropOpen} onClick={toggleDrop}>
           {selected ? (
             <>
               <span className="pp-smodal__dot" style={{ background: VIEW_STATUS_DOT[selected] }} />
-              <span className="pp-smodal__label">{selected}</span>
+              <span className="pp-smodal__label">{t(valueKey("status", selected))}</span>
             </>
           ) : (
             <span className="pp-amodal__trigger-placeholder">
@@ -190,7 +195,7 @@ function ViewingStatusModal({ current, onCancel, onConfirm }: { current: string;
                 <span className="pp-smodal__dot" style={{ background: VIEW_STATUS_DOT[s] }} />
                 <span className="pp-smodal__label">{s}</span>
                 <span className="pp-smodal__spacer" />
-                {current === s && <span className="pp-amodal__current-tag">Current</span>}
+                {current === s && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
                 {selected === s && current !== s && (
                   <span className="pp-smodal__check">
                     <Icon name="check" size={16} strokeWidth={2.5} />
@@ -202,7 +207,7 @@ function ViewingStatusModal({ current, onCancel, onConfirm }: { current: string;
         )}
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           <button type="button" className={"pp-modal__confirm" + (warn ? " pp-modal__confirm--warn" : "")} disabled={!canConfirm} onClick={() => onConfirm(selected)}>
             <Icon name="refresh-cw" size={15} />
@@ -215,6 +220,7 @@ function ViewingStatusModal({ current, onCancel, onConfirm }: { current: string;
 }
 
 function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -230,18 +236,18 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
           <Icon name="trash-2" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="vwd-delnote-title">
-          Delete note?
+          {t("admin.vd.deleteNoteTitle")}
         </h2>
         <p className="pp-modal__body">
           Are you sure you want to delete this <strong>{label}</strong>? This action cannot be undone and will permanently remove it from this viewing.
         </p>
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           <button type="button" className="pp-modal__delete" onClick={onConfirm}>
             <Icon name="trash-2" size={15} />
-            Delete note
+            {t("admin.vd.deleteNote")}
           </button>
         </div>
       </div>
@@ -250,6 +256,7 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
 }
 
 function ReassignAgentModal({ current, onCancel, onConfirm }: { current: string; onCancel: () => void; onConfirm: (name: string) => void }) {
+  const { t } = useLang();
   const [selected, setSelected] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -310,7 +317,7 @@ function ReassignAgentModal({ current, onCancel, onConfirm }: { current: string;
         <h2 className="pp-modal__title" id="vwd-agent-title">
           Reassign agent
         </h2>
-        <p className="pp-modal__sublabel">Select new agent</p>
+        <p className="pp-modal__sublabel">{t("admin.props.selectNewAgent")}</p>
         <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} style={{ marginBottom: 22 }} aria-haspopup="listbox" aria-expanded={dropOpen} onClick={toggleDrop}>
           {selectedAgent ? (
             <>
@@ -357,7 +364,7 @@ function ReassignAgentModal({ current, onCancel, onConfirm }: { current: string;
                     <span className="pp-amodal__agent-body">
                       <span className="pp-amodal__agent-name">{agent.name}</span>
                     </span>
-                    {current === agent.name && <span className="pp-amodal__current-tag">Current</span>}
+                    {current === agent.name && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
                     {selected === agent.name && (
                       <span className="pp-amodal__check">
                         <Icon name="check" size={16} strokeWidth={2.5} />
@@ -371,7 +378,7 @@ function ReassignAgentModal({ current, onCancel, onConfirm }: { current: string;
         )}
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           <button type="button" className="pp-modal__confirm" disabled={!canConfirm} onClick={() => selected && onConfirm(selected)}>
             <Icon name="user-check" size={15} />
@@ -428,28 +435,29 @@ function Fact({ icon, label, children, mono }: { icon: IconName; label: string; 
 }
 
 function Overview({ v, status }: { v: ViewingDetail; status: string }) {
+  const { t } = useLang();
   return (
-    <SectionCard title="Viewing overview" desc="Appointment summary, schedule, and record history.">
+    <SectionCard title={t("admin.vd.overview")} desc={t("admin.vd.overviewDesc")}>
       <div className="vwd-facts">
-        <Fact icon="hash" label="Viewing ID" mono>
+        <Fact icon="hash" label={t("admin.vd.viewingId")} mono>
           {v.id}
         </Fact>
-        <Fact icon="circle-dot" label="Status">
+        <Fact icon="circle-dot" label={t("admin.props.th.status")}>
           <StatusBadge status={status} />
         </Fact>
         <Fact icon="calendar" label="Date">
           {v.date}
         </Fact>
-        <Fact icon="map-pin" label="Meeting location">
+        <Fact icon="map-pin" label={t("admin.vd.meetingLocation")}>
           {v.meetingLocation}
         </Fact>
         <Fact icon="alarm-clock" label="Time">
           {v.time} – {v.endTime}
         </Fact>
-        <Fact icon="calendar-plus" label="Created">
+        <Fact icon="calendar-plus" label={t("admin.vd.created")}>
           {v.created}
         </Fact>
-        <Fact icon="history" label="Last updated">
+        <Fact icon="history" label={t("admin.vd.lastUpdated")}>
           {v.updated}
         </Fact>
       </div>
@@ -458,10 +466,15 @@ function Overview({ v, status }: { v: ViewingDetail; status: string }) {
 }
 
 function PropertyInfo({ p, onView }: { p: ViewingDetail["property"]; onView: () => void }) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   return (
     <SectionCard
-      title="Property information"
-      desc="The listing this viewing is scheduled for."
+      title={t("admin.vd.propertyInfo")}
+      desc={t("admin.vd.propertyInfoDesc")}
       action={
         <Button hierarchy="secondary" size="sm" iconTrailing="arrow-up-right" onClick={onView}>
           View property
@@ -473,8 +486,8 @@ function PropertyInfo({ p, onView }: { p: ViewingDetail["property"]; onView: () 
         <div className="vwd-prop__body">
           <div className="vwd-prop__titlerow">
             <span className="vwd-prop__name">{p.name}</span>
-            <Badge variant={p.listing === "For sale" ? "brand" : "info"} size="sm" icon={p.listing === "For sale" ? "tag" : "key"}>
-              {p.listing}
+            <Badge variant={p.listing === "sale" ? "brand" : "info"} size="sm" icon={p.listing === "sale" ? "tag" : "key"}>
+              {p.listing === "sale" ? t("admin.vd.forSale") : t("admin.vd.forRent")}
             </Badge>
           </div>
           <span className="vwd-prop__loc">
@@ -483,20 +496,20 @@ function PropertyInfo({ p, onView }: { p: ViewingDetail["property"]; onView: () 
           </span>
           <div className="vwd-prop__grid">
             <div className="vwd-prop__cell">
-              <span className="vwd-prop__celllabel">Property ID</span>
+              <span className="vwd-prop__celllabel">{t("admin.vd.propertyId")}</span>
               <span className="vwd-prop__cellvalue vwd-prop__cellvalue--mono">{p.id}</span>
             </div>
             <div className="vwd-prop__cell">
-              <span className="vwd-prop__celllabel">Property type</span>
-              <span className="vwd-prop__cellvalue">{p.type}</span>
+              <span className="vwd-prop__celllabel">{t("admin.props.filter.type")}</span>
+              <span className="vwd-prop__cellvalue">{tOr(valueKey("type", p.type), p.type)}</span>
             </div>
             <div className="vwd-prop__cell">
-              <span className="vwd-prop__celllabel">Listing type</span>
-              <span className="vwd-prop__cellvalue">{p.listing}</span>
+              <span className="vwd-prop__celllabel">{t("admin.vd.listingType")}</span>
+              <span className="vwd-prop__cellvalue">{t(p.listing === "rent" ? "admin.pd.forRent" : "admin.pd.forSale")}</span>
             </div>
             <div className="vwd-prop__cell">
-              <span className="vwd-prop__celllabel">Price</span>
-              <span className="vwd-prop__cellvalue vwd-prop__price">{p.price}</span>
+              <span className="vwd-prop__celllabel">{t("admin.props.th.price")}</span>
+              <span className="vwd-prop__cellvalue vwd-prop__price">{fmtCurrency(lang, p.price) + (p.per ? t("admin.mp.perMo") : "")}</span>
             </div>
           </div>
         </div>
@@ -521,8 +534,9 @@ function ContactRow({ icon, label, value, href }: { icon: IconName; label: strin
 }
 
 function MemberCard({ m }: { m: ViewingDetail["member"] }) {
+  const { t } = useLang();
   return (
-    <SectionCard title="Member information" desc="The member who requested this viewing.">
+    <SectionCard title={t("admin.vd.memberInfo")} desc={t("admin.vd.memberInfoDesc")}>
       <div className="pd-owner">
         <Avatar name={m.name} size="lg" />
         <div className="pd-owner__id">
@@ -542,12 +556,13 @@ function MemberCard({ m }: { m: ViewingDetail["member"] }) {
 }
 
 function AgentCard({ a, href, onReassign, agentSurface }: { a: ViewingDetail["agent"]; href: string; onReassign: () => void; agentSurface?: boolean }) {
+  const { t } = useLang();
   const phoneHref = "tel:" + a.phone.replace(/\s/g, "");
   const waHref = "https://wa.me/" + a.phone.replace(/[^\d]/g, "");
   return (
     <SectionCard
-      title="Assigned agent"
-      desc="Manages viewings and enquiries."
+      title={t("admin.vd.assignedAgent")}
+      desc={t("admin.vd.assignedAgentDesc")}
       action={
         agentSurface ? undefined : (
           <Button hierarchy="tertiary" size="sm" iconLeading="user-cog" onClick={onReassign}>
@@ -601,6 +616,7 @@ function AgentCard({ a, href, onReassign, agentSurface }: { a: ViewingDetail["ag
 
 const TL_TONE: Record<string, string> = { brand: "#7F56D9", success: "#15B79E", info: "#2E90FA", warning: "#EAB308", error: "#F04438", gold: "#EE46BC", neutral: "#6172F3" };
 function Timeline() {
+  const { t } = useLang();
   return (
     <ul className="pd-timeline">
       {TIMELINE.map((it, i) => (
@@ -610,10 +626,10 @@ function Timeline() {
           </span>
           <div className="pd-tl__body">
             <div className="pd-tl__top">
-              <span className="pd-tl__title">{it.title}</span>
+              <span className="pd-tl__title">{t(it.titleKey)}</span>
               <span className="pd-tl__time">{it.time}</span>
             </div>
-            <p className="pd-tl__desc">{it.desc}</p>
+            <p className="pd-tl__desc">{t(it.descKey, it.params)}</p>
           </div>
         </li>
       ))}
@@ -621,7 +637,8 @@ function Timeline() {
   );
 }
 
-function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spaced?: boolean; initial?: string; submitLabel?: string; onSave: (t: string) => void; onCancel: () => void }) {
+function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spaced?: boolean; initial?: string; submitLabel?: string; onSave: (v: string) => void; onCancel: () => void }) {
+  const { t, lang } = useLang();
   const [draft, setDraft] = useState(initial || "");
   const text = draft.trim();
   const remaining = NOTE_MAX - draft.length;
@@ -639,15 +656,15 @@ function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spac
   };
   return (
     <div className={"pd-notecomposer" + (spaced ? " is-spaced" : "")}>
-      <Textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKeyDown} rows={3} maxLength={NOTE_MAX} aria-label="Internal note" placeholder="Add an admin-only note about this viewing — access arrangements, member preferences, reminders…" />
+      <Textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKeyDown} rows={3} maxLength={NOTE_MAX} aria-label={t("admin.vd.noteAria")} placeholder={t("admin.vd.notePh")} />
       <div className="pd-notecomposer__foot">
-        <span className={"pd-notecomposer__hint" + (remaining <= 50 ? " is-low" : "")}>{remaining} characters left</span>
+        <span className={"pd-notecomposer__hint" + (remaining <= 50 ? " is-low" : "")}>{t("admin.roles.charsLeft", { count: fmtNum(lang, remaining) })}</span>
         <div className="pd-notecomposer__actions">
           <Button hierarchy="tertiary" size="sm" onClick={onCancel}>
             Cancel
           </Button>
           <Button hierarchy="primary" size="sm" disabled={!text} onClick={save}>
-            {submitLabel || "Add note"}
+            {submitLabel || t("admin.vd.addNote")}
           </Button>
         </div>
       </div>
@@ -655,7 +672,8 @@ function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spac
   );
 }
 
-function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; onAdd: (t: string) => void; onEdit: (i: number, t: string) => void; onDelete: (i: number) => void }) {
+function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; onAdd: (v: string) => void; onEdit: (i: number, v: string) => void; onDelete: (i: number) => void }) {
+  const { t } = useLang();
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const handleSave = (text: string) => {
@@ -664,9 +682,9 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
   };
   return (
     <SectionCard
-      title="Internal notes"
+      title={t("admin.vd.notes")}
       count={notes.length}
-      desc="Admin-only remarks. Never visible to the member or the agent."
+      desc={t("admin.vd.notesDesc")}
       action={
         !composing &&
         editing == null && (
@@ -683,7 +701,7 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
               <span className="pd-noagent__art">
                 <Icon name="sticky-note" size={24} strokeWidth={1.6} />
               </span>
-              <p>No internal notes yet. Add an admin-only note to track access details, member preferences, or reminders for this viewing.</p>
+              <p>{t("admin.vd.notesEmpty")}</p>
             </div>
           )
         : (
@@ -695,7 +713,7 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
                     <div className={"pd-noteitem " + k.cls} key={i}>
                       <NoteComposer
                         initial={n.text}
-                        submitLabel="Save note"
+                        submitLabel={t("admin.vd.saveNote")}
                         onSave={(text) => {
                           onEdit(i, text);
                           setEditing(null);
@@ -713,8 +731,8 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
                         <button
                           type="button"
                           className="pd-note__delete pd-note__edit"
-                          aria-label="Edit note"
-                          title="Edit note"
+                          aria-label={t("admin.vd.editNote")}
+                          title={t("admin.vd.editNote")}
                           onClick={() => {
                             setComposing(false);
                             setEditing(i);
@@ -722,7 +740,7 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
                         >
                           <Icon name="pencil" size={14} />
                         </button>
-                        <button type="button" className="pd-note__delete" aria-label="Delete note" title="Delete note" onClick={() => onDelete(i)}>
+                        <button type="button" className="pd-note__delete" aria-label={t("admin.vd.deleteNote")} title={t("admin.vd.deleteNote")} onClick={() => onDelete(i)}>
                           <Icon name="trash-2" size={15} />
                         </button>
                       </div>
@@ -745,6 +763,7 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
 }
 
 export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = {}) {
+  const { t } = useLang();
   const router = useRouter();
   const params = useParams();
   const id = String((params?.id as string) ?? "");
@@ -792,9 +811,9 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
     <>
       <header className="pd-head">
         <nav className="pd-breadcrumb" aria-label="Breadcrumb">
-          <Link href="/admin/viewings">Viewings</Link>
+          <Link href="/admin/viewings">{t("admin.nav.viewings")}</Link>
           <Icon name="chevron-right" size={14} />
-          <span aria-current="page">Viewing details</span>
+          <span aria-current="page">{t("admin.vd.crumb")}</span>
         </nav>
 
         <div className="pd-head__main">
@@ -843,7 +862,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
                     role="menuitem"
                     onClick={() => {
                       setMoreOpen(false);
-                      pushToast({ tone: "default", icon: "send", title: "Reminder sent", msg: "A reminder was sent to " + v.member.name + "." });
+                      pushToast({ tone: "default", icon: "send", title: t("admin.vd.toast.reminderTitle"), msg: t("admin.vd.toast.reminderMsg", { name: v.member.name }) });
                     }}
                   >
                     <Icon name="bell" size={17} />
@@ -876,25 +895,25 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
           <NotesSection
             notes={notes}
             onAdd={(text) => {
-              setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: "Just now", kind: "note", text }, ...ns]);
-              pushToast({ tone: "brand", icon: "check", title: "Note added", msg: "Your internal note was saved to this viewing." });
+              setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: t("admin.vd.justNow"), kind: "note", text }, ...ns]);
+              pushToast({ tone: "brand", icon: "check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.vd.toast.noteAddedMsg") });
             }}
             onEdit={(i, text) => {
-              setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: "Edited just now" } : n)));
-              pushToast({ tone: "brand", icon: "pencil", title: "Note updated", msg: "Your changes to the internal note were saved." });
+              setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: t("admin.vd.editedJustNow") } : n)));
+              pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
             }}
             onDelete={(i) => setNoteToDelete(i)}
           />
           <SectionCard
-            title="Activity timeline"
-            desc="Chronological history of this viewing."
+            title={t("admin.vd.timeline")}
+            desc={t("admin.vd.timelineDesc")}
             action={
               <Button
                 hierarchy="link"
                 size="sm"
                 iconTrailing="arrow-right"
                 style={{ color: "var(--text-secondary)" }}
-                onClick={() => pushToast({ tone: "brand", icon: "history", title: "Activity", msg: "Opening full activity history for " + v.id + "." })}
+                onClick={() => pushToast({ tone: "brand", icon: "history", title: t("admin.vd.toast.activityTitle"), msg: t("admin.vd.toast.activityMsg", { id: v.id }) })}
               >
                 View all
               </Button>
@@ -925,7 +944,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
             member: { ...prev.member, name: rec.member },
             agent: { ...prev.agent, name: rec.agent },
           }));
-          pushToast({ tone: "brand", icon: "badge-check", title: "Viewing updated", msg: v.id + "’s details have been updated." });
+          pushToast({ tone: "brand", icon: "badge-check", title: t("admin.vd.toast.updatedTitle"), msg: t("admin.vd.toast.updatedMsg", { id: v.id }) });
         }}
       />
       {modal === "status" && (
@@ -937,7 +956,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
             setModal(null);
             const meta = VIEW_STATUS_META[next] || {};
             const danger = next === "Cancelled" || next === "No Show";
-            pushToast({ tone: danger ? "danger" : "brand", icon: meta.icon || "refresh-cw", title: "Status updated", msg: v.id + " is now marked as " + next + "." });
+            pushToast({ tone: danger ? "danger" : "brand", icon: meta.icon || "refresh-cw", title: t("admin.viewings.toast.statusTitle"), msg: t("admin.vd.toast.statusMsg", { id: v.id, status: t(valueKey("status", next)) }) });
           }}
         />
       )}
@@ -948,26 +967,26 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
           onConfirm={(name) => {
             setV((prev) => ({ ...prev, agent: buildViewingAgent(name) }));
             setModal(null);
-            pushToast({ tone: "brand", icon: "user-check", title: "Agent reassigned", msg: name + " is now hosting this viewing." });
+            pushToast({ tone: "brand", icon: "user-check", title: t("admin.vd.toast.agentTitle"), msg: t("admin.vd.toast.agentMsg", { name }) });
           }}
         />
       )}
       {modal === "delete" && (
         <ConfirmModal
           icon="trash-2"
-          title="Delete viewing?"
+          title={t("admin.viewings.deleteTitle")}
           body={
             <>
               Are you sure you want to delete <strong>{v.id}</strong>? This action cannot be undone and will permanently remove the appointment and its history.
             </>
           }
-          confirmLabel="Delete viewing"
+          confirmLabel={t("admin.viewings.deleteViewing")}
           confirmIcon="trash-2"
           tone="danger"
           onCancel={() => setModal(null)}
           onConfirm={() => {
             setModal(null);
-            pushToast({ tone: "danger", icon: "trash-2", title: "Viewing deleted", msg: v.id + " has been removed. Returning to Viewings…" });
+            pushToast({ tone: "danger", icon: "trash-2", title: t("admin.viewings.toast.deletedTitle"), msg: t("admin.vd.toast.deletedMsg", { id: v.id }) });
             setTimeout(() => router.push("/admin/viewings"), 1400);
           }}
         />
@@ -980,7 +999,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
             const removed = notes[noteToDelete];
             setNotes((ns) => ns.filter((_, i) => i !== noteToDelete));
             setNoteToDelete(null);
-            pushToast({ tone: "danger", icon: "trash-2", title: "Note deleted", msg: "The internal note from " + removed.author + " was removed." });
+            pushToast({ tone: "danger", icon: "trash-2", title: t("admin.vd.toast.noteDeletedTitle"), msg: t("admin.vd.toast.noteDeletedMsg", { author: removed.author }) });
           }}
         />
       )}

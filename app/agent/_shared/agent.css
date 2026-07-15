@@ -55,7 +55,7 @@
   .agx-thumb__name { font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .agx-thumb__sub { font-size: 12.5px; color: var(--text-tertiary); }
   .agx-muted { color: var(--text-tertiary); }
-  .agx-you { margin-left: 8px; vertical-align: middle; }
+  .agx-you { margin-inline-start: 8px; vertical-align: middle; }
 
   /* simple horizontal bar list (scoped reports) */
   .agx-bars { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; }
@@ -63,7 +63,7 @@
   .agx-bar__name { font-size: 13.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .agx-bar__track { height: 8px; border-radius: var(--radius-pill); background: var(--surface-sunken); overflow: hidden; }
   .agx-bar__fill { display: block; height: 100%; border-radius: var(--radius-pill); }
-  .agx-bar__val { font-size: 13px; font-weight: 700; color: var(--text-primary); text-align: right; font-variant-numeric: tabular-nums; }
+  .agx-bar__val { font-size: 13px; font-weight: 700; color: var(--text-primary); text-align: end; font-variant-numeric: tabular-nums; }
 
   .agx-empty {
     padding: 40px 20px; text-align: center; color: var(--text-tertiary);
@@ -101,14 +101,14 @@
     font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
     color: var(--text-tertiary); white-space: nowrap;
   }
-  .agx-th--right { text-align: right; justify-self: end; }
+  .agx-th--right { text-align: end; justify-self: end; }
   .agx-trow {
     min-height: 78px; background: var(--surface-card);
     border-bottom: 1px solid var(--border-subtle); transition: background-color .14s ease;
   }
   .agx-trow:last-child { border-bottom: none; }
   .agx-trow:hover { background: var(--gray-25); }
-  .agx-cell--right { text-align: right; justify-self: end; }
+  .agx-cell--right { text-align: end; justify-self: end; }
 
   .agx-tbl--props .agx-thead, .agx-tbl--props .agx-trow {
     grid-template-columns: minmax(240px, 2.6fr) minmax(120px, 1.1fr) 96px 120px 150px 120px;
@@ -155,7 +155,7 @@
   }
 
   .agx-toast {
-    position: fixed; right: 24px; bottom: 24px; z-index: 60;
+    position: fixed; inset-inline-end: 24px; bottom: 24px; z-index: 60;
     display: inline-flex; align-items: center; gap: 10px;
     padding: 12px 16px; border-radius: var(--radius-lg);
     background: var(--surface-inverse); color: var(--surface-card);

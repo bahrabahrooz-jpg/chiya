@@ -166,12 +166,12 @@ export function buildPeriodKpis(properties: PropertyRecord[], members: MemberRec
 
   const vs = `vs previous ${periodLabel}`;
   return [
-    { key: "listed", label: "New listings", icon: "building-2", tone: "brand", value: listed.value.toLocaleString(), delta: listed.delta?.text, dir: listed.delta?.dir, sub: vs },
-    { key: "sold", label: "Properties sold", icon: "key", tone: "gold", value: sold.value.toLocaleString(), delta: sold.delta?.text, dir: sold.delta?.dir, sub: vs },
-    { key: "rented", label: "Properties rented", icon: "home", tone: "info", value: rented.value.toLocaleString(), delta: rented.delta?.text, dir: rented.delta?.dir, sub: vs },
-    { key: "members", label: "New members", icon: "users", tone: "success", value: joined.value.toLocaleString(), delta: joined.delta?.text, dir: joined.delta?.dir, sub: vs },
-    { key: "agents", label: "Active agents", icon: "badge-check", tone: "brand", value: activeAgents.size.toLocaleString(), sub: `In the last ${periodLabel}` },
-    { key: "viewings", label: "Viewings", icon: "calendar-check", tone: "gold", value: views.value.toLocaleString(), delta: views.delta?.text, dir: views.delta?.dir, sub: vs },
+    { key: "listed", label: "New listings", icon: "building-2", tone: "brand", value: listed.value.toLocaleString("en-US"), delta: listed.delta?.text, dir: listed.delta?.dir, sub: vs },
+    { key: "sold", label: "Properties sold", icon: "key", tone: "gold", value: sold.value.toLocaleString("en-US"), delta: sold.delta?.text, dir: sold.delta?.dir, sub: vs },
+    { key: "rented", label: "Properties rented", icon: "home", tone: "info", value: rented.value.toLocaleString("en-US"), delta: rented.delta?.text, dir: rented.delta?.dir, sub: vs },
+    { key: "members", label: "New members", icon: "users", tone: "success", value: joined.value.toLocaleString("en-US"), delta: joined.delta?.text, dir: joined.delta?.dir, sub: vs },
+    { key: "agents", label: "Active agents", icon: "badge-check", tone: "brand", value: activeAgents.size.toLocaleString("en-US"), sub: `In the last ${periodLabel}` },
+    { key: "viewings", label: "Viewings", icon: "calendar-check", tone: "gold", value: views.value.toLocaleString("en-US"), delta: views.delta?.text, dir: views.delta?.dir, sub: vs },
   ];
 }
 
@@ -272,7 +272,7 @@ export function buildMemberTrends(members: MemberRecord[], viewings: ViewingReco
     const { series } = bucketSeries([{ key, label, color, dates }], days);
     const data = series[0].data;
     const d = lastDelta(data);
-    return { key, label, icon, tone, color, data, value: data.reduce((a, b) => a + b, 0).toLocaleString(), delta: d?.text ?? "—" };
+    return { key, label, icon, tone, color, data, value: data.reduce((a, b) => a + b, 0).toLocaleString("en-US"), delta: d?.text ?? "—" };
   };
   return [
     tile("new", "New members", "user-plus", "success", C.green, members.map((m) => m.joined)),

@@ -69,13 +69,13 @@
   /* ── TREE NODES ── */
   .lc-node {
     display: flex; align-items: center; gap: 5px;
-    cursor: pointer; border-left: 3px solid transparent;
+    cursor: pointer; border-inline-start: 3px solid transparent;
     transition: background-color .13s, border-color .13s;
     user-select: none;
   }
   .lc-node:hover { background: var(--gray-25); }
   .lc-node.is-selected {
-    background: var(--brand-subtle); border-left-color: var(--brand-primary);
+    background: var(--brand-subtle); border-inline-start-color: var(--brand-primary);
   }
   .lc-node.is-selected .lc-node__name { color: var(--text-brand); font-weight: 600; }
   .lc-node__toggle {
@@ -98,7 +98,7 @@
   }
   .lc-node__props {
     flex: none; font-size: 11.5px; color: var(--text-tertiary);
-    font-variant-numeric: tabular-nums; padding-right: 14px;
+    font-variant-numeric: tabular-nums; padding-inline-end: 14px;
   }
 
   /* ── DETAIL PANEL ── */
@@ -164,10 +164,10 @@
   .lc-detail__field {
     display: flex; flex-direction: column; gap: 5px;
     padding: 14px 16px;
-    border-right: 1px solid var(--border-subtle);
+    border-inline-end: 1px solid var(--border-subtle);
     border-bottom: 1px solid var(--border-subtle);
   }
-  .lc-detail__field:nth-child(2n)      { border-right: none; }
+  .lc-detail__field:nth-child(2n)      { border-inline-end: none; }
   .lc-detail__field:nth-last-child(-n+2) { border-bottom: none; }
   .lc-detail__fieldlabel {
     font-size: 11px; font-weight: 700; letter-spacing: .07em;
@@ -304,7 +304,7 @@
     font-family: var(--font-sans); font-size: 14.5px;
     background: var(--surface-card); border: 1px solid var(--border-default);
     border-radius: var(--radius-control); box-shadow: var(--shadow-xs);
-    cursor: pointer; text-align: left;
+    cursor: pointer; text-align: start;
     transition: border-color .15s, box-shadow .15s, background-color .15s;
   }
   .lc-dd__trigger:hover:not(:disabled) { border-color: var(--border-strong); background: var(--gray-25); }
@@ -346,7 +346,7 @@
 
   /* option row — matches homepage .cxrow */
   .lc-dd__row {
-    display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+    display: flex; align-items: center; gap: 11px; width: 100%; text-align: start;
     cursor: pointer; background: none; border: none;
     padding: 8px 10px; border-radius: var(--radius-md);
     font-family: var(--font-sans); transition: background-color .14s ease;
@@ -373,7 +373,7 @@
 
   /* ── TOAST ── */
   .lc-toaster {
-    position: fixed; top: 22px; right: 22px; z-index: 2000;
+    position: fixed; top: 22px; inset-inline-end: 22px; z-index: 2000;
     display: flex; flex-direction: column; gap: 12px;
     width: 380px; max-width: calc(100vw - 32px); pointer-events: none;
   }
@@ -388,6 +388,10 @@
   }
   .lc-toast.is-in  { transform: translateX(0); opacity: 1; }
   .lc-toast.is-out { transform: translateX(24px); opacity: 0; }
+  /* transforms don't follow `direction`: mirror the off-screen offset */
+  [dir="rtl"] .lc-toast { transform: translateX(-24px); }
+  [dir="rtl"] .lc-toast.is-in { transform: translateX(0); }
+  [dir="rtl"] .lc-toast.is-out { transform: translateX(-24px); }
   .lc-toast__icon {
     flex: none; width: 38px; height: 38px; border-radius: var(--radius-pill);
     display: inline-flex; align-items: center; justify-content: center;
@@ -427,13 +431,16 @@
   }
   .lc-toast__close:hover { background: var(--gray-100); color: var(--gray-800); }
   .lc-toast__progress {
-    position: absolute; left: 0; bottom: 0; height: 3px;
-    background: var(--brand-accent); border-bottom-left-radius: var(--radius-card);
+    position: absolute; inset-inline-start: 0; bottom: 0; height: 3px;
+    background: var(--brand-accent); border-end-start-radius: var(--radius-card);
     transform-origin: left center; will-change: transform;
+  }
+  [dir="rtl"] .lc-toast__progress {
+    transform-origin: right center;
   }
   .lc-toast.is-in .lc-toast__progress { animation: lc-toast-prog 6000ms linear forwards; }
   @keyframes lc-toast-prog { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-  @media (max-width: 560px) { .lc-toaster { left: 16px; right: 16px; top: 16px; width: auto; } }
+  @media (max-width: 560px) { .lc-toaster { inset-inline-start: 16px; inset-inline-end: 16px; top: 16px; width: auto; } }
   @media (prefers-reduced-motion: reduce) {
     .lc-toast { transition: opacity .2s ease; transform: none; }
     .lc-toast.is-in, .lc-toast.is-out { transform: none; }
@@ -449,7 +456,7 @@
 
   /* ---------- DELETE CONFIRMATION DIALOG ---------- */
   .lc-confirm {
-    width: 100%; max-width: 420px; text-align: left;
+    width: 100%; max-width: 420px; text-align: start;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl); box-shadow: var(--shadow-2xl);
     padding: 24px 24px 20px;

@@ -54,8 +54,8 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 14px; flex-wrap: wrap; min-height: 30px;
     padding-bottom: 16px; margin-bottom: 16px;
-    margin-left: -24px; margin-right: -24px;
-    padding-left: 24px; padding-right: 24px;
+    margin-inline-start: -24px; margin-inline-end: -24px;
+    padding-inline-start: 24px; padding-inline-end: 24px;
     border-bottom: 1px solid var(--border-subtle);
   }
   .pp-tablecard__heading { display: flex; align-items: center; gap: 11px; min-width: 0; }
@@ -127,7 +127,7 @@
   .pp-tabsearch input:hover { border-color: var(--border-strong); }
   .pp-tabsearch input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
   .pp-tabsearch__lead {
-    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%);
     color: var(--text-brand-muted); display: flex; pointer-events: none;
   }
 
@@ -158,7 +158,7 @@
     display: grid;
     grid-template-rows: 0fr;
     transition: grid-template-rows 0.24s cubic-bezier(.4,0,.2,1);
-    margin-left: -24px; margin-right: -24px;
+    margin-inline-start: -24px; margin-inline-end: -24px;
     margin-top: 16px;
     border-top: 1px solid transparent;
   }
@@ -188,7 +188,7 @@
     border: none; background: transparent; cursor: pointer;
     border-radius: var(--radius-md);
     font-family: var(--font-sans); font-size: 14.5px; font-weight: 400;
-    color: var(--text-primary); text-align: left;
+    color: var(--text-primary); text-align: start;
     transition: background-color .13s;
     white-space: nowrap;
   }
@@ -198,7 +198,7 @@
   .pp-custdrop__item.is-selected svg { color: var(--text-brand); flex: none; }
   .pp-filterbar__actions {
     display: flex; align-items: center; gap: 8px;
-    flex: none; margin-left: 8px;
+    flex: none; margin-inline-start: 8px;
   }
   .pp-clearbtn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -220,7 +220,7 @@
     border: 1px solid var(--border-default); background: var(--surface-card);
     border-radius: var(--radius-control); box-shadow: var(--shadow-xs); cursor: pointer;
     font-family: var(--font-sans); font-size: 15px; color: var(--text-secondary);
-    text-align: left; transition: border-color .15s, background-color .15s, color .15s;
+    text-align: start; transition: border-color .15s, background-color .15s, color .15s;
   }
   .pp-datebtn svg { flex: none; color: var(--text-tertiary); }
   .pp-datebtn:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--gray-25); }
@@ -364,7 +364,7 @@
     font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
     color: var(--text-tertiary); white-space: nowrap;
   }
-  .pp-th--num, .pp-cell--num { text-align: left; justify-self: start; }
+  .pp-th--num, .pp-cell--num { text-align: start; justify-self: start; }
   .pp-th--center, .pp-cell--center { justify-self: start; }
   /* Action header centered to align with the centered kebab below it */
   .pp-thead .pp-th.pp-col--actions { justify-self: center; text-align: center; }
@@ -437,7 +437,7 @@
   .pp-listing--rent { background: var(--info-50); color: var(--info-700); }
 
   /* price */
-  .pp-price { display: flex; flex-direction: column; gap: 2px; justify-self: start; text-align: left; }
+  .pp-price { display: flex; flex-direction: column; gap: 2px; justify-self: start; text-align: start; }
   .pp-price__val {
     font-size: 13.5px; font-weight: 400; color: var(--text-secondary); font-variant-numeric: tabular-nums;
   }
@@ -470,7 +470,7 @@
     display: flex; align-items: center; gap: 10px; width: 100%;
     padding: 8px 10px; border: none; background: transparent; cursor: pointer;
     border-radius: var(--radius-md); color: var(--gray-700);
-    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; text-align: left;
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; text-align: start;
     transition: background-color .13s, color .13s;
   }
   .pp-aitem svg { flex: none; color: var(--text-tertiary); }
@@ -584,7 +584,7 @@
     display: flex; align-items: center; gap: 10px;
     width: 100%; height: 44px; padding: 0 12px 0 10px;
     border: 1px solid var(--border-default); background: var(--surface-card);
-    border-radius: var(--radius-control); cursor: pointer; text-align: left;
+    border-radius: var(--radius-control); cursor: pointer; text-align: start;
     margin-bottom: 22px; box-shadow: var(--shadow-xs);
     transition: border-color .15s, box-shadow .15s;
   }
@@ -620,7 +620,7 @@
     display: flex; align-items: center; gap: 11px; width: 100%;
     padding: 9px 12px;
     border: 1px solid transparent; background: transparent;
-    border-radius: var(--radius-md); cursor: pointer; text-align: left;
+    border-radius: var(--radius-md); cursor: pointer; text-align: start;
     transition: background .13s, border-color .13s;
   }
   .pp-amodal__agent:hover { background: var(--gray-50); }
@@ -666,7 +666,7 @@
     display: flex; align-items: center; gap: 10px; width: 100%;
     padding: 9px 12px;
     border: 1px solid transparent; background: transparent;
-    border-radius: var(--radius-md); cursor: pointer; text-align: left;
+    border-radius: var(--radius-md); cursor: pointer; text-align: start;
     transition: background .13s, border-color .13s;
   }
   .pp-smodal__item:hover { background: var(--gray-50); }
@@ -685,7 +685,7 @@
   }
   .pp-modal__hint {
     display: flex; align-items: center; gap: 7px; margin: 14px 0 0;
-    font-size: 12.5px; line-height: 1.4; color: var(--text-tertiary); text-align: left;
+    font-size: 12.5px; line-height: 1.4; color: var(--text-tertiary); text-align: start;
   }
   .pp-modal__hint svg { flex: none; color: var(--warning-600); }
 
@@ -766,11 +766,11 @@
     .pp-row:hover { background: var(--surface-card); }
 
     /* property header inside card */
-    .pp-col--prop { margin-bottom: 14px; padding-right: 44px; }
+    .pp-col--prop { margin-bottom: 14px; padding-inline-end: 44px; }
     .pp-prop__thumb { width: 60px; height: 60px; }
 
     /* actions kebab pinned to card corner */
-    .pp-col--actions { position: absolute; top: 12px; right: 12px; }
+    .pp-col--actions { position: absolute; top: 12px; inset-inline-end: 12px; }
     .pp-actions { justify-self: auto; }
 
     /* status + listing sit as a chip row under the title */
@@ -788,18 +788,18 @@
       font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
       color: var(--text-tertiary);
     }
-    .pp-owner, .pp-agent { align-items: flex-end; text-align: right; }
+    .pp-owner, .pp-agent { align-items: flex-end; text-align: end; }
     .pp-owner { align-items: flex-end; }
     .pp-owner__contact { display: inline-flex; }
     .pp-price { justify-self: auto; }
-    .pp-date { text-align: right; }
+    .pp-date { text-align: end; }
   }
 
   /* ============================================================
      TOAST NOTIFICATION  (pp-toast namespace) — top-right
      ============================================================ */
   .pp-toaster {
-    position: fixed; top: 22px; right: 22px; z-index: 2000;
+    position: fixed; top: 22px; inset-inline-end: 22px; z-index: 2000;
     display: flex; flex-direction: column; gap: 12px;
     width: 380px; max-width: calc(100vw - 32px); pointer-events: none;
   }
@@ -814,6 +814,10 @@
   }
   .pp-toast.is-in  { transform: translateX(0); opacity: 1; }
   .pp-toast.is-out { transform: translateX(24px); opacity: 0; }
+  /* transforms don't follow `direction`: mirror the off-screen offset */
+  [dir="rtl"] .pp-toast { transform: translateX(-24px); }
+  [dir="rtl"] .pp-toast.is-in { transform: translateX(0); }
+  [dir="rtl"] .pp-toast.is-out { transform: translateX(-24px); }
   .pp-toast__icon {
     flex: none; width: 38px; height: 38px; border-radius: var(--radius-pill);
     display: inline-flex; align-items: center; justify-content: center;
@@ -860,14 +864,17 @@
   .pp-toast__close:hover { background: var(--gray-100); color: var(--gray-800); }
   .pp-toast__close:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .pp-toast__progress {
-    position: absolute; left: 0; bottom: 0; height: 3px;
-    background: var(--brand-accent); border-bottom-left-radius: var(--radius-card);
+    position: absolute; inset-inline-start: 0; bottom: 0; height: 3px;
+    background: var(--brand-accent); border-end-start-radius: var(--radius-card);
     transform-origin: left center; will-change: transform;
+  }
+  [dir="rtl"] .pp-toast__progress {
+    transform-origin: right center;
   }
   .pp-toast--danger .pp-toast__progress { background: var(--error-500); }
   .pp-toast.is-in .pp-toast__progress { animation: pp-toast-prog 5000ms linear forwards; }
   @keyframes pp-toast-prog { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-  @media (max-width: 560px) { .pp-toaster { left: 16px; right: 16px; top: 16px; width: auto; } }
+  @media (max-width: 560px) { .pp-toaster { inset-inline-start: 16px; inset-inline-end: 16px; top: 16px; width: auto; } }
   @media (prefers-reduced-motion: reduce) {
     .pp-toast { transition: opacity .2s ease; transform: none; }
     .pp-toast.is-in, .pp-toast.is-out { transform: none; }

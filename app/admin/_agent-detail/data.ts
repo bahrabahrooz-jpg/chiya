@@ -1,7 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
-import { fmtUSD, type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
+import { type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
 
 export const ROLE_META: Record<string, { variant: BadgeVariant; cls: string }> = {
   Buyer: { variant: "info", cls: "mp-role--buyer" },
@@ -65,25 +65,25 @@ export const AGENT: AgentDetail = {
   img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=75",
 };
 
-export interface KpiCard { key: string; label: string; value: string; icon: IconName; tone: StatTone; sub: string }
+export interface KpiCard { key: string; labelKey: string; value: number; percent?: boolean; icon: IconName; tone: StatTone; subKey: string }
 export const KPIS: KpiCard[] = [
-  { key: "active", label: "Active listings", value: "14", icon: "building-2", tone: "brand", sub: "Currently published" },
-  { key: "sold", label: "Sold properties", value: "32", icon: "badge-check", tone: "success", sub: "All-time closed sales" },
-  { key: "rented", label: "Rented properties", value: "19", icon: "key-round", tone: "gold", sub: "All-time rentals" },
-  { key: "viewings", label: "Total viewings", value: "148", icon: "calendar-check", tone: "info", sub: "Hosted to date" },
-  { key: "conv", label: "Conversion rate", value: "38%", icon: "trending-up", tone: "brand", sub: "Viewings to deals" },
+  { key: "active", labelKey: "admin.ad.kpi.active", value: 14, icon: "building-2", tone: "brand", subKey: "admin.ad.kpi.activeSub" },
+  { key: "sold", labelKey: "admin.ad.kpi.sold", value: 32, icon: "badge-check", tone: "success", subKey: "admin.ad.kpi.soldSub" },
+  { key: "rented", labelKey: "admin.ad.kpi.rented", value: 19, icon: "key-round", tone: "gold", subKey: "admin.ad.kpi.rentedSub" },
+  { key: "viewings", labelKey: "admin.ad.kpi.viewings", value: 148, icon: "calendar-check", tone: "info", subKey: "admin.ad.kpi.viewingsSub" },
+  { key: "conv", labelKey: "admin.ad.kpi.conv", value: 38, percent: true, icon: "trending-up", tone: "brand", subKey: "admin.ad.kpi.convSub" },
 ];
 
 const TH = (w: string) => "https://images.unsplash.com/" + w + "?auto=format&fit=crop&w=160&q=70";
 
-export interface ListingRow { id: string; title: string; loc: string; img: string; propertyType: string; type: string; owner: string; status: string; price: string; per?: string; date: string }
+export interface ListingRow { id: string; title: string; loc: string; img: string; propertyType: string; type: string; owner: string; status: string; price: number; per?: string; date: string }
 export const LISTINGS: ListingRow[] = [
-  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", img: TH("photo-1613490493576-7fde63acd811"), propertyType: "Villa", type: "For sale", owner: "Rawa Jalal", status: "Published", price: "$1,200,000", date: "Jun 12, 2026" },
-  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", img: TH("photo-1545324418-cc1a3fa10c00"), propertyType: "Apartment", type: "For rent", owner: "Dilan Rashid", status: "Published", price: "$1,650", per: "/mo", date: "Jun 4, 2026" },
-  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", img: TH("photo-1600607687939-ce8a6c25118c"), propertyType: "Penthouse", type: "For sale", owner: "Sara Hama", status: "Sold", price: "$980,000", date: "May 30, 2026" },
-  { id: "CH-2008", title: "Lakeside Apartment", loc: "Dukan, Sulaymaniyah", img: TH("photo-1560448204-e02f11c3d0e2"), propertyType: "Apartment", type: "For sale", owner: "Ahmed Karim", status: "Pending", price: "$365,000", date: "May 22, 2026" },
-  { id: "CH-2022", title: "Park View Loft", loc: "Dream City, Erbil", img: TH("photo-1502672260266-1c1ef2d93688"), propertyType: "Apartment", type: "For rent", owner: "Dilan Rashid", status: "Rented", price: "$1,100", per: "/mo", date: "May 18, 2026" },
-  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", img: TH("photo-1568605114967-8130f3a36994"), propertyType: "Villa", type: "For sale", owner: "Rawa Jalal", status: "Published", price: "$845,000", date: "May 9, 2026" },
+  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", img: TH("photo-1613490493576-7fde63acd811"), propertyType: "Villa", type: "For sale", owner: "Rawa Jalal", status: "Published", price: 1200000, date: "Jun 12, 2026" },
+  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", img: TH("photo-1545324418-cc1a3fa10c00"), propertyType: "Apartment", type: "For rent", owner: "Dilan Rashid", status: "Published", price: 1650, per: "/mo", date: "Jun 4, 2026" },
+  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", img: TH("photo-1600607687939-ce8a6c25118c"), propertyType: "Penthouse", type: "For sale", owner: "Sara Hama", status: "Sold", price: 980000, date: "May 30, 2026" },
+  { id: "CH-2008", title: "Lakeside Apartment", loc: "Dukan, Sulaymaniyah", img: TH("photo-1560448204-e02f11c3d0e2"), propertyType: "Apartment", type: "For sale", owner: "Ahmed Karim", status: "Pending", price: 365000, date: "May 22, 2026" },
+  { id: "CH-2022", title: "Park View Loft", loc: "Dream City, Erbil", img: TH("photo-1502672260266-1c1ef2d93688"), propertyType: "Apartment", type: "For rent", owner: "Dilan Rashid", status: "Rented", price: 1100, per: "/mo", date: "May 18, 2026" },
+  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", img: TH("photo-1568605114967-8130f3a36994"), propertyType: "Villa", type: "For sale", owner: "Rawa Jalal", status: "Published", price: 845000, date: "May 9, 2026" },
 ];
 
 export interface MemberRow { id: string; name: string; phone: string; img: string; roles: string[]; status: string; activity: string }
@@ -115,17 +115,17 @@ export const REVIEWS: Review[] = [
   { name: "Sara Hama", deal: "Viewing — Cedar Court", stars: 4, when: "May 2026", text: "Punctual and knowledgeable during the viewing. Answered all of my questions clearly and followed up the same day." },
 ];
 
-export interface TLItem { icon: IconName; tone: string; title: string; desc: string; time: string }
+export interface TLItem { icon: IconName; tone: string; titleKey: string; descKey: string; params?: Record<string, string>; price?: number; per?: string; time: string }
 export const TIMELINE: TLItem[] = [
-  { icon: "refresh-cw", tone: "brand", title: "Status changed", desc: "Account status set to Active by Rêbîn Kawa.", time: "Jun 18, 2026" },
-  { icon: "calendar-check", tone: "success", title: "Viewing completed", desc: "Hosted a viewing for Naz City Penthouse with Dilan Rashid.", time: "Jun 8, 2026" },
-  { icon: "key", tone: "error", title: "Property sold", desc: "Closed the sale of Naz City Penthouse for $980,000.", time: "May 30, 2026" },
-  { icon: "key-round", tone: "info", title: "Property rented", desc: "Park View Loft rented out at $1,100/mo.", time: "May 18, 2026" },
-  { icon: "user-plus", tone: "brand", title: "Member assigned", desc: "Ahmed Karim assigned to this agent.", time: "May 14, 2026" },
-  { icon: "building-2", tone: "brand", title: "Property assigned", desc: "Cedar Court Residence assigned to this agent.", time: "May 9, 2026" },
-  { icon: "pencil", tone: "neutral", title: "Profile updated", desc: "Service areas and languages updated.", time: "Apr 2, 2026" },
-  { icon: "badge-check", tone: "gold", title: "Agent verified", desc: "ID and licence documents approved.", time: "Mar 14, 2023" },
-  { icon: "user-round-plus", tone: "neutral", title: "Agent created", desc: "Agent profile created on Chiya Estate.", time: "Mar 12, 2023" },
+  { icon: "refresh-cw", tone: "brand", titleKey: "admin.ad.tl.status", descKey: "admin.ad.tl.statusDesc", params: { status: "@status.active", by: "Rêbîn Kawa" }, time: "Jun 18, 2026" },
+  { icon: "calendar-check", tone: "success", titleKey: "admin.ad.tl.viewing", descKey: "admin.ad.tl.viewingDesc", params: { title: "Naz City Penthouse", member: "Dilan Rashid" }, time: "Jun 8, 2026" },
+  { icon: "key", tone: "error", titleKey: "admin.ad.tl.sold", descKey: "admin.ad.tl.soldDesc", params: { title: "Naz City Penthouse" }, price: 980000, time: "May 30, 2026" },
+  { icon: "key-round", tone: "info", titleKey: "admin.ad.tl.rented", descKey: "admin.ad.tl.rentedDesc", params: { title: "Park View Loft" }, price: 1100, per: "/mo", time: "May 18, 2026" },
+  { icon: "user-plus", tone: "brand", titleKey: "admin.ad.tl.member", descKey: "admin.ad.tl.memberDesc", params: { name: "Ahmed Karim" }, time: "May 14, 2026" },
+  { icon: "building-2", tone: "brand", titleKey: "admin.ad.tl.property", descKey: "admin.ad.tl.propertyDesc", params: { title: "Cedar Court Residence" }, time: "May 9, 2026" },
+  { icon: "pencil", tone: "neutral", titleKey: "admin.ad.tl.profile", descKey: "admin.ad.tl.profileDesc", time: "Apr 2, 2026" },
+  { icon: "badge-check", tone: "gold", titleKey: "admin.ad.tl.verified", descKey: "admin.ad.tl.verifiedDesc", time: "Mar 14, 2023" },
+  { icon: "user-round-plus", tone: "neutral", titleKey: "admin.ad.tl.created", descKey: "admin.ad.tl.createdDesc", time: "Mar 12, 2023" },
 ];
 
 export interface NoteItem { author: string; role: string; time: string; kind: string; text: string }
@@ -176,11 +176,11 @@ export function buildKpis(a: AgentRecord): KpiCard[] {
   const viewings = deals * 4 + a.listings * 2;
   const conv = viewings ? Math.round((deals / viewings) * 100) : 0;
   return [
-    { key: "active", label: "Active listings", value: String(a.listings), icon: "building-2", tone: "brand", sub: "Currently published" },
-    { key: "sold", label: "Sold properties", value: String(a.sold), icon: "badge-check", tone: "success", sub: "All-time closed sales" },
-    { key: "rented", label: "Rented properties", value: String(a.rented), icon: "key-round", tone: "gold", sub: "All-time rentals" },
-    { key: "viewings", label: "Total viewings", value: String(viewings), icon: "calendar-check", tone: "info", sub: "Hosted to date" },
-    { key: "conv", label: "Conversion rate", value: conv + "%", icon: "trending-up", tone: "brand", sub: "Viewings to deals" },
+    { key: "active", labelKey: "admin.ad.kpi.active", value: a.listings, icon: "building-2", tone: "brand", subKey: "admin.ad.kpi.activeSub" },
+    { key: "sold", labelKey: "admin.ad.kpi.sold", value: a.sold, icon: "badge-check", tone: "success", subKey: "admin.ad.kpi.soldSub" },
+    { key: "rented", labelKey: "admin.ad.kpi.rented", value: a.rented, icon: "key-round", tone: "gold", subKey: "admin.ad.kpi.rentedSub" },
+    { key: "viewings", labelKey: "admin.ad.kpi.viewings", value: viewings, icon: "calendar-check", tone: "info", subKey: "admin.ad.kpi.viewingsSub" },
+    { key: "conv", labelKey: "admin.ad.kpi.conv", value: conv, percent: true, icon: "trending-up", tone: "brand", subKey: "admin.ad.kpi.convSub" },
   ];
 }
 
@@ -197,7 +197,7 @@ export function buildListings(properties: PropertyRecord[], name: string): Listi
       type: p.listing === "rent" ? "For rent" : "For sale",
       owner: p.owner.name,
       status: p.status,
-      price: fmtUSD(p.price),
+      price: p.price,
       per: p.per,
       date: p.date,
     }));

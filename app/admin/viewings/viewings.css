@@ -58,8 +58,8 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 14px; flex-wrap: wrap; min-height: 30px;
     padding-bottom: 16px; margin-bottom: 16px;
-    margin-left: -20px; margin-right: -20px;
-    padding-left: 20px; padding-right: 20px;
+    margin-inline-start: -20px; margin-inline-end: -20px;
+    padding-inline-start: 20px; padding-inline-end: 20px;
     border-bottom: 1px solid var(--border-subtle);
   }
   .vw-tablecard__heading { display: flex; align-items: center; gap: 11px; min-width: 0; }
@@ -123,7 +123,7 @@
   .vw-tabsearch input:hover { border-color: var(--border-strong); }
   .vw-tabsearch input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
   .vw-tabsearch__lead {
-    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%);
     color: var(--text-brand-muted); display: flex; pointer-events: none;
   }
   .vw-filterbtn {
@@ -151,7 +151,7 @@
   .vw-filterbar {
     display: grid; grid-template-rows: 0fr;
     transition: grid-template-rows 0.24s cubic-bezier(.4,0,.2,1);
-    margin-left: -20px; margin-right: -20px; margin-top: 16px;
+    margin-inline-start: -20px; margin-inline-end: -20px; margin-top: 16px;
     border-top: 1px solid transparent;
   }
   .vw-filterbar.is-open { grid-template-rows: 1fr; border-top-color: var(--border-subtle); }
@@ -172,7 +172,7 @@
     border: 1px solid var(--border-default); background: var(--surface-card);
     border-radius: var(--radius-control); box-shadow: var(--shadow-xs); cursor: pointer;
     font-family: var(--font-sans); font-size: 15px; color: var(--text-secondary);
-    text-align: left; transition: border-color .15s, background-color .15s, color .15s;
+    text-align: start; transition: border-color .15s, background-color .15s, color .15s;
   }
   .vw-filterdate__icon { flex: none; color: var(--text-tertiary); display: flex; }
   .vw-filterdate:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--gray-25); }
@@ -190,7 +190,7 @@
     transition: background-color .13s, color .13s;
   }
   .vw-filterdate__clear:hover { background: var(--gray-200); color: var(--text-primary); }
-  .vw-filterbar__actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+  .vw-filterbar__actions { display: flex; align-items: center; gap: 8px; flex: none; margin-inline-start: auto; }
   .vw-clearbtn {
     display: inline-flex; align-items: center; gap: 6px;
     height: 38px; padding: 0 13px;
@@ -377,7 +377,7 @@
     display: flex; align-items: center; gap: 10px; width: 100%;
     padding: 8px 10px; border: none; background: transparent; cursor: pointer;
     border-radius: var(--radius-md); color: var(--gray-700);
-    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; text-align: left;
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; text-align: start;
     transition: background-color .13s, color .13s;
   }
   .vw-aitem svg { flex: none; color: var(--text-tertiary); }
@@ -424,10 +424,10 @@
     .vw-row:last-child { margin-bottom: 0; }
     .vw-row:hover { background: var(--surface-card); }
     .vw-col--prop { margin-bottom: 12px; }
-    .vw-col--acts { position: absolute; top: 12px; right: 12px; }
+    .vw-col--acts { position: absolute; top: 12px; inset-inline-end: 12px; }
     .vw-col--loc, .vw-col--member, .vw-col--agent, .vw-col--dt, .vw-col--status {
       display: flex; align-items: center; justify-content: space-between; gap: 14px;
-      padding: 9px 0; border-top: 1px solid var(--border-subtle); text-align: right;
+      padding: 9px 0; border-top: 1px solid var(--border-subtle); text-align: end;
     }
     .vw-celllabel {
       display: block; flex: none;
@@ -546,7 +546,7 @@
   .vw-combo { position: relative; }
   .vw-combo__trigger {
     width: 100%; min-height: 44px; padding: 7px 12px 7px 14px;
-    display: flex; align-items: center; gap: 11px; text-align: left; cursor: pointer;
+    display: flex; align-items: center; gap: 11px; text-align: start; cursor: pointer;
     font-family: var(--font-sans); font-size: 14.5px; color: var(--text-primary);
     background: var(--surface-card); border: 1px solid var(--border-default);
     border-radius: var(--radius-control); box-shadow: var(--shadow-xs);
@@ -561,8 +561,8 @@
   .vw-combo__trigger.is-open { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
   .vw-combo__trigger:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
   .vw-combo__placeholder { color: var(--text-placeholder); flex: 1 1 auto; }
-  .vw-combo__chev { flex: none; color: var(--text-tertiary); margin-left: auto; transition: transform .16s ease; }
-  .vw-combo__trail { flex: none; color: var(--text-tertiary); margin-left: auto; }
+  .vw-combo__chev { flex: none; color: var(--text-tertiary); margin-inline-start: auto; transition: transform .16s ease; }
+  .vw-combo__trail { flex: none; color: var(--text-tertiary); margin-inline-start: auto; }
   .vw-combo__trigger.is-open .vw-combo__chev { transform: rotate(180deg); }
   .vw-combo__value { flex: 1 1 auto; min-width: 0; }
 
@@ -607,7 +607,7 @@
   .vw-combo__searchbar {
     flex: none; position: relative; padding: 10px 10px 8px; border-bottom: 1px solid var(--border-subtle);
   }
-  .vw-combo__searchbar svg { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); color: var(--text-brand-muted); pointer-events: none; }
+  .vw-combo__searchbar svg { position: absolute; inset-inline-start: 22px; top: 50%; transform: translateY(-50%); color: var(--text-brand-muted); pointer-events: none; }
   .vw-combo__searchinput {
     width: 100%; height: 38px; padding: 0 12px 0 38px;
     font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
@@ -620,7 +620,7 @@
   .vw-combo__list::-webkit-scrollbar { width: 8px; }
   .vw-combo__list::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
   .vw-combo__opt {
-    display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 10px; text-align: left;
+    display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 10px; text-align: start;
     border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md);
     transition: background-color .12s;
   }
@@ -637,7 +637,7 @@
   }
   .vw-combo__opt-meta span { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
   .vw-combo__opt-meta svg { flex: none; color: var(--gray-400); }
-  .vw-combo__opt-check { flex: none; color: var(--text-brand); margin-left: auto; }
+  .vw-combo__opt-check { flex: none; color: var(--text-brand); margin-inline-start: auto; }
   .vw-combo__thumb {
     width: 46px; height: 38px; flex: none; border-radius: 8px; object-fit: cover;
     background: var(--gray-100); box-shadow: inset 0 0 0 1px rgba(11,32,24,.06);
@@ -647,7 +647,7 @@
   }
   .vw-combo__foot { flex: none; padding: 6px; border-top: 1px solid var(--border-subtle); }
   .vw-combo__create {
-    display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; text-align: left;
+    display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; text-align: start;
     border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md);
     font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text-brand);
     transition: background-color .12s;
@@ -709,7 +709,7 @@
   /* Days with reservations: a dot hints some slots are taken; a fully-booked
      day turns red and is disabled. Mirrors the public "request a viewing" flow. */
   .vw-cal__dot {
-    position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: 5px; inset-inline-start: 50%; transform: translateX(-50%);
     width: 5px; height: 5px; border-radius: 50%; background: var(--error-500);
   }
   .vw-cal__day.is-selected .vw-cal__dot { display: none; }
@@ -855,7 +855,7 @@
     width: 100%; max-width: 410px;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl); box-shadow: var(--shadow-2xl);
-    padding: 24px 24px 20px; text-align: left;
+    padding: 24px 24px 20px; text-align: start;
     animation: vw-modal-up .2s cubic-bezier(.2,.7,.2,1);
   }
   .vw-confirm__icon {
@@ -892,18 +892,18 @@
     display: flex; align-items: center; gap: 10px; width: 100%;
     min-height: 44px; padding: 7px 12px;
     border: 1px solid var(--border-default); border-radius: var(--radius-control);
-    background: var(--surface-card); cursor: pointer; text-align: left;
+    background: var(--surface-card); cursor: pointer; text-align: start;
     transition: border-color .13s, box-shadow .13s;
   }
   .vw-statustrigger:hover { border-color: var(--border-strong); }
   .vw-statustrigger.is-open { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
   .vw-statustrigger__placeholder { flex: 1; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-placeholder); }
   .vw-statustrigger__placeholder svg { flex: none; color: var(--text-tertiary); }
-  .vw-statustrigger__chev { margin-left: auto; flex: none; color: var(--text-tertiary); transition: transform .15s ease; }
+  .vw-statustrigger__chev { margin-inline-start: auto; flex: none; color: var(--text-tertiary); transition: transform .15s ease; }
   .vw-statustrigger.is-open .vw-statustrigger__chev { transform: rotate(180deg); }
 
   .vw-statusdrop {
-    position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20;
+    position: absolute; inset-inline-start: 0; inset-inline-end: 0; top: calc(100% + 6px); z-index: 20;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-control); box-shadow: var(--shadow-lg);
     padding: 6px; display: flex; flex-direction: column; gap: 2px;
@@ -911,7 +911,7 @@
   .vw-statopt {
     display: flex; align-items: center; gap: 10px; width: 100%;
     padding: 8px 10px; border: none; border-radius: var(--radius-control);
-    background: transparent; cursor: pointer; text-align: left;
+    background: transparent; cursor: pointer; text-align: start;
     transition: background-color .13s;
   }
   .vw-statopt:hover { background: var(--gray-50); }
@@ -930,7 +930,7 @@
      TOAST NOTIFICATION  (vw-toast)
      ============================================================ */
   .vw-toaster {
-    position: fixed; top: 22px; right: 22px; z-index: 2000;
+    position: fixed; top: 22px; inset-inline-end: 22px; z-index: 2000;
     display: flex; flex-direction: column; gap: 12px;
     width: 380px; max-width: calc(100vw - 32px); pointer-events: none;
   }
@@ -945,6 +945,10 @@
   }
   .vw-toast.is-in  { transform: translateX(0); opacity: 1; }
   .vw-toast.is-out { transform: translateX(24px); opacity: 0; }
+  /* transforms don't follow `direction`: mirror the off-screen offset */
+  [dir="rtl"] .vw-toast { transform: translateX(-24px); }
+  [dir="rtl"] .vw-toast.is-in { transform: translateX(0); }
+  [dir="rtl"] .vw-toast.is-out { transform: translateX(-24px); }
   .vw-toast__icon {
     flex: none; width: 38px; height: 38px; border-radius: var(--radius-pill);
     display: inline-flex; align-items: center; justify-content: center;
@@ -977,14 +981,17 @@
   .vw-toast__close:hover { background: var(--gray-100); color: var(--gray-800); }
   .vw-toast__close:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .vw-toast__progress {
-    position: absolute; left: 0; bottom: 0; height: 3px;
-    background: var(--brand-accent); border-bottom-left-radius: var(--radius-card);
+    position: absolute; inset-inline-start: 0; bottom: 0; height: 3px;
+    background: var(--brand-accent); border-end-start-radius: var(--radius-card);
     transform-origin: left center; will-change: transform;
+  }
+  [dir="rtl"] .vw-toast__progress {
+    transform-origin: right center;
   }
   .vw-toast.is-in .vw-toast__progress { animation: vw-toast-prog 6000ms linear forwards; }
   @keyframes vw-toast-prog { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
-  @media (max-width: 560px) { .vw-toaster { left: 16px; right: 16px; top: 16px; width: auto; } }
+  @media (max-width: 560px) { .vw-toaster { inset-inline-start: 16px; inset-inline-end: 16px; top: 16px; width: auto; } }
   @media (prefers-reduced-motion: reduce) {
     .vw-toast { transition: opacity .2s ease; transform: none; }
     .vw-toast.is-in, .vw-toast.is-out { transform: none; }

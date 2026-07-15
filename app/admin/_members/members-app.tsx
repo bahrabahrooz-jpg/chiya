@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
+import { useLang, isRtl } from "@/lib/i18n";
+import { fmtNum, monthName, weekdayName, fmtDate as fmtDateI18n, popupLeft } from "@/lib/fmt";
 import { AddMemberModal } from "./add-member-modal";
 import {
   EMPTY_FILTERS,
@@ -30,6 +32,7 @@ import { countMembers } from "../_data/catalog";
 type SelectOption = { value: string; label: string };
 
 function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPage: number; totalItems: number; onPageChange: (p: number) => void }) {
+  const { t, lang } = useLang();
   const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
   const start = Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalItems);
   const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
@@ -43,16 +46,12 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
   return (
     <div className="mp-tablefooter">
       <span className="mp-pagination__info">
-        Showing{" "}
-        <b>
-          {start.toLocaleString("en-US")}–{end.toLocaleString("en-US")}
-        </b>{" "}
-        of <b>{totalItems.toLocaleString("en-US")}</b> members
+        {t("admin.members.showingRange", { start: fmtNum(lang, start), end: fmtNum(lang, end), total: fmtNum(lang, totalItems) })}
       </span>
       <div className="mp-pagination">
         <button type="button" className="mp-page-btn mp-page-btn--nav" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>
           <Icon name="chevron-left" size={15} />
-          Previous
+          {t("admin.props.prev")}
         </button>
         {getPages().map((p, i) =>
           p === "…" ? (
@@ -61,12 +60,12 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
             </span>
           ) : (
             <button key={p} type="button" className={"mp-page-btn" + (p === currentPage ? " is-active" : "")} onClick={() => onPageChange(p)}>
-              {p}
+              {fmtNum(lang, p)}
             </button>
           ),
         )}
         <button type="button" className="mp-page-btn mp-page-btn--nav" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)}>
-          Next
+          {t("admin.props.next")}
           <Icon name="chevron-right" size={15} />
         </button>
       </div>
@@ -75,6 +74,7 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
 }
 
 function MpCustomSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: SelectOption[]; placeholder: string }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; minWidth: number } | null>(null);
@@ -115,7 +115,7 @@ function MpCustomSelect({ value, onChange, options, placeholder }: { value: stri
             className="mp-datebtn__clear"
             role="button"
             tabIndex={0}
-            aria-label="Clear"
+            aria-label={t("admin.props.clear")}
             onClick={(e) => {
               e.stopPropagation();
               onChange("");
@@ -153,6 +153,8 @@ function MpCustomSelect({ value, onChange, options, placeholder }: { value: stri
 }
 
 function MpDatePicker({ value, onChange, placeholder }: { value: Date | null; onChange: (v: Date | null) => void; placeholder: string }) {
+  const { t, lang, dir } = useLang();
+  const rtl = dir === "rtl";
   const [open, setOpen] = useState(false);
   const [view, setView] = useState(() => ({ y: (value || MP_TODAY).getFullYear(), m: (value || MP_TODAY).getMonth() }));
   const btnRef = useRef<HTMLDivElement>(null);
@@ -202,13 +204,13 @@ function MpDatePicker({ value, onChange, placeholder }: { value: Date | null; on
   return (
     <div className="mp-datebtn-wrap" ref={btnRef}>
       <button type="button" className={"mp-datebtn" + (open ? " is-open" : "") + (value ? " has-value" : "")} onClick={toggle}>
-        <span className="mp-datebtn__label">{value ? fmtDate(value) : placeholder}</span>
+        <span className="mp-datebtn__label">{value ? fmtDateI18n(lang, value) : placeholder}</span>
         {value && (
           <span
             className="mp-datebtn__clear"
             role="button"
             tabIndex={0}
-            aria-label="Clear date"
+            aria-label={t("admin.props.clearDate")}
             onClick={(e) => {
               e.stopPropagation();
               onChange(null);
@@ -225,20 +227,20 @@ function MpDatePicker({ value, onChange, placeholder }: { value: Date | null; on
         createPortal(
           <div className="mp-cal" style={{ top: pos.top, left: pos.left, width: pos.width }}>
             <div className="mp-cal__head">
-              <button type="button" className="mp-cal__nav" onClick={() => shift(-1)} aria-label="Previous month">
-                <Icon name="chevron-left" size={18} />
+              <button type="button" className="mp-cal__nav" onClick={() => shift(-1)} aria-label={t("admin.members.prevMonth")}>
+                <Icon name={rtl ? "chevron-right" : "chevron-left"} size={18} />
               </button>
               <span className="mp-cal__title">
-                {MP_MONTHS[view.m]} {view.y}
+                {monthName(lang, view.m, true)} {fmtNum(lang, view.y)}
               </span>
-              <button type="button" className="mp-cal__nav" onClick={() => shift(1)} aria-label="Next month">
-                <Icon name="chevron-right" size={18} />
+              <button type="button" className="mp-cal__nav" onClick={() => shift(1)} aria-label={t("admin.members.nextMonth")}>
+                <Icon name={rtl ? "chevron-left" : "chevron-right"} size={18} />
               </button>
             </div>
             <div className="mp-cal__grid mp-cal__wd">
-              {MP_WD.map((w) => (
+              {MP_WD.map((w, i) => (
                 <span key={w} className="mp-cal__wdcell">
-                  {w}
+                  {weekdayName(lang, i).slice(0, lang === "en" ? 2 : 3)}
                 </span>
               ))}
             </div>
@@ -259,7 +261,7 @@ function MpDatePicker({ value, onChange, placeholder }: { value: Date | null; on
                       setOpen(false);
                     }}
                   >
-                    {d}
+                    {fmtNum(lang, d)}
                   </button>
                 );
               })}
@@ -288,6 +290,7 @@ function RowActions({
   onStatus: () => void;
   onDelete: () => void;
 }) {
+  const { t, lang } = useLang();
   const suspended = status === "Suspended";
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -299,10 +302,10 @@ function RowActions({
     const update = () => {
       if (!btnRef.current) return;
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: Math.max(12, r.right - 188) });
+      setPos({ top: r.bottom + 6, left: popupLeft(r, 188, isRtl(lang)) });
     };
     update();
-  }, [open]);
+  }, [open, lang]);
 
   const menu =
     pos &&
@@ -311,21 +314,21 @@ function RowActions({
         <div className="mp-amenu__sect">
           <button type="button" className="mp-aitem" role="menuitem" onClick={onView}>
             <Icon name="user" size={17} />
-            View profile
+            {t("admin.members.viewProfile")}
           </button>
           <button type="button" className="mp-aitem" role="menuitem" onClick={onEdit}>
             <Icon name="pencil" size={17} />
-            Edit member
+            {t("admin.members.editMember")}
           </button>
           <button type="button" className="mp-aitem mp-aitem--status" role="menuitem" onClick={onStatus}>
             <Icon name={suspended ? "circle-check" : "circle-pause"} size={17} />
-            {suspended ? "Activate member" : "Suspend member"}
+            {suspended ? t("admin.members.activate") : t("admin.members.suspend")}
           </button>
         </div>
         <div className="mp-amenu__sect">
           <button type="button" className="mp-aitem mp-aitem--danger" role="menuitem" onClick={onDelete}>
             <Icon name="trash-2" size={17} />
-            Delete member
+            {t("admin.members.deleteMember")}
           </button>
         </div>
       </div>,
@@ -334,7 +337,7 @@ function RowActions({
 
   return (
     <div className="mp-actions">
-      <button ref={btnRef} type="button" className={"mp-kebab" + (open ? " is-open" : "")} aria-label="Member actions" aria-haspopup="menu" aria-expanded={open} onClick={onToggle}>
+      <button ref={btnRef} type="button" className={"mp-kebab" + (open ? " is-open" : "")} aria-label={t("admin.members.actions")} aria-haspopup="menu" aria-expanded={open} onClick={onToggle}>
         <Icon name="more-horizontal" size={19} />
       </button>
       {open && menu}
@@ -343,6 +346,7 @@ function RowActions({
 }
 
 function DeleteMemberModal({ member, onCancel, onConfirm }: { member: MemberRecord; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -362,18 +366,16 @@ function DeleteMemberModal({ member, onCancel, onConfirm }: { member: MemberReco
           <Icon name="trash-2" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="mp-modal__title" id="mp-del-title">
-          Delete member?
+          {t("admin.members.deleteTitle")}
         </h2>
-        <p className="mp-modal__body">
-          Are you sure you want to delete <strong>{member.name}</strong>? This action cannot be undone and will permanently remove the account.
-        </p>
+        <p className="mp-modal__body">{t("admin.members.deleteBody", { name: member.name })}</p>
         <div className="mp-modal__actions">
           <button type="button" className="mp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           <button type="button" className="mp-modal__delete" onClick={onConfirm}>
             <Icon name="trash-2" size={15} />
-            Delete member
+            {t("admin.members.deleteMember")}
           </button>
         </div>
       </div>
@@ -383,6 +385,7 @@ function DeleteMemberModal({ member, onCancel, onConfirm }: { member: MemberReco
 }
 
 function StatusMemberModal({ member, onCancel, onConfirm }: { member: MemberRecord; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -395,17 +398,17 @@ function StatusMemberModal({ member, onCancel, onConfirm }: { member: MemberReco
     ? {
         icon: "circle-pause" as IconName,
         iconCls: "mp-modal__icon--warn",
-        title: "Suspend member",
-        body: "Are you sure you want to suspend this member? The member will no longer be able to access their account until reactivated.",
-        cta: "Suspend member",
+        title: t("admin.members.suspend"),
+        body: t("admin.members.suspendBody"),
+        cta: t("admin.members.suspend"),
         ctaCls: "mp-modal__confirm--warn",
       }
     : {
         icon: "circle-check" as IconName,
         iconCls: "mp-modal__icon--brand",
-        title: "Activate member",
-        body: "Are you sure you want to activate this member? The member will regain access to their account and platform features.",
-        cta: "Activate member",
+        title: t("admin.members.activate"),
+        body: t("admin.members.activateBody"),
+        cta: t("admin.members.activate"),
         ctaCls: "mp-modal__confirm--brand",
       };
   return createPortal(
@@ -425,7 +428,7 @@ function StatusMemberModal({ member, onCancel, onConfirm }: { member: MemberReco
         <p className="mp-modal__body">{copy.body}</p>
         <div className="mp-modal__actions">
           <button type="button" className="mp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </button>
           <button type="button" className={"mp-modal__confirm " + copy.ctaCls} onClick={onConfirm}>
             {copy.cta}
@@ -456,6 +459,11 @@ function MemberRow({
   onDeleteRequest: (m: MemberRecord) => void;
   readOnly: boolean;
 }) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
   const st = MEMBER_STATUS[m.status] || { variant: "neutral" as const, dot: false };
   return (
     <div
@@ -481,36 +489,36 @@ function MemberRow({
         </div>
       </div>
       <div className="mp-col--roles">
-        <span className="mp-celllabel">Roles</span>
+        <span className="mp-celllabel">{t("admin.members.th.roles")}</span>
         <div className="mp-roles">
           {m.roles.map((r) => (
             <Badge key={r} variant="neutral" className={(ROLE_META[r] || {}).cls} size="sm">
-              {r}
+              {tOr(`role.${r.toLowerCase()}`, r)}
             </Badge>
           ))}
         </div>
       </div>
       <div className="mp-col--phone">
-        <span className="mp-celllabel">Phone</span>
+        <span className="mp-celllabel">{t("admin.members.th.phone")}</span>
         <span className="mp-contact mp-contact--phone">
           <Icon name="phone" size={13} />
           {m.phone}
         </span>
       </div>
       <div className="mp-col--props">
-        <span className="mp-celllabel">Properties</span>
+        <span className="mp-celllabel">{t("admin.members.th.props")}</span>
         <span className={"mp-propstext" + (m.properties === 0 ? " mp-propstext--zero" : "")}>
-          <b>{m.properties}</b> related
+          {t("admin.members.related", { count: fmtNum(lang, m.properties) })}
         </span>
       </div>
       <div className="mp-col--joined">
-        <span className="mp-celllabel">Joined</span>
-        <span className="mp-date">{m.joined}</span>
+        <span className="mp-celllabel">{t("admin.members.th.joinedShort")}</span>
+        <span className="mp-date">{fmtDateI18n(lang, new Date(m.joined))}</span>
       </div>
       <div className="mp-col--status">
-        <span className="mp-celllabel">Status</span>
+        <span className="mp-celllabel">{t("admin.members.th.status")}</span>
         <Badge variant={st.variant} size="sm" dot={st.dot} className="mp-statusbadge">
-          {m.status}
+          {tOr(`status.${m.status.toLowerCase()}`, m.status)}
         </Badge>
       </div>
       {!readOnly && (
@@ -552,6 +560,7 @@ interface ToastData {
 const TOAST_DURATION = 6000;
 
 function Toast({ toast, onDismiss, onViewProfile }: { toast: ToastData; onDismiss: () => void; onViewProfile: () => void }) {
+  const { t } = useLang();
   const [shown, setShown] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -598,7 +607,7 @@ function Toast({ toast, onDismiss, onViewProfile }: { toast: ToastData; onDismis
           <p className="mp-toast__msg">{toast.message}</p>
           <div className="mp-toast__actions">
             <button type="button" className="mp-toast__btn mp-toast__btn--dismiss" onClick={close}>
-              Dismiss
+              {t("admin.props.dismiss")}
             </button>
             {danger && toast.onUndo && (
               <button
@@ -610,17 +619,17 @@ function Toast({ toast, onDismiss, onViewProfile }: { toast: ToastData; onDismis
                 }}
               >
                 <Icon name="undo-2" size={15} />
-                Undo
+                {t("admin.props.undo")}
               </button>
             )}
             {!danger && (
               <button type="button" className="mp-toast__btn mp-toast__btn--view" onClick={onViewProfile}>
-                View profile
+                {t("admin.members.viewProfile")}
               </button>
             )}
           </div>
         </div>
-        <button type="button" className="mp-toast__close" aria-label="Dismiss notification" onClick={close}>
+        <button type="button" className="mp-toast__close" aria-label={t("admin.members.dismissNotif")} onClick={close}>
           <Icon name="x" size={17} />
         </button>
         <span className="mp-toast__progress" />
@@ -648,29 +657,31 @@ function MembersTableCard(props: {
   onDeleteRequest: (m: MemberRecord) => void;
   readOnly: boolean;
 }) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
   const [filtersOpen, setFiltersOpen] = useState(false);
   const shown = props.hasActive ? props.totalRows : props.totalCount;
-  const opt = (arr: string[]): SelectOption[] => arr.map((v) => ({ value: v, label: v }));
   const activeAdvCount = [props.filters.status, props.filters.date].filter(Boolean).length;
   return (
     <section className="mp-tablecard">
       <header className="mp-tablecard__head">
         <div className="mp-tablecard__titlerow">
           <div className="mp-tablecard__heading">
-            <h2 className="mp-tablecard__title">All members</h2>
-            <span className="mp-tablecard__count">{shown.toLocaleString("en-US")}</span>
+            <h2 className="mp-tablecard__title">{t("admin.members.tableTitle")}</h2>
+            <span className="mp-tablecard__count">{fmtNum(lang, shown)}</span>
           </div>
           {props.hasActive && (
             <div className="mp-tablecard__resultnote">
-              <span>
-                <b>{props.totalRows.toLocaleString("en-US")}</b> of {props.totalCount.toLocaleString("en-US")} shown
-              </span>
+              <span>{t("admin.props.shownOf", { shown: fmtNum(lang, props.totalRows), total: fmtNum(lang, props.totalCount) })}</span>
             </div>
           )}
         </div>
 
         <div className="mp-tabrow">
-          <div className="mp-tabs" role="tablist" aria-label="Filter by role">
+          <div className="mp-tabs" role="tablist" aria-label={t("admin.members.tabsAria")}>
             {ROLE_TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -680,7 +691,7 @@ function MembersTableCard(props: {
                 className={"mp-tab" + (props.filters.role === tab.id ? " is-active" : "")}
                 onClick={() => props.setFilter("role", tab.id)}
               >
-                {tab.label}
+                {tab.id === "" ? t("admin.members.tabAll") : tOr(`role.${tab.id.toLowerCase()}`, tab.label)}
               </button>
             ))}
           </div>
@@ -689,7 +700,7 @@ function MembersTableCard(props: {
               <span className="mp-tabsearch__lead">
                 <Icon name="search" size={16} />
               </span>
-              <input type="text" value={props.filters.q} onChange={(e) => props.setFilter("q", e.target.value)} placeholder="Search members…" aria-label="Search members" />
+              <input type="text" value={props.filters.q} onChange={(e) => props.setFilter("q", e.target.value)} placeholder={t("admin.members.searchPh")} aria-label={t("admin.members.searchAria")} />
             </div>
             <button
               type="button"
@@ -698,8 +709,8 @@ function MembersTableCard(props: {
               onClick={() => setFiltersOpen((v) => !v)}
             >
               <Icon name="sliders-horizontal" size={15} />
-              Filters
-              {activeAdvCount > 0 && <span className="mp-filterbtn__badge">{activeAdvCount}</span>}
+              {t("admin.props.filters")}
+              {activeAdvCount > 0 && <span className="mp-filterbtn__badge">{fmtNum(lang, activeAdvCount)}</span>}
             </button>
           </div>
         </div>
@@ -707,12 +718,17 @@ function MembersTableCard(props: {
         <div className={"mp-filterbar" + (filtersOpen ? " is-open" : "")}>
           <div className="mp-filterbar__inner">
             <div className="mp-filterbar__row">
-              <MpCustomSelect value={props.filters.status} onChange={(v) => props.setFilter("status", v)} options={opt(["Active", "Suspended"])} placeholder="Status" />
-              <MpDatePicker value={props.filters.date} onChange={(v) => props.setFilter("date", v)} placeholder="Date added" />
+              <MpCustomSelect
+                value={props.filters.status}
+                onChange={(v) => props.setFilter("status", v)}
+                options={["Active", "Suspended"].map((v) => ({ value: v, label: t(`status.${v.toLowerCase()}`) }))}
+                placeholder={t("admin.members.filter.status")}
+              />
+              <MpDatePicker value={props.filters.date} onChange={(v) => props.setFilter("date", v)} placeholder={t("admin.members.filter.date")} />
               <div className="mp-filterbar__actions">
                 <button type="button" className="mp-clearbtn" onClick={props.onClear}>
                   <Icon name="x" size={14} />
-                  Clear all
+                  {t("admin.props.clearAll")}
                 </button>
               </div>
             </div>
@@ -723,11 +739,11 @@ function MembersTableCard(props: {
         <div className="mp-thead" role="row">
           <span className="mp-th mp-col--member">Member</span>
           <span className="mp-th mp-col--roles">Roles</span>
-          <span className="mp-th mp-col--phone">Phone</span>
-          <span className="mp-th mp-col--props">Properties</span>
-          <span className="mp-th mp-col--joined">Joined date</span>
-          <span className="mp-th mp-col--status">Status</span>
-          {!props.readOnly && <span className="mp-th mp-col--actions">Actions</span>}
+          <span className="mp-th mp-col--phone">{t("admin.members.th.phone")}</span>
+          <span className="mp-th mp-col--props">{t("admin.members.th.props")}</span>
+          <span className="mp-th mp-col--joined">{t("admin.members.th.joined")}</span>
+          <span className="mp-th mp-col--status">{t("admin.members.th.status")}</span>
+          {!props.readOnly && <span className="mp-th mp-col--actions">{t("admin.members.th.actions")}</span>}
         </div>
         {props.rows.length > 0 ? (
           props.rows.map((m) => (
@@ -748,8 +764,8 @@ function MembersTableCard(props: {
             <span className="mp-noresults__art">
               <Icon name="search-x" size={26} strokeWidth={1.6} />
             </span>
-            <h3>No members found</h3>
-            <p>Try adjusting your search or clearing the filters to see more members.</p>
+            <h3>{t("admin.members.empty.title")}</h3>
+            <p>{t("admin.members.empty.sub")}</p>
           </div>
         )}
       </div>
@@ -759,6 +775,7 @@ function MembersTableCard(props: {
 }
 
 export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeAgent?: string; basePath?: string } = {}) {
+  const { t, lang } = useLang();
   const router = useRouter();
   const { members, memberCounts, properties, addMember, removeMember, updateMember } = useProperties();
   const readOnly = !!scopeAgent;
@@ -811,12 +828,12 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
       status: "Active",
       img: null,
     });
-    setToast({ title: "Member added successfully", message: "The member profile has been created and is now available in the Members directory." });
+    setToast({ title: t("admin.members.toast.addedTitle"), message: t("admin.members.toast.addedMsg") });
   };
   const handleEditMember = (v: { name: string; phone: string; email: string }) => {
     if (editTarget) updateMember(editTarget.id, { name: v.name.trim(), phone: v.phone.trim(), email: v.email.trim() });
     setEditTarget(null);
-    setToast({ title: "Member updated successfully", message: "The member information has been updated successfully." });
+    setToast({ title: t("admin.members.toast.updatedTitle"), message: t("admin.members.toast.updatedMsg") });
   };
 
   const handleDeleteConfirm = () => {
@@ -825,8 +842,8 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
     setDeleteTarget(null);
     setToast({
       variant: "danger",
-      title: "Member deleted",
-      message: `${target.name} has been permanently removed from the Members directory.`,
+      title: t("admin.members.toast.deletedTitle"),
+      message: t("admin.members.toast.deletedMsg", { name: target.name }),
       onUndo: () => addMember(target),
     });
   };
@@ -839,8 +856,8 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
     setStatusTarget(null);
     setToast(
       suspending
-        ? { variant: "warn", icon: "circle-pause", title: "Member suspended", message: "The member account has been suspended successfully." }
-        : { variant: "success", icon: "circle-check", title: "Member activated", message: "The member account has been activated successfully." },
+        ? { variant: "warn", icon: "circle-pause", title: t("admin.members.toast.suspendedTitle"), message: t("admin.members.toast.suspendedMsg") }
+        : { variant: "success", icon: "circle-check", title: t("admin.members.toast.activatedTitle"), message: t("admin.members.toast.activatedMsg") },
     );
   };
 
@@ -872,13 +889,13 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
     <>
       <header className="mp-head">
         <div className="mp-head__intro">
-          <h1 className="mp-head__title">Members</h1>
-          <p className="mp-head__sub">Manage buyers, sellers, landlords, and tenants across Chiya Estate.</p>
+          <h1 className="mp-head__title">{t("admin.members.title")}</h1>
+          <p className="mp-head__sub">{t("admin.members.sub")}</p>
         </div>
         {!readOnly && (
           <div className="mp-head__action">
             <Button hierarchy="primary" size="lg" iconLeading="user-plus" onClick={() => setAddOpen(true)}>
-              Add member
+              {t("admin.members.add")}
             </Button>
           </div>
         )}
@@ -886,7 +903,14 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
 
       <div className="mp-kpis">
         {KPI_CARDS.map((c) => (
-          <StatCard key={c.key} label={c.label} value={effCounts[c.field].toLocaleString("en-US")} icon={c.icon} tone={c.tone} sub={c.sub} />
+          <StatCard
+            key={c.key}
+            label={t(`admin.members.kpi.${c.key}`)}
+            value={fmtNum(lang, effCounts[c.field])}
+            icon={c.icon}
+            tone={c.tone}
+            sub={t(`admin.members.kpiSub.${c.key}`)}
+          />
         ))}
       </div>
 

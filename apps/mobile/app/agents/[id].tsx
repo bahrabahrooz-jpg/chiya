@@ -27,6 +27,7 @@ import { shareAgent } from "@/lib/share";
 const SPECIALTIES: Record<Locale, string[]> = {
   en: ["Luxury villas", "Apartments", "Investment", "New developments", "Family homes"],
   ar: ["فلل فاخرة", "شقق", "استثمار", "مشاريع جديدة", "منازل عائلية"],
+  ku: ["ڤێلای گرانبەها", "شوقەکان", "وەبەرهێنان", "پڕۆژەی نوێ", "ماڵی خێزانی"],
 };
 
 interface Review {
@@ -36,6 +37,8 @@ interface Review {
   when: string;
   text: string;
   own?: boolean;
+  /** New reviews stay "pending" until an admin approves them; approved reviews are public. */
+  status?: "pending" | "approved";
 }
 const INITIAL_REVIEWS: Record<Locale, Review[]> = {
   en: [
@@ -47,6 +50,11 @@ const INITIAL_REVIEWS: Record<Locale, Review[]> = {
     { id: "r1", name: "سارة محمود", stars: 5, when: "قبل أسبوعين", text: "محترفة وسريعة الاستجابة للغاية — وجدت لنا المنزل المثالي خلال أيام." },
     { id: "r2", name: "كاروان علي", stars: 5, when: "قبل شهر", text: "عملية سلسة من المعاينة حتى استلام المفاتيح. معرفة عميقة بالسوق المحلي." },
     { id: "r3", name: "نما حسن", stars: 4, when: "قبل شهرين", text: "صبور وصادق طوال الوقت. أوصي به للأصدقاء بكل سرور." },
+  ],
+  ku: [
+    { id: "r1", name: "سارا مەحمود", stars: 5, when: "٢ هەفتە لەمەوپێش", text: "زۆر پیشەگەرانە و خێرا وەڵامدەرەوە — لە ماوەی چەند ڕۆژێکدا ماڵی تەواوی بۆ دۆزینەوە." },
+    { id: "r2", name: "کاروان عەلی", stars: 5, when: "١ مانگ لەمەوپێش", text: "پرۆسێسێکی نەرم لە بینینەوە تا وەرگرتنی کلیلەکان. زانیاری قووڵی بازاڕی ناوخۆیی." },
+    { id: "r3", name: "نما حەسەن", stars: 4, when: "٢ مانگ لەمەوپێش", text: "بە ئارامی و ڕاستگۆییەوە لە هەموو کاتێکدا. بە دڵخۆشییەوە بۆ هاوڕێکانم پێشنیاری دەکەم." },
   ],
 };
 
@@ -155,13 +163,29 @@ function ReviewCard({ review: r, onEdit, onDelete }: { review: Review; onEdit?: 
           <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{r.name}</Text>
           <Text style={[type.caption, { color: colors.textTertiary }]}>{r.when}</Text>
         </View>
-        <View style={styles.starsRow}>
+        {r.status === "pending" ? (
+          <View style={[styles.pendingBadge, { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }]}>
+            <Text style={[type.caption, { color: colors.warningText, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.pendingBadge")}</Text>
+          </View>
+        ) : (
+          <View style={styles.starsRow}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Star key={i} size={13} color={colors.warning} fill={i <= r.stars ? colors.warning : "transparent"} strokeWidth={i <= r.stars ? 0 : 1.5} />
+            ))}
+          </View>
+        )}
+      </View>
+      {r.status === "pending" ? (
+        <View style={styles.pendingStarsRow}>
           {[1, 2, 3, 4, 5].map((i) => (
             <Star key={i} size={13} color={colors.warning} fill={i <= r.stars ? colors.warning : "transparent"} strokeWidth={i <= r.stars ? 0 : 1.5} />
           ))}
         </View>
-      </View>
+      ) : null}
       <Text style={[type.bodySm, { color: colors.textSecondary, lineHeight: 21, marginTop: 10 }]}>“{r.text}”</Text>
+      {r.status === "pending" ? (
+        <Text style={[type.caption, { color: colors.textTertiary, marginTop: 8 }]}>{t("agentDetail.pendingNote")}</Text>
+      ) : null}
       {onEdit || onDelete ? (
         <View style={styles.reviewActions}>
           {onEdit ? (
@@ -190,8 +214,11 @@ export default function AgentDetailScreen() {
   const [reviews, setReviews] = useState<Review[]>(() => INITIAL_REVIEWS[locale]);
   const [editing, setEditing] = useState<Review | null>(null);
 
-  const addReview = (stars: number, text: string) =>
-    setReviews((rs) => [{ id: `r-${Date.now()}`, name: user.fullName, stars, when: t("agentDetail.justNow"), text, own: true }, ...rs]);
+  const addReview = (stars: number, text: string) => {
+    // Reviews are not published straight away — they wait for admin approval.
+    setReviews((rs) => [{ id: `r-${Date.now()}`, name: user.fullName, stars, when: t("agentDetail.justNow"), text, own: true, status: "pending" }, ...rs]);
+    Alert.alert(t("agentDetail.submittedTitle"), t("agentDetail.submittedMessage"));
+  };
   const updateReview = (rid: string, stars: number, text: string) =>
     setReviews((rs) => rs.map((r) => (r.id === rid ? { ...r, stars, text, when: t("agentDetail.editedJustNow") } : r)));
   const deleteReview = (rid: string) => setReviews((rs) => rs.filter((r) => r.id !== rid));
@@ -310,7 +337,7 @@ export default function AgentDetailScreen() {
           <View style={[styles.sectionDivided, { borderTopColor: colors.borderSubtle }]}>
             <View style={styles.listHead}>
               <Heading>{t("agentDetail.reviews")}</Heading>
-              <Text style={[type.bodySm, { color: colors.textTertiary }]}>{reviews.length}</Text>
+              <Text style={[type.bodySm, { color: colors.textTertiary }]}>{reviews.filter((r) => r.status !== "pending").length}</Text>
             </View>
             <ReviewComposer
               key={editing?.id ?? "new"}
@@ -405,6 +432,8 @@ const styles = StyleSheet.create({
   reviewActions: { flexDirection: "row", gap: 18, marginTop: 12 },
   review: { padding: 14, borderWidth: 1 },
   reviewHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  pendingBadge: { height: 22, paddingHorizontal: 9, borderRadius: 11, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  pendingStarsRow: { flexDirection: "row", gap: 2, marginTop: 10 },
   reviewAvatar: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   starsRow: { flexDirection: "row", gap: 2 },
   bar: {

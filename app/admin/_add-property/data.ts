@@ -1,6 +1,13 @@
 import type { IconName } from "@/components/ui/icon";
 
-export const STEPS = ["Property details", "Location", "Media", "Amenities & features", "Ownership & assignment", "Review & publish"];
+export const STEP_KEYS = [
+  "admin.ap.step.details",
+  "admin.ap.step.location",
+  "admin.ap.step.media",
+  "admin.ap.step.amenities",
+  "admin.ap.step.ownership",
+  "admin.ap.step.review",
+];
 
 export const PROPERTY_TYPES = ["Villa", "Apartment", "House", "Land", "Commercial", "Office", "Building"];
 export const CONDITIONS = ["New", "Good", "Needs renovation"];
@@ -18,32 +25,32 @@ export const AGENTS: ApAgent[] = [
   { id: "diyar", name: "Diyar Salih", area: "Duhok", phone: "+964 770 118 5540", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=70" },
 ];
 
-export interface Amenity { label: string; icon: IconName }
+export interface Amenity { label: string; icon: IconName; labelKey: string }
 export const AMENITIES: Amenity[] = [
-  { label: "Swimming pool", icon: "waves" },
-  { label: "Garden", icon: "trees" },
-  { label: "Gym", icon: "dumbbell" },
-  { label: "Elevator", icon: "arrow-up-down" },
-  { label: "Balcony", icon: "fence" },
-  { label: "Security", icon: "shield-check" },
-  { label: "CCTV", icon: "cctv" },
-  { label: "Smart home", icon: "house-wifi" },
-  { label: "Generator", icon: "zap" },
-  { label: "Storage room", icon: "package" },
-  { label: "Maid room", icon: "bed-single" },
-  { label: "Fireplace", icon: "flame" },
-  { label: "Play area", icon: "blocks" },
-  { label: "BBQ area", icon: "utensils-crossed" },
-  { label: "Laundry room", icon: "washing-machine" },
-  { label: "Central AC", icon: "air-vent" },
+  { label: "Swimming pool", icon: "waves", labelKey: "admin.ap.am.pool" },
+  { label: "Garden", icon: "trees", labelKey: "admin.ap.am.garden" },
+  { label: "Gym", icon: "dumbbell", labelKey: "admin.ap.am.gym" },
+  { label: "Elevator", icon: "arrow-up-down", labelKey: "admin.ap.am.elevator" },
+  { label: "Balcony", icon: "fence", labelKey: "admin.ap.am.balcony" },
+  { label: "Security", icon: "shield-check", labelKey: "admin.ap.am.security" },
+  { label: "CCTV", icon: "cctv", labelKey: "admin.ap.am.cctv" },
+  { label: "Smart home", icon: "house-wifi", labelKey: "admin.ap.am.smartHome" },
+  { label: "Generator", icon: "zap", labelKey: "admin.ap.am.generator" },
+  { label: "Storage room", icon: "package", labelKey: "admin.ap.am.storage" },
+  { label: "Maid room", icon: "bed-single", labelKey: "admin.ap.am.maid" },
+  { label: "Fireplace", icon: "flame", labelKey: "admin.ap.am.fireplace" },
+  { label: "Play area", icon: "blocks", labelKey: "admin.ap.am.play" },
+  { label: "BBQ area", icon: "utensils-crossed", labelKey: "admin.ap.am.bbq" },
+  { label: "Laundry room", icon: "washing-machine", labelKey: "admin.ap.am.laundry" },
+  { label: "Central AC", icon: "air-vent", labelKey: "admin.ap.am.ac" },
 ];
 
-export const GUIDELINES = [
-  "Use high-quality, well-lit images",
-  "Upload at least 5 photos (minimum recommended)",
-  "Lead with the strongest exterior or interior shot",
-  "Avoid blurry, dark, or low-resolution images",
-  "Do not upload images with watermarks",
+export const GUIDELINE_KEYS = [
+  "admin.ap.guide.quality",
+  "admin.ap.guide.count",
+  "admin.ap.guide.lead",
+  "admin.ap.guide.blurry",
+  "admin.ap.guide.watermark",
 ];
 
 export const COVER_IMG = "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1280&q=70";

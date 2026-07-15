@@ -7,7 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ADMIN } from "@/components/admin/admin-data";
+import { useLang } from "@/lib/i18n";
 import { useAdminProfile, type AdminProfile } from "@/lib/admin-profile";
 
 function Row({ label, value, full }: { label: string; value: ReactNode; full?: boolean }) {
@@ -21,6 +21,7 @@ function Row({ label, value, full }: { label: string; value: ReactNode; full?: b
 
 export function ProfileApp() {
   const router = useRouter();
+  const { t } = useLang();
   const { profile, update } = useAdminProfile();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<AdminProfile>(profile);
@@ -71,22 +72,22 @@ export function ProfileApp() {
     <>
       <div className="pf-head">
         <div className="pf-head__intro">
-          <h1 className="pf-head__title">My profile</h1>
-          <p className="pf-head__sub">View and manage your personal information and account details.</p>
+          <h1 className="pf-head__title">{t("admin.profile.title")}</h1>
+          <p className="pf-head__sub">{t("admin.profile.sub")}</p>
         </div>
         <div className="pf-head__action">
           {editing ? (
             <>
               <Button hierarchy="secondary" size="lg" onClick={cancel}>
-                Cancel
+                {t("admin.topbar.cancel")}
               </Button>
               <Button hierarchy="primary" size="lg" iconLeading="check" onClick={save} disabled={!form.name.trim() || !form.email.trim()}>
-                Save changes
+                {t("admin.profile.save")}
               </Button>
             </>
           ) : (
             <Button hierarchy="primary" size="lg" iconLeading="pencil" onClick={startEdit}>
-              Edit profile
+              {t("admin.profile.edit")}
             </Button>
           )}
         </div>
@@ -97,7 +98,7 @@ export function ProfileApp() {
         <div className="pf-hero__avatar">
           <Avatar name={(editing ? form : profile).name} src={(editing ? form.avatar : profile.avatar) || undefined} size="xl" verified />
           {editing && (
-            <button type="button" className="pf-avatar__cam" onClick={() => fileRef.current?.click()} aria-label="Change photo">
+            <button type="button" className="pf-avatar__cam" onClick={() => fileRef.current?.click()} aria-label={t("admin.profile.changePhoto")}>
               <Icon name="camera" size={16} />
             </button>
           )}
@@ -108,19 +109,19 @@ export function ProfileApp() {
           {editing ? (
             <div className="pf-hero__photo">
               <Button hierarchy="secondary" size="sm" iconLeading="upload" onClick={() => fileRef.current?.click()}>
-                {form.avatar ? "Change photo" : "Upload photo"}
+                {form.avatar ? t("admin.profile.changePhoto") : t("admin.profile.uploadPhoto")}
               </Button>
               {form.avatar && (
                 <Button hierarchy="secondary" size="sm" iconLeading="trash-2" onClick={removePhoto}>
-                  Remove
+                  {t("admin.profile.remove")}
                 </Button>
               )}
-              <span className="pf-hero__hint">JPG or PNG, square works best.</span>
+              <span className="pf-hero__hint">{t("admin.profile.photoHint")}</span>
             </div>
           ) : (
             <div className="pf-hero__tags">
               <Badge variant="brand" size="md" icon="shield-check">
-                {ADMIN.role}
+                {t("role.superAdmin")}
               </Badge>
             </div>
           )}
@@ -131,23 +132,23 @@ export function ProfileApp() {
       <section className="pf-card">
         <div className="pf-card__head">
           <div>
-            <h3 className="pf-card__title">Personal information</h3>
-            <p className="pf-card__desc">Your name, contact details, and role description.</p>
+            <h3 className="pf-card__title">{t("admin.profile.personalInfo")}</h3>
+            <p className="pf-card__desc">{t("admin.profile.personalDesc")}</p>
           </div>
         </div>
         {editing ? (
           <div className="pf-grid">
-            <Input label="Full name" value={form.name} onChange={set("name")} />
-            <Input label="Email address" type="email" iconLeading="mail" value={form.email} onChange={set("email")} />
-            <Input label="Phone" iconLeading="phone" value={form.phone} onChange={set("phone")} />
-            <Input label="Location" iconLeading="map-pin" value={form.location} onChange={set("location")} />
+            <Input label={t("admin.profile.fullName")} value={form.name} onChange={set("name")} />
+            <Input label={t("admin.profile.email")} type="email" iconLeading="mail" value={form.email} onChange={set("email")} />
+            <Input label={t("admin.profile.phone")} iconLeading="phone" value={form.phone} onChange={set("phone")} />
+            <Input label={t("admin.profile.location")} iconLeading="map-pin" value={form.location} onChange={set("location")} />
           </div>
         ) : (
           <div className="pf-grid">
-            <Row label="Full name" value={profile.name} />
-            <Row label="Email address" value={profile.email} />
-            <Row label="Phone" value={profile.phone} />
-            <Row label="Location" value={profile.location} />
+            <Row label={t("admin.profile.fullName")} value={profile.name} />
+            <Row label={t("admin.profile.email")} value={profile.email} />
+            <Row label={t("admin.profile.phone")} value={profile.phone} />
+            <Row label={t("admin.profile.location")} value={profile.location} />
           </div>
         )}
       </section>
@@ -156,22 +157,22 @@ export function ProfileApp() {
       <section className="pf-card">
         <div className="pf-card__head">
           <div>
-            <h3 className="pf-card__title">Account</h3>
-            <p className="pf-card__desc">Your role, access level, and account status.</p>
+            <h3 className="pf-card__title">{t("admin.profile.account")}</h3>
+            <p className="pf-card__desc">{t("admin.profile.accountDesc")}</p>
           </div>
         </div>
         <div className="pf-grid">
-          <Row label="Role" value={<Badge variant="brand" size="sm" icon="shield-check">{ADMIN.role}</Badge>} />
-          <Row label="Account ID" value="ADM-001" />
-          <Row label="Member since" value="January 2023" />
-          <Row label="Status" value={<Badge variant="success" size="sm" dot>Active</Badge>} />
+          <Row label={t("admin.profile.role")} value={<Badge variant="brand" size="sm" icon="shield-check">{t("role.superAdmin")}</Badge>} />
+          <Row label={t("admin.profile.accountId")} value="ADM-001" />
+          <Row label={t("admin.profile.memberSince")} value={t("admin.profile.memberSinceVal")} />
+          <Row label={t("admin.profile.status")} value={<Badge variant="success" size="sm" dot>{t("status.active")}</Badge>} />
         </div>
         <div className="pf-card__foot">
           <Button hierarchy="secondary" iconLeading="lock" onClick={() => router.push("/admin/settings")}>
-            Change password
+            {t("admin.profile.changePassword")}
           </Button>
           <Button hierarchy="secondary" iconLeading="settings" onClick={() => router.push("/admin/settings")}>
-            Account settings
+            {t("admin.topbar.accountSettings")}
           </Button>
         </div>
       </section>
@@ -179,7 +180,7 @@ export function ProfileApp() {
       {saved && (
         <div className="pf-toast" role="status">
           <Icon name="circle-check" size={18} />
-          Profile updated
+          {t("admin.profile.updated")}
         </div>
       )}
     </>

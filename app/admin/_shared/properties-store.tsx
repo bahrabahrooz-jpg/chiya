@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { valueKey } from "@/lib/fmt";
 import {
   AGENTS,
   LOCATION_DEF,
@@ -27,6 +28,45 @@ import {
   type PropertyCounts,
   type PropertyRecord,
 } from "../_data/catalog";
+import { logAudit } from "./audit-log";
+
+/* Infer a specific audit verb from a mutation patch so the log reads naturally
+   ("Changed status to Sold") instead of a generic "updated". Returns i18n keys —
+   the audit feed resolves them at render time, so the log follows the viewer's
+   language rather than the language it was recorded in. */
+interface AuditVerb {
+  actionKey: string;
+  actionParams?: Record<string, string>;
+  metaKey?: string;
+  metaParams?: Record<string, string>;
+}
+function propertyAction(patch: Partial<PropertyRecord>): AuditVerb {
+  if (patch.status !== undefined) {
+    const status = String(patch.status);
+    if (status.toLowerCase() === "archived") return { actionKey: "audit.action.archivedProperty" };
+    // "@" marks a value that is itself a catalog key, resolved when rendered.
+    return { actionKey: "audit.action.changedStatus", actionParams: { status: "@" + valueKey("status", status) } };
+  }
+  if (patch.agent !== undefined) {
+    const name = patch.agent && typeof patch.agent === "object" && "name" in patch.agent ? (patch.agent as { name?: string }).name : undefined;
+    return patch.agent
+      ? { actionKey: "audit.action.assignedAgent", ...(name ? { metaKey: "audit.meta.assignedTo", metaParams: { name } } : {}) }
+      : { actionKey: "audit.action.unassignedAgent" };
+  }
+  return { actionKey: "audit.action.updatedProperty" };
+}
+function memberAction(patch: Partial<MemberRecord>): string {
+  if (patch.status !== undefined) return String(patch.status).toLowerCase() === "suspended" ? "audit.action.suspendedMember" : "audit.action.activatedMember";
+  return "audit.action.updatedMember";
+}
+function agentAction(patch: Partial<AgentRecord>): string {
+  if (patch.verification !== undefined) return String(patch.verification).toLowerCase() === "verified" ? "audit.action.verifiedAgent" : "audit.action.revokedVerification";
+  if (patch.status !== undefined) return String(patch.status).toLowerCase() === "suspended" ? "audit.action.suspendedAgent" : "audit.action.activatedAgent";
+  return "audit.action.updatedAgent";
+}
+/* One key per location type — avoids interpolating an untranslated type word. */
+const LOCATION_ADD_KEY = { city: "audit.action.addedCity", district: "audit.action.addedDistrict", project: "audit.action.addedProject" } as const;
+const LOCATION_REMOVE_KEY = { city: "audit.action.removedCity", district: "audit.action.removedDistrict", project: "audit.action.removedProject" } as const;
 
 interface PropertiesContextValue {
   /* live records */
@@ -98,29 +138,74 @@ export function PropertiesProvider({ children }: { children: React.ReactNode }) 
   const agentCounts = useMemo(() => countAgents(agentRoster), [agentRoster]);
   const locationCounts = useMemo(() => countLocations(locationDefs, properties), [locationDefs, properties]);
 
-  const addProperty = useCallback((p: PropertyRecord) => setProperties((prev) => [p, ...prev]), []);
-  const removeProperty = useCallback((id: string) => setProperties((prev) => prev.filter((p) => p.id !== id)), []);
+  const addProperty = useCallback((p: PropertyRecord) => {
+    logAudit({ category: "property", actionKey: "audit.action.createdProperty", target: p.title, targetId: p.id });
+    setProperties((prev) => [p, ...prev]);
+  }, []);
+  const removeProperty = useCallback(
+    (id: string) => {
+      const rec = properties.find((p) => p.id === id);
+      logAudit({ category: "property", actionKey: "audit.action.deletedProperty", target: rec?.title ?? id, targetId: id });
+      setProperties((prev) => prev.filter((p) => p.id !== id));
+    },
+    [properties],
+  );
   const updateProperty = useCallback(
-    (id: string, patch: Partial<PropertyRecord>) => setProperties((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p))),
-    [],
+    (id: string, patch: Partial<PropertyRecord>) => {
+      const rec = properties.find((p) => p.id === id);
+      logAudit({ category: "property", target: rec?.title ?? id, targetId: id, ...propertyAction(patch) });
+      setProperties((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    },
+    [properties],
   );
-  const addMember = useCallback((m: MemberRecord) => setMemberRoster((prev) => [m, ...prev]), []);
-  const removeMember = useCallback((id: string) => setMemberRoster((prev) => prev.filter((m) => m.id !== id)), []);
+  const addMember = useCallback((m: MemberRecord) => {
+    logAudit({ category: "member", actionKey: "audit.action.addedMember", target: m.name, targetId: m.id });
+    setMemberRoster((prev) => [m, ...prev]);
+  }, []);
+  const removeMember = useCallback(
+    (id: string) => {
+      const rec = memberRoster.find((m) => m.id === id);
+      logAudit({ category: "member", actionKey: "audit.action.removedMember", target: rec?.name ?? id, targetId: id });
+      setMemberRoster((prev) => prev.filter((m) => m.id !== id));
+    },
+    [memberRoster],
+  );
   const updateMember = useCallback(
-    (id: string, patch: Partial<MemberRecord>) => setMemberRoster((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m))),
-    [],
+    (id: string, patch: Partial<MemberRecord>) => {
+      const rec = memberRoster.find((m) => m.id === id);
+      logAudit({ category: "member", actionKey: memberAction(patch), target: rec?.name ?? id, targetId: id });
+      setMemberRoster((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    },
+    [memberRoster],
   );
-  const addAgent = useCallback((a: AgentRecord) => setAgentRoster((prev) => [a, ...prev]), []);
-  const removeAgent = useCallback((id: string) => setAgentRoster((prev) => prev.filter((a) => a.id !== id)), []);
+  const addAgent = useCallback((a: AgentRecord) => {
+    logAudit({ category: "agent", actionKey: "audit.action.onboardedAgent", target: a.name, targetId: a.id });
+    setAgentRoster((prev) => [a, ...prev]);
+  }, []);
+  const removeAgent = useCallback(
+    (id: string) => {
+      const rec = agentRoster.find((a) => a.id === id);
+      logAudit({ category: "agent", actionKey: "audit.action.removedAgent", target: rec?.name ?? id, targetId: id });
+      setAgentRoster((prev) => prev.filter((a) => a.id !== id));
+    },
+    [agentRoster],
+  );
   const updateAgent = useCallback(
-    (id: string, patch: Partial<AgentRecord>) => setAgentRoster((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a))),
-    [],
+    (id: string, patch: Partial<AgentRecord>) => {
+      const rec = agentRoster.find((a) => a.id === id);
+      logAudit({ category: "agent", actionKey: agentAction(patch), target: rec?.name ?? id, targetId: id });
+      setAgentRoster((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+    },
+    [agentRoster],
   );
-  const addLocation = useCallback(
-    (name: string, type: "city" | "district" | "project", parentId: string) => setLocationDefs((prev) => addLocationDef(prev, name, type, parentId)),
-    [],
-  );
-  const removeLocation = useCallback((type: "city" | "district" | "project", id: string) => setLocationDefs((prev) => removeLocationDef(prev, type, id)), []);
+  const addLocation = useCallback((name: string, type: "city" | "district" | "project", parentId: string) => {
+    logAudit({ category: "location", actionKey: LOCATION_ADD_KEY[type], target: name });
+    setLocationDefs((prev) => addLocationDef(prev, name, type, parentId));
+  }, []);
+  const removeLocation = useCallback((type: "city" | "district" | "project", id: string) => {
+    logAudit({ category: "location", actionKey: LOCATION_REMOVE_KEY[type], target: id });
+    setLocationDefs((prev) => removeLocationDef(prev, type, id));
+  }, []);
   const restoreLocations = useCallback((defs: CityDef[]) => setLocationDefs(cloneLocationDefs(defs)), []);
 
   // Hydrate from localStorage once on mount (client only).

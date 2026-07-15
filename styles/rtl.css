@@ -6,19 +6,42 @@
    swap and the few things that need explicit RTL treatment.
    ============================================================ */
 
-/* Arabic-script font swap — Cairo display + Noto Sans Arabic UI */
+/* Arabic-script font swap — Amiri display + Noto Sans Arabic UI.
+   Fallbacks are the CSS vars, not family-name literals: next/font mints hashed
+   family names, so a literal "Noto Sans Arabic" only matches a locally-installed
+   copy and otherwise drops to a system font. Noto Sans Arabic covers the whole
+   Arabic block, so it backstops any glyph Amiri lacks.
+   (Cairo used to sit here, but it has no Kurdish glyphs — see app/layout.tsx.) */
 html[dir="rtl"] {
-  --font-sans: var(--font-noto-arabic), "Hanken Grotesk", sans-serif;
-  --font-display: var(--font-cairo), "Noto Sans Arabic", sans-serif;
+  --font-sans: var(--font-noto-arabic), sans-serif;
+  --font-display: var(--font-amiri), var(--font-noto-arabic), serif;
 }
 
-/* Arabic script never takes letter-spacing (breaks ligatures) or uppercase. */
+/* Arabic script is cursive — every letter joins its neighbour, and tracking
+   (negative OR positive) fights those joins. Neutralise it wholesale under RTL
+   instead of chasing ~180 hardcoded values across 35 files; that way new code
+   can't reintroduce it either. Wins on specificity (0,1,1) over the single-class
+   rules that set it, so source order doesn't matter and no !important is needed.
+   Latin inside an RTL page (the .cx-brand wordmark at -0.01em, IDs) only loses
+   sub-pixel tracking. letter-spacing inherits, so the ::after labels below pick
+   this up from their host element. */
+html[dir="rtl"] * {
+  letter-spacing: 0;
+}
+
+/* Uppercasing is meaningless for Arabic, and these labels are set in caps. */
 [dir="rtl"] .cx-eyebrow,
 [dir="rtl"] .cx-field__label,
 [dir="rtl"] .cx-searchbar__lbl,
 [dir="rtl"] .cx-appt__seclbl {
-  letter-spacing: 0;
   text-transform: none;
+}
+
+/* Arabic is a taller script: Latin display leading (the hero is 1.04) crowds its
+   ascenders and descenders. Mirrors the mobile Arabic presets, which raise
+   leading ~15-25% (apps/mobile/theme/tokens.ts). */
+html[dir="rtl"] :is(h1, h2, h3, h4, h5, h6) {
+  line-height: 1.3;
 }
 
 /* The brand lockup is an asset — never mirror it; keep [mark] Chiya L→R. */
@@ -76,3 +99,41 @@ html[dir="rtl"] {
 [dir="rtl"] .cx-agent__btn--primary { font-size: 0; }
 [dir="rtl"] .cx-agent__btn--primary::after { content: "اتصال"; font-size: 14px; font-weight: 600; }
 [dir="rtl"] .cx-agent__rating span { display: none; }
+
+/* ============================================================
+   KURDISH (SORANI) CARD LABELS
+   The rules above set Arabic ::after content for any RTL layout.
+   Kurdish (lang="ku") is also RTL, so these overrides swap that
+   content to Sorani. `html[lang="ku"] …` outranks `[dir="rtl"] …`
+   on specificity, so it wins; the shared font-size:0 hides and
+   ::after font styling above still apply.
+   ============================================================ */
+
+/* Property + featured card status / Featured badges */
+html[lang="ku"] .cx-prop__badges .cx-badge--gold::after,
+html[lang="ku"] .cx-feat__badges .cx-badge--gold::after { content: "تایبەت"; }
+html[lang="ku"] .cx-prop__badges .cx-badge--success::after { content: "بۆ فرۆشتن"; }
+html[lang="ku"] .cx-prop__badges .cx-badge--info::after { content: "بۆ کرێ"; }
+html[lang="ku"] .cx-prop__badges .cx-badge--solid::after { content: "نوێ"; }
+html[lang="ku"] .cx-prop__badges .cx-badge--warning::after { content: "چاوەڕوان"; }
+html[lang="ku"] .cx-prop__badges .cx-badge--error::after { content: "فرۆشرا"; }
+html[lang="ku"] .cx-feat__badges .cx-badge--solid::after { content: "بۆ فرۆشتن"; }
+
+/* Property card spec labels (Beds / Baths / area) */
+html[lang="ku"] .cx-prop__spec:nth-child(1):nth-last-child(3)::after { content: "ژوور"; }
+html[lang="ku"] .cx-prop__spec:nth-child(2):nth-last-child(2)::after { content: "حەمام"; }
+html[lang="ku"] .cx-prop__spec:nth-child(3):nth-last-child(1)::after { content: "م²"; }
+html[lang="ku"] .cx-prop__spec:nth-child(1):nth-last-child(1)::after { content: "م²"; }
+
+/* Featured hero card spec labels */
+html[lang="ku"] .cx-feat__spec:nth-child(1)::after { content: "ژووری نووستن"; }
+html[lang="ku"] .cx-feat__spec:nth-child(2)::after { content: "حەمام"; }
+html[lang="ku"] .cx-feat__spec:nth-child(3)::after { content: "م²"; }
+
+/* Agent card: verified badge, stat labels, action buttons */
+html[lang="ku"] .cx-agent .cx-badge--brand::after { content: "بریکاری پشتڕاست"; }
+html[lang="ku"] .cx-agent__stats .cx-agent__stat:nth-child(1) span::after { content: "لیست"; }
+html[lang="ku"] .cx-agent__stats .cx-agent__stat:nth-child(2) span::after { content: "فرۆش"; }
+html[lang="ku"] .cx-agent__stats .cx-agent__stat:nth-child(3) span::after { content: "ساڵ"; }
+html[lang="ku"] .cx-agent__btn--ghost::after { content: "پەیام"; }
+html[lang="ku"] .cx-agent__btn--primary::after { content: "پەیوەندی"; }

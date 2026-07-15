@@ -1,6 +1,6 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
-import { fmtUSD, getAgentByName, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
+import { getAgentByName, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
 
 export const ROLE_META: Record<string, { variant: BadgeVariant; cls: string }> = {
   Buyer: { variant: "info", cls: "mp-role--buyer" },
@@ -53,17 +53,17 @@ export const MEMBER: MemberRecord = {
 
 const TH = (w: string) => "https://images.unsplash.com/" + w + "?auto=format&fit=crop&w=160&q=70";
 
-export interface PortfolioRow { id: string; title: string; loc: string; type: string; img: string; rel: string; status: string; price: string; per?: string; agent: string; agentImg: string; date: string }
+export interface PortfolioRow { id: string; title: string; loc: string; type: string; img: string; rel: string; status: string; price: number; per?: string; agent: string; agentImg: string; date: string }
 const AGENT_IMG_LANA = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=70";
 const AGENT_IMG_SARA = TH("photo-1438761681033-6461ffad8d80");
 const AGENT_IMG_HAWRE = TH("photo-1633332755192-727a05c4013d");
 export const PORTFOLIO: PortfolioRow[] = [
-  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", type: "Villa", img: TH("photo-1613490493576-7fde63acd811"), rel: "Seller", status: "Published", price: "$1,200,000", agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "Jun 12, 2026" },
-  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", type: "Villa", img: TH("photo-1568605114967-8130f3a36994"), rel: "Seller", status: "Sold", price: "$845,000", agent: "Sara Hama", agentImg: AGENT_IMG_SARA, date: "Jun 6, 2026" },
-  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", type: "Penthouse", img: TH("photo-1600607687939-ce8a6c25118c"), rel: "Buyer", status: "Sold", price: "$980,000", agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "May 30, 2026" },
-  { id: "CH-2022", title: "Park View Loft", loc: "Salim Street, Sulaymaniyah", type: "Apartment", img: TH("photo-1502672260266-1c1ef2d93688"), rel: "Landlord", status: "Rented", price: "$1,100", per: "/mo", agent: "Hawre Ako", agentImg: AGENT_IMG_HAWRE, date: "May 28, 2026" },
-  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", type: "Apartment", img: TH("photo-1545324418-cc1a3fa10c00"), rel: "Landlord", status: "Published", price: "$1,650", per: "/mo", agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "May 21, 2026" },
-  { id: "CH-2008", title: "Lakeside Apartment", loc: "Dukan, Sulaymaniyah", type: "Apartment", img: TH("photo-1560448204-e02f11c3d0e2"), rel: "Buyer", status: "Pending", price: "$365,000", agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "Jun 15, 2026" },
+  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", type: "Villa", img: TH("photo-1613490493576-7fde63acd811"), rel: "Seller", status: "Published", price: 1200000, agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "Jun 12, 2026" },
+  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", type: "Villa", img: TH("photo-1568605114967-8130f3a36994"), rel: "Seller", status: "Sold", price: 845000, agent: "Sara Hama", agentImg: AGENT_IMG_SARA, date: "Jun 6, 2026" },
+  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", type: "Penthouse", img: TH("photo-1600607687939-ce8a6c25118c"), rel: "Buyer", status: "Sold", price: 980000, agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "May 30, 2026" },
+  { id: "CH-2022", title: "Park View Loft", loc: "Salim Street, Sulaymaniyah", type: "Apartment", img: TH("photo-1502672260266-1c1ef2d93688"), rel: "Landlord", status: "Rented", price: 1100, per: "/mo", agent: "Hawre Ako", agentImg: AGENT_IMG_HAWRE, date: "May 28, 2026" },
+  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", type: "Apartment", img: TH("photo-1545324418-cc1a3fa10c00"), rel: "Landlord", status: "Published", price: 1650, per: "/mo", agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "May 21, 2026" },
+  { id: "CH-2008", title: "Lakeside Apartment", loc: "Dukan, Sulaymaniyah", type: "Apartment", img: TH("photo-1560448204-e02f11c3d0e2"), rel: "Buyer", status: "Pending", price: 365000, agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "Jun 15, 2026" },
 ];
 
 export interface MpfViewing { id: string; title: string; loc: string; img: string; requested: string; agent: string; agentImg: string; status: string }
@@ -168,7 +168,7 @@ export function buildPortfolio(properties: PropertyRecord[], name: string): Port
       img: p.img,
       rel: p.listing === "rent" ? "Landlord" : "Seller",
       status: p.status,
-      price: fmtUSD(p.price),
+      price: p.price,
       per: p.per,
       agent: p.agent?.name || "Unassigned",
       agentImg: p.agent?.img || "",

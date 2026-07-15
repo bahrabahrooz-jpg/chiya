@@ -40,11 +40,11 @@ export const AGENT_STATUS: Record<string, { variant: BadgeVariant; dot: boolean 
 export const CITIES = ["Erbil", "Sulaymaniyah", "Duhok"];
 
 export const EXPERIENCE_OPTIONS = [
-  { value: "<1", label: "Less than 1 year" },
-  { value: "1-2", label: "1–2 years" },
-  { value: "3-5", label: "3–5 years" },
-  { value: "6-10", label: "6–10 years" },
-  { value: "10+", label: "10+ years" },
+  { value: "<1", label: "Less than 1 year", labelKey: "admin.aem.exp.lt1" },
+  { value: "1-2", label: "1–2 years", labelKey: "admin.aem.exp.1to2" },
+  { value: "3-5", label: "3–5 years", labelKey: "admin.aem.exp.3to5" },
+  { value: "6-10", label: "6–10 years", labelKey: "admin.aem.exp.6to10" },
+  { value: "10+", label: "10+ years", labelKey: "admin.aem.exp.10plus" },
 ];
 export const LANGUAGE_OPTIONS = ["English", "Kurdish", "Arabic", "Turkish", "Persian"];
 export const SERVICE_AREA_OPTIONS = ["Erbil", "Ankawa", "Dream City", "Italian Village", "Gulan", "Empire", "Sulaymaniyah", "Duhok", "Halabja", "Zakho"];

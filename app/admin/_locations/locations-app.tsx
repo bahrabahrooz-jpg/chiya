@@ -6,6 +6,8 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
+import { useLang } from "@/lib/i18n";
+import { fmtDate, fmtNum } from "@/lib/fmt";
 import {
   KPI_META,
   TYPE_CONFIG,
@@ -190,6 +192,7 @@ function findNodePath(nodes: LocationNode[], id: string, trail: string[] = []): 
 }
 
 function DeleteLocationModal({ node, onCancel, onConfirm }: { node: LocationNode; onCancel: () => void; onConfirm: () => void }) {
+  const { t, lang } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -198,7 +201,17 @@ function DeleteLocationModal({ node, onCancel, onConfirm }: { node: LocationNode
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
   const childCount = node.children?.length || 0;
-  const typeLabel = TYPE_CONFIG[node.type]?.label.toLowerCase() || "location";
+  const typeLabel = t(`admin.locations.type.${node.type}`).toLowerCase();
+  // Built from parts so each clause (sub-locations / mapped properties) can be
+  // pluralized and ordered naturally per language.
+  const body = [
+    t("admin.locations.del.base", { type: typeLabel, name: node.name }),
+    childCount > 0 ? t(childCount === 1 ? "admin.locations.del.subOne" : "admin.locations.del.subMany", { count: fmtNum(lang, childCount) }) : "",
+    node.properties > 0 ? t(node.properties === 1 ? "admin.locations.del.propOne" : "admin.locations.del.propMany", { count: fmtNum(lang, node.properties) }) : "",
+    t("admin.locations.del.undone"),
+  ]
+    .filter(Boolean)
+    .join(" ");
   return createPortal(
     <div className="lc-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="lc-confirm" role="alertdialog" aria-modal="true" aria-labelledby="lc-del-title">
@@ -206,19 +219,15 @@ function DeleteLocationModal({ node, onCancel, onConfirm }: { node: LocationNode
           <Icon name="trash-2" size={22} strokeWidth={1.9} />
         </span>
         <h2 className="lc-confirm__title" id="lc-del-title">
-          Delete location?
+          {t("admin.locations.deleteTitle")}
         </h2>
-        <p className="lc-confirm__msg">
-          Are you sure you want to delete the {typeLabel} <strong>{node.name}</strong>?
-          {childCount > 0 && ` This will also remove its ${childCount} sub-location${childCount > 1 ? "s" : ""}.`}
-          {node.properties > 0 && ` ${node.properties.toLocaleString()} propert${node.properties === 1 ? "y is" : "ies are"} mapped here.`} This action cannot be undone.
-        </p>
+        <p className="lc-confirm__msg">{body}</p>
         <div className="lc-confirm__actions">
           <Button hierarchy="secondary" size="md" onClick={onCancel}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </Button>
           <Button hierarchy="destructive" size="md" iconLeading="trash-2" onClick={onConfirm}>
-            Delete location
+            {t("admin.locations.deleteLocation")}
           </Button>
         </div>
       </div>
@@ -234,6 +243,7 @@ interface FormErrors {
 }
 
 function LocationModal({ onClose, onCreate, initialData, tree }: { onClose: () => void; onCreate: (data: { name: string; type: string; parentId: string }) => void; initialData: LocationNode | null; tree: LocationNode[] }) {
+  const { t } = useLang();
   const isEdit = !!initialData;
   const [form, setForm] = useState(
     initialData ? { name: initialData.name, type: initialData.type as string, parentId: "", description: initialData.description || "" } : { name: "", type: "", parentId: "", description: "" },
@@ -283,12 +293,12 @@ function LocationModal({ onClose, onCreate, initialData, tree }: { onClose: () =
             </span>
             <div className="lc-modal__heading">
               <h2 className="lc-modal__title" id="lc-modal-title">
-                {isEdit ? "Edit location" : "Add location"}
+                {isEdit ? t("admin.locations.edit") : t("admin.locations.add")}
               </h2>
-              <p className="lc-modal__desc">{isEdit ? "Update this location’s name, type, or parent." : "Create a new city, district, or project for the platform."}</p>
+              <p className="lc-modal__desc">{isEdit ? t("admin.locations.editDesc") : t("admin.locations.addDesc")}</p>
             </div>
           </div>
-          <button type="button" className="lc-modal__close" aria-label="Close" onClick={onClose}>
+          <button type="button" className="lc-modal__close" aria-label={t("admin.props.close")} onClick={onClose}>
             <Icon name="x" size={18} strokeWidth={2} />
           </button>
         </div>
@@ -297,13 +307,13 @@ function LocationModal({ onClose, onCreate, initialData, tree }: { onClose: () =
           <div className="lc-fields">
             <div className="lc-field">
               <label className="lc-field__label" htmlFor="lc-f-name">
-                Location name
+                {t("admin.locations.field.name")}
               </label>
               <input
                 id="lc-f-name"
                 type="text"
                 className={"lc-input" + (errors.name ? " is-error" : "")}
-                placeholder="e.g. Italian Village, Barzan Heights…"
+                placeholder={t("admin.locations.namePh")}
                 value={form.name}
                 onChange={(e) => {
                   set("name", e.target.value);
@@ -312,18 +322,18 @@ function LocationModal({ onClose, onCreate, initialData, tree }: { onClose: () =
               />
               {errors.name && (
                 <span className="lc-field__hint" style={{ color: "var(--error-600)" }}>
-                  Location name is required.
+                  {t("admin.locations.err.name")}
                 </span>
               )}
             </div>
 
             <div className="lc-field">
               <label className="lc-field__label" htmlFor="lc-f-type">
-                Location type
+                {t("admin.locations.field.type")}
               </label>
               <Dropdown
                 id="lc-f-type"
-                options={TYPE_OPTIONS}
+                options={TYPE_OPTIONS.map((o) => ({ ...o, label: t(`admin.locations.type.${o.value}`), sub: t(`admin.locations.typeSub.${o.value}`) }))}
                 value={form.type}
                 onChange={(v) => {
                   set("type", v);
@@ -331,23 +341,23 @@ function LocationModal({ onClose, onCreate, initialData, tree }: { onClose: () =
                   setErrors((er) => ({ ...er, type: false, parentId: false }));
                 }}
                 error={errors.type}
-                placeholder="Select type…"
+                placeholder={t("admin.locations.selectType")}
               />
               {errors.type && (
                 <span className="lc-field__hint" style={{ color: "var(--error-600)" }}>
-                  Please select a location type.
+                  {t("admin.locations.err.type")}
                 </span>
               )}
             </div>
 
             <div className="lc-field">
               <label className="lc-field__label" htmlFor="lc-f-parent">
-                Parent location
-                {form.type === "city" && <span className="lc-optional">Not applicable for cities</span>}
+                {t("admin.locations.field.parent")}
+                {form.type === "city" && <span className="lc-optional">{t("admin.locations.notApplicableCities")}</span>}
               </label>
               <Dropdown
                 id="lc-f-parent"
-                options={parentOptions.map((n) => ({ value: n.id, label: n.name, icon: TYPE_CONFIG[n.type]?.icon, sub: TYPE_CONFIG[n.type]?.label }))}
+                options={parentOptions.map((n) => ({ value: n.id, label: n.name, icon: TYPE_CONFIG[n.type]?.icon, sub: t(`admin.locations.type.${n.type}`) }))}
                 value={form.parentId}
                 onChange={(v) => {
                   set("parentId", v);
@@ -355,30 +365,30 @@ function LocationModal({ onClose, onCreate, initialData, tree }: { onClose: () =
                 }}
                 disabled={parentDisabled}
                 error={errors.parentId}
-                placeholder={parentDisabled ? (form.type === "city" ? "— Not applicable —" : "Select a type first…") : "Select parent location…"}
+                placeholder={parentDisabled ? (form.type === "city" ? t("admin.locations.notApplicable") : t("admin.locations.selectTypeFirst")) : t("admin.locations.selectParent")}
               />
               {errors.parentId && (
                 <span className="lc-field__hint" style={{ color: "var(--error-600)" }}>
-                  Please select a parent location.
+                  {t("admin.locations.err.parent")}
                 </span>
               )}
             </div>
 
             <div className="lc-field">
               <label className="lc-field__label" htmlFor="lc-f-desc">
-                Description <span className="lc-optional">(Optional)</span>
+                {t("admin.locations.field.description")} <span className="lc-optional">{t("admin.members.optional")}</span>
               </label>
-              <textarea id="lc-f-desc" className="lc-textarea" placeholder="Brief description of this location, its character, or notable features…" value={form.description} onChange={(e) => set("description", e.target.value)} />
+              <textarea id="lc-f-desc" className="lc-textarea" placeholder={t("admin.locations.descPh")} value={form.description} onChange={(e) => set("description", e.target.value)} />
             </div>
           </div>
         </div>
 
         <div className="lc-modal__foot">
           <Button hierarchy="secondary" size="md" onClick={onClose}>
-            Cancel
+            {t("admin.topbar.cancel")}
           </Button>
           <Button hierarchy="primary" size="md" onClick={handleSubmit} disabled={!isValid}>
-            {isEdit ? "Save changes" : "Create location"}
+            {isEdit ? t("admin.profile.save") : t("admin.locations.create")}
           </Button>
         </div>
       </div>
@@ -404,6 +414,11 @@ function TreeNode({
   onSelect: (n: LocationNode) => void;
   searchQuery: string;
 }) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   const hasChildren = node.children?.length > 0;
   if (searchQuery && !nodeMatchesSearch(node, searchQuery)) return null;
 
@@ -417,7 +432,8 @@ function TreeNode({
     <div>
       <div
         className={`lc-node${isSelected ? " is-selected" : ""}`}
-        style={{ paddingTop: 9, paddingBottom: 9, paddingRight: 14, paddingLeft: 14 + depth * 20 }}
+        // Logical padding: the depth indent has to follow the reading direction.
+        style={{ paddingTop: 9, paddingBottom: 9, paddingInlineEnd: 14, paddingInlineStart: 14 + depth * 20 }}
         onClick={() => onSelect(node)}
         role="treeitem"
         aria-selected={isSelected}
@@ -444,8 +460,8 @@ function TreeNode({
         <span className={`lc-node__typeicon lc-node__typeicon--${node.type}`}>
           <Icon name={typeConf.icon} size={15} strokeWidth={1.75} />
         </span>
-        <span className="lc-node__name">{node.name}</span>
-        <span className="lc-node__props">{node.properties.toLocaleString()}</span>
+        <span className="lc-node__name">{tOr(`city.${node.name}`, tOr(`loc.${node.name}`, node.name))}</span>
+        <span className="lc-node__props">{fmtNum(lang, node.properties)}</span>
       </div>
       {isExpanded &&
         hasChildren &&
@@ -475,6 +491,7 @@ function TreePanel({ tree, expandedIds, selectedId, onToggle, onSelect, searchQu
 }
 
 function DetailPanel({ location, onEdit, onDelete }: { location: LocationNode | null; onEdit: () => void; onDelete: () => void }) {
+  const { t, lang } = useLang();
   if (!location) {
     return (
       <div className="lc-detailpanel">
@@ -482,8 +499,8 @@ function DetailPanel({ location, onEdit, onDelete }: { location: LocationNode | 
           <div className="lc-detail-empty__art">
             <Icon name="map-pin" size={28} strokeWidth={1.5} />
           </div>
-          <h3>Select a location</h3>
-          <p>Choose a city, district, or project from the hierarchy to view its details.</p>
+          <h3>{t("admin.locations.selectPrompt.title")}</h3>
+          <p>{t("admin.locations.selectPrompt.sub")}</p>
         </div>
       </div>
     );
@@ -491,15 +508,16 @@ function DetailPanel({ location, onEdit, onDelete }: { location: LocationNode | 
 
   const typeConf = TYPE_CONFIG[location.type];
   const childCount = location.children?.length || 0;
-  const childLabel = location.type === "city" ? "Districts / Areas" : location.type === "district" ? "Projects" : "Sub-locations";
+  const childLabel =
+    location.type === "city" ? t("admin.locations.children.city") : location.type === "district" ? t("admin.locations.children.district") : t("admin.locations.children.other");
 
   const fields: { label: string; value: React.ReactNode; num?: boolean; muted?: boolean }[] = [
-    { label: "Location type", value: <Badge variant={typeConf.variant} icon={typeConf.icon} size="sm">{typeConf.label}</Badge> },
-    { label: "Parent location", value: location.parent || "—", muted: !location.parent },
-    { label: "Properties assigned", value: location.properties.toLocaleString(), num: true },
-    { label: childLabel, value: childCount, num: true },
-    { label: "Created", value: location.created },
-    { label: "Last updated", value: location.updated },
+    { label: t("admin.locations.field.type"), value: <Badge variant={typeConf.variant} icon={typeConf.icon} size="sm">{t(`admin.locations.type.${location.type}`)}</Badge> },
+    { label: t("admin.locations.field.parent"), value: location.parent || "—", muted: !location.parent },
+    { label: t("admin.locations.field.properties"), value: fmtNum(lang, location.properties), num: true },
+    { label: childLabel, value: fmtNum(lang, childCount), num: true },
+    { label: t("admin.locations.field.created"), value: fmtDate(lang, new Date(location.created)) },
+    { label: t("admin.locations.field.updated"), value: fmtDate(lang, new Date(location.updated)) },
   ];
 
   return (
@@ -566,6 +584,7 @@ interface ToastItem {
 }
 
 export function LocationsApp() {
+  const { t, lang } = useLang();
   const { locationTree, locationCounts, locationDefs, addLocation, removeLocation, restoreLocations } = useProperties();
   const treeRef = useRef(locationTree);
   useEffect(() => {
@@ -603,8 +622,8 @@ export function LocationsApp() {
       addLocation(data.name, data.type as "city" | "district" | "project", data.parentId);
       setModal(null);
       const id = data.name.toLowerCase().replace(/\s+/g, "-");
-      pushToast("Location created successfully", `“${data.name}” has been added and is now available throughout the platform.`, "success", {
-        label: "View details",
+      pushToast(t("admin.locations.toast.createdTitle"), t("admin.locations.toast.createdMsg", { name: data.name }), "success", {
+        label: t("admin.props.viewDetails"),
         icon: "arrow-up-right",
         onClick: () => {
           const path = findNodePath(treeRef.current, id);
@@ -614,7 +633,7 @@ export function LocationsApp() {
         },
       });
     },
-    [addLocation, pushToast],
+    [addLocation, pushToast, t],
   );
 
   const handleDeleteConfirm = useCallback(() => {
@@ -623,33 +642,40 @@ export function LocationsApp() {
     removeLocation(node.type, node.id);
     setDeleteTarget(null);
     setSelectedNode(null);
-    pushToast("Location deleted", `“${node.name}” has been removed from the platform.`, "danger", {
-      label: "Undo",
+    pushToast(t("admin.locations.toast.deletedTitle"), t("admin.locations.toast.deletedMsg", { name: node.name }), "danger", {
+      label: t("admin.props.undo"),
       icon: "undo-2",
       onClick: () => {
         restoreLocations(snapshot);
-        pushToast("Location restored", `“${node.name}” has been restored.`, "success");
+        pushToast(t("admin.locations.toast.restoredTitle"), t("admin.locations.toast.restoredMsg", { name: node.name }), "success");
       },
     });
-  }, [deleteTarget, locationDefs, removeLocation, restoreLocations, pushToast]);
+  }, [deleteTarget, locationDefs, removeLocation, restoreLocations, pushToast, t]);
 
   return (
     <>
       <header className="lc-head">
         <div>
-          <h1 className="lc-head__title">Locations</h1>
-          <p className="lc-head__sub">Manage cities, districts, and residential projects used throughout the platform.</p>
+          <h1 className="lc-head__title">{t("admin.locations.title")}</h1>
+          <p className="lc-head__sub">{t("admin.locations.sub")}</p>
         </div>
         <div className="lc-head__action">
           <Button hierarchy="primary" size="lg" iconLeading="plus" onClick={() => setModal("add")}>
-            Add location
+            {t("admin.locations.add")}
           </Button>
         </div>
       </header>
 
       <div className="lc-kpis">
         {KPI_META.map((k) => (
-          <StatCard key={k.key} label={k.label} value={locationCounts[k.field].toLocaleString("en-US")} icon={k.icon} tone={k.tone} sub={k.sub} />
+          <StatCard
+            key={k.key}
+            label={t(`admin.locations.kpi.${k.key}`)}
+            value={fmtNum(lang, locationCounts[k.field])}
+            icon={k.icon}
+            tone={k.tone}
+            sub={t(`admin.locations.kpiSub.${k.key}`)}
+          />
         ))}
       </div>
 

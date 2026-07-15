@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input, Textarea } from "@/components/ui/input";
+import { useLang, isRtl } from "@/lib/i18n";
+import { fmtCurrency, fmtNum, localizeDigits, valueKey } from "@/lib/fmt";
 import {
   AMENITIES,
   CONDITIONS,
@@ -23,7 +25,7 @@ import {
   ORIENTATIONS,
   PROPERTY_TYPES,
   PUBLISHED,
-  STEPS,
+  STEP_KEYS,
   type ApAgent,
   type ApForm,
 } from "./data";
@@ -146,21 +148,23 @@ interface PublishPreview {
 }
 
 export function ProgressStepper({ active }: { active: number }) {
-  const nextLabel = STEPS[active + 1];
+  const { t, lang } = useLang();
+  const rtl = isRtl(lang);
+  const nextLabel = STEP_KEYS[active + 1];
   return (
     <>
-      <ol className="ap-steps" aria-label="Listing progress">
-        {STEPS.map((label, i) => {
+      <ol className="ap-steps" aria-label={t("admin.ap.progress")}>
+        {STEP_KEYS.map((key, i) => {
           const done = i < active;
           const isActive = i === active;
           const cls = ["ap-step", done ? "is-done" : "", isActive ? "is-active" : ""].filter(Boolean).join(" ");
           return (
-            <Fragment key={label}>
+            <Fragment key={key}>
               <li className={cls} aria-current={isActive ? "step" : undefined}>
                 <span className="ap-step__dot">{done && <Icon name="check" size={14} strokeWidth={3} />}</span>
-                <span className="ap-step__label">{label}</span>
+                <span className="ap-step__label">{t(key)}</span>
               </li>
-              {i < STEPS.length - 1 && <span className={"ap-conn" + (i < active ? " is-done" : "")} aria-hidden="true" />}
+              {i < STEP_KEYS.length - 1 && <span className={"ap-conn" + (i < active ? " is-done" : "")} aria-hidden="true" />}
             </Fragment>
           );
         })}
@@ -168,14 +172,26 @@ export function ProgressStepper({ active }: { active: number }) {
       <div className="ap-steps-mini">
         <svg className="ap-steps-mini__ring" viewBox="0 0 40 40" aria-hidden="true">
           <circle cx="20" cy="20" r="17" fill="none" stroke="var(--border-default)" strokeWidth="3" />
-          <circle cx="20" cy="20" r="17" fill="none" stroke="var(--brand-primary)" strokeWidth="3" strokeLinecap="round" strokeDasharray={2 * Math.PI * 17} strokeDashoffset={2 * Math.PI * 17 * (1 - (active + 1) / STEPS.length)} transform="rotate(-90 20 20)" />
+          {/* RTL mirrors the arc about the vertical axis so it fills leading-edge first, like the rest of the layout. */}
+          <circle
+            cx="20"
+            cy="20"
+            r="17"
+            fill="none"
+            stroke="var(--brand-primary)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={2 * Math.PI * 17}
+            strokeDashoffset={2 * Math.PI * 17 * (1 - (active + 1) / STEP_KEYS.length)}
+            transform={rtl ? "rotate(-90 20 20) scale(-1 1) translate(-40 0)" : "rotate(-90 20 20)"}
+          />
           <text x="20" y="20" textAnchor="middle" dominantBaseline="central" style={{ fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 700, fill: "var(--text-primary)" }}>
-            {active + 1}/{STEPS.length}
+            {fmtNum(lang, active + 1)}/{fmtNum(lang, STEP_KEYS.length)}
           </text>
         </svg>
         <div className="ap-steps-mini__txt">
-          <span className="ap-steps-mini__now">{STEPS[active]}</span>
-          {nextLabel && <span className="ap-steps-mini__next">Next · {nextLabel}</span>}
+          <span className="ap-steps-mini__now">{t(STEP_KEYS[active])}</span>
+          {nextLabel && <span className="ap-steps-mini__next">{t("admin.ap.next", { step: t(nextLabel) })}</span>}
         </div>
       </div>
     </>
@@ -192,6 +208,7 @@ const MAP_KURDISTAN = { lat: 36.2, lng: 44.1, zoom: 8 };
 /** MapPicker — real OpenStreetMap (Leaflet) map with a draggable pin, centred
  *  on the selected city. Loaded client-side only. */
 export function MapPicker({ city, lat, lng, onMove }: { city?: string; lat?: string; lng?: string; onMove?: (lat: number, lng: number) => void }) {
+  const { t } = useLang();
   const elRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
@@ -249,26 +266,28 @@ export function MapPicker({ city, lat, lng, onMove }: { city?: string; lat?: str
   }, [city]);
 
   return (
-    <div className="ap-map" role="application" aria-label="Map location picker">
+    <div className="ap-map" role="application" aria-label={t("admin.ap.mapPicker")}>
       <div className="ap-map__canvas" ref={elRef} />
       <div className="ap-map__hint">
         <Icon name="move" size={14} />
-        Drag the pin or click the map to set the location
+        {t("admin.ap.mapDragHint")}
       </div>
     </div>
   );
 }
 
 export function FieldLabel({ children, optional, htmlFor }: { children: React.ReactNode; optional?: boolean; htmlFor?: string }) {
+  const { t } = useLang();
   return (
     <label className="ap-label" htmlFor={htmlFor}>
       {children}
-      {optional && <span className="ap-label__opt">(Optional)</span>}
+      {optional && <span className="ap-label__opt">{t("admin.ap.optional")}</span>}
     </label>
   );
 }
 
 export function RadioCards({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string; sub: string; icon: IconName }[] }) {
+  // Labels and subs arrive already translated from the caller.
   return (
     <div className="ap-cards" role="radiogroup">
       {options.map((o) => {
@@ -293,16 +312,17 @@ export function RadioCards({ value, onChange, options }: { value: string; onChan
 }
 
 export function Stepper({ value, onChange, min = 0, suffix }: { value: number; onChange: (v: number) => void; min?: number; suffix?: string }) {
+  const { t, lang } = useLang();
   return (
     <div className="ap-stepper">
-      <button type="button" className="ap-stepper__btn" aria-label="Decrease" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>
+      <button type="button" className="ap-stepper__btn" aria-label={t("admin.ap.decrease")} onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>
         <Icon name="minus" size={18} strokeWidth={2.25} />
       </button>
       <span className="ap-stepper__val">
-        {value}
+        {fmtNum(lang, value)}
         {suffix && <small>{suffix}</small>}
       </span>
-      <button type="button" className="ap-stepper__btn" aria-label="Increase" onClick={() => onChange(value + 1)}>
+      <button type="button" className="ap-stepper__btn" aria-label={t("admin.ap.increase")} onClick={() => onChange(value + 1)}>
         <Icon name="plus" size={18} strokeWidth={2.25} />
       </button>
     </div>
@@ -323,6 +343,7 @@ export function useTopbarClip(triggerRef: React.RefObject<HTMLElement | null>) {
 }
 
 export function Dropdown({ id, options, value, onChange, placeholder, disabled }: { id?: string; options: Opt[]; value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -362,7 +383,7 @@ export function Dropdown({ id, options, value, onChange, placeholder, disabled }
             <span className="lc-dd__val-txt">{selected.label}</span>
           </span>
         ) : (
-          <span className="lc-dd__placeholder">{placeholder || "Select…"}</span>
+          <span className="lc-dd__placeholder">{placeholder || t("admin.ap.selectPh")}</span>
         )}
         <Icon name="chevron-down" size={18} style={{ color: "var(--text-tertiary)", flexShrink: 0, transition: "transform .16s ease", transform: open ? "rotate(180deg)" : "none" }} />
       </button>
@@ -398,6 +419,7 @@ export function Dropdown({ id, options, value, onChange, placeholder, disabled }
 }
 
 export function ComboSelect({ side, value, onChange, options }: { side: "left" | "right"; value: string; onChange: (v: string) => void; options: string[] }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -429,7 +451,7 @@ export function ComboSelect({ side, value, onChange, options }: { side: "left" |
 
   return (
     <div className={"ap-combo__sel ap-combo__sel--" + side}>
-      <button ref={triggerRef} type="button" className={"ap-combo__sel-btn" + (open ? " is-open" : "")} onClick={() => (open ? setOpen(false) : openDropdown())} aria-haspopup="listbox" aria-expanded={open} aria-label="Unit">
+      <button ref={triggerRef} type="button" className={"ap-combo__sel-btn" + (open ? " is-open" : "")} onClick={() => (open ? setOpen(false) : openDropdown())} aria-haspopup="listbox" aria-expanded={open} aria-label={t("admin.ap.unit")}>
         {value}
       </button>
       <span className={"ap-combo__sel__chev" + (open ? " is-open" : "")}>
@@ -538,6 +560,7 @@ export function usePhotoUploader(demo: boolean) {
 export type PhotoUploader = ReturnType<typeof usePhotoUploader>;
 
 export function CoverImage({ cover, onPick, onRemove }: { cover: UpImg | null; onPick: (files: FileList | null) => void; onRemove: () => void }) {
+  const { t } = useLang();
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -553,15 +576,15 @@ export function CoverImage({ cover, onPick, onRemove }: { cover: UpImg | null; o
       />
       {cover ? (
         <div className="ap-cover">
-          <img className="ap-cover__img" src={cover.url} alt="Cover preview" />
+          <img className="ap-cover__img" src={cover.url} alt={t("admin.ap.coverPreview")} />
           <div className="ap-cover__grad" />
           <span className="ap-cover__badge">
             <Icon name="star" size={14} strokeWidth={2.5} />
-            Cover photo
+            {t("admin.ap.coverPhoto")}
           </span>
           <div className="ap-cover__actions">
-            <IconButton icon="repeat-2" label="Replace cover image" variant="glass" onClick={() => inputRef.current?.click()} />
-            <IconButton icon="trash-2" label="Remove cover image" variant="glass" onClick={onRemove} />
+            <IconButton icon="repeat-2" label={t("admin.ap.replaceCover")} variant="glass" onClick={() => inputRef.current?.click()} />
+            <IconButton icon="trash-2" label={t("admin.ap.removeCover")} variant="glass" onClick={onRemove} />
           </div>
           <span className="ap-cover__foot">
             <Icon name="image" size={14} />
@@ -573,7 +596,7 @@ export function CoverImage({ cover, onPick, onRemove }: { cover: UpImg | null; o
           <span className="ap-drop__ic">
             <Icon name="image" size={22} />
           </span>
-          <span className="ap-drop__title">Upload cover photo</span>
+          <span className="ap-drop__title">{t("admin.ap.uploadCover")}</span>
           <span className="ap-drop__sub">PNG or JPG · recommended 1600×900</span>
         </button>
       )}
@@ -582,6 +605,7 @@ export function CoverImage({ cover, onPick, onRemove }: { cover: UpImg | null; o
 }
 
 export function GalleryGrid({ store }: { store: PhotoUploader }) {
+  const { t } = useLang();
   const inputRef = useRef<HTMLInputElement>(null);
   const { photos, coverId, dragId, setDragId, addPhotos, removePhoto, setCover, reorder } = store;
   return (
@@ -602,7 +626,7 @@ export function GalleryGrid({ store }: { store: PhotoUploader }) {
           className={"ap-gal__item" + (dragId === g.id ? " is-dragging" : "")}
           key={g.id}
           role="group"
-          aria-label="Gallery image"
+          aria-label={t("admin.ap.galleryImage")}
           draggable
           onDragStart={() => setDragId(g.id)}
           onDragEnd={() => setDragId(null)}
@@ -611,36 +635,37 @@ export function GalleryGrid({ store }: { store: PhotoUploader }) {
         >
           <img className="ap-gal__img" src={g.url} alt="" />
           <span className="ap-gal__top" />
-          <span className="ap-gal__handle" aria-label="Drag to reorder" title="Drag to reorder">
+          <span className="ap-gal__handle" aria-label={t("admin.ap.dragReorder")} title={t("admin.ap.dragReorder")}>
             <Icon name="grip-vertical" size={15} />
           </span>
           <div className="ap-gal__acts">
-            <button type="button" className={"ap-gal__abtn" + (coverId === g.id ? " is-on" : "")} aria-label="Set as cover" title="Set as cover" onClick={() => setCover(g.id)}>
+            <button type="button" className={"ap-gal__abtn" + (coverId === g.id ? " is-on" : "")} aria-label={t("admin.ap.setCover")} title={t("admin.ap.setCover")} onClick={() => setCover(g.id)}>
               <Icon name="star" size={14} strokeWidth={2.25} />
             </button>
-            <button type="button" className="ap-gal__abtn ap-gal__abtn--danger" aria-label="Remove image" title="Remove" onClick={() => removePhoto(g.id)}>
+            <button type="button" className="ap-gal__abtn ap-gal__abtn--danger" aria-label={t("admin.ap.removeImage")} title={t("admin.ap.remove")} onClick={() => removePhoto(g.id)}>
               <Icon name="x" size={15} strokeWidth={2.5} />
             </button>
           </div>
           {coverId === g.id && (
             <span className="ap-gal__cover">
               <Icon name="star" size={11} strokeWidth={2.5} />
-              Cover
+              {t("admin.ap.cover")}
             </span>
           )}
         </div>
       ))}
-      <button type="button" className="ap-drop ap-gal__add" aria-label="Add images" onClick={() => inputRef.current?.click()}>
+      <button type="button" className="ap-drop ap-gal__add" aria-label={t("admin.ap.addImages")} onClick={() => inputRef.current?.click()}>
         <span className="ap-drop__ic">
           <Icon name="plus" size={20} strokeWidth={2.25} />
         </span>
-        <span className="ap-drop__title">{photos.length ? "Add more" : "Add photos"}</span>
+        <span className="ap-drop__title">{t(photos.length ? "admin.ap.addMore" : "admin.ap.addPhotos")}</span>
       </button>
     </div>
   );
 }
 
 function VideoRow({ name, size, onRemove }: { name: string; size: string; onRemove?: () => void }) {
+  const { t } = useLang();
   return (
     <div className="ap-vid">
       <div className="ap-vid__row">
@@ -651,7 +676,7 @@ function VideoRow({ name, size, onRemove }: { name: string; size: string; onRemo
           <span className="ap-vid__name">{name}</span>
           <span className="ap-vid__sub">{size} · Uploaded</span>
         </div>
-        <button type="button" className="ap-vid__cancel" aria-label="Remove video" title="Remove" onClick={onRemove}>
+        <button type="button" className="ap-vid__cancel" aria-label={t("admin.ap.removeVideo")} title={t("admin.ap.remove")} onClick={onRemove}>
           <Icon name="x" size={17} strokeWidth={2.25} />
         </button>
       </div>
@@ -662,7 +687,7 @@ function VideoRow({ name, size, onRemove }: { name: string; size: string; onRemo
         <div className="ap-vid__pct" style={{ marginTop: 8 }}>
           <span className="ap-vid__done">
             <Icon name="circle-check" size={15} strokeWidth={2.25} />
-            Upload complete
+            {t("admin.ap.uploadComplete")}
           </span>
           <b>100%</b>
         </div>
@@ -672,6 +697,7 @@ function VideoRow({ name, size, onRemove }: { name: string; size: string; onRemo
 }
 
 export function VideoUpload({ store }: { store: PhotoUploader }) {
+  const { t } = useLang();
   const inputRef = useRef<HTMLInputElement>(null);
   const { video, setVideoFromFiles, removeVideo } = store;
   return (
@@ -693,8 +719,8 @@ export function VideoUpload({ store }: { store: PhotoUploader }) {
           <span className="ap-drop__ic">
             <Icon name="video" size={22} />
           </span>
-          <span className="ap-drop__title">Upload a video</span>
-          <span className="ap-drop__sub">MP4 or MOV · up to 200 MB</span>
+          <span className="ap-drop__title">{t("admin.ap.uploadVideo")}</span>
+          <span className="ap-drop__sub">{t("admin.ap.videoHint")}</span>
         </button>
       )}
     </>
@@ -726,6 +752,7 @@ export function useAssignableAgents(): ApAgent[] {
 }
 
 export function AgentSelect({ id, value, onChange }: { id?: string; value: string; onChange: (v: string) => void }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -774,7 +801,7 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
       <button type="button" ref={triggerRef} id={id} className={"ap-agentsel__trigger" + (open ? " is-open" : "")} onClick={toggle} aria-haspopup="listbox" aria-expanded={open}>
         <span className="ap-agentsel__placeholder">
           <Icon name="user" size={17} />
-          Select agent
+          {t("admin.props.selectAgent")}
         </span>
         <Icon name="chevron-down" size={17} className="ap-agentsel__chev" />
       </button>
@@ -788,16 +815,16 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
                 ref={searchRef}
                 type="text"
                 className="ap-agentsel__search-input"
-                placeholder="Search verified agents…"
+                placeholder={t("admin.props.searchAgentsPh")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                aria-label="Search verified agents"
+                aria-label={t("admin.props.searchAgentsAria")}
               />
               {query && (
                 <button
                   type="button"
                   className="ap-agentsel__search-clear"
-                  aria-label="Clear search"
+                  aria-label={t("admin.props.clearSearch")}
                   onClick={() => {
                     setQuery("");
                     searchRef.current?.focus();
@@ -848,6 +875,7 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
 }
 
 export function AgentSummary({ agent, onClear, locked }: { agent: ApAgent; onClear?: () => void; locked?: boolean }) {
+  const { t } = useLang();
   return (
     <div className="ap-agentcard">
       <Avatar src={agent.avatar || undefined} name={agent.name} size="lg" verified />
@@ -855,7 +883,7 @@ export function AgentSummary({ agent, onClear, locked }: { agent: ApAgent; onCle
         <span className="ap-agentcard__name">
           {agent.name}
           <Badge variant="brand" size="sm" icon="badge-check">
-            Verified
+            {t("status.verified")}
           </Badge>
         </span>
         <span className="ap-agentcard__phone">
@@ -868,7 +896,7 @@ export function AgentSummary({ agent, onClear, locked }: { agent: ApAgent; onCle
           <Icon name="lock" size={16} />
         </span>
       ) : (
-        <button type="button" className="ap-agentcard__remove" aria-label="Remove assigned agent" onClick={onClear}>
+        <button type="button" className="ap-agentcard__remove" aria-label={t("admin.ap.removeAgent")} onClick={onClear}>
           <Icon name="x" size={17} />
         </button>
       )}
@@ -893,9 +921,10 @@ export function SubHead({ title, desc, optional }: { title: string; desc: string
 }
 
 export function AmenityGrid({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const { t } = useLang();
   const toggle = (label: string) => onChange(value.includes(label) ? value.filter((x) => x !== label) : [...value, label]);
   return (
-    <div className="ap-amen" role="group" aria-label="Amenities">
+    <div className="ap-amen" role="group" aria-label={t("admin.pd.amenities")}>
       {AMENITIES.map((a) => {
         const on = value.includes(a.label);
         return (
@@ -903,7 +932,7 @@ export function AmenityGrid({ value, onChange }: { value: string[]; onChange: (v
             <span className="ap-amen__ic">
               <Icon name={a.icon} size={16} />
             </span>
-            <span className="ap-amen__label">{a.label}</span>
+            <span className="ap-amen__label">{t(a.labelKey)}</span>
             {on && (
               <span className="ap-amen__check">
                 <Icon name="check" size={11} strokeWidth={3} />
@@ -917,6 +946,7 @@ export function AmenityGrid({ value, onChange }: { value: string[]; onChange: (v
 }
 
 export function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; onAdd: (t: string) => void; onRemove: (i: number) => void }) {
+  const { t } = useLang();
   const [val, setVal] = useState("");
   const add = () => {
     const t = val.trim();
@@ -930,8 +960,8 @@ export function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; o
         <input
           className="ap-custom__input"
           type="text"
-          placeholder="Amenity name"
-          aria-label="Custom amenity name"
+          placeholder={t("admin.ap.customAmenityName")}
+          aria-label={t("admin.ap.customAmenityName")}
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onKeyDown={(e) => {
@@ -942,7 +972,7 @@ export function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; o
           }}
         />
         <Button hierarchy="secondary" size="lg" iconLeading="plus" onClick={add}>
-          Add amenity
+          {t("admin.ap.addAmenity")}
         </Button>
       </div>
       {items.length > 0 && (
@@ -962,6 +992,7 @@ export function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; o
 }
 
 export function ReviewSection({ icon, title, onEdit, children }: { icon: IconName; title: string; onEdit: () => void; children: React.ReactNode }) {
+  const { t } = useLang();
   return (
     <div className="ap-rev__sect">
       <div className="ap-rev__head">
@@ -972,7 +1003,7 @@ export function ReviewSection({ icon, title, onEdit, children }: { icon: IconNam
           {title}
         </h3>
         <button type="button" className="ap-rev__edit" onClick={onEdit}>
-          Edit
+          {t("admin.props.edit")}
           <Icon name="arrow-right" size={15} strokeWidth={2.25} />
         </button>
       </div>
@@ -982,17 +1013,19 @@ export function ReviewSection({ icon, title, onEdit, children }: { icon: IconNam
 }
 
 export function RevItem({ k, v, full, price, tnum }: { k: string; v: React.ReactNode; full?: boolean; price?: boolean; tnum?: boolean }) {
+  const { t } = useLang();
   const empty = v === undefined || v === null || v === "" || v === "—";
   const cls = ["ap-rev__v", price ? "ap-rev__v--price" : "", tnum ? "cx-tnum" : "", empty ? "ap-rev__v--muted" : ""].filter(Boolean).join(" ");
   return (
     <div className={"ap-rev__item" + (full ? " ap-rev__item--full" : "")}>
       <span className="ap-rev__k">{k}</span>
-      <span className={cls}>{empty ? "Not provided" : v}</span>
+      <span className={cls}>{empty ? t("admin.ap.notProvided") : v}</span>
     </div>
   );
 }
 
 function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
+  const { t } = useLang();
   const router = useRouter();
   const stageRef = useRef<HTMLDivElement>(null);
   const view = preview ?? {
@@ -1038,12 +1071,12 @@ function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
           </span>
         </div>
         <h1 className="pp-title" id="pp-title">
-          {view.published ? "Property published" : "Property saved as pending"}
+          {t(view.published ? "admin.ap.publishedTitle" : "admin.ap.pendingTitle")}
         </h1>
         <p className="pp-desc">
           {view.published
-            ? "Your property has been published successfully and is now visible on the Chiya Estate platform."
-            : "Your property has been saved. Assign a verified agent to publish it and make it visible on the Chiya Estate platform."}
+            ? t("admin.ap.publishedBody")
+            : t("admin.ap.pendingBody")}
         </p>
         <div className="pp-listing">
           <div className="pp-listing__media">
@@ -1089,16 +1122,16 @@ function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
         </div>
         <div className="pp-actions">
           <Button hierarchy="primary" size="lg" iconLeading="eye" onClick={() => router.push(`/admin/properties/${encodeURIComponent(view.id)}`)}>
-            View property
+            {t("admin.mp.viewProperty")}
           </Button>
           <div className="pp-actions__row">
             <Button hierarchy="secondary" size="lg" iconLeading="plus" onClick={() => router.push("/admin/properties/new")}>
-              Add another property
+              {t("admin.ap.addAnother")}
             </Button>
           </div>
           <div className="pp-actions__back">
             <Button hierarchy="link" size="lg" iconLeading="arrow-left" onClick={() => router.push("/admin/properties")}>
-              Back to properties
+              {t("admin.ap.backToProps")}
             </Button>
           </div>
         </div>
@@ -1110,6 +1143,7 @@ function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
 /** Member-facing success screen after a "Submit your property" run: the listing
  *  is filed as Pending Review and the member is routed back to My Properties. */
 function MemberSubmittedSuccess({ listing, editing }: { listing: MemberListing | null; editing?: boolean }) {
+  const { t } = useLang();
   const router = useRouter();
   return (
     <div className="pp-stage">
@@ -1125,12 +1159,12 @@ function MemberSubmittedSuccess({ listing, editing }: { listing: MemberListing |
           </span>
         </div>
         <h1 className="pp-title" id="pp-title">
-          {editing ? "Changes saved" : "Property submitted"}
+          {t(editing ? "admin.ap.savedTitle" : "admin.ap.submittedTitle")}
         </h1>
         <p className="pp-desc">
           {editing
-            ? "Your listing has been updated and sent back for review. You can track its status any time from My Properties."
-            : "Thank you — your property has been submitted and is now pending review. Our team will verify the details and publish it shortly. You can track its status any time from My Properties."}
+            ? t("admin.ap.savedBody")
+            : t("admin.ap.submittedBody")}
         </p>
         {listing && (
           <div className="pp-listing">
@@ -1144,7 +1178,7 @@ function MemberSubmittedSuccess({ listing, editing }: { listing: MemberListing |
               )}
               <span className="pp-listing__badge pp-listing__badge--pending">
                 <Icon name="clock" size={12} strokeWidth={2.5} />
-                Pending
+                {t("status.pending")}
               </span>
             </div>
             <div className="pp-listing__body">
@@ -1163,7 +1197,7 @@ function MemberSubmittedSuccess({ listing, editing }: { listing: MemberListing |
                 {listing.location}
               </span>
               <div className="pp-listing__row">
-                <span className="pp-listing__price cx-tnum">{listing.price || "Price on request"}</span>
+                <span className="pp-listing__price cx-tnum">{listing.price || t("admin.ap.priceOnRequest")}</span>
                 <span className="pp-listing__specs">
                   <span>
                     <Icon name="bed-double" size={15} />
@@ -1184,16 +1218,16 @@ function MemberSubmittedSuccess({ listing, editing }: { listing: MemberListing |
         )}
         <div className="pp-actions">
           <Button hierarchy="primary" size="lg" iconLeading="eye" onClick={() => router.push("/my-listings")}>
-            View property
+            {t("admin.mp.viewProperty")}
           </Button>
           <div className="pp-actions__row">
             <Button hierarchy="secondary" size="lg" iconLeading="plus" onClick={() => { window.location.href = "/my-listings/new"; }}>
-              Add another property
+              {t("admin.ap.addAnother")}
             </Button>
           </div>
           <div className="pp-actions__back">
             <Button hierarchy="link" size="lg" iconLeading="arrow-left" onClick={() => router.push("/my-listings")}>
-              Back to properties
+              {t("admin.ap.backToProps")}
             </Button>
           </div>
         </div>
@@ -1203,6 +1237,11 @@ function MemberSubmittedSuccess({ listing, editing }: { listing: MemberListing |
 }
 
 export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }: { lockedAgentId?: string; mode?: "admin" | "member"; editListingId?: string } = {}) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   const { addProperty, locationTree } = useProperties();
   const { items: memberListings, add: addMemberListing, update: updateMemberListing } = useListings();
   const member = mode === "member";
@@ -1250,27 +1289,33 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Canonical (English) strings — these get written into the stored listing
+  // record, which lib/listings.ts and the public site also read. Keeping them
+  // language-neutral stops a record from freezing in whatever language it was
+  // submitted in; the review step below renders localized copies instead.
   const CUR: Record<string, string> = { USD: "$", EUR: "€", IQD: "IQD " };
-  const fmtNum = (n: string | number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  const priceStr = f.price ? (CUR[f.currency] || "") + fmtNum(f.price) : "";
-  const areaStr = f.area ? fmtNum(f.area) + " " + (f.areaUnit === "sqm" ? "m²" : f.areaUnit) : "";
+  const groupDigits = (n: string | number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const priceStr = f.price ? (CUR[f.currency] || "") + groupDigits(f.price) : "";
+  const areaStr = f.area ? groupDigits(f.area) + " " + (f.areaUnit === "sqm" ? "m²" : f.areaUnit) : "";
+  const priceDisplay = f.price ? fmtCurrency(lang, Number(f.price), f.currency) : "";
+  const areaDisplay = f.area ? fmtNum(lang, Number(f.area)) + " " + (f.areaUnit === "sqm" ? t("unit.sqm") : f.areaUnit) : "";
   const rev = {
-    listing: f.listing === "rent" ? "For rent" : "For sale",
-    type: f.type,
+    listing: t(f.listing === "rent" ? "admin.pd.forRent" : "admin.pd.forSale"),
+    type: tOr(valueKey("type", f.type), f.type),
     title: f.title,
-    price: priceStr,
-    area: areaStr,
-    city: f.city,
-    district: f.district,
-    project: f.project,
+    price: priceDisplay,
+    area: areaDisplay,
+    city: tOr(`city.${f.city}`, f.city),
+    district: tOr(`loc.${f.district}`, f.district),
+    project: tOr(`loc.${f.project}`, f.project),
     street: f.street,
     building: f.building,
-    lat: f.lat,
-    lng: f.lng,
-    year: f.year,
-    orientation: f.orientation,
+    lat: localizeDigits(lang, f.lat),
+    lng: localizeDigits(lang, f.lng),
+    year: f.year ? localizeDigits(lang, String(f.year)) : "",
+    orientation: tOr(valueKey("admin.ap.orient", f.orientation), f.orientation),
     ownerName: f.ownerName,
-    ownerPhone: f.ownerPhone,
+    ownerPhone: localizeDigits(lang, f.ownerPhone),
     ownerEmail: f.ownerEmail,
   };
   const revAgent = assignableAgents.find((a) => a.id === f.agent) || null;
@@ -1289,22 +1334,22 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
 
   return (
     <div className="ap-wrap">
-      <nav className="ap-crumbs" aria-label="Breadcrumb">
+      <nav className="ap-crumbs" aria-label={t("admin.common.breadcrumb")}>
         <Link href={member ? "/my-listings" : "/admin/properties"}>
           {!member && <Icon name="building-2" size={14} />}
-          {member ? "My Properties" : "Properties"}
+          {t(member ? "admin.ap.myProperties" : "admin.nav.properties")}
         </Link>
         <span className="ap-crumbs__sep">
           <Icon name="chevron-right" size={14} />
         </span>
         <span className="ap-crumbs__current" aria-current="page">
-          {member ? (editing ? "Edit property" : "Submit property") : "Add property"}
+          {t(member ? (editing ? "admin.props.editProperty" : "admin.ap.submitProperty") : "admin.ap.addProperty")}
         </span>
       </nav>
 
       <div className="ap-title">
-        <h1>{member ? (editing ? "Edit your property" : "Submit your property") : "Add property"}</h1>
-        <p>{member ? "Add your property details step by step. Our team will review it before it goes live." : "Create a new property listing step by step."}</p>
+        <h1>{t(member ? (editing ? "admin.ap.editYours" : "admin.ap.submitYours") : "admin.ap.addProperty")}</h1>
+        <p>{t(member ? "admin.ap.memberSub" : "admin.ap.adminSub")}</p>
       </div>
 
       <ProgressStepper active={step} />
@@ -1312,45 +1357,45 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
       {step === 0 && (
         <section className="ap-card">
           <div className="ap-card__head">
-            <h2 className="ap-card__title">Property details</h2>
-            <p className="ap-card__desc">Provide the basic information about the property listing.</p>
+            <h2 className="ap-card__title">{t("admin.ap.step.details")}</h2>
+            <p className="ap-card__desc">{t("admin.ap.detailsDesc")}</p>
           </div>
           <div className="ap-card__body">
             <div className="ap-grid">
               <div className="ap-field ap-col-full">
-                <FieldLabel>Listing type</FieldLabel>
+                <FieldLabel>{t("admin.ap.f.listingType")}</FieldLabel>
                 <RadioCards
                   value={f.listing}
                   onChange={(v) => set("listing", v)}
                   options={[
-                    { value: "sale", label: "For sale", sub: "List for purchase", icon: "tag" },
-                    { value: "rent", label: "For rent", sub: "Offer as a rental", icon: "key" },
+                    { value: "sale", label: t("admin.pd.forSale"), sub: t("admin.ap.listForPurchase"), icon: "tag" },
+                    { value: "rent", label: t("admin.pd.forRent"), sub: t("admin.ap.offerAsRental"), icon: "key" },
                   ]}
                 />
               </div>
               <div className="ap-field ap-col-full">
-                <FieldLabel htmlFor="ap-type">Property type</FieldLabel>
-                <Dropdown id="ap-type" placeholder="Select property type" value={f.type} onChange={(v) => set("type", v)} options={PROPERTY_TYPES.map((t) => ({ value: t, label: t }))} />
+                <FieldLabel htmlFor="ap-type">{t("admin.ap.f.type")}</FieldLabel>
+                <Dropdown id="ap-type" placeholder={t("admin.ap.selectType")} value={f.type} onChange={(v) => set("type", v)} options={PROPERTY_TYPES.map((v) => ({ value: v, label: tOr(valueKey("type", v), v) }))} />
               </div>
               <div className="ap-field ap-col-full">
-                <FieldLabel htmlFor="ap-title">Property title</FieldLabel>
+                <FieldLabel htmlFor="ap-title">{t("admin.ap.f.title")}</FieldLabel>
                 <Input id="ap-title" size="lg" placeholder="e.g. Olive Grove Estate — Ankawa, Erbil" value={f.title} onChange={(e) => set("title", e.target.value)} />
               </div>
               <div className="ap-field ap-col-full">
-                <FieldLabel htmlFor="ap-desc">Property description</FieldLabel>
-                <Textarea id="ap-desc" rows={5} placeholder="Describe the home, the lifestyle, and what makes it special — natural light, finishes, location, views…" value={f.description} onChange={(e) => set("description", e.target.value)} />
+                <FieldLabel htmlFor="ap-desc">{t("admin.ap.f.description")}</FieldLabel>
+                <Textarea id="ap-desc" rows={5} placeholder={t("admin.ap.descPh")} value={f.description} onChange={(e) => set("description", e.target.value)} />
               </div>
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-price">Price</FieldLabel>
+                <FieldLabel htmlFor="ap-price">{t("admin.props.th.price")}</FieldLabel>
                 <div className="ap-combo">
                   <ComboSelect side="left" value={f.currency} onChange={(v) => set("currency", v)} options={["USD", "IQD"]} />
-                  <input id="ap-price" className="ap-combo__input" inputMode="numeric" placeholder="Enter price" value={f.price} onChange={(e) => set("price", e.target.value.replace(/[^\d]/g, ""))} />
+                  <input id="ap-price" className="ap-combo__input" inputMode="numeric" placeholder={t("admin.ap.pricePh")} value={f.price} onChange={(e) => set("price", e.target.value.replace(/[^\d]/g, ""))} />
                 </div>
               </div>
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-area">Area size</FieldLabel>
+                <FieldLabel htmlFor="ap-area">{t("admin.ap.f.areaSize")}</FieldLabel>
                 <div className="ap-combo">
-                  <input id="ap-area" className="ap-combo__input" inputMode="numeric" placeholder="Enter area size" value={f.area} onChange={(e) => set("area", e.target.value.replace(/[^\d]/g, ""))} />
+                  <input id="ap-area" className="ap-combo__input" inputMode="numeric" placeholder={t("admin.ap.areaSizePh")} value={f.area} onChange={(e) => set("area", e.target.value.replace(/[^\d]/g, ""))} />
                   <ComboSelect side="right" value={f.areaUnit} onChange={(v) => set("areaUnit", v)} options={["sqm", "sq ft"]} />
                 </div>
               </div>
@@ -1358,14 +1403,14 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
           </div>
           <div className="ap-foot">
             <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" href={member ? "/my-listings" : "/admin/properties"}>
-              Cancel
+              {t("admin.common.cancel")}
             </Button>
             <div className="ap-foot__right">
               <Button hierarchy="secondary" size="lg" iconLeading="save">
-                Save draft
+                {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(1)}>
-                Next
+                {t("admin.ap.nextBtn")}
               </Button>
             </div>
           </div>
@@ -1375,41 +1420,41 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
       {step === 1 && (
         <section className="ap-card">
           <div className="ap-card__head">
-            <h2 className="ap-card__title">Location</h2>
-            <p className="ap-card__desc">Add the property location and map details.</p>
+            <h2 className="ap-card__title">{t("admin.pd.location")}</h2>
+            <p className="ap-card__desc">{t("admin.ap.locationDesc")}</p>
           </div>
           <div className="ap-card__body">
             <div className="ap-grid">
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-city">City</FieldLabel>
-                <Dropdown id="ap-city" placeholder="Select city" value={f.city} onChange={(v) => { set("city", v); set("district", ""); set("project", ""); }} options={cityOptions.map((c) => ({ value: c, label: c }))} />
+                <FieldLabel htmlFor="ap-city">{t("admin.pd.f.city")}</FieldLabel>
+                <Dropdown id="ap-city" placeholder={t("admin.ap.selectCity")} value={f.city} onChange={(v) => { set("city", v); set("district", ""); set("project", ""); }} options={cityOptions.map((c) => ({ value: c, label: tOr(`city.${c}`, c) }))} />
               </div>
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-district" optional>
-                  Area / district
+                  {t("admin.ap.f.area")}
                 </FieldLabel>
-                <Dropdown id="ap-district" disabled={districtOptions.length === 0} placeholder={districtOptions.length ? "Select area or district" : "No areas in this city"} value={f.district} onChange={(v) => { set("district", v); set("project", ""); }} options={districtOptions.map((d) => ({ value: d, label: d }))} />
+                <Dropdown id="ap-district" disabled={districtOptions.length === 0} placeholder={t(districtOptions.length ? "admin.ap.selectDistrict" : "admin.ap.noDistricts")} value={f.district} onChange={(v) => { set("district", v); set("project", ""); }} options={districtOptions.map((d) => ({ value: d, label: tOr(`loc.${d}`, d) }))} />
               </div>
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-project" optional>
-                  Project / community
+                  {t("admin.ap.f.project")}
                 </FieldLabel>
-                <Dropdown id="ap-project" disabled={projectOptions.length === 0} placeholder={!f.district ? "Select an area first" : projectOptions.length ? "Select project or community" : "No projects in this area"} value={f.project} onChange={(v) => set("project", v)} options={projectOptions.map((p) => ({ value: p, label: p }))} />
+                <Dropdown id="ap-project" disabled={projectOptions.length === 0} placeholder={t(!f.district ? "admin.ap.selectAreaFirst" : projectOptions.length ? "admin.ap.selectProject" : "admin.ap.noProjects")} value={f.project} onChange={(v) => set("project", v)} options={projectOptions.map((pr) => ({ value: pr, label: tOr(`loc.${pr}`, pr) }))} />
               </div>
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-street" optional>
-                  Street address
+                  {t("admin.ap.f.street")}
                 </FieldLabel>
                 <Input id="ap-street" size="lg" placeholder="e.g. 60 Meter Street, Block 4" value={f.street} onChange={(e) => set("street", e.target.value)} />
               </div>
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-building" optional>
-                  Building number
+                  {t("admin.ap.f.building")}
                 </FieldLabel>
                 <Input id="ap-building" size="lg" placeholder="e.g. Villa 128 / Tower B" value={f.building} onChange={(e) => set("building", e.target.value)} />
               </div>
               <div className="ap-field ap-col-full">
-                <FieldLabel>Map location</FieldLabel>
+                <FieldLabel>{t("admin.pd.f.map")}</FieldLabel>
                 <MapPicker
                   city={f.city}
                   lat={f.lat}
@@ -1419,10 +1464,10 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                     set("lng", ln.toFixed(5));
                   }}
                 />
-                <span className="ap-hint">Drag the pin or click the map to drop it precisely on the property.</span>
+                <span className="ap-hint">{t("admin.ap.mapHint")}</span>
               </div>
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-lat">Latitude</FieldLabel>
+                <FieldLabel htmlFor="ap-lat">{t("admin.ap.f.lat")}</FieldLabel>
                 <div className="ap-coord">
                   <span className="ap-coord__tag">
                     <Icon name="compass" size={14} />
@@ -1432,7 +1477,7 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                 </div>
               </div>
               <div className="ap-field">
-                <FieldLabel htmlFor="ap-lng">Longitude</FieldLabel>
+                <FieldLabel htmlFor="ap-lng">{t("admin.ap.f.lng")}</FieldLabel>
                 <div className="ap-coord">
                   <span className="ap-coord__tag">
                     <Icon name="compass" size={14} />
@@ -1443,22 +1488,22 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel htmlFor="ap-locnotes" optional>
-                  Location notes
+                  {t("admin.ap.f.locNotes")}
                 </FieldLabel>
-                <Textarea id="ap-locnotes" rows={4} placeholder="Landmarks, access instructions, or directions that help locate the property…" value={f.locNotes} onChange={(e) => set("locNotes", e.target.value)} />
+                <Textarea id="ap-locnotes" rows={4} placeholder={t("admin.ap.landmarksPh")} value={f.locNotes} onChange={(e) => set("locNotes", e.target.value)} />
               </div>
             </div>
           </div>
           <div className="ap-foot">
             <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" onClick={() => goTo(0)}>
-              Previous
+              {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
               <Button hierarchy="secondary" size="lg" iconLeading="save">
-                Save draft
+                {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(2)}>
-                Next
+                {t("admin.ap.nextBtn")}
               </Button>
             </div>
           </div>
@@ -1468,28 +1513,28 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
       {step === 2 && (
         <section className="ap-card">
           <div className="ap-card__head">
-            <h2 className="ap-card__title">Media</h2>
-            <p className="ap-card__desc">Upload property photos, videos, and visual assets for the listing.</p>
+            <h2 className="ap-card__title">{t("admin.ap.step.media")}</h2>
+            <p className="ap-card__desc">{t("admin.ap.mediaDesc")}</p>
           </div>
           <div className="ap-card__body">
             <div className="ap-grid">
               <div className="ap-field ap-col-full">
-                <FieldLabel>Cover image</FieldLabel>
+                <FieldLabel>{t("admin.pd.coverImage")}</FieldLabel>
                 <CoverImage cover={photos.cover} onPick={photos.addAsCover} onRemove={() => photos.cover && photos.removePhoto(photos.cover.id)} />
-                <span className="ap-hint">The cover photo headlines the listing across search results and the property page. Set any gallery image as the cover with its star.</span>
+                <span className="ap-hint">{t("admin.ap.coverHint")}</span>
               </div>
               <div className="ap-field ap-col-full">
-                <FieldLabel>Gallery images</FieldLabel>
+                <FieldLabel>{t("admin.ap.gallery")}</FieldLabel>
                 <GalleryGrid store={photos} />
-                <span className="ap-hint">Drag to reorder · hover an image to set it as cover or remove it.</span>
+                <span className="ap-hint">{t("admin.ap.galleryHint")}</span>
               </div>
               <div className="ap-field ap-col-full">
-                <FieldLabel optional>Video upload</FieldLabel>
+                <FieldLabel optional>{t("admin.ap.video")}</FieldLabel>
                 <VideoUpload store={photos} />
               </div>
               <div className="ap-field ap-col-full">
                 <FieldLabel htmlFor="ap-tour" optional>
-                  Virtual tour URL
+                  {t("admin.ap.f.tourUrl")}
                 </FieldLabel>
                 <Input id="ap-tour" size="lg" type="url" iconLeading="link" placeholder="https://..." value={f.tourUrl} onChange={(e) => set("tourUrl", e.target.value)} />
                 <span className="ap-hint">Link a Matterport, YouTube, or 360° walkthrough.</span>
@@ -1498,14 +1543,14 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
           </div>
           <div className="ap-foot">
             <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" onClick={() => goTo(1)}>
-              Previous
+              {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
               <Button hierarchy="secondary" size="lg" iconLeading="save">
-                Save draft
+                {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(3)}>
-                Next
+                {t("admin.ap.nextBtn")}
               </Button>
             </div>
           </div>
@@ -1516,51 +1561,51 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
         <section className="ap-card">
           <div className="ap-card__body">
             <div className="ap-sect">
-              <SubHead title="Property features" desc="Enter the property's specifications and characteristics." />
+              <SubHead title={t("admin.pd.features")} desc={t("admin.ap.featuresDesc")} />
               <div className="ap-grid">
                 <div className="ap-field">
-                  <FieldLabel>Bedrooms</FieldLabel>
+                  <FieldLabel>{t("admin.pd.f.beds")}</FieldLabel>
                   <Stepper value={f.beds} onChange={(v) => set("beds", v)} min={0} />
                 </div>
                 <div className="ap-field">
-                  <FieldLabel>Bathrooms</FieldLabel>
+                  <FieldLabel>{t("admin.pd.f.baths")}</FieldLabel>
                   <Stepper value={f.baths} onChange={(v) => set("baths", v)} min={0} />
                 </div>
                 <div className="ap-field">
-                  <FieldLabel optional>Parking spaces</FieldLabel>
+                  <FieldLabel optional>{t("admin.ap.f.parking")}</FieldLabel>
                   <Stepper value={f.parking} onChange={(v) => set("parking", v)} min={0} />
                 </div>
                 <div className="ap-field">
-                  <FieldLabel optional>Levels / floors</FieldLabel>
+                  <FieldLabel optional>{t("admin.ap.f.levels")}</FieldLabel>
                   <Stepper value={f.floors} onChange={(v) => set("floors", v)} min={0} />
                 </div>
                 <div className="ap-field">
                   <FieldLabel htmlFor="ap-year" optional>
-                    Year built
+                    {t("admin.pd.f.yearBuilt")}
                   </FieldLabel>
                   <Input id="ap-year" size="lg" inputMode="numeric" maxLength={4} placeholder="e.g. 2022" value={f.year} onChange={(e) => set("year", e.target.value.replace(/[^\d]/g, "").slice(0, 4))} />
                 </div>
                 <div className="ap-field">
                   <FieldLabel htmlFor="ap-orientation" optional>
-                    Orientation
+                    {t("admin.ap.f.orientation")}
                   </FieldLabel>
-                  <Dropdown id="ap-orientation" placeholder="Select orientation" value={f.orientation} onChange={(v) => set("orientation", v)} options={ORIENTATIONS.map((o) => ({ value: o, label: o }))} />
+                  <Dropdown id="ap-orientation" placeholder={t("admin.ap.selectOrientation")} value={f.orientation} onChange={(v) => set("orientation", v)} options={ORIENTATIONS.map((o) => ({ value: o, label: tOr(valueKey("admin.ap.orient", o), o) }))} />
                 </div>
                 <div className="ap-field">
-                  <FieldLabel htmlFor="ap-condition">Property condition</FieldLabel>
-                  <Dropdown id="ap-condition" placeholder="Select condition" value={f.condition} onChange={(v) => set("condition", v)} options={CONDITIONS.map((o) => ({ value: o, label: o }))} />
+                  <FieldLabel htmlFor="ap-condition">{t("admin.ap.f.condition")}</FieldLabel>
+                  <Dropdown id="ap-condition" placeholder={t("admin.ap.selectCondition")} value={f.condition} onChange={(v) => set("condition", v)} options={CONDITIONS.map((o) => ({ value: o, label: tOr(valueKey("admin.ap.cond", o), o) }))} />
                 </div>
                 <div className="ap-field">
-                  <FieldLabel htmlFor="ap-furnishing">Furnishing</FieldLabel>
-                  <Dropdown id="ap-furnishing" placeholder="Select furnishing" value={f.furnishing} onChange={(v) => set("furnishing", v)} options={FURNISHING.map((o) => ({ value: o, label: o }))} />
+                  <FieldLabel htmlFor="ap-furnishing">{t("admin.ap.f.furnishing")}</FieldLabel>
+                  <Dropdown id="ap-furnishing" placeholder={t("admin.ap.selectFurnishing")} value={f.furnishing} onChange={(v) => set("furnishing", v)} options={FURNISHING.map((o) => ({ value: o, label: tOr(valueKey("furnished", o), o) }))} />
                 </div>
               </div>
             </div>
             <div className="ap-sect">
-              <SubHead title="Amenities" desc="Select all amenities available for this property." />
+              <SubHead title={t("admin.pd.amenities")} desc={t("admin.ap.amenitiesDesc")} />
               <AmenityGrid value={f.amenities} onChange={(v) => set("amenities", v)} />
               <div className="ap-field">
-                <FieldLabel optional>Custom amenities</FieldLabel>
+                <FieldLabel optional>{t("admin.ap.customAmenities")}</FieldLabel>
                 <CustomAmenities
                   items={f.customAmenities}
                   onAdd={(t) => set("customAmenities", f.customAmenities.includes(t) ? f.customAmenities : [...f.customAmenities, t])}
@@ -1572,14 +1617,14 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
           </div>
           <div className="ap-foot">
             <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" onClick={() => goTo(2)}>
-              Previous
+              {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
               <Button hierarchy="secondary" size="lg" iconLeading="save">
-                Save draft
+                {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(4)}>
-                Next
+                {t("admin.ap.nextBtn")}
               </Button>
             </div>
           </div>
@@ -1590,21 +1635,21 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
         <section className="ap-card">
           <div className="ap-card__head">
             <h2 className="ap-card__title">Ownership &amp; assignment</h2>
-            <p className="ap-card__desc">Add the property owner information and assign the property to an agent.</p>
+            <p className="ap-card__desc">{t("admin.ap.ownershipDesc")}</p>
           </div>
           <div className="ap-card__body">
             <div className="ap-sect ap-sect--flush">
               <div className="ap-grid">
                 <div className="ap-field ap-col-full">
-                  <FieldLabel htmlFor="ap-owner-name">Owner full name</FieldLabel>
+                  <FieldLabel htmlFor="ap-owner-name">{t("admin.ap.f.ownerName")}</FieldLabel>
                   <Input id="ap-owner-name" size="lg" iconLeading="user" placeholder="e.g. Hêmin Abdullah" value={f.ownerName} onChange={(e) => set("ownerName", e.target.value)} />
                 </div>
                 <div className="ap-field">
-                  <FieldLabel htmlFor="ap-owner-phone">Phone number</FieldLabel>
+                  <FieldLabel htmlFor="ap-owner-phone">{t("admin.mp.phoneNumber")}</FieldLabel>
                   <Input id="ap-owner-phone" size="lg" type="tel" iconLeading="phone" placeholder="+964 750 000 0000" value={f.ownerPhone} onChange={(e) => set("ownerPhone", e.target.value)} />
                 </div>
                 <div className="ap-field">
-                  <FieldLabel htmlFor="ap-owner-email">Email address</FieldLabel>
+                  <FieldLabel htmlFor="ap-owner-email">{t("admin.mp.emailAddress")}</FieldLabel>
                   <Input id="ap-owner-email" size="lg" type="email" iconLeading="mail" placeholder="owner@email.com" value={f.ownerEmail} onChange={(e) => set("ownerEmail", e.target.value)} />
                 </div>
               </div>
@@ -1612,13 +1657,13 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
             <div className="ap-sect ap-sect--flush">
               <div className="ap-grid">
                 <div className="ap-field ap-col-full">
-                  <FieldLabel htmlFor="ap-agent">Assigned agent</FieldLabel>
+                  <FieldLabel htmlFor="ap-agent">{t("admin.pd.assignedAgent")}</FieldLabel>
                   {(() => {
                     const sel = assignableAgents.find((a) => a.id === f.agent);
                     if (lockedAgentId) return sel ? <AgentSummary agent={sel} locked /> : null;
                     return sel ? <AgentSummary agent={sel} onClear={() => set("agent", "")} /> : <AgentSelect id="ap-agent" value={f.agent} onChange={(v) => set("agent", v)} />;
                   })()}
-                  {lockedAgentId && <p className="ap-lockhint">You are the assigned agent for listings you create.</p>}
+                  {lockedAgentId && <p className="ap-lockhint">{t("admin.ap.agentSelfNote")}</p>}
                 </div>
               </div>
             </div>
@@ -1627,12 +1672,12 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                 <div className="ap-grid">
                   <div className="ap-field ap-col-full">
                     <FieldLabel htmlFor="ap-notes" optional>
-                      Internal notes
+                      {t("admin.pd.notes")}
                     </FieldLabel>
-                    <Textarea id="ap-notes" rows={4} placeholder="Pricing flexibility, owner availability, key handover details, or anything the team should know…" value={f.internalNotes} onChange={(e) => set("internalNotes", e.target.value)} />
+                    <Textarea id="ap-notes" rows={4} placeholder={t("admin.ap.notesPh")} value={f.internalNotes} onChange={(e) => set("internalNotes", e.target.value)} />
                     <span className="ap-staffnote">
                       <Icon name="lock" size={14} />
-                      Visible only to staff and administrators. Not displayed on the public website.
+                      {t("admin.ap.notesHint")}
                     </span>
                   </div>
                 </div>
@@ -1641,14 +1686,14 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
           </div>
           <div className="ap-foot">
             <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" onClick={() => goTo(3)}>
-              Previous
+              {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
               <Button hierarchy="secondary" size="lg" iconLeading="save">
-                Save draft
+                {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(5)}>
-                Next
+                {t("admin.ap.nextBtn")}
               </Button>
             </div>
           </div>
@@ -1658,33 +1703,33 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
       {step === 5 && (
         <section className="ap-card">
           <div className="ap-card__head">
-            <h2 className="ap-card__title">{member ? "Review & submit" : "Review & publish"}</h2>
-            <p className="ap-card__desc">Review all property information before submitting the listing for approval.</p>
+            <h2 className="ap-card__title">{t(member ? "admin.ap.reviewSubmit" : "admin.ap.step.review")}</h2>
+            <p className="ap-card__desc">{t("admin.ap.reviewDesc")}</p>
           </div>
           <div className="ap-card__body">
             <div className="ap-rev">
-              <ReviewSection icon="home" title="Property details" onEdit={() => goTo(0)}>
+              <ReviewSection icon="home" title={t("admin.ap.step.details")} onEdit={() => goTo(0)}>
                 <div className="ap-rev__grid">
-                  <RevItem k="Listing title" v={rev.title} full />
-                  <RevItem k="Property type" v={rev.type} />
-                  <RevItem k="Listing type" v={rev.listing} />
-                  <RevItem k="Price" v={rev.price} price tnum />
-                  <RevItem k="Area size" v={rev.area} tnum />
+                  <RevItem k={t("admin.ap.f.listingTitle")} v={rev.title} full />
+                  <RevItem k={t("admin.ap.f.type")} v={rev.type} />
+                  <RevItem k={t("admin.ap.f.listingType")} v={rev.listing} />
+                  <RevItem k={t("admin.props.th.price")} v={rev.price} price tnum />
+                  <RevItem k={t("admin.ap.f.areaSize")} v={rev.area} tnum />
                 </div>
               </ReviewSection>
-              <ReviewSection icon="map-pin" title="Location" onEdit={() => goTo(1)}>
+              <ReviewSection icon="map-pin" title={t("admin.pd.location")} onEdit={() => goTo(1)}>
                 <div className="ap-rev__grid">
-                  <RevItem k="City" v={rev.city} />
-                  <RevItem k="Area / district" v={rev.district} />
-                  <RevItem k="Project / community" v={rev.project} />
-                  <RevItem k="Street address" v={rev.street} full />
-                  <RevItem k="Building number" v={rev.building} />
-                  <RevItem k="Coordinates" v={rev.lat && rev.lng ? rev.lat + ", " + rev.lng : ""} tnum />
+                  <RevItem k={t("admin.pd.f.city")} v={rev.city} />
+                  <RevItem k={t("admin.ap.f.area")} v={rev.district} />
+                  <RevItem k={t("admin.ap.f.project")} v={rev.project} />
+                  <RevItem k={t("admin.ap.f.street")} v={rev.street} full />
+                  <RevItem k={t("admin.ap.f.building")} v={rev.building} />
+                  <RevItem k={t("admin.ap.coordinates")} v={rev.lat && rev.lng ? rev.lat + ", " + rev.lng : ""} tnum />
                 </div>
               </ReviewSection>
-              <ReviewSection icon="image" title="Media" onEdit={() => goTo(2)}>
+              <ReviewSection icon="image" title={t("admin.ap.step.media")} onEdit={() => goTo(2)}>
                 {photos.photos.length === 0 && !photos.video ? (
-                  <span className="ap-rev__v ap-rev__v--muted">No media uploaded</span>
+                  <span className="ap-rev__v ap-rev__v--muted">{t("admin.ap.noMedia")}</span>
                 ) : (
                   <div className="ap-rev__media">
                     {photos.photos.length > 0 && (
@@ -1695,7 +1740,7 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                             {g.id === photos.coverId && (
                               <span className="ap-rev__thumb-tag">
                                 <Icon name="star" size={9} strokeWidth={2.5} />
-                                Cover
+                                {t("admin.ap.cover")}
                               </span>
                             )}
                           </span>
@@ -1715,26 +1760,26 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                       {photos.cover && (
                         <span className="ap-rev__stat">
                           <Icon name="star" size={16} />
-                          Cover photo selected
+                          {t("admin.ap.coverSelected")}
                         </span>
                       )}
                     </div>
                   </div>
                 )}
               </ReviewSection>
-              <ReviewSection icon="ruler" title="Property features" onEdit={() => goTo(3)}>
+              <ReviewSection icon="ruler" title={t("admin.pd.features")} onEdit={() => goTo(3)}>
                 <div className="ap-rev__grid">
-                  <RevItem k="Bedrooms" v={f.beds || ""} tnum />
-                  <RevItem k="Bathrooms" v={f.baths || ""} tnum />
-                  <RevItem k="Parking spaces" v={f.parking || ""} tnum />
-                  <RevItem k="Levels / floors" v={f.floors || ""} tnum />
-                  <RevItem k="Year built" v={rev.year} tnum />
-                  <RevItem k="Orientation" v={rev.orientation} />
-                  <RevItem k="Condition" v={f.condition} />
-                  <RevItem k="Furnishing" v={f.furnishing} />
+                  <RevItem k={t("admin.pd.f.beds")} v={f.beds || ""} tnum />
+                  <RevItem k={t("admin.pd.f.baths")} v={f.baths || ""} tnum />
+                  <RevItem k={t("admin.ap.f.parking")} v={f.parking || ""} tnum />
+                  <RevItem k={t("admin.ap.f.levels")} v={f.floors || ""} tnum />
+                  <RevItem k={t("admin.pd.f.yearBuilt")} v={rev.year} tnum />
+                  <RevItem k={t("admin.ap.f.orientation")} v={rev.orientation} />
+                  <RevItem k={t("admin.ap.f.condition")} v={f.condition} />
+                  <RevItem k={t("admin.ap.f.furnishing")} v={f.furnishing} />
                 </div>
               </ReviewSection>
-              <ReviewSection icon="sparkles" title="Amenities" onEdit={() => goTo(3)}>
+              <ReviewSection icon="sparkles" title={t("admin.pd.amenities")} onEdit={() => goTo(3)}>
                 <div className="ap-rev__amen">
                   {f.amenities.map((a) => (
                     <span className="ap-rev__pill" key={a}>
@@ -1750,25 +1795,25 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                   ))}
                 </div>
               </ReviewSection>
-              <ReviewSection icon="user-round" title="Ownership & assignment" onEdit={() => goTo(4)}>
+              <ReviewSection icon="user-round" title={t("admin.ap.step.ownership")} onEdit={() => goTo(4)}>
                 <div className="ap-rev__grid">
-                  <RevItem k="Owner" v={rev.ownerName} />
-                  <RevItem k="Owner phone" v={rev.ownerPhone} tnum />
-                  <RevItem k="Owner email" v={rev.ownerEmail} full />
+                  <RevItem k={t("admin.props.th.owner")} v={rev.ownerName} />
+                  <RevItem k={t("admin.ap.f.ownerPhone")} v={rev.ownerPhone} tnum />
+                  <RevItem k={t("admin.ap.f.ownerEmail")} v={rev.ownerEmail} full />
                   <div className="ap-rev__item ap-rev__item--full">
-                    <span className="ap-rev__k">Assigned agent</span>
+                    <span className="ap-rev__k">{t("admin.pd.assignedAgent")}</span>
                     {revAgent ? (
                       <span className="ap-rev__agent">
                         <Avatar src={revAgent.avatar || undefined} name={revAgent.name} size="xs" verified />
                         <span className="ap-rev__agent-name">
                           {revAgent.name}
                           <Badge variant="brand" size="sm" icon="badge-check">
-                            Verified
+                            {t("status.verified")}
                           </Badge>
                         </span>
                       </span>
                     ) : (
-                      <span className="ap-rev__v ap-rev__v--muted">Not provided</span>
+                      <span className="ap-rev__v ap-rev__v--muted">{t("admin.ap.notProvided")}</span>
                     )}
                   </div>
                 </div>
@@ -1777,11 +1822,11 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
           </div>
           <div className="ap-foot">
             <Button hierarchy="tertiary" size="lg" iconLeading="arrow-left" onClick={() => goTo(4)}>
-              Previous
+              {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
               <Button hierarchy="secondary" size="lg" iconLeading="save">
-                Save draft
+                {t("admin.ap.saveDraft")}
               </Button>
               <Button
                 hierarchy="primary"
@@ -1806,8 +1851,8 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                     id: rec.id,
                     title: rec.title,
                     address: rec.area + ", " + rec.city,
-                    price: priceStr || fmtNum(rec.price),
-                    listing: rec.listing === "rent" ? "For rent" : "For sale",
+                    price: priceDisplay || fmtCurrency(lang, rec.price, f.currency),
+                    listing: t(rec.listing === "rent" ? "admin.pd.forRent" : "admin.pd.forSale"),
                     beds: rec.beds,
                     baths: rec.baths,
                     area: areaStr || String(rec.size),
@@ -1817,7 +1862,7 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                   goTo(6);
                 }}
               >
-                {member ? (editing ? "Save changes" : "Submit property") : "Publish property"}
+                {t(member ? (editing ? "admin.ap.saveChanges" : "admin.ap.submitProperty") : "admin.ap.publishProperty")}
               </Button>
             </div>
           </div>

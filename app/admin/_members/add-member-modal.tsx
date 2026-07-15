@@ -8,9 +8,11 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { useLang } from "@/lib/i18n";
 import { AM_AGENTS } from "./data";
 
 function AmAgentSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -45,12 +47,12 @@ function AmAgentSelect({ value, onChange }: { value: string; onChange: (v: strin
   return (
     <div className="cx-field">
       <label className="cx-field__label">
-        Assigned agent <span className="am-label__opt">(Optional)</span>
+        {t("admin.props.th.agent")} <span className="am-label__opt">{t("admin.members.optional")}</span>
       </label>
       <button type="button" ref={btnRef} className={"am-amodal__trigger" + (open ? " is-open" : "")} onClick={toggle}>
         <span className="am-amodal__trigger-placeholder">
           <Icon name="user" size={16} />
-          Select agent
+          {t("admin.props.selectAgent")}
         </span>
         <Icon name="chevron-down" size={15} className="am-amodal__trigger-chev" />
       </button>
@@ -110,6 +112,7 @@ export function AddMemberModal(props: AddMemberModalProps) {
 }
 
 function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: AddMemberModalProps) {
+  const { t } = useLang();
   const isEdit = mode === "edit";
   const [name, setName] = useState(initial?.name || "");
   const [phone, setPhone] = useState(initial?.phone || "");
@@ -123,7 +126,7 @@ function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: A
   const footer = (
     <>
       <Button hierarchy="secondary" size="lg" onClick={onClose}>
-        Cancel
+        {t("admin.topbar.cancel")}
       </Button>
       <Button
         hierarchy="primary"
@@ -131,7 +134,7 @@ function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: A
         disabled={!canSubmit}
         onClick={() => onSubmit?.({ name, phone, email, agentId, notes })}
       >
-        {isEdit ? "Save changes" : "Add member"}
+        {isEdit ? t("admin.profile.save") : t("admin.members.add")}
       </Button>
     </>
   );
@@ -142,18 +145,18 @@ function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: A
       onClose={onClose}
       size="lg"
       icon="user-plus"
-      title={isEdit ? "Edit member" : "Add member"}
-      subtitle={isEdit ? "Update member information and assignments." : "Create a new member profile."}
+      title={isEdit ? t("admin.members.editMember") : t("admin.members.add")}
+      subtitle={isEdit ? t("admin.members.editSub") : t("admin.members.addSub")}
       footer={footer}
       className="am-modal"
     >
       <div className="am-form">
         <section className="am-section">
           <div className="am-grid">
-            <Input label="Full name" value={name} autoFocus iconLeading="user" placeholder="e.g. Karwan Mahmoud" onChange={(e) => setName(e.target.value)} />
+            <Input label={t("admin.members.fullName")} value={name} autoFocus iconLeading="user" placeholder={t("admin.members.namePh")} onChange={(e) => setName(e.target.value)} />
             <div className="am-grid am-grid--2">
-              <Input label="Phone number" value={phone} iconLeading="phone" inputMode="tel" placeholder="+964 750 000 0000" onChange={(e) => setPhone(e.target.value)} />
-              <Input label="Email address" value={email} iconLeading="mail" type="email" placeholder="name@email.com" onChange={(e) => setEmail(e.target.value)} />
+              <Input label={t("admin.members.phone")} value={phone} iconLeading="phone" inputMode="tel" placeholder="+964 750 000 0000" onChange={(e) => setPhone(e.target.value)} />
+              <Input label={t("admin.members.emailAddr")} value={email} iconLeading="mail" type="email" placeholder="name@email.com" onChange={(e) => setEmail(e.target.value)} />
             </div>
           </div>
         </section>
@@ -168,7 +171,7 @@ function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: A
                 <span className="am-agentcard__name">
                   {agent.name}
                   <Badge variant="brand" size="sm" icon="badge-check">
-                    Verified
+                    {t("status.verified")}
                   </Badge>
                 </span>
                 <span className="am-agentcard__phone">
@@ -176,7 +179,7 @@ function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: A
                   {agent.phone}
                 </span>
               </div>
-              <button type="button" className="am-agentcard__remove" aria-label="Remove assigned agent" onClick={() => setAgentId("")}>
+              <button type="button" className="am-agentcard__remove" aria-label={t("admin.members.removeAgent")} onClick={() => setAgentId("")}>
                 <Icon name="x" size={17} />
               </button>
             </div>
@@ -187,17 +190,17 @@ function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: A
           <Textarea
             label={
               <>
-                Notes <span className="am-label__opt">(Optional)</span>
+                {t("admin.members.notes")} <span className="am-label__opt">{t("admin.members.optional")}</span>
               </>
             }
             value={notes}
-            placeholder="Add context about this member — preferences, history, or anything the team should know."
+            placeholder={t("admin.members.notesPh")}
             onChange={(e) => setNotes(e.target.value)}
             rows={4}
           />
           <div className="am-note">
             <Icon name="lock" size={14} />
-            <span>Optional · visible only to staff and administrators.</span>
+            <span>{t("admin.members.notesHint")}</span>
           </div>
         </section>
       </div>

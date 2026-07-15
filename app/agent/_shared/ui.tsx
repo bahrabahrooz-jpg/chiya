@@ -1,5 +1,8 @@
+"use client";
+
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { fmtUSD } from "@/app/admin/_data/catalog";
+import { useLang, type Lang } from "@/lib/i18n";
+import { fmtCurrency, valueKey } from "@/lib/fmt";
 
 const PROP_VARIANT: Record<string, BadgeVariant> = {
   Published: "success",
@@ -9,9 +12,10 @@ const PROP_VARIANT: Record<string, BadgeVariant> = {
   Draft: "neutral",
 };
 export function PropStatus({ status }: { status: string }) {
+  const { t } = useLang();
   return (
     <Badge variant={PROP_VARIANT[status] ?? "neutral"} size="sm" dot>
-      {status}
+      {t(valueKey("status", status))}
     </Badge>
   );
 }
@@ -24,13 +28,18 @@ const VIEW_VARIANT: Record<string, BadgeVariant> = {
   "No Show": "warning",
 };
 export function ViewStatus({ status }: { status: string }) {
+  const { t } = useLang();
   return (
     <Badge variant={VIEW_VARIANT[status] ?? "neutral"} size="sm" dot>
-      {status}
+      {t(valueKey("status", status))}
     </Badge>
   );
 }
 
-export function money(p: { price: number; per?: string }) {
-  return fmtUSD(p.price) + (p.per ?? "");
+/**
+ * Not a component, so `lang` and the "/mo" label come from the caller — every
+ * call site is already inside a component holding `useLang()`.
+ */
+export function money(lang: Lang, p: { price: number; per?: string }, perLabel = "") {
+  return fmtCurrency(lang, p.price) + (p.per ? perLabel : "");
 }

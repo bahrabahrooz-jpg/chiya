@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
+import { useLang, isRtl } from "@/lib/i18n";
+import { fmtCurrency, fmtDate, fmtNum, fmtStamp, localizeDigits, roleKey, valueKey, popupLeft } from "@/lib/fmt";
 import {
   INIT_NOTES,
   MEMBER,
@@ -35,15 +37,18 @@ import { useProperties } from "../_shared/properties-store";
 import { VIEWINGS as ALL_VIEWINGS } from "../_viewings/data";
 
 const NOTE_MAX = 500;
-function noteRoleLabel(role: string) {
+function noteRoleLabel(role: string, t: (k: string, p?: Record<string, string | number>) => string) {
   const r = (role || "").trim();
-  if (!r) return "Note";
-  return r.charAt(0).toUpperCase() + r.slice(1).toLowerCase() + " note";
+  if (!r) return t("admin.pd.noteLabel");
+  const key = roleKey(r);
+  const name = t(key);
+  return t("admin.pd.roleNote", { role: name === key ? r : name });
 }
 
 /* ---------------- toast ---------------- */
 interface ToastData { id: number; tone?: string; icon: IconName; title: string; msg: string; out?: boolean }
 function ProfToast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => void }) {
+  const { t } = useLang();
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true));
@@ -59,7 +64,7 @@ function ProfToast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => vo
         <p className="pp-toast__title">{toast.title}</p>
         <p className="pp-toast__msg">{toast.msg}</p>
       </div>
-      <button type="button" className="pp-toast__close" aria-label="Close" onClick={onDismiss}>
+      <button type="button" className="pp-toast__close" aria-label={t("admin.props.close")} onClick={onDismiss}>
         <Icon name="x" size={16} strokeWidth={2} />
       </button>
       <div className="pp-toast__progress" />
@@ -83,6 +88,11 @@ function useToasts(): [ToastData[], (t: Omit<ToastData, "id">) => void, (id: num
 
 /* ---------------- modals ---------------- */
 function ChangeStatusModal({ current, onCancel, onConfirm }: { current: string; onCancel: () => void; onConfirm: (s: string) => void }) {
+  const { t } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   const [selected, setSelected] = useState<string | null>(null);
   const options = ["Active", "Suspended"];
   useEffect(() => {
@@ -100,16 +110,16 @@ function ChangeStatusModal({ current, onCancel, onConfirm }: { current: string; 
           <Icon name="refresh-cw" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="status-modal-title">
-          Change member status
+          {t("admin.mp.changeMemberStatus")}
         </h2>
-        <p className="pp-modal__sublabel">Select new status</p>
+        <p className="pp-modal__sublabel">{t("admin.props.selectNewStatus")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 22 }}>
           {options.map((s) => (
             <button key={s} type="button" className={"pp-smodal__item" + (selected === s ? " is-selected" : "")} onClick={() => setSelected(s)}>
               <span className="pp-smodal__dot" style={{ background: STATUS_DOT[s] }} />
-              <span className="pp-smodal__label">{s}</span>
+              <span className="pp-smodal__label">{tOr(valueKey("status", s), s)}</span>
               <span className="pp-smodal__spacer" />
-              {current === s && <span className="pp-amodal__current-tag">Current</span>}
+              {current === s && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
               {selected === s && (
                 <span className="pp-smodal__check">
                   <Icon name="check" size={16} strokeWidth={2.5} />
@@ -120,11 +130,11 @@ function ChangeStatusModal({ current, onCancel, onConfirm }: { current: string; 
         </div>
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           <button type="button" className={"pp-modal__confirm" + (selected === "Suspended" ? " pp-modal__confirm--warn" : "")} disabled={!canConfirm} onClick={() => selected && onConfirm(selected)}>
             <Icon name="refresh-cw" size={15} />
-            Change status
+            {t("admin.props.changeStatus")}
           </button>
         </div>
       </div>
@@ -133,6 +143,7 @@ function ChangeStatusModal({ current, onCancel, onConfirm }: { current: string; 
 }
 
 function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; onCancel: () => void; onConfirm: (a: MemberAgent) => void }) {
+  const { t } = useLang();
   const [selected, setSelected] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -181,7 +192,7 @@ function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; o
           <Icon name="user-cog" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="agent-modal-title">
-          Reassign relationship agent
+          {t("admin.mp.reassignRelAgent")}
         </h2>
         <p className="pp-modal__sublabel">Select new agent</p>
         <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} onClick={toggleDrop}>
@@ -212,7 +223,7 @@ function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; o
               >
                 <Avatar src={agent.img} name={agent.name} size="sm" verified={agent.verified} />
                 <span className="pp-amodal__agent-name">{agent.name}</span>
-                {current === agent.name && <span className="pp-amodal__current-tag">Current</span>}
+                {current === agent.name && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
                 {selected === agent.name && (
                   <span className="pp-amodal__check">
                     <Icon name="check" size={16} strokeWidth={2.5} />
@@ -224,7 +235,7 @@ function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; o
         )}
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           <button
             type="button"
@@ -236,7 +247,7 @@ function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; o
             }}
           >
             <Icon name="user-check" size={15} />
-            Reassign agent
+            {t("admin.pd.reassignAgent")}
           </button>
         </div>
       </div>
@@ -245,6 +256,9 @@ function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; o
 }
 
 function DeleteMemberModal({ member, onCancel, onConfirm }: { member: MemberRecord; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
+  // Split on the {name} slot so each language places the emphasised name itself.
+  const [before, after] = t("admin.mp.deleteBody").split("{name}");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -259,18 +273,20 @@ function DeleteMemberModal({ member, onCancel, onConfirm }: { member: MemberReco
           <Icon name="trash-2" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="del-modal-title">
-          Delete member?
+          {t("admin.mp.deleteTitle")}
         </h2>
         <p className="pp-modal__body">
-          Are you sure you want to delete <strong>{member.name}</strong>? This action cannot be undone and will permanently remove the account and its history.
+          {before}
+          <strong>{member.name}</strong>
+          {after}
         </p>
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           <button type="button" className="pp-modal__delete" onClick={onConfirm}>
             <Icon name="trash-2" size={15} />
-            Delete member
+            {t("admin.mp.deleteConfirm")}
           </button>
         </div>
       </div>
@@ -279,6 +295,8 @@ function DeleteMemberModal({ member, onCancel, onConfirm }: { member: MemberReco
 }
 
 function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
+  const [before, after] = t("admin.mp.deleteNoteBody").split("{note}");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -286,7 +304,7 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onCancel]);
-  const label = noteRoleLabel(note.role).toLowerCase();
+  const label = noteRoleLabel(note.role, t).toLowerCase();
   return (
     <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="pp-modal" role="dialog" aria-modal="true" aria-labelledby="mpf-delnote-title">
@@ -294,18 +312,20 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
           <Icon name="trash-2" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="mpf-delnote-title">
-          Delete note?
+          {t("admin.vd.deleteNoteTitle")}
         </h2>
         <p className="pp-modal__body">
-          Are you sure you want to delete this <strong>{label}</strong>? This action cannot be undone and will permanently remove it from this member.
+          {before}
+          <strong>{label}</strong>
+          {after}
         </p>
         <div className="pp-modal__actions">
           <button type="button" className="pp-modal__cancel" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           <button type="button" className="pp-modal__delete" onClick={onConfirm}>
             <Icon name="trash-2" size={15} />
-            Delete note
+            {t("admin.vd.deleteNote")}
           </button>
         </div>
       </div>
@@ -315,15 +335,19 @@ function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCanc
 
 /* ---------------- building blocks ---------------- */
 function StatusBadge({ value, meta }: { value: string; meta: Record<string, { variant: BadgeVariant; icon?: IconName; dot?: boolean; cls?: string }> }) {
+  const { t } = useLang();
   const m = (meta && meta[value]) || { variant: "neutral" as const };
+  const key = valueKey("status", value);
+  const label = t(key);
   return (
     <Badge variant={m.variant} size="sm" icon={m.icon} dot={m.dot} className={m.cls}>
-      {value}
+      {label === key ? value : label}
     </Badge>
   );
 }
 
 function SectionCard({ title, count, desc, action, flush, children }: { title: string; count?: number; desc?: string; action?: ReactNode; flush?: boolean; children: ReactNode }) {
+  const { lang } = useLang();
   return (
     <section className="pd-card">
       <div className="pd-card__head">
@@ -331,7 +355,7 @@ function SectionCard({ title, count, desc, action, flush, children }: { title: s
           <div className="pd-card__titles">
             <h2 className="pd-card__title">
               {title}
-              {count != null && <span className="pd-card__count">{count}</span>}
+              {count != null && <span className="pd-card__count">{fmtNum(lang, count)}</span>}
             </h2>
             {desc && <p className="pd-card__desc">{desc}</p>}
           </div>
@@ -344,6 +368,8 @@ function SectionCard({ title, count, desc, action, flush, children }: { title: s
 }
 
 function PropCell({ row, mono }: { row: { img: string; title: string; id: string; loc: string }; mono?: boolean }) {
+  const { t, lang } = useLang();
+  const loc = t(`loc.${row.loc}`) === `loc.${row.loc}` ? row.loc : t(`loc.${row.loc}`);
   return (
     <div className="mpf-prop">
       <img className="mpf-prop__thumb" src={row.img} alt="" loading="lazy" />
@@ -351,11 +377,11 @@ function PropCell({ row, mono }: { row: { img: string; title: string; id: string
         <div className="mpf-prop__title">{row.title}</div>
         <div className={"mpf-prop__sub" + (mono ? " mpf-prop__sub--mono" : "")}>
           {mono ? (
-            row.id
+            localizeDigits(lang, row.id)
           ) : (
             <>
               <Icon name="map-pin" size={12} />
-              {row.loc}
+              {loc}
             </>
           )}
         </div>
@@ -364,21 +390,27 @@ function PropCell({ row, mono }: { row: { img: string; title: string; id: string
   );
 }
 
-function PriceCell({ price, per }: { price: string; per?: string }) {
+function PriceCell({ price, per }: { price: number; per?: string }) {
+  const { t, lang } = useLang();
   return (
     <span className="mpf-price">
-      {price}
-      {per && <span className="mpf-price__per">{per}</span>}
+      {fmtCurrency(lang, price)}
+      {per && <span className="mpf-price__per">{t("admin.mp.perMo")}</span>}
     </span>
   );
 }
 
 function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t: Omit<ToastData, "id">) => void }) {
-  const copy = (label: string, text: string) => {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
+  const copy = (labelKey: string, text: string) => {
     try {
       navigator.clipboard?.writeText(text);
     } catch {}
-    pushToast({ tone: "default", icon: "copy", title: label + " copied", msg: text });
+    pushToast({ tone: "default", icon: "copy", title: t("admin.mp.copied", { label: t(labelKey) }), msg: text });
   };
   return (
     <div className="adh__details">
@@ -387,10 +419,10 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
           <Icon name="phone" size={17} />
         </span>
         <div className="adh__detail__text">
-          <span className="adh__detail__label">Phone number</span>
+          <span className="adh__detail__label">{t("admin.mp.phoneNumber")}</span>
           <span className="adh__detail__value">
             <span>{member.phone}</span>
-            <button type="button" className="adh__copy" title="Copy phone number" aria-label="Copy phone number" onClick={() => copy("Phone number", member.phone)}>
+            <button type="button" className="adh__copy" title={t("admin.mp.copyPhone")} aria-label={t("admin.mp.copyPhone")} onClick={() => copy("admin.mp.phoneNumber", member.phone)}>
               <Icon name="copy" size={13} />
             </button>
           </span>
@@ -401,11 +433,11 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
           <Icon name="users" size={17} />
         </span>
         <div className="adh__detail__text">
-          <span className="adh__detail__label">Member types</span>
+          <span className="adh__detail__label">{t("admin.mp.memberTypes")}</span>
           <div className="adh__detailchips">
-            {member.types.map((t) => (
-              <span className={"adh__chip adh__chip--" + t.toLowerCase()} key={t}>
-                {t}
+            {member.types.map((mt) => (
+              <span className={"adh__chip adh__chip--" + mt.toLowerCase()} key={mt}>
+                {tOr(roleKey(mt), mt)}
               </span>
             ))}
           </div>
@@ -416,10 +448,10 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
           <Icon name="mail" size={17} />
         </span>
         <div className="adh__detail__text">
-          <span className="adh__detail__label">Email address</span>
+          <span className="adh__detail__label">{t("admin.mp.emailAddress")}</span>
           <span className="adh__detail__value">
             <span>{member.email}</span>
-            <button type="button" className="adh__copy" title="Copy email address" aria-label="Copy email address" onClick={() => copy("Email address", member.email)}>
+            <button type="button" className="adh__copy" title={t("admin.mp.copyEmail")} aria-label={t("admin.mp.copyEmail")} onClick={() => copy("admin.mp.emailAddress", member.email)}>
               <Icon name="copy" size={13} />
             </button>
           </span>
@@ -430,9 +462,9 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
           <Icon name="calendar" size={17} />
         </span>
         <div className="adh__detail__text">
-          <span className="adh__detail__label">Date added</span>
+          <span className="adh__detail__label">{t("admin.props.th.date")}</span>
           <span className="adh__detail__value">
-            <span>{member.joinedFull}</span>
+            <span>{fmtDate(lang, new Date(member.joinedFull))}</span>
           </span>
         </div>
       </div>
@@ -441,17 +473,18 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
 }
 
 function PortfolioTable({ rows, hideAgent }: { rows: PortfolioRow[]; hideAgent?: boolean }) {
+  const { t, lang } = useLang();
   return (
     <div className="mpf-tablewrap">
       <div className={"mpf-table mpf-table--portfolio" + (hideAgent ? " mpf-table--noagent" : "")}>
         <div className="mpf-thead">
-          <span className="mpf-th">Property</span>
-          <span className="mpf-th">Location</span>
-          <span className="mpf-th">Type</span>
-          <span className="mpf-th">Role</span>
-          {!hideAgent && <span className="mpf-th">Agent</span>}
-          <span className="mpf-th">Status</span>
-          <span className="mpf-th">Price</span>
+          <span className="mpf-th">{t("admin.props.th.property")}</span>
+          <span className="mpf-th">{t("admin.props.th.location")}</span>
+          <span className="mpf-th">{t("admin.props.th.type")}</span>
+          <span className="mpf-th">{t("admin.mp.th.role")}</span>
+          {!hideAgent && <span className="mpf-th">{t("admin.mp.th.agent")}</span>}
+          <span className="mpf-th">{t("admin.props.th.status")}</span>
+          <span className="mpf-th">{t("admin.props.th.price")}</span>
           <span className="mpf-th">Date added</span>
           <span className="mpf-th mpf-th--end">Action</span>
         </div>
@@ -465,25 +498,25 @@ function PortfolioTable({ rows, hideAgent }: { rows: PortfolioRow[]; hideAgent?:
             <div className="mpf-trow" key={row.id + row.rel}>
               <PropCell row={row} mono />
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Location</span>
+                <span className="mpf-cell__label">{t("admin.props.th.location")}</span>
                 <span className="mpf-prop__sub mpf-loc">
                   <Icon name="map-pin" size={12} />
                   {city}
                 </span>
               </div>
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Type</span>
+                <span className="mpf-cell__label">{t("admin.props.th.type")}</span>
                 <span className="mpf-type">{row.type}</span>
               </div>
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Role</span>
+                <span className="mpf-cell__label">{t("admin.mp.th.role")}</span>
                 <Badge variant={(ROLE_META[row.rel] || {}).variant} className={(ROLE_META[row.rel] || {}).cls} size="sm">
                   {row.rel}
                 </Badge>
               </div>
               {!hideAgent && (
                 <div className="mpf-cell">
-                  <span className="mpf-cell__label">Agent</span>
+                  <span className="mpf-cell__label">{t("admin.mp.th.agent")}</span>
                   <span className="mpf-agentcell">
                     <Avatar src={row.agentImg || undefined} name={row.agent} size="sm" verified />
                     <span className="mpf-agentcell__name">{row.agent}</span>
@@ -491,16 +524,16 @@ function PortfolioTable({ rows, hideAgent }: { rows: PortfolioRow[]; hideAgent?:
                 </div>
               )}
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Status</span>
+                <span className="mpf-cell__label">{t("admin.props.th.status")}</span>
                 <StatusBadge value={status} meta={PROP_STATUS_META} />
               </div>
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Price</span>
+                <span className="mpf-cell__label">{t("admin.props.th.price")}</span>
                 <PriceCell price={row.price} per={row.per} />
               </div>
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Date added</span>
-                <span className="mpf-date">{row.date}</span>
+                <span className="mpf-cell__label">{t("admin.props.th.date")}</span>
+                <span className="mpf-date">{fmtDate(lang, new Date(row.date))}</span>
               </div>
               <div className="mpf-cell mpf-cell--end mpf-cell--action">
                 <PropertyRowMenu propertyId={row.id} propertyTitle={row.title} />
@@ -516,13 +549,16 @@ function PortfolioTable({ rows, hideAgent }: { rows: PortfolioRow[]; hideAgent?:
 /* Per-row kebab menu (mirrors the main properties / viewings tables). Portalled
    to <body> so the horizontally-scrolling table can't clip it. */
 function PropertyRowMenu({ propertyId, propertyTitle }: { propertyId: string; propertyTitle: string }) {
+  const { t, lang } = useLang();
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const calc = () => {
+  // useCallback + a lang dep: calc closes over the reading direction, so a
+  // stale copy would re-anchor the menu to the wrong edge after a switch.
+  const calc = useCallback(() => {
     const r = btnRef.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 6, left: Math.max(12, r.right - 200) });
-  };
+    if (r) setPos({ top: r.bottom + 6, left: popupLeft(r, 200, isRtl(lang)) });
+  }, [lang]);
   const toggle = () => {
     if (!open) calc();
     setOpen((v) => !v);
@@ -547,7 +583,7 @@ function PropertyRowMenu({ propertyId, propertyTitle }: { propertyId: string; pr
       window.removeEventListener("scroll", calc, true);
       window.removeEventListener("resize", calc);
     };
-  }, [open]);
+  }, [open, calc]);
   return (
     <>
       <button ref={btnRef} type="button" className="mpf-kebab" aria-label={"Actions for " + propertyTitle} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
@@ -560,7 +596,7 @@ function PropertyRowMenu({ propertyId, propertyTitle }: { propertyId: string; pr
             <div className="ax-menu__sect">
               <Link className="ax-menu-item" role="menuitem" href={`/admin/properties/${propertyId}`} onClick={() => setOpen(false)}>
                 <Icon name="building-2" size={17} />
-                View property
+                {t("admin.mp.viewProperty")}
               </Link>
             </div>
           </div>,
@@ -571,16 +607,17 @@ function PropertyRowMenu({ propertyId, propertyTitle }: { propertyId: string; pr
 }
 
 function ViewingsTable({ rows, hideAgent }: { rows: MpfViewing[]; hideAgent?: boolean }) {
+  const { t, lang } = useLang();
   return (
     <div className="mpf-tablewrap">
       <div className={"mpf-table mpf-table--viewings" + (hideAgent ? " mpf-table--noagent" : "")}>
         <div className="mpf-thead">
-          <span className="mpf-th">Property</span>
-          <span className="mpf-th">Location</span>
-          {!hideAgent && <span className="mpf-th">Agent</span>}
-          <span className="mpf-th">Date &amp; time</span>
-          <span className="mpf-th">Status</span>
-          <span className="mpf-th mpf-th--end">Actions</span>
+          <span className="mpf-th">{t("admin.props.th.property")}</span>
+          <span className="mpf-th">{t("admin.props.th.location")}</span>
+          {!hideAgent && <span className="mpf-th">{t("admin.mp.th.agent")}</span>}
+          <span className="mpf-th">{t("admin.mp.th.dateTime")}</span>
+          <span className="mpf-th">{t("admin.props.th.status")}</span>
+          <span className="mpf-th mpf-th--end">{t("admin.props.actions")}</span>
         </div>
         {rows.map((row, i) => {
           const [date, time] = row.requested.split(" · ");
@@ -590,7 +627,7 @@ function ViewingsTable({ rows, hideAgent }: { rows: MpfViewing[]; hideAgent?: bo
             <div className="mpf-trow" key={row.id + i}>
               <PropCell row={row} mono />
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Location</span>
+                <span className="mpf-cell__label">{t("admin.props.th.location")}</span>
                 <span className="mpf-prop__sub mpf-loc">
                   <Icon name="map-pin" size={12} />
                   {city}
@@ -598,7 +635,7 @@ function ViewingsTable({ rows, hideAgent }: { rows: MpfViewing[]; hideAgent?: bo
               </div>
               {!hideAgent && (
                 <div className="mpf-cell">
-                  <span className="mpf-cell__label">Agent</span>
+                  <span className="mpf-cell__label">{t("admin.mp.th.agent")}</span>
                   <span className="mpf-agentcell">
                     <Avatar src={row.agentImg || undefined} name={row.agent} size="sm" verified />
                     <span className="mpf-agentcell__name">{row.agent}</span>
@@ -606,19 +643,19 @@ function ViewingsTable({ rows, hideAgent }: { rows: MpfViewing[]; hideAgent?: bo
                 </div>
               )}
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Date &amp; time</span>
+                <span className="mpf-cell__label">{t("admin.mp.th.dateTime")}</span>
                 <span className="mpf-dt">
-                  <span className="mpf-dt__date">{date}</span>
+                  <span className="mpf-dt__date">{fmtDate(lang, new Date(date))}</span>
                   {time && (
                     <span className="mpf-dt__time">
                       <Icon name="clock" size={11} />
-                      {time}
+                      {localizeDigits(lang, time)}
                     </span>
                   )}
                 </span>
               </div>
               <div className="mpf-cell">
-                <span className="mpf-cell__label">Status</span>
+                <span className="mpf-cell__label">{t("admin.props.th.status")}</span>
                 <StatusBadge value={row.status} meta={VIEW_STATUS_META} />
               </div>
               <div className="mpf-cell mpf-cell--end mpf-cell--action">
@@ -633,6 +670,7 @@ function ViewingsTable({ rows, hideAgent }: { rows: MpfViewing[]; hideAgent?: bo
 }
 
 function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spaced: boolean; initial?: string; submitLabel?: string; onSave: (t: string) => void; onCancel: () => void }) {
+  const { t, lang } = useLang();
   const [draft, setDraft] = useState(initial || "");
   const text = draft.trim();
   const remaining = NOTE_MAX - draft.length;
@@ -650,15 +688,15 @@ function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spac
   };
   return (
     <div className={"pd-notecomposer" + (spaced ? " is-spaced" : "")}>
-      <Textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKeyDown} rows={3} maxLength={NOTE_MAX} aria-label="New internal note" placeholder="Add a note about verification, approvals, or reminders for this member…" />
+      <Textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKeyDown} rows={3} maxLength={NOTE_MAX} aria-label={t("admin.pd.noteAria")} placeholder={t("admin.mp.notePh")} />
       <div className="pd-notecomposer__foot">
-        <span className={"pd-notecomposer__hint" + (remaining <= 50 ? " is-low" : "")}>{remaining} characters left</span>
+        <span className={"pd-notecomposer__hint" + (remaining <= 50 ? " is-low" : "")}>{t("admin.pd.charsLeft", { count: fmtNum(lang, remaining) })}</span>
         <div className="pd-notecomposer__actions">
           <Button hierarchy="tertiary" size="sm" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </Button>
           <Button hierarchy="primary" size="sm" disabled={!text} onClick={save}>
-            {submitLabel || "Add note"}
+            {submitLabel || t("admin.pd.addNote")}
           </Button>
         </div>
       </div>
@@ -667,6 +705,7 @@ function NoteComposer({ spaced, initial, submitLabel, onSave, onCancel }: { spac
 }
 
 function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; onAdd: (t: string) => void; onEdit: (i: number, t: string) => void; onDelete: (i: number) => void }) {
+  const { t, lang } = useLang();
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const handleSave = (text: string) => {
@@ -675,14 +714,14 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
   };
   return (
     <SectionCard
-      title="Internal notes"
+      title={t("admin.pd.notes")}
       count={notes.length}
-      desc="Admin-only remarks and history. Never visible to the member."
+      desc={t("admin.mp.notesDesc")}
       action={
         !composing &&
         editing == null && (
           <Button hierarchy="secondary" size="sm" iconLeading="plus" onClick={() => setComposing(true)}>
-            Add note
+            {t("admin.pd.addNote")}
           </Button>
         )
       }
@@ -694,7 +733,7 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
               <span className="pd-noagent__art">
                 <Icon name="sticky-note" size={24} strokeWidth={1.6} />
               </span>
-              <p>No internal notes yet. Add an admin-only note to track verification, approvals, or reminders for this member.</p>
+              <p>{t("admin.mp.notesEmpty")}</p>
             </div>
           )
         : (
@@ -707,7 +746,7 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
                       <NoteComposer
                         spaced={false}
                         initial={n.text}
-                        submitLabel="Save note"
+                        submitLabel={t("admin.vd.saveNote")}
                         onSave={(text) => {
                           onEdit(i, text);
                           setEditing(null);
@@ -720,13 +759,13 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
                 return (
                   <div className={"pd-noteitem " + k.cls} key={i}>
                     <div className="pd-note__head">
-                      <span className="pd-note__label">{noteRoleLabel(n.role)}</span>
+                      <span className="pd-note__label">{noteRoleLabel(n.role, t)}</span>
                       <div style={{ display: "flex", gap: 2 }}>
                         <button
                           type="button"
                           className="pd-note__delete pd-note__edit"
-                          aria-label={"Edit note from " + n.author}
-                          title="Edit note"
+                          aria-label={t("admin.pd.editNoteFrom", { author: n.author })}
+                          title={t("admin.vd.editNote")}
                           onClick={() => {
                             setComposing(false);
                             setEditing(i);
@@ -742,7 +781,7 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
                     <div className="pd-note">
                       <div className="pd-note__body">
                         <p className="pd-note__text">{n.text}</p>
-                        <span className="pd-note__time">{n.time}</span>
+                        <span className="pd-note__time">{n.time.startsWith("@") ? t(n.time.slice(1)) : fmtStamp(lang, n.time)}</span>
                       </div>
                     </div>
                   </div>
@@ -777,6 +816,7 @@ function Timeline() {
 }
 
 export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
+  const { t, lang } = useLang();
   const { members, properties } = useProperties();
   // In the agent surface, list-level links point at the agent's own routes.
   const surfaceBase = scopeAgent ? "/agent" : "/admin";
@@ -857,12 +897,12 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
               <div className="pd-head__meta">
                 <span className="pd-head__metaitem pd-head__metaitem--id">
                   <Icon name="hash" size={13} />
-                  {m.id}
+                  {localizeDigits(lang, m.id)}
                 </span>
                 <span className="pd-head__sep" />
                 <span className="pd-head__metaitem">
                   <Icon name="calendar" size={14} />
-                  Member since {m.joinedShort}
+                  {t("admin.mp.memberSince", { date: fmtDate(lang, new Date(m.joinedShort)) })}
                 </span>
               </div>
             </div>
@@ -878,7 +918,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
                   setModal("status");
                 }}
               >
-                Change status
+                {t("admin.props.changeStatus")}
               </Button>
             )}
             {!scopeAgent && (
@@ -890,7 +930,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
                   setModal("edit");
                 }}
               >
-                Edit member
+                {t("admin.mp.editMember")}
               </Button>
             )}
             {!scopeAgent && (
@@ -910,7 +950,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
                     }}
                   >
                     <Icon name="user-cog" size={17} />
-                    Assign agent
+                    {t("admin.props.assignAgent")}
                   </button>
                   <button
                     type="button"
@@ -918,11 +958,11 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
                     role="menuitem"
                     onClick={() => {
                       setMoreOpen(false);
-                      pushToast({ tone: "default", icon: "download", title: "Export started", msg: "Preparing a CRM summary for " + m.name + "." });
+                      pushToast({ tone: "default", icon: "download", title: t("admin.mp.toast.exportTitle"), msg: t("admin.mp.toast.exportMsg", { name: m.name }) });
                     }}
                   >
                     <Icon name="download" size={17} />
-                    Export summary
+                    {t("admin.mp.exportSummary")}
                   </button>
                   <div className="pd-moremenu__sep" />
                   <button
@@ -935,7 +975,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
                     }}
                   >
                     <Icon name="trash-2" size={17} />
-                    Delete member
+                    {t("admin.mp.deleteConfirm")}
                   </button>
                 </div>
               )}
@@ -947,17 +987,17 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
 
       <div className="pd-grid pd-grid--full">
         <div className="pd-grid__main">
-          <SectionCard title="Basic information" desc="Identity, contact details, and preferences for this member.">
+          <SectionCard title={t("admin.pd.basic")} desc={t("admin.mp.basicDesc")}>
             <BasicInfo member={m} pushToast={pushToast} />
           </SectionCard>
 
           <SectionCard
-            title="Real estate portfolio"
+            title={t("admin.mp.portfolio")}
             count={shownPortfolio.length}
-            desc="Every property connected to this member as buyer, seller, landlord, or tenant."
+            desc={t("admin.mp.portfolioDesc")}
             action={
               <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href={`${surfaceBase}/properties`} style={{ color: "var(--text-secondary)" }}>
-                View all
+                {t("admin.common.viewAll")}
               </Button>
             }
             flush
@@ -969,18 +1009,18 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
                 <span className="pd-noagent__art">
                   <Icon name="building-2" size={24} strokeWidth={1.6} />
                 </span>
-                <p>No properties are linked to this member yet.</p>
+                <p>{t("admin.mp.portfolioEmpty")}</p>
               </div>
             )}
           </SectionCard>
 
           <SectionCard
-            title="Viewing requests"
+            title={t("admin.pd.viewingRequests")}
             count={shownViewings.length}
-            desc="Scheduled and past property viewings."
+            desc={t("admin.mp.viewingsDesc")}
             action={
               <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href={`${surfaceBase}/viewings`} style={{ color: "var(--text-secondary)" }}>
-                View all
+                {t("admin.common.viewAll")}
               </Button>
             }
             flush
@@ -991,28 +1031,28 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
           <NotesSection
             notes={notes}
             onAdd={(text) => {
-              setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: "Just now", kind: "note", text }, ...ns]);
-              pushToast({ tone: "brand", icon: "check", title: "Note added", msg: "Your internal note was saved to this member." });
+              setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: "@time.now", kind: "note", text }, ...ns]);
+              pushToast({ tone: "brand", icon: "check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.mp.toast.noteAddedMsg") });
             }}
             onEdit={(i, text) => {
-              setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: "Edited just now" } : n)));
-              pushToast({ tone: "brand", icon: "pencil", title: "Note updated", msg: "Your changes to the internal note were saved." });
+              setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: "@admin.vd.editedJustNow" } : n)));
+              pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
             }}
             onDelete={(i) => setNoteToDelete(i)}
           />
 
           <SectionCard
-            title="Activity timeline"
-            desc="Chronological history of this member's account."
+            title={t("admin.pd.timeline")}
+            desc={t("admin.mp.timelineDesc")}
             action={
               <Button
                 hierarchy="link"
                 size="sm"
                 iconTrailing="arrow-right"
                 style={{ color: "var(--text-secondary)" }}
-                onClick={() => pushToast({ tone: "brand", icon: "history", title: "Activity", msg: "Opening full activity history for " + m.name + "." })}
+                onClick={() => pushToast({ tone: "brand", icon: "history", title: t("admin.mp.toast.activityTitle"), msg: t("admin.mp.toast.activityMsg", { name: m.name }) })}
               >
-                View all
+                {t("admin.common.viewAll")}
               </Button>
             }
           >
@@ -1028,7 +1068,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
           onConfirm={(s) => {
             setStatus(s);
             setModal(null);
-            pushToast({ tone: s === "Suspended" ? "danger" : "brand", icon: s === "Suspended" ? "circle-pause" : "circle-check", title: "Status updated", msg: m.name + " is now " + s + "." });
+            pushToast({ tone: s === "Suspended" ? "danger" : "brand", icon: s === "Suspended" ? "circle-pause" : "circle-check", title: t("admin.props.toast.statusTitle"), msg: t("admin.mp.toast.statusMsg", { name: m.name, status: t(valueKey("status", s)) }) });
           }}
         />
       )}
@@ -1039,7 +1079,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
           onConfirm={(a) => {
             setAgent(a);
             setModal(null);
-            pushToast({ tone: "brand", icon: "user-check", title: "Agent reassigned", msg: a.name + " is now the relationship agent for " + m.name + "." });
+            pushToast({ tone: "brand", icon: "user-check", title: t("admin.mp.toast.agentTitle"), msg: t("admin.mp.toast.agentMsg", { agent: a.name, name: m.name }) });
           }}
         />
       )}
@@ -1051,7 +1091,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
         onSubmit={(v) => {
           setM((prev) => ({ ...prev, name: v.name.trim() || prev.name, phone: v.phone.trim() || prev.phone, email: v.email.trim() || prev.email }));
           setModal(null);
-          pushToast({ tone: "brand", icon: "badge-check", title: "Member updated", msg: (v.name.trim() || m.name) + "’s profile has been updated." });
+          pushToast({ tone: "brand", icon: "badge-check", title: t("admin.mp.toast.updatedTitle"), msg: t("admin.mp.toast.updatedMsg", { name: v.name.trim() || m.name }) });
         }}
       />
       {modal === "delete" && (
@@ -1060,7 +1100,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
           onCancel={() => setModal(null)}
           onConfirm={() => {
             setModal(null);
-            pushToast({ tone: "danger", icon: "trash-2", title: "Member deleted", msg: m.name + " has been removed from Chiya Estate." });
+            pushToast({ tone: "danger", icon: "trash-2", title: t("admin.mp.toast.deletedTitle"), msg: t("admin.mp.toast.deletedMsg", { name: m.name }) });
           }}
         />
       )}
@@ -1072,7 +1112,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
             const removed = notes[noteToDelete];
             setNotes((ns) => ns.filter((_, i) => i !== noteToDelete));
             setNoteToDelete(null);
-            pushToast({ tone: "danger", icon: "trash-2", title: "Note deleted", msg: "The internal note from " + removed.author + " was removed." });
+            pushToast({ tone: "danger", icon: "trash-2", title: t("admin.vd.toast.noteDeletedTitle"), msg: t("admin.vd.toast.noteDeletedMsg", { author: removed.author }) });
           }}
         />
       )}

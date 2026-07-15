@@ -65,7 +65,7 @@
   .rb-list__items { display: flex; flex-direction: column; gap: 6px; }
 
   .rb-roleitem {
-    display: flex; align-items: center; gap: 11px; text-align: left;
+    display: flex; align-items: center; gap: 11px; text-align: start;
     padding: 12px 14px; border: 1px solid transparent; background: transparent;
     border-radius: var(--radius-md); cursor: pointer; width: 100%;
     transition: background-color .14s, border-color .14s, box-shadow .14s;
@@ -213,7 +213,7 @@
   .rb-scope select:hover { border-color: var(--border-strong); }
   .rb-scope select:focus-visible { outline: none; border-color: var(--border-brand); box-shadow: var(--shadow-focus-brand); }
   .rb-scope select:disabled { cursor: not-allowed; background: var(--gray-50); color: var(--text-disabled); }
-  .rb-scope__chev { position: absolute; right: 10px; color: var(--text-tertiary); pointer-events: none; display: flex; }
+  .rb-scope__chev { position: absolute; inset-inline-end: 10px; color: var(--text-tertiary); pointer-events: none; display: flex; }
 
   .rb-rows { display: flex; flex-direction: column; }
   .rb-row {
@@ -278,7 +278,7 @@
   .rb-iconpick__btn:focus-visible { outline: none; border-color: var(--border-brand); box-shadow: var(--shadow-focus-brand); }
   .rb-iconpick__scrim { position: fixed; inset: 0; z-index: 20; background: transparent; border: none; cursor: default; }
   .rb-iconpick__pop {
-    position: absolute; z-index: 21; top: calc(100% + 6px); right: 0;
+    position: absolute; z-index: 21; top: calc(100% + 6px); inset-inline-end: 0;
     display: grid; grid-template-columns: repeat(5, 38px); gap: 4px; padding: 8px;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
@@ -350,9 +350,9 @@
     padding: 14px 16px; border-bottom: 1px solid var(--border-subtle);
     background: var(--gray-25); white-space: nowrap; position: sticky; top: 0; z-index: 2;
   }
-  .rb-matrix__th--perm { text-align: left; position: sticky; left: 0; z-index: 3; min-width: 240px; }
+  .rb-matrix__th--perm { text-align: start; position: sticky; inset-inline-start: 0; z-index: 3; min-width: 240px; }
   .rb-matrix__th--role { text-align: center; width: 150px; }
-  .rb-matrix__roledot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle; background: var(--gray-400); }
+  .rb-matrix__roledot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-inline-end: 7px; vertical-align: middle; background: var(--gray-400); }
   .rb-matrix__roledot--gold { background: var(--gold-400); }
   .rb-matrix__roledot--brand { background: var(--green-600); }
   .rb-matrix__roledot--info { background: var(--info-500); }
@@ -362,7 +362,7 @@
     font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: .08em;
     text-transform: uppercase; color: var(--text-tertiary);
     padding: 14px 16px 6px; background: var(--surface-card);
-    position: sticky; left: 0;
+    position: sticky; inset-inline-start: 0;
   }
   .rb-matrix__tr:hover { background: var(--gray-25); }
   .rb-matrix__td {
@@ -370,7 +370,7 @@
     font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
   }
   .rb-matrix__td--perm {
-    font-weight: 500; position: sticky; left: 0; background: var(--surface-card); white-space: nowrap;
+    font-weight: 500; position: sticky; inset-inline-start: 0; background: var(--surface-card); white-space: nowrap;
   }
   .rb-matrix__tr:hover .rb-matrix__td--perm { background: var(--gray-25); }
   .rb-matrix__td--cell { text-align: center; }
@@ -402,7 +402,7 @@
     width: 100%; max-width: 410px;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl); box-shadow: var(--shadow-xl);
-    padding: 24px 24px 20px; text-align: left;
+    padding: 24px 24px 20px; text-align: start;
     animation: rb-modal-up .2s cubic-bezier(.2, .7, .2, 1);
   }
   .rb-confirm__icon {
@@ -425,3 +425,39 @@
   }
   @keyframes rb-fade { from { opacity: 0; } to { opacity: 1; } }
   @keyframes rb-modal-up { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  /* ============================================================
+     CREATE ROLE MODAL
+     ============================================================ */
+  .rb-create { display: flex; flex-direction: column; gap: 18px; }
+  .rb-create__field { display: flex; flex-direction: column; gap: 8px; }
+  .rb-create__label {
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-primary);
+  }
+
+  /* role-type chooser */
+  .rb-typegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 520px) { .rb-typegrid { grid-template-columns: 1fr; } }
+  .rb-typecard {
+    display: flex; align-items: center; gap: 12px; text-align: start; width: 100%;
+    padding: 13px 14px; cursor: pointer;
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    background: var(--surface-card);
+    transition: border-color .14s, background-color .14s, box-shadow .14s;
+  }
+  .rb-typecard:hover { border-color: var(--border-strong); }
+  .rb-typecard:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .rb-typecard.is-active { border-color: var(--brand-primary); background: var(--brand-subtle); }
+  .rb-typecard__icon {
+    flex: none; width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center;
+    background: var(--gray-100); color: var(--gray-500);
+  }
+  .rb-typecard.is-active .rb-typecard__icon { background: var(--surface-card); color: var(--text-brand); }
+  .rb-typecard__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .rb-typecard__label { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .rb-typecard__hint { font-family: var(--font-sans); font-size: 12px; line-height: 1.35; color: var(--text-tertiary); }
+  .rb-typecard.is-active .rb-typecard__label { color: var(--text-brand); }
+  .rb-typecard__check { flex: none; color: var(--text-brand); display: flex; }
+
+  /* icon chooser (reuses .rb-iconpick__opt tiles) */
+  .rb-create__icons { display: flex; flex-wrap: wrap; gap: 6px; }

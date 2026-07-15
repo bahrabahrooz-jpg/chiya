@@ -1,18 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLang, type Lang } from "@/lib/i18n";
+import { fmtNum, localizeDigits, monthName } from "@/lib/fmt";
 import { PERF_AXIS, PERF_SERIES } from "./data";
 
-const PERIODS = [
-  { id: "today", short: "Today" },
-  { id: "week", short: "Week" },
-  { id: "month", short: "Month" },
-  { id: "year", short: "Year" },
-];
+const PERIODS = [{ id: "today" }, { id: "week" }, { id: "month" }, { id: "year" }];
+const DOW_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+/** Localize a chart x-axis tick for the given period/index. */
+function axisLabel(lang: Lang, t: (k: string, p?: Record<string, string | number>) => string, period: string, i: number, raw: string): string {
+  if (period === "year") return monthName(lang, i);
+  if (period === "week") return t(`admin.dash.dow.${DOW_KEYS[i]}`);
+  if (period === "month") return t("admin.dash.wk", { n: fmtNum(lang, i + 1) });
+  return localizeDigits(lang, raw); // "today" hourly ticks (e.g. "8a")
+}
 
 function SegmentedPeriod({ period, onChange }: { period: string; onChange: (id: string) => void }) {
+  const { t } = useLang();
   return (
-    <div className="ax-seg" role="tablist" aria-label="Dashboard period">
+    <div className="ax-seg" role="tablist" aria-label={t("admin.dash.periodAria")}>
       <span className="ax-seg__thumb" />
       {PERIODS.map((p) => (
         <button
@@ -23,7 +30,7 @@ function SegmentedPeriod({ period, onChange }: { period: string; onChange: (id: 
           className={"ax-seg__btn" + (p.id === period ? " is-active" : "")}
           onClick={() => onChange(p.id)}
         >
-          {p.short}
+          {t(`admin.dash.periodShort.${p.id}`)}
         </button>
       ))}
     </div>
@@ -72,6 +79,7 @@ function smoothPath(pts: { x: number; y: number }[]) {
 }
 
 function PerformanceChart({ period, visible }: { period: string; visible: Record<string, boolean> }) {
+  const { t, lang } = useLang();
   const wrapRef = useRef<HTMLDivElement>(null);
   const W = useElementWidth(wrapRef);
   const [hover, setHover] = useState<number | null>(null);
@@ -112,12 +120,12 @@ function PerformanceChart({ period, visible }: { period: string; visible: Record
   return (
     <div className="ax-chart" ref={wrapRef}>
       {W > 0 && (
-        <svg width={W} height={H} role="img" aria-label="Performance over time">
+        <svg width={W} height={H} role="img" aria-label={t("admin.dash.perfChartAria")}>
           {gridYs.map((g, k) => (
             <g key={k}>
               <line className={"ax-grid-line" + (k === 0 ? " ax-grid-base" : "")} x1={PAD.l} x2={W - PAD.r} y1={yAt(g)} y2={yAt(g)} />
               <text className="ax-chart__ylab" x={PAD.l - 10} y={yAt(g) + 4} textAnchor="end">
-                {g.toLocaleString()}
+                {fmtNum(lang, g)}
               </text>
             </g>
           ))}
@@ -125,7 +133,7 @@ function PerformanceChart({ period, visible }: { period: string; visible: Record
             (lb, i) =>
               (i % lstep === 0 || i === n - 1) && (
                 <text key={i} className="ax-chart__xlab" x={xAt(i)} y={H - 10} textAnchor="middle">
-                  {lb}
+                  {axisLabel(lang, t, period, i, lb)}
                 </text>
               ),
           )}
@@ -143,12 +151,12 @@ function PerformanceChart({ period, visible }: { period: string; visible: Record
       )}
       {hover != null && (
         <div className="ax-chart__tip" style={{ left: tipLeft, top: PAD.t + 2, transform: `translate(${flip ? "calc(-100% - 14px)" : "14px"}, 0)` }}>
-          <div className="ax-chart__tip-head">{labels[hover]}</div>
+          <div className="ax-chart__tip-head">{axisLabel(lang, t, period, hover, labels[hover])}</div>
           {shown.map((s) => (
             <div className="ax-chart__tip-row" key={s.key}>
               <span className="ax-chart__tip-dot" style={{ background: s.color }} />
-              <span className="ax-chart__tip-label">{s.label}</span>
-              <span className="ax-chart__tip-val">{s.data[period][hover].toLocaleString()}</span>
+              <span className="ax-chart__tip-label">{t(`admin.dash.series.${s.key}`)}</span>
+              <span className="ax-chart__tip-val">{fmtNum(lang, s.data[period][hover])}</span>
             </div>
           ))}
         </div>
@@ -158,6 +166,7 @@ function PerformanceChart({ period, visible }: { period: string; visible: Record
 }
 
 export function PerformanceSection() {
+  const { t } = useLang();
   const [period, setPeriod] = useState("month");
   const [visible, setVisible] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(PERF_SERIES.map((s) => [s.key, true])),
@@ -170,16 +179,16 @@ export function PerformanceSection() {
     });
 
   return (
-    <section className="ax-section" aria-label="Performance overview">
+    <section className="ax-section" aria-label={t("admin.dash.perfTitle")}>
       <div className="ax-section__head">
         <div className="ax-section__heading">
-          <h2 className="ax-section__title">Performance overview</h2>
-          <p className="ax-section__desc">Track listing activity, sales, rentals, and member growth over time.</p>
+          <h2 className="ax-section__title">{t("admin.dash.perfTitle")}</h2>
+          <p className="ax-section__desc">{t("admin.dash.perfDesc")}</p>
         </div>
         <SegmentedPeriod period={period} onChange={setPeriod} />
       </div>
       <div className="ax-chart-card">
-        <div className="ax-legend" role="group" aria-label="Toggle chart metrics">
+        <div className="ax-legend" role="group" aria-label={t("admin.dash.legendAria")}>
           {PERF_SERIES.map((s) => (
             <button
               key={s.key}
@@ -189,7 +198,7 @@ export function PerformanceSection() {
               onClick={() => toggle(s.key)}
             >
               <span className="ax-legend__dot" style={{ background: visible[s.key] ? s.color : "var(--gray-300)" }} />
-              {s.label}
+              {t(`admin.dash.series.${s.key}`)}
             </button>
           ))}
         </div>

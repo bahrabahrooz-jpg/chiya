@@ -1,7 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import { VIEWINGS, PROPERTIES as VW_PROPS } from "../_viewings/data";
-import { AGENTS as CAT_AGENTS, MEMBERS as CAT_MEMBERS, fmtUSD, getAgentByName, getPropertyById } from "../_data/catalog";
+import { AGENTS as CAT_AGENTS, MEMBERS as CAT_MEMBERS, getAgentByName, getPropertyById } from "../_data/catalog";
 
 export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; icon: IconName; cls: string }> = {
   Requested: { variant: "info", icon: "clock", cls: "vwd-st--scheduled" },
@@ -39,7 +39,7 @@ export interface ViewingDetail {
   notes: string;
   reminderSent: boolean;
   reminderWhen: string;
-  property: { id: string; name: string; location: string; listing: string; type: string; price: string; img: string };
+  property: { id: string; name: string; location: string; listing: "sale" | "rent"; type: string; price: number; per?: string; img: string };
   member: { id: string; name: string; role: string; phone: string; email: string };
   agent: { id: string; name: string; phone: string; email: string; experience: number; img: string; rating: number; reviews: number; verified: boolean };
 }
@@ -59,7 +59,7 @@ export const VIEWING: ViewingDetail = {
   notes: "Member is relocating from Dubai and wants to see the master suite, the garden, and the rooftop terrace. Prefers a morning appointment and asked whether the price is negotiable.",
   reminderSent: true,
   reminderWhen: "Jun 15, 2026 · 9:00 AM",
-  property: { id: "CH-1042", name: "Marble Hill Villa", location: "Ankawa, Erbil", listing: "For sale", type: "Villa", price: "$1,450,000", img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=520&q=75" },
+  property: { id: "CH-1042", name: "Marble Hill Villa", location: "Ankawa, Erbil", listing: "sale", type: "Villa", price: 1450000, img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=520&q=75" },
   member: { id: "MEM-1087", name: "Sara Hassan", role: "Buyer", phone: "+964 750 112 4408", email: "sara.hassan@gmail.com" },
   agent: { id: "A-2041", name: "Lana Aziz", phone: "+964 770 552 1190", email: "lana.aziz@chiya.estate", experience: 8, img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=75", rating: 4.9, reviews: 87, verified: true },
 };
@@ -147,9 +147,10 @@ export function getViewingDetail(id: string): ViewingDetail {
       id: comboProp?.id ?? VIEWING.property.id,
       name: real.property.title,
       location: real.property.location,
-      listing: fullProp ? (fullProp.listing === "rent" ? "For rent" : "For sale") : VIEWING.property.listing,
+      listing: fullProp ? fullProp.listing : VIEWING.property.listing,
       type: fullProp?.type ?? VIEWING.property.type,
-      price: fullProp ? fmtUSD(fullProp.price) + (fullProp.per ?? "") : VIEWING.property.price,
+      price: fullProp ? fullProp.price : VIEWING.property.price,
+      per: fullProp ? fullProp.per : VIEWING.property.per,
       img: real.property.img,
     },
     member: {
@@ -163,11 +164,12 @@ export function getViewingDetail(id: string): ViewingDetail {
   };
 }
 
-export interface TLItem { icon: IconName; tone: string; title: string; desc: string; time: string; by: string }
+/** Title/desc are i18n keys resolved at render; `params` carry real data names. */
+export interface TLItem { icon: IconName; tone: string; titleKey: string; descKey: string; params?: Record<string, string>; time: string; by: string }
 export const TIMELINE: TLItem[] = [
-  { icon: "bell", tone: "gold", title: "Reminder sent", desc: "Automated viewing reminder delivered to the member by SMS and email.", time: "Jun 15, 2026 · 9:00 AM", by: "System" },
-  { icon: "user-plus", tone: "brand", title: "Agent assigned", desc: "Lana Aziz assigned to host this viewing.", time: "Jun 12, 2026 · 2:15 PM", by: "Rêbîn Kawa" },
-  { icon: "calendar-plus", tone: "info", title: "Viewing created", desc: "Viewing appointment created for Marble Hill Villa.", time: "Jun 12, 2026 · 2:10 PM", by: "Rêbîn Kawa" },
+  { icon: "bell", tone: "gold", titleKey: "admin.vd.tl.reminder.title", descKey: "admin.vd.tl.reminder.desc", time: "Jun 15, 2026 · 9:00 AM", by: "System" },
+  { icon: "user-plus", tone: "brand", titleKey: "admin.vd.tl.assigned.title", descKey: "admin.vd.tl.assigned.desc", params: { name: "Lana Aziz" }, time: "Jun 12, 2026 · 2:15 PM", by: "Rêbîn Kawa" },
+  { icon: "calendar-plus", tone: "info", titleKey: "admin.vd.tl.created.title", descKey: "admin.vd.tl.created.desc", params: { title: "Marble Hill Villa" }, time: "Jun 12, 2026 · 2:10 PM", by: "Rêbîn Kawa" },
 ];
 
 export interface NoteItem { author: string; role: string; time: string; kind: string; text: string }

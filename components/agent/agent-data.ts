@@ -4,16 +4,17 @@ import { AGENT } from "@/lib/agent-permissions";
 /* Agent navigation — the same shell nav as admin, filtered to the modules the
    Agent role can view. Locations, Roles and Settings fall away automatically. */
 const ALL_GROUPS: NavGroupDef[] = [
-  { label: "Overview", items: [{ id: "dashboard", label: "Dashboard", icon: "layout-dashboard", href: "/agent" }] },
+  { label: "Overview", labelKey: "agent.nav.overview", items: [{ id: "dashboard", label: "Dashboard", labelKey: "agent.nav.dashboard", icon: "layout-dashboard", href: "/agent" }] },
   {
     label: "Management",
+    labelKey: "agent.nav.management",
     items: [
-      { id: "properties", label: "My properties", icon: "building-2", href: "/agent/properties" },
-      { id: "viewings", label: "My viewings", icon: "calendar-check", href: "/agent/viewings" },
-      { id: "members", label: "Members", icon: "users", href: "/agent/members" },
+      { id: "properties", label: "My properties", labelKey: "agent.nav.properties", icon: "building-2", href: "/agent/properties" },
+      { id: "viewings", label: "My viewings", labelKey: "agent.nav.viewings", icon: "calendar-check", href: "/agent/viewings" },
+      { id: "members", label: "Members", labelKey: "agent.nav.members", icon: "users", href: "/agent/members" },
     ],
   },
-  { label: "Insights", items: [{ id: "reports", label: "Reports", icon: "chart-column", href: "/agent/reports" }] },
+  { label: "Insights", labelKey: "agent.nav.insights", items: [{ id: "reports", label: "Reports", labelKey: "agent.nav.reports", icon: "chart-column", href: "/agent/reports" }] },
 ];
 
 const CAN_VIEW: Record<string, boolean> = {

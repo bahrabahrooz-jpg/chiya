@@ -116,11 +116,11 @@
   .rp-legrow__label { font-size: 14px; font-weight: 500; color: var(--text-primary); flex: 1 1 auto; min-width: 0; }
   .rp-legrow__pct {
     font-size: 13px; font-weight: 600; color: var(--text-tertiary); flex: none;
-    font-variant-numeric: tabular-nums; width: 42px; text-align: right;
+    font-variant-numeric: tabular-nums; width: 42px; text-align: end;
   }
   .rp-legrow__val {
     font-size: 14px; font-weight: 700; color: var(--text-primary); flex: none;
-    font-variant-numeric: tabular-nums; width: 52px; text-align: right;
+    font-variant-numeric: tabular-nums; width: 52px; text-align: end;
   }
 
   /* ---------- HORIZONTAL BARS ---------- */
@@ -139,7 +139,7 @@
   .rp-hbar__track { flex: 1 1 auto; height: 12px; border-radius: var(--radius-pill); background: var(--gray-100); overflow: hidden; }
   .rp-hbar__fill { display: block; height: 100%; border-radius: var(--radius-pill); transition: width .4s cubic-bezier(.2,.7,.2,1); }
   .rp-hbar__val {
-    flex: none; width: 56px; text-align: right; font-family: var(--font-sans);
+    flex: none; width: 56px; text-align: end; font-family: var(--font-sans);
     font-size: 14px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums;
   }
   @media (max-width: 520px) { .rp-hbar__name { width: 92px; } }
@@ -151,13 +151,13 @@
   .rp-table { width: 100%; border-collapse: collapse; min-width: 720px; }
   .rp-th {
     font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: .07em;
-    text-transform: uppercase; color: var(--text-tertiary); text-align: left;
+    text-transform: uppercase; color: var(--text-tertiary); text-align: start;
     padding: 0 16px 12px; border-bottom: 1px solid var(--border-subtle); white-space: nowrap;
   }
-  .rp-th--num { text-align: right; }
-  .rp-th--conv { text-align: left; width: 200px; }
-  .rp-th--agent { padding-left: 4px; }
-  .rp-th--rank { text-align: center; width: 44px; padding-left: 4px; padding-right: 8px; }
+  .rp-th--num { text-align: end; }
+  .rp-th--conv { text-align: start; width: 200px; }
+  .rp-th--agent { padding-inline-start: 4px; }
+  .rp-th--rank { text-align: center; width: 44px; padding-inline-start: 4px; padding-inline-end: 8px; }
   .rp-tr { transition: background-color .13s; }
   .rp-tr:hover { background: var(--gray-25); }
   .rp-td {
@@ -166,9 +166,9 @@
     font-variant-numeric: tabular-nums; vertical-align: middle;
   }
   .rp-tr:last-child .rp-td { border-bottom: none; }
-  .rp-td--num { text-align: right; font-weight: 600; color: var(--text-primary); }
-  .rp-td--rank { text-align: center; width: 44px; padding-left: 4px; padding-right: 8px; font-weight: 700; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
-  .rp-td--agent { display: flex; align-items: center; gap: 12px; padding-left: 4px; }
+  .rp-td--num { text-align: end; font-weight: 600; color: var(--text-primary); }
+  .rp-td--rank { text-align: center; width: 44px; padding-inline-start: 4px; padding-inline-end: 8px; font-weight: 700; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .rp-td--agent { display: flex; align-items: center; gap: 12px; padding-inline-start: 4px; }
   .rp-agent { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .rp-agent__name {
     display: inline-flex; align-items: center; gap: 9px; flex-wrap: wrap;
@@ -178,7 +178,7 @@
   .rp-conv { display: flex; align-items: center; gap: 11px; }
   .rp-conv__track { flex: 1 1 auto; height: 8px; border-radius: var(--radius-pill); background: var(--gray-100); overflow: hidden; min-width: 60px; }
   .rp-conv__fill { display: block; height: 100%; border-radius: var(--radius-pill); }
-  .rp-conv__val { flex: none; width: 52px; text-align: right; font-size: 13.5px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .rp-conv__val { flex: none; width: 52px; text-align: end; font-size: 13.5px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 
   /* ---------- MEMBER ACTIVITY MINIS ---------- */
   .rp-minis {
@@ -209,7 +209,7 @@
 
   /* ---------- EXPORT TOAST ---------- */
   .rp-toaster {
-    position: fixed; top: 22px; right: 22px; z-index: 2000;
+    position: fixed; top: 22px; inset-inline-end: 22px; z-index: 2000;
     display: flex; flex-direction: column; gap: 12px;
     width: 360px; max-width: calc(100vw - 32px); pointer-events: none;
   }
@@ -239,7 +239,7 @@
     transition: background-color .15s, color .15s;
   }
   .rp-toast__close:hover { background: var(--gray-100); color: var(--gray-800); }
-  @media (max-width: 560px) { .rp-toaster { left: 16px; right: 16px; top: 16px; width: auto; } }
+  @media (max-width: 560px) { .rp-toaster { inset-inline-start: 16px; inset-inline-end: 16px; top: 16px; width: auto; } }
 
   @media (prefers-reduced-motion: reduce) {
     .rp-toast { transition: opacity .2s ease; transform: none; }

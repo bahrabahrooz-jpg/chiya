@@ -9,31 +9,33 @@ import { Modal } from "@/components/ui/modal";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { NotifBell } from "@/components/admin/notif-bell";
+import { useLang } from "@/lib/i18n";
 import { useAgentNotifications } from "@/lib/admin-notifications";
 import { useAgentSession } from "@/lib/agent-session";
 
 type MenuId = "profile" | null;
 
 function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; avatar: string; onNavigate: (path: string) => void; onLogout: () => void }) {
+  const { t } = useLang();
   return (
     <div className="ax-menu ax-menu--profile" role="menu">
       <div className="ax-menu-profilecard">
         <Avatar name={name} src={avatar || undefined} size="lg" verified />
         <span className="ax-menu-profilecard__meta">
           <span className="ax-menu-profilecard__name">{name}</span>
-          <span style={{ marginTop: 3, fontSize: 13, fontWeight: 400, color: "var(--text-secondary)" }}>Agent</span>
+          <span style={{ marginTop: 3, fontSize: 13, fontWeight: 400, color: "var(--text-secondary)" }}>{t("role.agent")}</span>
         </span>
       </div>
       <div className="ax-menu__sect">
         <button type="button" className="ax-menu-item" role="menuitem" onClick={() => onNavigate("/agent/profile")}>
           <Icon name="user" size={18} />
-          My profile
+          {t("admin.topbar.myProfile")}
         </button>
       </div>
       <div className="ax-menu__sect">
         <button type="button" className="ax-menu-item is-danger" role="menuitem" onClick={onLogout}>
           <Icon name="log-out" size={18} />
-          Log out
+          {t("admin.topbar.logout")}
         </button>
       </div>
     </div>
@@ -42,6 +44,7 @@ function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; ava
 
 export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
   const router = useRouter();
+  const { t } = useLang();
   const { agent, logout } = useAgentSession();
   const notifications = useAgentNotifications();
   const [openMenu, setOpenMenu] = useState<MenuId>(null);
@@ -50,7 +53,7 @@ export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
 
   return (
     <header className="ax-topbar">
-      <button type="button" className="ax-tb-btn ax-hamburger" aria-label="Open menu" onClick={onHamburger}>
+      <button type="button" className="ax-tb-btn ax-hamburger" aria-label={t("admin.topbar.openMenu")} onClick={onHamburger}>
         <Icon name="menu" size={22} />
       </button>
 
@@ -58,14 +61,13 @@ export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
         <span className="ax-tb-search__lead">
           <Icon name="search" size={18} />
         </span>
-        <input type="text" placeholder="Search my properties, viewings…" aria-label="Search" />
+        <input type="text" placeholder={t("agent.topbar.searchPh")} aria-label={t("admin.topbar.searchAria")} />
       </div>
 
       <div className="ax-tb-spacer" />
 
       <div className="ax-tb-actions">
         <ThemeToggle />
-        <div className="ax-tb-divider" />
 
         {/* language */}
         <LanguageSwitcher />
@@ -86,7 +88,7 @@ export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
             <Avatar name={agent.name} src={agent.img || undefined} size="sm" verified />
             <span className="ax-tb-profile__meta">
               <span className="ax-tb-profile__name">{agent.name}</span>
-              <span className="ax-tb-profile__role">Agent</span>
+              <span className="ax-tb-profile__role">{t("role.agent")}</span>
             </span>
             <Icon name="chevron-down" size={16} />
           </button>
@@ -114,12 +116,12 @@ export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
           open
           onClose={() => setLogoutOpen(false)}
           icon="log-out"
-          title="Log out?"
+          title={t("admin.topbar.logoutTitle")}
           size="sm"
           footer={
             <>
               <Button hierarchy="secondary" onClick={() => setLogoutOpen(false)}>
-                Cancel
+                {t("admin.topbar.cancel")}
               </Button>
               <Button
                 hierarchy="destructive"
@@ -130,13 +132,13 @@ export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
                   router.push("/");
                 }}
               >
-                Log out
+                {t("admin.topbar.logout")}
               </Button>
             </>
           }
         >
           <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: "var(--text-secondary)" }}>
-            Are you sure you want to log out? You&apos;ll need to sign in again to access your workspace.
+            {t("agent.topbar.logoutBody")}
           </p>
         </Modal>
       )}

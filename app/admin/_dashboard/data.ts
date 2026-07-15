@@ -50,24 +50,22 @@ export const ACTION_ITEMS: ActionItem[] = [
   { key: "agents", icon: "badge-check", tone: "gold", title: "Pending agent verifications", unit: "Applications waiting review", desc: "Confirm ID documents and credentials before agents can list properties.", cta: "Review agents" },
 ];
 
-export interface ActivityPart {
-  b?: string;
-  t?: string;
-}
 export interface ActivityItem {
   id: number;
   icon: IconName;
   tone: "brand" | "gold" | "info" | "success";
-  time: string;
-  parts: ActivityPart[];
+  /** i18n key for the line (e.g. "admin.dash.activity.1") + its interpolation params. */
+  timeKey: string;
+  timeParams?: { count: number };
+  params?: Record<string, string | number>;
 }
 export const ACTIVITY_ITEMS: ActivityItem[] = [
-  { id: 1, icon: "file-plus-2", tone: "info", time: "2 minutes ago", parts: [{ b: "Ahmed Karim" }, { t: " submitted a new property" }] },
-  { id: 2, icon: "user-plus", tone: "gold", time: "1 hour ago", parts: [{ b: "Sara Hama" }, { t: " registered as an agent" }] },
-  { id: 3, icon: "badge-check", tone: "success", time: "Today", parts: [{ t: "Villa in " }, { b: "Empire World" }, { t: " was approved" }] },
-  { id: 4, icon: "key", tone: "brand", time: "Today", parts: [{ b: "Marble Hill Villa" }, { t: " was marked as sold" }] },
-  { id: 5, icon: "shield-check", tone: "success", time: "Yesterday", parts: [{ b: "Lana Aziz" }, { t: "’s agent profile was verified" }] },
-  { id: 6, icon: "calendar-check", tone: "info", time: "Yesterday", parts: [{ t: "12 viewings confirmed across " }, { b: "Erbil" }] },
+  { id: 1, icon: "file-plus-2", tone: "info", timeKey: "time.minsAgo", timeParams: { count: 2 }, params: { name: "Ahmed Karim" } },
+  { id: 2, icon: "user-plus", tone: "gold", timeKey: "time.hrsAgo", timeParams: { count: 1 }, params: { name: "Sara Hama" } },
+  { id: 3, icon: "badge-check", tone: "success", timeKey: "time.today", params: { place: "Empire World" } },
+  { id: 4, icon: "key", tone: "brand", timeKey: "time.today", params: { name: "Marble Hill Villa" } },
+  { id: 5, icon: "shield-check", tone: "success", timeKey: "time.yesterday", params: { name: "Lana Aziz" } },
+  { id: 6, icon: "calendar-check", tone: "info", timeKey: "time.yesterday", params: { count: 12, place: "Erbil" } },
 ];
 
 /* Performance chart (Section 4) */

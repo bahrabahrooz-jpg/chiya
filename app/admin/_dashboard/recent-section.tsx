@@ -1,11 +1,16 @@
 /* eslint-disable @next/next/no-img-element */
+"use client";
+
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useLang } from "@/lib/i18n";
+import { fmtDate } from "@/lib/fmt";
 import { PROP_STATUS, RECENT_AGENTS, RECENT_PROPERTIES, type RecentAgent, type RecentProperty } from "./data";
 
 function PropertyRow({ item }: { item: RecentProperty }) {
+  const { t } = useLang();
   const st = PROP_STATUS[item.status] || { variant: "neutral" as const, dot: false };
   return (
     <Link className="ax-row ax-row--link" href={`/admin/properties/${item.id}`}>
@@ -26,7 +31,7 @@ function PropertyRow({ item }: { item: RecentProperty }) {
       </div>
       <div className="ax-row__end">
         <Badge variant={st.variant} size="sm" dot={st.dot}>
-          {item.status}
+          {t(`status.${item.status.toLowerCase()}`)}
         </Badge>
       </div>
     </Link>
@@ -34,6 +39,7 @@ function PropertyRow({ item }: { item: RecentProperty }) {
 }
 
 function AgentRow({ item }: { item: RecentAgent }) {
+  const { t, lang } = useLang();
   return (
     <Link className="ax-row ax-row--link" href={`/admin/agents/${item.id}`}>
       <span className="ax-row__avatar">
@@ -44,17 +50,17 @@ function AgentRow({ item }: { item: RecentAgent }) {
         <div className="ax-row__meta">
           <span className="ax-row__loc">{item.team}</span>
           <span className="ax-row__sep" />
-          <span className="ax-row__joined">Joined {item.joined}</span>
+          <span className="ax-row__joined">{t("admin.dash.joined", { date: fmtDate(lang, new Date(item.joined)) })}</span>
         </div>
       </div>
       <div className="ax-row__end">
         {item.verified ? (
           <Badge variant="brand" size="sm" icon="badge-check">
-            Verified
+            {t("status.verified")}
           </Badge>
         ) : (
           <Badge variant="warning" size="sm" dot>
-            Pending
+            {t("status.pending")}
           </Badge>
         )}
       </div>
@@ -63,15 +69,16 @@ function AgentRow({ item }: { item: RecentAgent }) {
 }
 
 export function RecentSection() {
+  const { t } = useLang();
   return (
-    <section className="ax-section ax-grid2 ax-grid2--stretch" aria-label="Recent properties and recent agents">
+    <section className="ax-section ax-grid2 ax-grid2--stretch" aria-label={t("admin.dash.recentAria")}>
       <div className="ax-col">
         <div className="ax-section__head">
           <div className="ax-section__heading">
-            <h2 className="ax-section__title">Recent properties</h2>
+            <h2 className="ax-section__title">{t("admin.dash.recentProps")}</h2>
           </div>
           <Link className="ax-viewall" href="/admin/properties">
-            View all <Icon name="arrow-right" size={15} />
+            {t("admin.common.viewAll")} <Icon name="arrow-right" size={15} />
           </Link>
         </div>
         <div className="ax-listcard">
@@ -83,10 +90,10 @@ export function RecentSection() {
       <div className="ax-col">
         <div className="ax-section__head">
           <div className="ax-section__heading">
-            <h2 className="ax-section__title">Recent agents</h2>
+            <h2 className="ax-section__title">{t("admin.dash.recentAgents")}</h2>
           </div>
           <Link className="ax-viewall" href="/admin/agents">
-            View all <Icon name="arrow-right" size={15} />
+            {t("admin.common.viewAll")} <Icon name="arrow-right" size={15} />
           </Link>
         </div>
         <div className="ax-listcard">

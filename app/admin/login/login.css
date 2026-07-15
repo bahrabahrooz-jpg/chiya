@@ -124,7 +124,7 @@
 }
 .al-input__lead {
   position: absolute;
-  left: 14px;
+  inset-inline-start: 14px;
   color: var(--text-tertiary);
   pointer-events: none;
 }
@@ -143,7 +143,7 @@
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .al-input--pw {
-  padding-right: 46px;
+  padding-inline-end: 46px;
   /* the Hanken webfont draws the mask bullet (U+2022) as a square, so force the
      password field to a system font stack that renders it as a round dot */
   font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
@@ -205,7 +205,7 @@
 .al-strength__label {
   font-size: var(--text-xs-size);
   color: var(--text-tertiary);
-  text-align: right;
+  text-align: end;
 }
 .al-strength[data-level="1"] .al-strength__seg.is-on { background: var(--error-500); }
 .al-strength[data-level="2"] .al-strength__seg.is-on { background: var(--warning-500); }
@@ -256,7 +256,7 @@
 }
 .al-pwtoggle {
   position: absolute;
-  right: 8px;
+  inset-inline-end: 8px;
   display: flex;
   align-items: center;
   justify-content: center;

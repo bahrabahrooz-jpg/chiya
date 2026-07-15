@@ -75,6 +75,51 @@ export const CATS: Cat[] = [
   ] },
 ];
 
+// Member-surface permissions. These describe what a member can do across the
+// mobile app and the authenticated website member view — a distinct universe
+// from the admin-panel catalogue above.
+export const MEMBER_CATS: Cat[] = [
+  { key: "browse", label: "Browse", groups: [
+    { id: "discover", label: "Discover", scope: false, perms: [
+      { label: "Browse listings", desc: "Explore properties on the home and search screens." },
+      { label: "Search & filter", desc: "Run searches and refine results with filters." },
+      { label: "View property details", desc: "Open a listing's full detail page and gallery." },
+      { label: "View agent profiles", desc: "See agent profiles and their active listings." },
+    ] },
+  ] },
+  { key: "saved", label: "Saved", groups: [
+    { id: "collections", label: "Collections", scope: false, perms: [
+      { label: "Save properties", desc: "Add listings to a personal saved collection." },
+      { label: "Save agents", desc: "Follow agents and keep them in Saved." },
+    ] },
+  ] },
+  { key: "tours", label: "Viewings", groups: [
+    { id: "requests", label: "Requests", scope: false, perms: [
+      { label: "Request viewings", desc: "Book a viewing appointment for a listing." },
+      { label: "Cancel viewings", desc: "Cancel a viewing they previously requested." },
+    ] },
+  ] },
+  { key: "selling", label: "My listings", groups: [
+    { id: "owned", label: "Owned listings", scope: false, perms: [
+      { label: "Submit a listing", desc: "List a property for review through the sell flow." },
+      { label: "Edit own listings", desc: "Update the details of their own submissions." },
+      { label: "Delete own listings", desc: "Remove a listing they created." },
+    ] },
+  ] },
+  { key: "account", label: "Account", groups: [
+    { id: "profile", label: "Profile", scope: false, perms: [
+      { label: "Edit profile", desc: "Update name, photo, contact and location." },
+      { label: "Manage notifications", desc: "Read, mark and clear their notifications." },
+    ] },
+    { id: "prefs", label: "Security & preferences", scope: false, perms: [
+      { label: "Change password", desc: "Update their account password." },
+      { label: "Manage preferences", desc: "Set language and appearance options." },
+    ] },
+  ] },
+];
+
+export type Surface = "admin" | "member";
+
 export interface FlatPerm extends Perm { permId: string; localIndex: number; groupId: string; scopeable: boolean }
 function flatCat(cat: Cat): FlatPerm[] {
   const out: FlatPerm[] = [];
@@ -87,11 +132,26 @@ function flatCat(cat: Cat): FlatPerm[] {
   });
   return out;
 }
-export const CAT_FLAT: Record<string, FlatPerm[]> = {};
-CATS.forEach((c) => {
-  CAT_FLAT[c.key] = flatCat(c);
-});
+function flatMap(cats: Cat[]): Record<string, FlatPerm[]> {
+  const map: Record<string, FlatPerm[]> = {};
+  cats.forEach((c) => { map[c.key] = flatCat(c); });
+  return map;
+}
+export const CAT_FLAT: Record<string, FlatPerm[]> = flatMap(CATS);
+export const MEMBER_CAT_FLAT: Record<string, FlatPerm[]> = flatMap(MEMBER_CATS);
 export const TOTAL_PERMS = CATS.reduce((a, c) => a + CAT_FLAT[c.key].length, 0);
+export const MEMBER_TOTAL_PERMS = MEMBER_CATS.reduce((a, c) => a + MEMBER_CAT_FLAT[c.key].length, 0);
+
+/** Resolve the catalogue, flat map and total for a role's permission surface. */
+export function catsFor(surface: Surface): Cat[] {
+  return surface === "member" ? MEMBER_CATS : CATS;
+}
+export function flatFor(surface: Surface): Record<string, FlatPerm[]> {
+  return surface === "member" ? MEMBER_CAT_FLAT : CAT_FLAT;
+}
+export function totalPermsFor(surface: Surface): number {
+  return surface === "member" ? MEMBER_TOTAL_PERMS : TOTAL_PERMS;
+}
 
 export const SCOPE_OPTS = [
   { value: "own", label: "Own" },
@@ -108,6 +168,8 @@ export interface RoleSeed {
   icon: IconName;
   system: boolean;
   locked?: boolean;
+  /** Which permission catalogue this role draws from. Defaults to "admin". */
+  surface?: Surface;
   status: string;
   users: number;
   created: string;
@@ -136,6 +198,12 @@ export const ROLES_SEED: RoleSeed[] = [
       settings: "none",
     },
   },
+  {
+    id: "member", name: "Member", tone: "brand", dot: "brand", icon: "user", system: true, surface: "member",
+    status: "Active", users: 1240, created: "Jan 18, 2024",
+    desc: "Public member. Browses listings, saves favourites, requests viewings and manages their own account across the mobile app and website.",
+    spec: { browse: "all", saved: "all", tours: "all", selling: "all", account: "all" },
+  },
 ];
 
 export interface RoleState extends RoleSeed {
@@ -143,12 +211,14 @@ export interface RoleState extends RoleSeed {
   scope: Record<string, string>;
 }
 
-export function buildRole(spec: Record<string, Spec>): { grant: Record<string, boolean>; scope: Record<string, string> } {
+export function buildRole(spec: Record<string, Spec>, surface: Surface = "admin"): { grant: Record<string, boolean>; scope: Record<string, string> } {
   const grant: Record<string, boolean> = {};
   const scope: Record<string, string> = {};
-  CATS.forEach((cat) => {
+  const cats = catsFor(surface);
+  const flatByKey = flatFor(surface);
+  cats.forEach((cat) => {
     const s = spec[cat.key];
-    const flat = CAT_FLAT[cat.key];
+    const flat = flatByKey[cat.key];
     const onAll = s === "all";
     const cfg = s && typeof s === "object" ? s : null;
     const onSet: "all" | "none" | number[] = onAll ? "all" : cfg ? cfg.perms : "none";
@@ -162,11 +232,11 @@ export function buildRole(spec: Record<string, Spec>): { grant: Record<string, b
   });
   return { grant, scope };
 }
-export function countGrant(grant: Record<string, boolean>) {
+export function countGrant(grant: Record<string, boolean>, surface: Surface = "admin") {
   // count only permissions that currently exist, so the total can never
-  // drift past TOTAL_PERMS (e.g. after a permission is removed)
+  // drift past the surface total (e.g. after a permission is removed)
   let n = 0;
-  CATS.forEach((c) => CAT_FLAT[c.key].forEach((p) => { if (grant[p.permId]) n++; }));
+  catsFor(surface).forEach((c) => flatFor(surface)[c.key].forEach((p) => { if (grant[p.permId]) n++; }));
   return n;
 }
 

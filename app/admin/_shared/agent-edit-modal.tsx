@@ -7,6 +7,8 @@ import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EXPERIENCE_OPTIONS, LANGUAGE_OPTIONS, SERVICE_AREA_OPTIONS } from "../_agents-admin/data";
+import { useLang } from "@/lib/i18n";
+import { fmtNum, valueKey } from "@/lib/fmt";
 
 export type SelectOption = { value: string; label: string };
 
@@ -24,10 +26,11 @@ export function Field({ label, htmlFor, children }: { label?: ReactNode; htmlFor
 }
 
 export function CustomSelect({ value, onChange, options, clearable }: { value: string; onChange: (v: string) => void; options: SelectOption[]; clearable?: boolean }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; minWidth: number } | null>(null);
-  const placeholder = options.find((o) => o.value === "")?.label || "Select";
+  const placeholder = options.find((o) => o.value === "")?.label || t("admin.aem.select");
   const items = options.filter((o) => o.value !== "");
 
   const calcPos = () => {
@@ -65,7 +68,7 @@ export function CustomSelect({ value, onChange, options, clearable }: { value: s
             className="ap-selbtn__clear"
             role="button"
             tabIndex={0}
-            aria-label="Clear"
+            aria-label={t("admin.props.clear")}
             onClick={(e) => {
               e.stopPropagation();
               onChange("");
@@ -103,6 +106,7 @@ export function CustomSelect({ value, onChange, options, clearable }: { value: s
 }
 
 export function AvatarUpload({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const { t } = useLang();
   const inputRef = useRef<HTMLInputElement>(null);
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,32 +120,51 @@ export function AvatarUpload({ value, onChange }: { value: string | null; onChan
   return (
     <div className="aa-photo">
       <div className="aa-photo__ring">
-        <button type="button" className={"aa-photo__disc" + (value ? " has-img" : "")} onClick={() => inputRef.current?.click()} aria-label="Upload profile photo">
+        <button type="button" className={"aa-photo__disc" + (value ? " has-img" : "")} onClick={() => inputRef.current?.click()} aria-label={t("admin.aem.uploadPhotoAria")}>
           {value ? <img src={value} alt="" /> : <Icon name="image-plus" size={26} strokeWidth={1.6} />}
         </button>
-        <button type="button" className="aa-photo__edit" onClick={() => inputRef.current?.click()} aria-label={value ? "Change photo" : "Upload photo"}>
+        <button type="button" className="aa-photo__edit" onClick={() => inputRef.current?.click()} aria-label={value ? t("admin.aem.changePhoto") : t("admin.aem.uploadPhoto")}>
           <Icon name={value ? "pencil" : "camera"} size={14} strokeWidth={2} />
         </button>
         <input ref={inputRef} type="file" accept="image/png,image/jpeg" hidden onChange={onPick} />
       </div>
       <div className="aa-photo__meta">
         <span className="aa-photo__label">
-          Profile Photo <span>(Optional)</span>
+          {t("admin.aem.profilePhoto")} <span>{t("admin.ap.optional")}</span>
         </span>
         {value ? (
           <button type="button" className="aa-photo__remove" onClick={() => onChange(null)}>
             <Icon name="trash-2" size={13} strokeWidth={2} />
-            Remove photo
+            {t("admin.aem.removePhoto")}
           </button>
         ) : (
-          <span className="aa-photo__hint">JPG or PNG, max 2MB</span>
+          <span className="aa-photo__hint">{t("admin.aem.photoHint")}</span>
         )}
       </div>
     </div>
   );
 }
 
-export function MultiSelect({ values, onChange, options, placeholder }: { values: string[]; onChange: (v: string[]) => void; options: string[]; placeholder: string }) {
+/**
+ * `options`/`values` stay canonical English (they are what gets saved); the
+ * caller passes `labelFor` to control display, since the same component backs
+ * both the languages and the service-areas fields.
+ */
+export function MultiSelect({
+  values,
+  onChange,
+  options,
+  placeholder,
+  labelFor,
+}: {
+  values: string[];
+  onChange: (v: string[]) => void;
+  options: string[];
+  placeholder: string;
+  labelFor?: (v: string) => string;
+}) {
+  const { t, lang } = useLang();
+  const show = (v: string) => (labelFor ? labelFor(v) : v);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -221,13 +244,13 @@ export function MultiSelect({ values, onChange, options, placeholder }: { values
         {values.length === 0 && <span className="aa-ms__placeholder">{placeholder}</span>}
         {shown.map((v) => (
           <span key={v} className="aa-ms__chip">
-            {v}
-            <button type="button" className="aa-ms__chipx" onClick={(e) => remove(e, v)} aria-label={"Remove " + v}>
+            {show(v)}
+            <button type="button" className="aa-ms__chipx" onClick={(e) => remove(e, v)} aria-label={t("admin.aem.removeValue", { value: show(v) })}>
               <Icon name="x" size={12} strokeWidth={2.5} />
             </button>
           </span>
         ))}
-        {hidden > 0 && <span className="aa-ms__chip aa-ms__chip--count">+{hidden}</span>}
+        {hidden > 0 && <span className="aa-ms__chip aa-ms__chip--count">+{fmtNum(lang, hidden)}</span>}
         <span className="aa-ms__chev">
           <Icon name="chevron-down" size={16} />
         </span>
@@ -235,7 +258,7 @@ export function MultiSelect({ values, onChange, options, placeholder }: { values
       <div className="aa-ms__measure" aria-hidden="true" ref={measRef}>
         {values.map((v) => (
           <span key={v} className="aa-ms__chip">
-            {v}
+            {show(v)}
             <span className="aa-ms__chipx">
               <Icon name="x" size={12} strokeWidth={2.5} />
             </span>
@@ -249,9 +272,9 @@ export function MultiSelect({ values, onChange, options, placeholder }: { values
             {searchable && (
               <div className="aa-msdrop__search">
                 <Icon name="search" size={15} />
-                <input type="text" autoFocus value={query} placeholder="Search areas…" onChange={(e) => setQuery(e.target.value)} />
+                <input type="text" autoFocus value={query} placeholder={t("admin.aem.searchAreas")} onChange={(e) => setQuery(e.target.value)} />
                 {query && (
-                  <button type="button" className="aa-msdrop__searchx" aria-label="Clear search" onClick={() => setQuery("")}>
+                  <button type="button" className="aa-msdrop__searchx" aria-label={t("admin.props.clearSearch")} onClick={() => setQuery("")}>
                     <Icon name="x" size={14} strokeWidth={2.5} />
                   </button>
                 )}
@@ -259,13 +282,13 @@ export function MultiSelect({ values, onChange, options, placeholder }: { values
             )}
             <div className="aa-msdrop__list">
               {options
-                .filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()))
+                .filter((o) => show(o).toLowerCase().includes(query.trim().toLowerCase()) || o.toLowerCase().includes(query.trim().toLowerCase()))
                 .map((o) => {
                   const sel = values.includes(o);
                   return (
                     <button key={o} type="button" className={"aa-msdrop__item" + (sel ? " is-selected" : "")} onClick={() => toggleVal(o)}>
                       <span className="aa-msdrop__check">{sel && <Icon name="check" size={12} strokeWidth={3.2} />}</span>
-                      {o}
+                      {show(o)}
                     </button>
                   );
                 })}
@@ -281,6 +304,7 @@ export function MultiSelect({ values, onChange, options, placeholder }: { values
 }
 
 function DiscardChangesDialog({ onContinue, onDiscard }: { onContinue: () => void; onDiscard: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -304,15 +328,15 @@ function DiscardChangesDialog({ onContinue, onDiscard }: { onContinue: () => voi
           <Icon name="triangle-alert" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="mp-modal__title" id="ea-discard-title">
-          Discard changes?
+          {t("admin.aem.discardTitle")}
         </h2>
-        <p className="mp-modal__body">You have unsaved changes. Are you sure you want to leave without saving?</p>
+        <p className="mp-modal__body">{t("admin.aem.discardBody")}</p>
         <div className="mp-modal__actions">
           <button type="button" className="mp-modal__cancel" onClick={onDiscard}>
-            Discard changes
+            {t("admin.aem.discard")}
           </button>
           <button type="button" className="mp-modal__confirm mp-modal__confirm--brand" onClick={onContinue}>
-            Continue editing
+            {t("admin.aem.continueEditing")}
           </button>
         </div>
       </div>
@@ -333,6 +357,11 @@ export interface AgentEditSeed {
 }
 
 export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed; onCancel: () => void; onSave: (values: AgentEditSeed) => void }) {
+  const { t } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const out = t(key);
+    return out === key ? fallback : out;
+  };
   const initial = useMemo(() => seed, [seed]);
 
   const [photo, setPhoto] = useState<string | null>(initial.img);
@@ -383,12 +412,12 @@ export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed
             </span>
             <div>
               <h2 className="aa-modal__title" id="ea-title">
-                Edit Agent
+                {t("admin.ad.editAgent")}
               </h2>
-              <p className="aa-modal__desc">Update agent information, professional details, and account access settings.</p>
+              <p className="aa-modal__desc">{t("admin.aem.sub")}</p>
             </div>
           </div>
-          <button type="button" className="aa-modal__close" aria-label="Close" onClick={requestClose}>
+          <button type="button" className="aa-modal__close" aria-label={t("admin.props.close")} onClick={requestClose}>
             <Icon name="x" size={18} />
           </button>
         </header>
@@ -397,31 +426,31 @@ export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed
           <AvatarUpload value={photo} onChange={setPhoto} />
 
           <section className="aa-sect">
-            <Input label="Full Name" id="ea-name" placeholder="e.g. Lana Aziz" iconLeading="user" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <Input label={t("admin.aem.fullName")} id="ea-name" placeholder="e.g. Lana Aziz" iconLeading="user" value={fullName} onChange={(e) => setFullName(e.target.value)} />
             <div className="aa-grid2">
-              <Input label="Phone Number" id="ea-phone" type="tel" placeholder="+964 770 000 0000" iconLeading="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              <Input label="Email Address" id="ea-email" type="email" placeholder="name@chiya.estate" iconLeading="mail" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input label={t("admin.mp.phoneNumber")} id="ea-phone" type="tel" placeholder="+964 770 000 0000" iconLeading="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input label={t("admin.mp.emailAddress")} id="ea-email" type="email" placeholder="name@chiya.estate" iconLeading="mail" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
           </section>
 
           <section className="aa-sect">
             <div className="aa-stack">
-              <Field label="Languages Spoken">
-                <MultiSelect values={languages} onChange={setLanguages} options={LANGUAGE_OPTIONS} placeholder="Select languages" />
+              <Field label={t("admin.aem.languagesSpoken")}>
+                <MultiSelect values={languages} onChange={setLanguages} options={LANGUAGE_OPTIONS} placeholder={t("admin.aem.selectLanguages")} labelFor={(v) => tOr(valueKey("admin.ad.lang", v), v)} />
               </Field>
-              <Field label="Service Areas">
-                <MultiSelect values={areas} onChange={setAreas} options={SERVICE_AREA_OPTIONS} placeholder="Select areas" />
+              <Field label={t("admin.ad.serviceAreas")}>
+                <MultiSelect values={areas} onChange={setAreas} options={SERVICE_AREA_OPTIONS} placeholder={t("admin.aem.selectAreas")} labelFor={(v) => tOr(`city.${v}`, tOr(`loc.${v}`, v))} />
               </Field>
             </div>
           </section>
 
           <section className="aa-sect">
             <div className="aa-grid2">
-              <Field label="Years of Experience" htmlFor="ea-exp">
-                <CustomSelect value={experience} onChange={setExperience} options={[{ value: "", label: "Select" }, ...EXPERIENCE_OPTIONS]} />
+              <Field label={t("admin.aem.yearsExperience")} htmlFor="ea-exp">
+                <CustomSelect value={experience} onChange={setExperience} options={[{ value: "", label: t("admin.aem.select") }, ...EXPERIENCE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))]} />
               </Field>
-              <Field label="Status" htmlFor="ea-status">
-                <CustomSelect value={status} onChange={(v) => setStatus(v || "Active")} options={[{ value: "", label: "Select status" }, { value: "Active", label: "Active" }, { value: "Suspended", label: "Suspended" }]} />
+              <Field label={t("admin.props.th.status")} htmlFor="ea-status">
+                <CustomSelect value={status} onChange={(v) => setStatus(v || "Active")} options={[{ value: "", label: t("admin.aem.selectStatus") }, { value: "Active", label: t("status.active") }, { value: "Suspended", label: t("status.suspended") }]} />
               </Field>
             </div>
           </section>
@@ -429,10 +458,10 @@ export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed
 
         <footer className="aa-modal__foot">
           <button type="button" className="mp-modal__cancel" onClick={requestClose}>
-            Cancel
+            {t("admin.common.cancel")}
           </button>
           <Button hierarchy="primary" size="md" type="submit" disabled={!canSave}>
-            Save Changes
+            {t("admin.ap.saveChanges")}
           </Button>
         </footer>
       </form>
