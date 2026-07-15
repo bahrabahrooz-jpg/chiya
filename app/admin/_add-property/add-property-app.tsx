@@ -44,7 +44,9 @@ function todayLabel(): string {
 // persisted to localStorage) don't collide on lookup.
 const ID_BASE = 10000 + Math.floor(Date.now() % 90000);
 let addedSeq = 0;
-function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader): PropertyRecord {
+/** `pending` forces the record to await admin approval even though an agent is
+ *  attached — agents submit, they don't publish (mode="agent"). */
+function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader, pending = false): PropertyRecord {
   const listing: "sale" | "rent" = f.listing === "rent" ? "rent" : "sale";
   const district = f.district || "Ankawa";
   const area = f.project || district; // most specific location (project → district)
@@ -67,8 +69,9 @@ function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader)
     agent: agent ? { name: agent.name, verified: true, img: agent.avatar } : null,
     listing,
     // A property can only go live with an assigned agent; without one it stays
-    // Pending until an agent is assigned.
-    status: agent ? "Published" : "Pending",
+    // Pending until an agent is assigned. Agent-submitted listings stay Pending
+    // regardless, until an admin approves them.
+    status: agent && !pending ? "Published" : "Pending",
     price: Number(String(f.price).replace(/[^0-9.]/g, "")) || 0,
     per: listing === "rent" ? "/mo" : undefined,
     date,
@@ -77,7 +80,7 @@ function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader)
     baths: f.baths,
     size: Number(String(f.area).replace(/[^0-9.]/g, "")) || 0,
     featured: false,
-    published: !!agent,
+    published: !!agent && !pending,
     listingDate: date,
     updated: date,
     details: {
@@ -1024,9 +1027,10 @@ export function RevItem({ k, v, full, price, tnum }: { k: string; v: React.React
   );
 }
 
-function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
+function PublishedSuccess({ preview, agentMode = false }: { preview: PublishPreview | null; agentMode?: boolean }) {
   const { t } = useLang();
   const router = useRouter();
+  const base = agentMode ? "/agent/properties" : "/admin/properties";
   const stageRef = useRef<HTMLDivElement>(null);
   const view = preview ?? {
     id: "CH-2041",
@@ -1071,12 +1075,14 @@ function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
           </span>
         </div>
         <h1 className="pp-title" id="pp-title">
-          {t(view.published ? "admin.ap.publishedTitle" : "admin.ap.pendingTitle")}
+          {t(view.published ? "admin.ap.publishedTitle" : agentMode ? "admin.ap.submittedTitle" : "admin.ap.pendingTitle")}
         </h1>
         <p className="pp-desc">
           {view.published
             ? t("admin.ap.publishedBody")
-            : t("admin.ap.pendingBody")}
+            : agentMode
+              ? t("admin.ap.agentSubmittedBody")
+              : t("admin.ap.pendingBody")}
         </p>
         <div className="pp-listing">
           <div className="pp-listing__media">
@@ -1121,17 +1127,17 @@ function PublishedSuccess({ preview }: { preview: PublishPreview | null }) {
           </div>
         </div>
         <div className="pp-actions">
-          <Button hierarchy="primary" size="lg" iconLeading="eye" onClick={() => router.push(`/admin/properties/${encodeURIComponent(view.id)}`)}>
+          <Button hierarchy="primary" size="lg" iconLeading="eye" onClick={() => router.push(`${base}/${encodeURIComponent(view.id)}`)}>
             {t("admin.mp.viewProperty")}
           </Button>
           <div className="pp-actions__row">
-            <Button hierarchy="secondary" size="lg" iconLeading="plus" onClick={() => router.push("/admin/properties/new")}>
+            <Button hierarchy="secondary" size="lg" iconLeading="plus" onClick={() => router.push(`${base}/new`)}>
               {t("admin.ap.addAnother")}
             </Button>
           </div>
           <div className="pp-actions__back">
-            <Button hierarchy="link" size="lg" iconLeading="arrow-left" onClick={() => router.push("/admin/properties")}>
-              {t("admin.ap.backToProps")}
+            <Button hierarchy="link" size="lg" iconLeading="arrow-left" onClick={() => router.push(base)}>
+              {t(agentMode ? "agent.nav.properties" : "admin.ap.backToProps")}
             </Button>
           </div>
         </div>
@@ -1236,7 +1242,11 @@ function MemberSubmittedSuccess({ listing, editing }: { listing: MemberListing |
   );
 }
 
-export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }: { lockedAgentId?: string; mode?: "admin" | "member"; editListingId?: string } = {}) {
+export function AddPropertyApp({
+  lockedAgentId,
+  mode = "admin",
+  editListingId,
+}: { lockedAgentId?: string; mode?: "admin" | "member" | "agent"; editListingId?: string } = {}) {
   const { t, lang } = useLang();
   const tOr = (key: string, fallback: string) => {
     const out = t(key);
@@ -1245,6 +1255,8 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
   const { addProperty, locationTree } = useProperties();
   const { items: memberListings, add: addMemberListing, update: updateMemberListing } = useListings();
   const member = mode === "member";
+  // Agents submit for approval rather than publishing directly.
+  const agentMode = mode === "agent";
   const assignableAgents = useAssignableAgents();
   const photos = usePhotoUploader(false);
   const [f, setF] = useState<ApForm>(() => (lockedAgentId ? { ...EMPTY_FORM, agent: lockedAgentId } : EMPTY_FORM));
@@ -1330,14 +1342,14 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
   const districtNode = districtSource.find((d) => d.name === f.district);
   const projectOptions = districtNode ? districtNode.children.map((p) => p.name) : [];
 
-  if (step === 6) return member ? <MemberSubmittedSuccess listing={submitted} editing={editing} /> : <PublishedSuccess preview={preview} />;
+  if (step === 6) return member ? <MemberSubmittedSuccess listing={submitted} editing={editing} /> : <PublishedSuccess preview={preview} agentMode={agentMode} />;
 
   return (
     <div className="ap-wrap">
       <nav className="ap-crumbs" aria-label={t("admin.common.breadcrumb")}>
-        <Link href={member ? "/my-listings" : "/admin/properties"}>
+        <Link href={member ? "/my-listings" : agentMode ? "/agent/properties" : "/admin/properties"}>
           {!member && <Icon name="building-2" size={14} />}
-          {t(member ? "admin.ap.myProperties" : "admin.nav.properties")}
+          {t(member ? "admin.ap.myProperties" : agentMode ? "agent.nav.properties" : "admin.nav.properties")}
         </Link>
         <span className="ap-crumbs__sep">
           <Icon name="chevron-right" size={14} />
@@ -1845,7 +1857,7 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                     goTo(6);
                     return;
                   }
-                  const rec = formToProperty(f, f.agent ? revAgent : null, photos);
+                  const rec = formToProperty(f, f.agent ? revAgent : null, photos, agentMode);
                   addProperty(rec);
                   setPreview({
                     id: rec.id,
@@ -1857,12 +1869,20 @@ export function AddPropertyApp({ lockedAgentId, mode = "admin", editListingId }:
                     baths: rec.baths,
                     area: areaStr || String(rec.size),
                     cover: rec.img,
-                    published: !!f.agent,
+                    published: rec.published,
                   });
                   goTo(6);
                 }}
               >
-                {t(member ? (editing ? "admin.ap.saveChanges" : "admin.ap.submitProperty") : "admin.ap.publishProperty")}
+                {t(
+                  member
+                    ? editing
+                      ? "admin.ap.saveChanges"
+                      : "admin.ap.submitProperty"
+                    : agentMode
+                      ? "admin.ap.submitProperty"
+                      : "admin.ap.publishProperty",
+                )}
               </Button>
             </div>
           </div>

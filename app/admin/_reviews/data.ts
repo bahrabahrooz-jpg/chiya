@@ -1,7 +1,5 @@
-import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
-import type { StatTone } from "@/components/data/stat-card";
-import { MEMBERS, AGENTS } from "../_data/catalog";
+import { MEMBERS, AGENTS, TOP_AGENT } from "../_data/catalog";
 
 export const ITEMS_PER_PAGE = 10;
 
@@ -39,22 +37,6 @@ export const STATUS_TABS: { id: string; label: string }[] = [
   { id: "Rejected", label: "Rejected" },
 ];
 
-/* KPI tiles — values are derived live from the review list (see ReviewsApp). */
-export interface KpiCard {
-  key: string;
-  field: "total" | "pending" | "approved" | "rejected";
-  label: string;
-  icon: IconName;
-  tone: StatTone;
-  sub: string;
-}
-export const KPI_CARDS: KpiCard[] = [
-  { key: "total", field: "total", label: "Total reviews", icon: "star", tone: "brand", sub: "All submitted reviews" },
-  { key: "pending", field: "pending", label: "Pending approval", icon: "clock", tone: "gold", sub: "Awaiting admin review" },
-  { key: "approved", field: "approved", label: "Approved", icon: "circle-check", tone: "success", sub: "Published to agents" },
-  { key: "rejected", field: "rejected", label: "Rejected", icon: "circle-x", tone: "info", sub: "Not published" },
-];
-
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const TODAY = new Date(2026, 6, 14);
 const dateFromDaysAgo = (d: number) => {
@@ -82,7 +64,11 @@ const REVIEW_TEXTS = [
    names, avatars and cross-links stay consistent with the rest of the admin. */
 function buildReviews(): ReviewRecord[] {
   const members = MEMBERS.filter((m) => m.img).slice(0, 40);
-  const agents = AGENTS.filter((a) => a.img && a.verification === "Verified").slice(0, 20);
+  const pool = AGENTS.filter((a) => a.img && a.verification === "Verified").slice(0, 20);
+  // The agent surface signs in as TOP_AGENT and shows them reviews about
+  // themselves, so they must appear in the pool — they can otherwise fall
+  // outside the slice and land on an empty "My reviews" screen.
+  const agents = pool.some((a) => a.id === TOP_AGENT.id) ? pool : [TOP_AGENT, ...pool.slice(0, 19)];
   const statuses: ReviewStatus[] = ["Pending", "Pending", "Approved", "Approved", "Approved", "Rejected"];
   const out: ReviewRecord[] = [];
   for (let n = 0; n < 24; n++) {

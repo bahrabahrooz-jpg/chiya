@@ -59,6 +59,14 @@ export const CATS: Cat[] = [
       { label: "Cancel viewings", desc: "Cancel a booked viewing appointment." },
     ] },
   ] },
+  { key: "reviews", label: "Reviews", groups: [
+    { id: "moderation", label: "Moderation", scope: true, perms: [
+      { label: "View reviews", desc: "See reviews members left about agents." },
+      { label: "Approve reviews", desc: "Publish a pending review to the agent's profile." },
+      { label: "Reject reviews", desc: "Keep a pending review off the platform." },
+      { label: "Delete reviews", desc: "Permanently remove a review." },
+    ] },
+  ] },
   { key: "reports", label: "Reports", groups: [
     { id: "reporting", label: "Reporting", scope: true, perms: [
       { label: "View reports", desc: "Open sales, rental and performance reports." },
@@ -182,7 +190,7 @@ export const ROLES_SEED: RoleSeed[] = [
     id: "super-admin", name: "Super admin", tone: "brand", dot: "brand", icon: "shield-check", system: true, locked: true,
     status: "Active", users: 1, created: "Jan 4, 2024",
     desc: "Unrestricted access to every module, setting and permission across the Chiya Estate platform.",
-    spec: { dashboard: "all", properties: "all", members: "all", agents: "all", viewings: "all", reports: "all", settings: "all" },
+    spec: { dashboard: "all", properties: "all", members: "all", agents: "all", viewings: "all", reviews: "all", reports: "all", settings: "all" },
   },
   {
     id: "agent", name: "Agent", tone: "brand", dot: "brand", icon: "badge-check", system: true,
@@ -194,6 +202,8 @@ export const ROLES_SEED: RoleSeed[] = [
       members: { perms: [0], scope: "own" },
       agents: { perms: [0], scope: "own" },
       viewings: { perms: [0, 1, 2], scope: "own" },
+      // Read-only: agents see reviews written about them but never moderate them.
+      reviews: { perms: [0], scope: "own" },
       reports: { perms: [0], scope: "own" },
       settings: "none",
     },

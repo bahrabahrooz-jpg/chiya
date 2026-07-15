@@ -505,6 +505,20 @@ function buildProperties(): PropertyRecord[] {
 }
 export const PROPERTIES: PropertyRecord[] = buildProperties();
 
+/* The verified agent holding the most assigned listings. The agent surface signs
+   this agent in by default (lib/agent-session), so any seed that should look
+   populated for them — reviews, viewings — resolves the same agent from here
+   rather than re-deriving it. */
+function pickTopAgent(): AgentRecord {
+  const counts: Record<string, number> = {};
+  for (const p of PROPERTIES) if (p.agent) counts[p.agent.name] = (counts[p.agent.name] || 0) + 1;
+  const ranked = AGENTS.filter((a) => a.verification === "Verified")
+    .map((a) => ({ a, n: counts[a.name] || 0 }))
+    .sort((x, y) => y.n - x.n);
+  return ranked[0]?.a ?? AGENTS[0];
+}
+export const TOP_AGENT: AgentRecord = pickTopAgent();
+
 /* Distinct assignable agents (for the "assign agent" picker). */
 export const AGENTS_LIST: AgentRef[] = AGENTS.map((a) => ({ name: a.name, verified: a.verification === "Verified", img: a.img || PORTRAITS[0] })).sort((x, y) =>
   x.name.localeCompare(y.name),

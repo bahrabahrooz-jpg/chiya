@@ -18,9 +18,20 @@ import { ADMIN } from "@/components/admin/admin-data";
 
 export type AuditCategory = "review" | "property" | "member" | "agent" | "location" | "role";
 
+/** The kind of change an action made — the audit table's "Action" column. */
+export type AuditVerb = "create" | "update" | "delete" | "approve" | "reject";
+
+/**
+ * The platform's three roles — the system roles in ROLES_SEED (../_roles/data)
+ * and nothing else. Stored as the `role.*` catalog suffix rather than a display
+ * string so the User column can't drift from the role catalogue and translates
+ * with the rest of the page.
+ */
+export type AuditRole = "superAdmin" | "agent" | "member";
+
 export interface AuditActor {
   name: string;
-  role: string;
+  role: AuditRole;
 }
 
 export interface AuditEvent {
@@ -49,14 +60,60 @@ export interface AuditEvent {
  */
 export { resolveParams as resolveAuditParams } from "@/lib/fmt";
 
+/* --------------------------- action presentation ---------------------------
+   The verb and the long description both hang off `actionKey`, derived rather
+   than stored on the event: emit sites stay a one-liner, the mapping lives in
+   one place, and events already sitting in localStorage pick up new entries
+   without another storage version bump. */
+
+/** Only the actions that aren't a plain modification are listed. */
+const ACTION_VERB: Record<string, AuditVerb> = {
+  "audit.action.approvedReview": "approve",
+  "audit.action.verifiedAgent": "approve",
+  "audit.action.rejectedReview": "reject",
+  "audit.action.revokedVerification": "reject",
+  "audit.action.createdProperty": "create",
+  "audit.action.addedMember": "create",
+  "audit.action.onboardedAgent": "create",
+  "audit.action.createdRole": "create",
+  "audit.action.addedCity": "create",
+  "audit.action.addedDistrict": "create",
+  "audit.action.addedProject": "create",
+  "audit.action.deletedReview": "delete",
+  "audit.action.deletedProperty": "delete",
+  "audit.action.removedMember": "delete",
+  "audit.action.removedAgent": "delete",
+  "audit.action.deletedRole": "delete",
+  "audit.action.removedCity": "delete",
+  "audit.action.removedDistrict": "delete",
+  "audit.action.removedProject": "delete",
+};
+
+/** Anything unlisted edits an existing record: update, archive, assign, suspend… */
+export function verbOf(actionKey: string): AuditVerb {
+  return ACTION_VERB[actionKey] ?? "update";
+}
+
+/**
+ * The `audit.desc.*` key paired with an `audit.action.*` key — the sentence
+ * explaining what the action actually did, for the table's Details column.
+ */
+export function descKeyOf(actionKey: string): string {
+  return actionKey.replace("audit.action.", "audit.desc.");
+}
+
 // v2: events store `actionKey`/`actionParams` instead of an English `action`
 // sentence, so persisted v1 events are dropped rather than rendered as keys.
-const STORAGE_KEY = "chiya:admin-audit:v2";
+// v3: `actor.role` is a `role.*` catalog suffix ("superAdmin") rather than a
+// display string ("Super Admin"), for the same reason — a stored v2 role would
+// resolve to no key and render raw.
+const STORAGE_KEY = "chiya:admin-audit:v3";
 const MAX_EVENTS = 500;
 
-/* Default actor for anything emitted by the current admin session. */
+/* Default actor for anything emitted by the current admin session — the only
+   admin login in the demo is the platform's single super admin. */
 function currentActor(): AuditActor {
-  return { name: ADMIN.name, role: ADMIN.role };
+  return { name: ADMIN.name, role: "superAdmin" };
 }
 
 /* ----------------------------- deterministic seed -------------------------- */
@@ -65,6 +122,10 @@ function currentActor(): AuditActor {
 const SEED_BASE = new Date("2026-07-15T14:30:00").getTime();
 const HOUR = 3_600_000;
 const seedAt = (hoursAgo: number) => new Date(SEED_BASE - hoursAgo * HOUR).toISOString();
+
+/** The log's demo "today" — what the date filter's calendar opens on and marks.
+    A constant, not `new Date()`, so the server and client renders agree. */
+export const AUDIT_TODAY = new Date(SEED_BASE);
 
 interface SeedSpec {
   h: number; // hours ago
@@ -78,24 +139,29 @@ interface SeedSpec {
   meta?: string;
 }
 
-const ADMIN_ACTOR: AuditActor = { name: ADMIN.name, role: ADMIN.role };
-const REEM: AuditActor = { name: "Reem Salih", role: "Admin" };
-const LANA: AuditActor = { name: "Lana Aziz", role: "Agent" };
+/* Who acts, and on what. The split mirrors the roles' actual permissions rather
+   than being decorative: an Agent's grants stop at their own listings
+   (properties [0,1,2,7] — view/create/edit/manage status, scope "own") and are
+   read-only everywhere else, so every moderation, account-control, role and
+   location event below belongs to the super admin. */
+const ADMIN_ACTOR: AuditActor = { name: ADMIN.name, role: "superAdmin" };
+const REEM: AuditActor = { name: "Reem Salih", role: "agent" };
+const LANA: AuditActor = { name: "Lana Aziz", role: "agent" };
 
 const SEED_SPECS: SeedSpec[] = [
-  { h: 1, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.approvedReview", target: "Dara Kamal → Rawa Jamal", metaKey: "audit.meta.nowPublished" },
+  { h: 1, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.approvedReview", target: "Dara Kamal → Rawa Jamal" },
   { h: 2, actor: REEM, category: "property", actionKey: "audit.action.changedStatus", actionParams: { status: "@status.sold" }, target: "Marble Hill Villa" },
   { h: 3, actor: ADMIN_ACTOR, category: "agent", actionKey: "audit.action.verifiedAgent", target: "Lana Aziz" },
   { h: 5, actor: LANA, category: "property", actionKey: "audit.action.createdProperty", target: "Olive Grove Estate", meta: "Ankawa, Erbil" },
   { h: 7, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.rejectedReview", target: "Sara Amin → Karwan Ali", metaKey: "audit.meta.flaggedSpam" },
-  { h: 9, actor: REEM, category: "member", actionKey: "audit.action.suspendedMember", target: "Hersh Qadir" },
+  { h: 9, actor: ADMIN_ACTOR, category: "member", actionKey: "audit.action.suspendedMember", target: "Hersh Qadir" },
   { h: 26, actor: ADMIN_ACTOR, category: "role", actionKey: "audit.action.createdRole", target: "Senior Agent" },
   { h: 28, actor: ADMIN_ACTOR, category: "property", actionKey: "audit.action.assignedAgent", target: "Cedar Court Apartments", metaKey: "audit.meta.assignedTo", metaParams: { name: "Rawa Jamal" } },
-  { h: 30, actor: REEM, category: "agent", actionKey: "audit.action.suspendedAgent", target: "Bilal Noori" },
+  { h: 30, actor: ADMIN_ACTOR, category: "agent", actionKey: "audit.action.suspendedAgent", target: "Bilal Noori" },
   { h: 49, actor: ADMIN_ACTOR, category: "location", actionKey: "audit.action.addedDistrict", target: "Ankawa · Erbil" },
   { h: 52, actor: LANA, category: "property", actionKey: "audit.action.updatedProperty", target: "Riverside Loft" },
   { h: 54, actor: ADMIN_ACTOR, category: "member", actionKey: "audit.action.activatedMember", target: "Nma Rashid" },
-  { h: 73, actor: REEM, category: "review", actionKey: "audit.action.deletedReview", target: "Aland Tariq → Shad Omar" },
+  { h: 73, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.deletedReview", target: "Aland Tariq → Shad Omar" },
   { h: 78, actor: ADMIN_ACTOR, category: "property", actionKey: "audit.action.archivedProperty", target: "Sunset Terrace" },
 ];
 

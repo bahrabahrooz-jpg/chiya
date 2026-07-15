@@ -6,5 +6,5 @@ import "@/app/admin/properties/new/ap.css";
 
 export default function AgentAddPropertyPage() {
   const { agent } = useAgentSession();
-  return <AddPropertyApp lockedAgentId={agent.id} />;
+  return <AddPropertyApp lockedAgentId={agent.id} mode="agent" />;
 }

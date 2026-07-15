@@ -1,61 +1,83 @@
 /* ============================================================
-   AUDIT LOG PAGE — reuses the Members/Reviews shell chrome
-   (mp- namespace: head, kpis, tablecard, tabs, search) and adds
-   a timeline feed in the au- namespace.
+   AUDIT LOG PAGE — reuses the Members table chrome (mp- namespace:
+   head, tablecard, tabs, search, table grid) and adds the audit's
+   own columns/cells in the au- namespace.
    ============================================================ */
 
-/* ---------- DEMO NOTE ---------- */
-.au-demo-note {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 0 0 20px;
-  padding: 11px 14px;
-  border: 1px solid var(--border-subtle);
-  background: var(--info-50);
-  border-radius: var(--radius-md);
-  color: var(--info-700);
-  font-size: 13px;
-  line-height: 1.45;
+/* ---------- FILTER ROW ----------
+   Members spaces its controls off the table with a collapsible filter bar.
+   Audit's three filters are always visible instead, so the row itself carries
+   that bottom gap. */
+.mp-tablecard__head > .mp-tabrow:last-child { padding-bottom: 16px; }
+
+/* `flex: 1 1 auto` is load-bearing: as a `0 1 auto` item this wrapping flex
+   container sizes to the sum of its children's *min-widths* (416px), not their
+   178px bases, so the date filter wrapped to a second row while 1000px sat
+   empty next to it. Claiming the free space keeps all three on one line. */
+.au-filters { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; flex-wrap: wrap; }
+/* Narrower than the Members filter bar's tracks: three of these plus the search
+   box share one row here, where Members gives its two a row of their own. */
+.au-filters .mp-datebtn-wrap { flex: 0 1 178px; min-width: 132px; }
+/* Match the search box's 38px so the row reads as one band (Members' bar sits
+   on its own row at 42px, where nothing has to line up with it). */
+.au-filters .mp-datebtn { height: 38px; font-size: 14px; }
+.au-filters .mp-clearbtn { flex: none; }
+
+/* ---------- COLUMN TEMPLATE (overrides the members grid) ---------- */
+.mp-table--audit .mp-thead,
+.mp-table--audit .mp-row {
+  grid-template-columns:
+    minmax(180px, 1.5fr)   /* user */
+    104px                  /* action */
+    minmax(132px, 1fr)     /* module */
+    minmax(280px, 2.6fr)   /* details */
+    134px;                 /* time */
+  gap: 24px;
+  min-width: 1050px;
 }
-.au-demo-note svg { flex: none; color: var(--info-600); }
+.mp-table--audit .mp-row { min-height: 70px; }
 
-/* ---------- FEED ---------- */
-.au-feed { padding: 6px 0 8px; }
-
-.au-group { padding: 0; }
-.au-group__label {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: 12px 24px 8px;
-  background: var(--surface-card);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+/* ---------- TIME (closing column: full date over time of day) ---------- */
+.au-col--time { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.au-time__date {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.au-time__clock {
+  font-size: 12px; color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
-.au-list { list-style: none; margin: 0; padding: 0; }
-
-.au-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 13px 24px;
-  border-top: 1px solid var(--border-subtle);
+/* ---------- USER ---------- */
+.au-col--user { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.au-user__body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.au-user__name {
+  font-size: 14px; font-weight: 600; letter-spacing: -.005em; color: var(--text-primary);
+  line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.au-row:first-child { border-top: none; }
-.au-row:hover { background: var(--surface-hover); }
+.au-user__role {
+  font-size: 11.5px; font-weight: 600; color: var(--text-tertiary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
-/* ---------- CATEGORY CHIP ---------- */
+/* ---------- ACTION (verb badge) ---------- */
+.au-col--action { min-width: 0; }
+.cx-badge.au-verb {
+  text-transform: uppercase; letter-spacing: .05em; font-weight: 700; font-size: 10.5px;
+}
+
+/* ---------- MODULE ---------- */
+.au-col--module { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.au-module__label {
+  font-size: 13.5px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .au-cat {
   flex: none;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   border-radius: var(--radius-full);
   background: var(--surface-sunken);
   color: var(--text-secondary);
@@ -67,71 +89,79 @@
 .au-cat--location { background: var(--warning-50); color: var(--warning-700); }
 .au-cat--role { background: var(--surface-sunken); color: var(--text-primary); }
 
-/* ---------- ROW BODY ---------- */
-.au-row__body { flex: 1; min-width: 0; }
-
-.au-row__top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+/* ---------- DETAILS (record acted on + what changed) ---------- */
+.au-col--details { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.au-details__target {
+  font-size: 13.5px; font-weight: 600; color: var(--text-primary); line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.au-row__action {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.4;
-  color: var(--text-secondary);
-  min-width: 0;
+.au-details__desc {
+  margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text-tertiary);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-wrap: pretty;
 }
-.au-row__verb { font-weight: 650; color: var(--text-primary); }
-.au-row__target { color: var(--text-secondary); }
+.au-details__note { color: var(--text-secondary); }
 
-.au-row__time {
-  flex: none;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
-.au-row__meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-top: 6px;
+/* ============================================================
+   TABLET — tighten every track; all five columns still fit
+   ============================================================ */
+@media (max-width: 1180px) and (min-width: 768px) {
+  .mp-table--audit .mp-thead,
+  .mp-table--audit .mp-row {
+    grid-template-columns:
+      minmax(132px, 1.2fr)
+      92px
+      minmax(104px, .9fr)
+      minmax(200px, 2.4fr)
+      104px;
+    gap: 14px;
+    min-width: 0;
+  }
 }
 
-.au-actor { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
-.au-actor__name {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.au-actor__role {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 1px 7px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
+/* ============================================================
+   MOBILE — the members card layout, re-laid as an audit card:
+     [action] [module]
+     [ details spanning ]
+     [user] ········ [time]
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Members stretches .mp-datebtn-wrap to 100% here; these three are narrower
+     than that rule expects, so restate them as a 2-up grid that wraps. */
+  .au-filters { width: 100%; }
+  .au-filters .mp-datebtn-wrap { flex: 1 1 calc(50% - 5px); min-width: 0; }
 
-.au-row__note {
-  font-size: 12.5px;
-  color: var(--text-tertiary);
-  min-width: 0;
-}
-.au-row__note::before { content: "·"; margin-inline-end: 8px; color: var(--border-strong); }
+  /* Rows are cards here, so the desktop track min-width must not survive. */
+  .mp-table--audit .mp-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "action  module"
+      "details details"
+      "user    time";
+    align-items: center;
+    /* No column gap: the footer's two cells carry one border-top between them,
+       and a gap would break that line. They pad themselves apart instead. */
+    gap: 12px 0;
+    min-width: 0;
+  }
 
-/* ---------- RESPONSIVE ---------- */
-@media (max-width: 640px) {
-  .au-group__label { padding-inline-start: 16px; padding-inline-end: 16px; }
-  .au-row { padding-inline-start: 16px; padding-inline-end: 16px; gap: 11px; }
-  .au-row__note::before { display: none; }
-  .au-row__note { flex-basis: 100%; }
+  .au-col--action { grid-area: action; justify-self: start; padding-inline-end: 12px; }
+  .au-col--module { grid-area: module; justify-self: end; }
+  .au-col--details { grid-area: details; }
+  .au-details__target { white-space: normal; }
+  .au-details__desc { -webkit-line-clamp: 3; }
+
+  /* user + time close the card as a footer */
+  .au-col--user, .au-col--time {
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    align-self: stretch;
+  }
+  .au-col--user { grid-area: user; padding-inline-end: 12px; }
+  .au-col--time {
+    grid-area: time;
+    align-items: flex-end;
+    justify-content: center;
+  }
 }

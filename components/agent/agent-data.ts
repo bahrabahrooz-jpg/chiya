@@ -11,6 +11,7 @@ const ALL_GROUPS: NavGroupDef[] = [
     items: [
       { id: "properties", label: "My properties", labelKey: "agent.nav.properties", icon: "building-2", href: "/agent/properties" },
       { id: "viewings", label: "My viewings", labelKey: "agent.nav.viewings", icon: "calendar-check", href: "/agent/viewings" },
+      { id: "reviews", label: "My reviews", labelKey: "agent.nav.reviews", icon: "star", href: "/agent/reviews" },
       { id: "members", label: "Members", labelKey: "agent.nav.members", icon: "users", href: "/agent/members" },
     ],
   },
@@ -21,6 +22,7 @@ const CAN_VIEW: Record<string, boolean> = {
   dashboard: AGENT.dashboard.view,
   properties: AGENT.properties.view,
   viewings: AGENT.viewings.view,
+  reviews: AGENT.reviews.view,
   members: AGENT.members.view,
   reports: AGENT.reports.view,
 };

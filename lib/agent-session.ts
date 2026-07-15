@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { AGENTS, PROPERTIES, type AgentRecord } from "@/app/admin/_data/catalog";
+import { AGENTS, TOP_AGENT, type AgentRecord } from "@/app/admin/_data/catalog";
 
 /**
  * Agent session — which agent is signed in to the agent surface.
@@ -13,15 +13,7 @@ import { AGENTS, PROPERTIES, type AgentRecord } from "@/app/admin/_data/catalog"
 
 const KEY = "chiya:agent-session:v1";
 
-function pickDemoAgentId(): string {
-  const counts: Record<string, number> = {};
-  for (const p of PROPERTIES) if (p.agent) counts[p.agent.name] = (counts[p.agent.name] || 0) + 1;
-  const ranked = AGENTS.filter((a) => a.verification === "Verified")
-    .map((a) => ({ a, n: counts[a.name] || 0 }))
-    .sort((x, y) => y.n - x.n);
-  return (ranked[0]?.a ?? AGENTS[0]).id;
-}
-export const DEMO_AGENT_ID = pickDemoAgentId();
+export const DEMO_AGENT_ID = TOP_AGENT.id;
 
 interface Session {
   authed: boolean;

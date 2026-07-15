@@ -9,6 +9,7 @@
  *   members    view
  *   agents     view
  *   viewings   view, schedule, edit       (not cancel)
+ *   reviews    view                       (not approve/reject/delete)
  *   reports    view                       (not export)
  *   settings   —  (none)   locations —  (not in role)
  */
@@ -46,6 +47,7 @@ export const AGENT = {
   members: { view: can("members", 0), create: can("members", 1), edit: can("members", 2) },
   agents: { view: can("agents", 0), create: can("agents", 1), edit: can("agents", 2) },
   viewings: { view: can("viewings", 0), schedule: can("viewings", 1), edit: can("viewings", 2), cancel: can("viewings", 3) },
+  reviews: { view: can("reviews", 0), approve: can("reviews", 1), reject: can("reviews", 2), delete: can("reviews", 3) },
   reports: { view: can("reports", 0), export: can("reports", 1) },
 } as const;
 

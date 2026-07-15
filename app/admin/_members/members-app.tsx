@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
-import { fmtNum, monthName, weekdayName, fmtDate as fmtDateI18n, popupLeft } from "@/lib/fmt";
+import { fmtNum, fmtDate as fmtDateI18n, popupLeft } from "@/lib/fmt";
 import { AddMemberModal } from "./add-member-modal";
 import {
   EMPTY_FILTERS,
@@ -18,18 +18,15 @@ import {
   MEMBER_STATUS,
   MP_MONTHS,
   MP_TODAY,
-  MP_WD,
   ROLE_META,
   ROLE_TABS,
   fmtDate,
-  sameDay,
   type MemberFilters,
   type MemberRecord,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
+import { AdminSelect, AdminDatePicker } from "../_shared/filter-controls";
 import { countMembers } from "../_data/catalog";
-
-type SelectOption = { value: string; label: string };
 
 function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPage: number; totalItems: number; onPageChange: (p: number) => void }) {
   const { t, lang } = useLang();
@@ -73,205 +70,6 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
   );
 }
 
-function MpCustomSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: SelectOption[]; placeholder: string }) {
-  const { t } = useLang();
-  const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; minWidth: number } | null>(null);
-
-  const calcPos = () => {
-    if (!btnRef.current) return;
-    const r = btnRef.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: r.left, minWidth: r.width });
-  };
-  const toggle = () => {
-    if (!open) calcPos();
-    setOpen((v) => !v);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (btnRef.current?.contains(e.target as Node)) return;
-      if (document.querySelector(".mp-custdrop")?.contains(e.target as Node)) return;
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    window.addEventListener("scroll", calcPos, true);
-    window.addEventListener("resize", calcPos);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      window.removeEventListener("scroll", calcPos, true);
-      window.removeEventListener("resize", calcPos);
-    };
-  }, [open]);
-
-  return (
-    <div className="mp-datebtn-wrap" ref={btnRef}>
-      <button type="button" className={"mp-datebtn" + (open ? " is-open" : "") + (value ? " has-value" : "")} onClick={toggle}>
-        <span className="mp-datebtn__label">{options.find((o) => o.value === value)?.label || placeholder}</span>
-        {value && (
-          <span
-            className="mp-datebtn__clear"
-            role="button"
-            tabIndex={0}
-            aria-label={t("admin.props.clear")}
-            onClick={(e) => {
-              e.stopPropagation();
-              onChange("");
-              setOpen(false);
-            }}
-          >
-            <Icon name="x" size={12} />
-          </span>
-        )}
-        <Icon name="chevron-down" size={14} />
-      </button>
-      {open &&
-        pos &&
-        createPortal(
-          <div className="mp-custdrop" style={{ top: pos.top, left: pos.left, minWidth: pos.minWidth }}>
-            {options.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className={"mp-custdrop__item" + (value === o.value ? " is-selected" : "")}
-                onClick={() => {
-                  onChange(value === o.value ? "" : o.value);
-                  setOpen(false);
-                }}
-              >
-                {o.label}
-                {value === o.value && <Icon name="check" size={15} strokeWidth={2.5} />}
-              </button>
-            ))}
-          </div>,
-          document.body,
-        )}
-    </div>
-  );
-}
-
-function MpDatePicker({ value, onChange, placeholder }: { value: Date | null; onChange: (v: Date | null) => void; placeholder: string }) {
-  const { t, lang, dir } = useLang();
-  const rtl = dir === "rtl";
-  const [open, setOpen] = useState(false);
-  const [view, setView] = useState(() => ({ y: (value || MP_TODAY).getFullYear(), m: (value || MP_TODAY).getMonth() }));
-  const btnRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
-
-  const calcPos = () => {
-    if (!btnRef.current) return;
-    const r = btnRef.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: r.left, width: r.width });
-  };
-  const toggle = () => {
-    if (!open) {
-      calcPos();
-      setView({ y: (value || MP_TODAY).getFullYear(), m: (value || MP_TODAY).getMonth() });
-    }
-    setOpen((v) => !v);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (btnRef.current?.contains(e.target as Node)) return;
-      if (document.querySelector(".mp-cal")?.contains(e.target as Node)) return;
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    window.addEventListener("scroll", calcPos, true);
-    window.addEventListener("resize", calcPos);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      window.removeEventListener("scroll", calcPos, true);
-      window.removeEventListener("resize", calcPos);
-    };
-  }, [open]);
-
-  const first = new Date(view.y, view.m, 1).getDay();
-  const days = new Date(view.y, view.m + 1, 0).getDate();
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < first; i++) cells.push(null);
-  for (let d = 1; d <= days; d++) cells.push(d);
-  const shift = (delta: number) =>
-    setView((v) => {
-      const nm = v.m + delta;
-      return { y: v.y + Math.floor(nm / 12), m: ((nm % 12) + 12) % 12 };
-    });
-
-  return (
-    <div className="mp-datebtn-wrap" ref={btnRef}>
-      <button type="button" className={"mp-datebtn" + (open ? " is-open" : "") + (value ? " has-value" : "")} onClick={toggle}>
-        <span className="mp-datebtn__label">{value ? fmtDateI18n(lang, value) : placeholder}</span>
-        {value && (
-          <span
-            className="mp-datebtn__clear"
-            role="button"
-            tabIndex={0}
-            aria-label={t("admin.props.clearDate")}
-            onClick={(e) => {
-              e.stopPropagation();
-              onChange(null);
-              setOpen(false);
-            }}
-          >
-            <Icon name="x" size={12} />
-          </span>
-        )}
-        <Icon name="calendar" size={15} />
-      </button>
-      {open &&
-        pos &&
-        createPortal(
-          <div className="mp-cal" style={{ top: pos.top, left: pos.left, width: pos.width }}>
-            <div className="mp-cal__head">
-              <button type="button" className="mp-cal__nav" onClick={() => shift(-1)} aria-label={t("admin.members.prevMonth")}>
-                <Icon name={rtl ? "chevron-right" : "chevron-left"} size={18} />
-              </button>
-              <span className="mp-cal__title">
-                {monthName(lang, view.m, true)} {fmtNum(lang, view.y)}
-              </span>
-              <button type="button" className="mp-cal__nav" onClick={() => shift(1)} aria-label={t("admin.members.nextMonth")}>
-                <Icon name={rtl ? "chevron-left" : "chevron-right"} size={18} />
-              </button>
-            </div>
-            <div className="mp-cal__grid mp-cal__wd">
-              {MP_WD.map((w, i) => (
-                <span key={w} className="mp-cal__wdcell">
-                  {weekdayName(lang, i).slice(0, lang === "en" ? 2 : 3)}
-                </span>
-              ))}
-            </div>
-            <div className="mp-cal__grid">
-              {cells.map((d, i) => {
-                if (d === null) return <span key={"e" + i} />;
-                const date = new Date(view.y, view.m, d);
-                const cls = ["mp-cal__day"];
-                if (sameDay(date, value)) cls.push("is-selected");
-                else if (sameDay(date, MP_TODAY)) cls.push("is-today");
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    className={cls.join(" ")}
-                    onClick={() => {
-                      onChange(date);
-                      setOpen(false);
-                    }}
-                  >
-                    {fmtNum(lang, d)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>,
-          document.body,
-        )}
-    </div>
-  );
-}
 
 function RowActions({
   open,
@@ -718,13 +516,13 @@ function MembersTableCard(props: {
         <div className={"mp-filterbar" + (filtersOpen ? " is-open" : "")}>
           <div className="mp-filterbar__inner">
             <div className="mp-filterbar__row">
-              <MpCustomSelect
+              <AdminSelect
                 value={props.filters.status}
                 onChange={(v) => props.setFilter("status", v)}
                 options={["Active", "Suspended"].map((v) => ({ value: v, label: t(`status.${v.toLowerCase()}`) }))}
                 placeholder={t("admin.members.filter.status")}
               />
-              <MpDatePicker value={props.filters.date} onChange={(v) => props.setFilter("date", v)} placeholder={t("admin.members.filter.date")} />
+              <AdminDatePicker value={props.filters.date} onChange={(v) => props.setFilter("date", v)} placeholder={t("admin.members.filter.date")} today={MP_TODAY} />
               <div className="mp-filterbar__actions">
                 <button type="button" className="mp-clearbtn" onClick={props.onClear}>
                   <Icon name="x" size={14} />

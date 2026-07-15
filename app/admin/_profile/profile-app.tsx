@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +19,6 @@ function Row({ label, value, full }: { label: string; value: ReactNode; full?: b
 }
 
 export function ProfileApp() {
-  const router = useRouter();
   const { t } = useLang();
   const { profile, update } = useAdminProfile();
   const [editing, setEditing] = useState(false);
@@ -166,14 +164,6 @@ export function ProfileApp() {
           <Row label={t("admin.profile.accountId")} value="ADM-001" />
           <Row label={t("admin.profile.memberSince")} value={t("admin.profile.memberSinceVal")} />
           <Row label={t("admin.profile.status")} value={<Badge variant="success" size="sm" dot>{t("status.active")}</Badge>} />
-        </div>
-        <div className="pf-card__foot">
-          <Button hierarchy="secondary" iconLeading="lock" onClick={() => router.push("/admin/settings")}>
-            {t("admin.profile.changePassword")}
-          </Button>
-          <Button hierarchy="secondary" iconLeading="settings" onClick={() => router.push("/admin/settings")}>
-            {t("admin.topbar.accountSettings")}
-          </Button>
         </div>
       </section>
 

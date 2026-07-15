@@ -24,6 +24,28 @@
     min-width: 1200px;
   }
 
+  /* Scoped / read-only variants — the same table with the agent column and/or
+     the moderation actions column dropped (see ReviewsApp's props). The agent
+     surface uses both: every review is theirs, and only admins moderate. */
+  .mp-table--reviews.mp-table--noagent .mp-thead,
+  .mp-table--reviews.mp-table--noagent .mp-row {
+    grid-template-columns:
+      minmax(184px, 1.8fr) 112px minmax(240px, 3fr) 124px 110px 140px;
+    min-width: 1030px;
+  }
+  .mp-table--reviews.mp-table--noactions .mp-thead,
+  .mp-table--reviews.mp-table--noactions .mp-row {
+    grid-template-columns:
+      minmax(184px, 1.8fr) 112px minmax(240px, 3fr) minmax(150px, 1.4fr) 124px 110px;
+    min-width: 1040px;
+  }
+  .mp-table--reviews.mp-table--noagent.mp-table--noactions .mp-thead,
+  .mp-table--reviews.mp-table--noagent.mp-table--noactions .mp-row {
+    grid-template-columns:
+      minmax(184px, 1.8fr) 112px minmax(240px, 3fr) 124px 110px;
+    min-width: 880px;
+  }
+
   /* ---------- RATING (stars) ---------- */
   .rv-stars { display: inline-flex; align-items: center; gap: 2px; }
   .rv-star { color: var(--gray-300); }
@@ -83,6 +105,20 @@
       gap: 14px;
       min-width: 0;
     }
+    /* Variants again, at tablet: these selectors outrank the rule above on
+       specificity, so each has to restate the condensed template + min-width. */
+    .mp-table--reviews.mp-table--noagent .mp-thead,
+    .mp-table--reviews.mp-table--noagent .mp-row {
+      grid-template-columns: minmax(150px, 1.6fr) 104px minmax(200px, 3fr) 110px 130px;
+      min-width: 0;
+    }
+    .mp-table--reviews.mp-table--noactions .mp-thead,
+    .mp-table--reviews.mp-table--noactions .mp-row,
+    .mp-table--reviews.mp-table--noagent.mp-table--noactions .mp-thead,
+    .mp-table--reviews.mp-table--noagent.mp-table--noactions .mp-row {
+      grid-template-columns: minmax(150px, 1.6fr) 104px minmax(200px, 3fr) 110px;
+      min-width: 0;
+    }
     .mp-table--reviews .rv-col--agent,
     .mp-table--reviews .mp-col--joined { display: none; }
   }
@@ -91,6 +127,14 @@
      MOBILE — the members card layout, with review rows labelled
      ============================================================ */
   @media (max-width: 767px) {
+    /* Rows are cards here, so the desktop track min-width must not survive. */
+    .mp-table--reviews.mp-table--noagent .mp-thead,
+    .mp-table--reviews.mp-table--noagent .mp-row,
+    .mp-table--reviews.mp-table--noactions .mp-thead,
+    .mp-table--reviews.mp-table--noactions .mp-row,
+    .mp-table--reviews.mp-table--noagent.mp-table--noactions .mp-thead,
+    .mp-table--reviews.mp-table--noagent.mp-table--noactions .mp-row { min-width: 0; }
+
     .mp-table--reviews .rv-col--rating,
     .mp-table--reviews .rv-col--review,
     .mp-table--reviews .rv-col--agent {

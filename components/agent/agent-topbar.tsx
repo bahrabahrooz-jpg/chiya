@@ -12,11 +12,16 @@ import { NotifBell } from "@/components/admin/notif-bell";
 import { useLang } from "@/lib/i18n";
 import { useAgentNotifications } from "@/lib/admin-notifications";
 import { useAgentSession } from "@/lib/agent-session";
+import { useAgentProfile } from "@/lib/agent-profile";
 
 type MenuId = "profile" | null;
 
 function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; avatar: string; onNavigate: (path: string) => void; onLogout: () => void }) {
   const { t } = useLang();
+  const items: { id: string; icon: "user" | "lock"; label: string; path: string }[] = [
+    { id: "profile", icon: "user", label: t("admin.topbar.myProfile"), path: "/agent/profile" },
+    { id: "password", icon: "lock", label: t("admin.profile.changePassword"), path: "/agent/settings" },
+  ];
   return (
     <div className="ax-menu ax-menu--profile" role="menu">
       <div className="ax-menu-profilecard">
@@ -27,10 +32,12 @@ function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; ava
         </span>
       </div>
       <div className="ax-menu__sect">
-        <button type="button" className="ax-menu-item" role="menuitem" onClick={() => onNavigate("/agent/profile")}>
-          <Icon name="user" size={18} />
-          {t("admin.topbar.myProfile")}
-        </button>
+        {items.map((it) => (
+          <button key={it.id} type="button" className="ax-menu-item" role="menuitem" onClick={() => onNavigate(it.path)}>
+            <Icon name={it.icon} size={18} />
+            {it.label}
+          </button>
+        ))}
       </div>
       <div className="ax-menu__sect">
         <button type="button" className="ax-menu-item is-danger" role="menuitem" onClick={onLogout}>
@@ -45,7 +52,8 @@ function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; ava
 export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
   const router = useRouter();
   const { t } = useLang();
-  const { agent, logout } = useAgentSession();
+  const { logout } = useAgentSession();
+  const { profile } = useAgentProfile();
   const notifications = useAgentNotifications();
   const [openMenu, setOpenMenu] = useState<MenuId>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -85,17 +93,17 @@ export function AgentTopbar({ onHamburger }: { onHamburger: () => void }) {
             aria-expanded={openMenu === "profile"}
             onClick={() => toggle("profile")}
           >
-            <Avatar name={agent.name} src={agent.img || undefined} size="sm" verified />
+            <Avatar name={profile.name} src={profile.avatar || undefined} size="sm" verified />
             <span className="ax-tb-profile__meta">
-              <span className="ax-tb-profile__name">{agent.name}</span>
+              <span className="ax-tb-profile__name">{profile.name}</span>
               <span className="ax-tb-profile__role">{t("role.agent")}</span>
             </span>
             <Icon name="chevron-down" size={16} />
           </button>
           {openMenu === "profile" && (
             <ProfileMenu
-              name={agent.name}
-              avatar={agent.img || ""}
+              name={profile.name}
+              avatar={profile.avatar}
               onNavigate={(path) => {
                 setOpenMenu(null);
                 router.push(path);

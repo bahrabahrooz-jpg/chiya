@@ -5,13 +5,11 @@ import { createPortal } from "react-dom";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtDate, fmtNum, valueKey, popupLeft } from "@/lib/fmt";
 import {
   EMPTY_FILTERS,
   ITEMS_PER_PAGE,
-  KPI_CARDS,
   REVIEWS,
   REVIEW_STATUS,
   STATUS_TABS,
@@ -132,6 +130,8 @@ function ReviewRow({
   onApprove,
   onReject,
   onDeleteRequest,
+  hideAgent,
+  readOnly,
 }: {
   r: ReviewRecord;
   openMenu: string | null;
@@ -139,6 +139,8 @@ function ReviewRow({
   onApprove: (r: ReviewRecord) => void;
   onReject: (r: ReviewRecord) => void;
   onDeleteRequest: (r: ReviewRecord) => void;
+  hideAgent: boolean;
+  readOnly: boolean;
 }) {
   const { t, lang } = useLang();
   const st = REVIEW_STATUS[r.status];
@@ -162,13 +164,15 @@ function ReviewRow({
         <span className="mp-celllabel">{t("admin.reviews.th.review")}</span>
         <p className="rv-reviewtext">{r.text}</p>
       </div>
-      <div className="rv-col--agent">
-        <span className="mp-celllabel">{t("admin.reviews.th.agent")}</span>
-        <span className="rv-agent">
-          <Avatar src={r.agentImg || undefined} name={r.agentName} size="sm" />
-          <span className="rv-agent__name">{r.agentName}</span>
-        </span>
-      </div>
+      {!hideAgent && (
+        <div className="rv-col--agent">
+          <span className="mp-celllabel">{t("admin.reviews.th.agent")}</span>
+          <span className="rv-agent">
+            <Avatar src={r.agentImg || undefined} name={r.agentName} size="sm" />
+            <span className="rv-agent__name">{r.agentName}</span>
+          </span>
+        </div>
+      )}
       <div className="mp-col--joined">
         <span className="mp-celllabel">{t("admin.reviews.th.submitted")}</span>
         <span className="mp-date">{fmtDate(lang, new Date(r.submitted))}</span>
@@ -179,37 +183,39 @@ function ReviewRow({
           {t(valueKey("status", r.status))}
         </Badge>
       </div>
-      <div className="rv-col--actions">
-        {pending ? (
-          <div className="rv-quickactions">
-            <button type="button" className="rv-approve" aria-label={t("admin.reviews.approve")} onClick={() => onApprove(r)}>
-              <Icon name="check" size={15} strokeWidth={2.4} />
-              {t("admin.reviews.approveShort")}
-            </button>
-            <button type="button" className="rv-reject" aria-label={t("admin.reviews.reject")} onClick={() => onReject(r)}>
-              <Icon name="x" size={15} strokeWidth={2.4} />
-            </button>
-          </div>
-        ) : (
-          <RowActions
-            open={openMenu === r.id}
-            onToggle={() => setOpenMenu(openMenu === r.id ? null : r.id)}
-            status={r.status}
-            onApprove={() => {
-              setOpenMenu(null);
-              onApprove(r);
-            }}
-            onReject={() => {
-              setOpenMenu(null);
-              onReject(r);
-            }}
-            onDelete={() => {
-              setOpenMenu(null);
-              onDeleteRequest(r);
-            }}
-          />
-        )}
-      </div>
+      {!readOnly && (
+        <div className="rv-col--actions">
+          {pending ? (
+            <div className="rv-quickactions">
+              <button type="button" className="rv-approve" aria-label={t("admin.reviews.approve")} onClick={() => onApprove(r)}>
+                <Icon name="check" size={15} strokeWidth={2.4} />
+                {t("admin.reviews.approveShort")}
+              </button>
+              <button type="button" className="rv-reject" aria-label={t("admin.reviews.reject")} onClick={() => onReject(r)}>
+                <Icon name="x" size={15} strokeWidth={2.4} />
+              </button>
+            </div>
+          ) : (
+            <RowActions
+              open={openMenu === r.id}
+              onToggle={() => setOpenMenu(openMenu === r.id ? null : r.id)}
+              status={r.status}
+              onApprove={() => {
+                setOpenMenu(null);
+                onApprove(r);
+              }}
+              onReject={() => {
+                setOpenMenu(null);
+                onReject(r);
+              }}
+              onDelete={() => {
+                setOpenMenu(null);
+                onDeleteRequest(r);
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -332,9 +338,16 @@ function Toast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => void }
   );
 }
 
-export function ReviewsApp() {
+/**
+ * Reviews moderation table. `scopeAgent` narrows it to one agent's reviews and
+ * drops the now-redundant agent column; `readOnly` hides every moderation
+ * control. The agent surface passes both — agents read reviews about
+ * themselves, only an admin approves or rejects them.
+ */
+export function ReviewsApp({ scopeAgent, readOnly = false }: { scopeAgent?: string; readOnly?: boolean } = {}) {
   const { t, lang } = useLang();
-  const [reviews, setReviews] = useState<ReviewRecord[]>(REVIEWS);
+  const hideAgent = !!scopeAgent;
+  const [reviews, setReviews] = useState<ReviewRecord[]>(() => (scopeAgent ? REVIEWS.filter((r) => r.agentName === scopeAgent) : REVIEWS));
   const [filters, setFilters] = useState<ReviewFilters>(EMPTY_FILTERS);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -347,21 +360,11 @@ export function ReviewsApp() {
   };
   const hasActive = Object.values(filters).some(Boolean);
 
-  const counts = useMemo(
-    () => ({
-      total: reviews.length,
-      pending: reviews.filter((r) => r.status === "Pending").length,
-      approved: reviews.filter((r) => r.status === "Approved").length,
-      rejected: reviews.filter((r) => r.status === "Rejected").length,
-    }),
-    [reviews],
-  );
-
   const setStatus = (id: string, status: ReviewStatus) => setReviews((rs) => rs.map((r) => (r.id === id ? { ...r, status } : r)));
 
   const approve = (r: ReviewRecord) => {
     setStatus(r.id, "Approved");
-    logAudit({ category: "review", actionKey: "audit.action.approvedReview", target: `${r.memberName} → ${r.agentName}`, targetId: r.id, metaKey: "audit.meta.nowPublished" });
+    logAudit({ category: "review", actionKey: "audit.action.approvedReview", target: `${r.memberName} → ${r.agentName}`, targetId: r.id });
     setToast({
       variant: "success",
       icon: "circle-check",
@@ -416,22 +419,9 @@ export function ReviewsApp() {
       <header className="mp-head">
         <div className="mp-head__intro">
           <h1 className="mp-head__title">{t("admin.reviews.title")}</h1>
-          <p className="mp-head__sub">{t("admin.reviews.sub")}</p>
+          <p className="mp-head__sub">{t(readOnly ? "agent.reviews.sub" : "admin.reviews.sub")}</p>
         </div>
       </header>
-
-      <div className="mp-kpis">
-        {KPI_CARDS.map((c) => (
-          <StatCard
-            key={c.key}
-            label={t(`admin.reviews.kpi.${c.key}`)}
-            value={fmtNum(lang, counts[c.field])}
-            icon={c.icon}
-            tone={c.tone}
-            sub={t(`admin.reviews.kpiSub.${c.key}`)}
-          />
-        ))}
-      </div>
 
       <section className="mp-tablecard">
         <header className="mp-tablecard__head">
@@ -473,19 +463,19 @@ export function ReviewsApp() {
           </div>
         </header>
 
-        <div className="mp-table mp-table--reviews">
+        <div className={"mp-table mp-table--reviews" + (hideAgent ? " mp-table--noagent" : "") + (readOnly ? " mp-table--noactions" : "")}>
           <div className="mp-thead" role="row">
             <span className="mp-th mp-col--member">{t("admin.reviews.th.member")}</span>
             <span className="mp-th rv-col--rating">{t("admin.reviews.th.rating")}</span>
             <span className="mp-th rv-col--review">{t("admin.reviews.th.review")}</span>
-            <span className="mp-th rv-col--agent">{t("admin.reviews.th.agent")}</span>
+            {!hideAgent && <span className="mp-th rv-col--agent">{t("admin.reviews.th.agent")}</span>}
             <span className="mp-th mp-col--joined">{t("admin.reviews.th.submitted")}</span>
             <span className="mp-th mp-col--status">{t("admin.reviews.th.status")}</span>
-            <span className="mp-th rv-col--actions">{t("admin.reviews.th.actions")}</span>
+            {!readOnly && <span className="mp-th rv-col--actions">{t("admin.reviews.th.actions")}</span>}
           </div>
           {pagedRows.length > 0 ? (
             pagedRows.map((r) => (
-              <ReviewRow key={r.id} r={r} openMenu={openMenu} setOpenMenu={setOpenMenu} onApprove={approve} onReject={reject} onDeleteRequest={setDeleteTarget} />
+              <ReviewRow key={r.id} r={r} openMenu={openMenu} setOpenMenu={setOpenMenu} onApprove={approve} onReject={reject} onDeleteRequest={setDeleteTarget} hideAgent={hideAgent} readOnly={readOnly} />
             ))
           ) : (
             <div className="mp-noresults">
