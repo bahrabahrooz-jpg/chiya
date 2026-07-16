@@ -82,7 +82,8 @@
     display: inline-flex; align-items: center;
     background: var(--gray-100); border: 1px solid var(--border-subtle);
     border-radius: 10px; padding: 3px; gap: 2px;
-    overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; flex: none;
+    overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+    flex: none; max-width: 100%;
   }
   .ap-tabs::-webkit-scrollbar { display: none; }
   .ap-tab {

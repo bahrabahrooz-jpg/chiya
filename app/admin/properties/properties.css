@@ -82,13 +82,14 @@
     gap: 16px; min-width: 0; flex-wrap: wrap;
   }
 
-  /* Segmented control container */
+  /* Segmented control container — max-width keeps it inside the card so
+     overflow-x can scroll instead of the card clipping the last tabs */
   .pp-tabs {
     display: inline-flex; align-items: center;
     background: var(--gray-100); border: 1px solid var(--border-subtle);
     border-radius: 10px; padding: 3px; gap: 2px;
     overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
-    flex: none;
+    flex: none; max-width: 100%;
   }
   .pp-tabs::-webkit-scrollbar { display: none; }
 
@@ -114,10 +115,11 @@
   /* ---------- RIGHT SIDE: SEARCH + FILTERS BUTTON ---------- */
   .pp-tabrow__right {
     display: flex; align-items: center; gap: 8px; flex: none;
+    min-width: 0; max-width: 100%; flex-wrap: wrap;
   }
-  .pp-tabsearch { position: relative; }
+  .pp-tabsearch { position: relative; flex: 1 1 160px; max-width: 224px; min-width: 0; }
   .pp-tabsearch input {
-    width: 224px; height: 38px; padding: 0 14px 0 38px;
+    width: 100%; height: 38px; padding: 0 14px 0 38px;
     font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
     background: var(--surface-card); border: 1px solid var(--border-default);
     border-radius: var(--radius-control); box-shadow: var(--shadow-xs);
@@ -170,7 +172,11 @@
   .pp-filterbar__row {
     display: flex; align-items: center; gap: 10px;
     padding: 16px 24px 16px;
-    flex-wrap: nowrap; min-width: 0;
+    flex-wrap: wrap; min-width: 0;
+  }
+  /* wide screens: everything fits on one line */
+  @media (min-width: 1200px) {
+    .pp-filterbar__row { flex-wrap: nowrap; }
   }
   /* ---------- CUSTOM SELECT DROPDOWN ---------- */
   .pp-custdrop {
@@ -720,11 +726,11 @@
      ============================================================ */
   @media (max-width: 767px) {
     .pp-tabrow { flex-direction: column; align-items: stretch; gap: 10px; }
-    .pp-tabrow__right { padding-bottom: 0; }
-    .pp-tabsearch { flex: 1 1 auto; }
+    .pp-tabs { width: 100%; }
+    .pp-tabrow__right { width: 100%; padding-bottom: 0; }
+    .pp-tabsearch { flex: 1 1 0; max-width: none; min-width: 140px; }
     .pp-tabsearch input { width: 100%; }
-    .pp-filterbar__row { flex-wrap: wrap; }
-    .pp-filterbar__row .cx-selectwrap { flex: 1 1 calc(50% - 5px); min-width: 0; }
+    .pp-datebtn-wrap { flex: 1 1 calc(50% - 5px); min-width: 0; }
     .pp-filterbar__actions { width: 100%; justify-content: flex-end; padding-bottom: 4px; }
   }
 
