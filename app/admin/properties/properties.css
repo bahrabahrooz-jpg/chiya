@@ -716,35 +716,9 @@
   .pp-noresults p { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 360px; }
 
   /* ============================================================
-     TABLET — condensed table (hide owner-contact + date, tighten)
-     ============================================================ */
-  @media (max-width: 1180px) and (min-width: 768px) {
-    .pp-thead, .pp-row {
-      grid-template-columns:
-        minmax(90px, 1.8fr)
-        minmax(80px, 1fr)
-        minmax(90px, 1.2fr)
-        104px
-        124px
-        84px
-        46px;
-      gap: 12px;
-      min-width: 0;
-    }
-    .pp-col--agent, .pp-col--date, .pp-col--type { display: none; }
-    .pp-owner__contact { display: none; }
-  }
-
-  /* ============================================================
-     MOBILE — card-based property list
+     MOBILE — toolbar stacks; the table itself scrolls horizontally
      ============================================================ */
   @media (max-width: 767px) {
-    .pp-tablecard { background: transparent; border: none; box-shadow: none; overflow: visible; }
-    .pp-tablecard__head {
-      background: var(--surface-card); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
-      margin-bottom: 14px; padding: 16px;
-    }
     .pp-tabrow { flex-direction: column; align-items: stretch; gap: 10px; }
     .pp-tabrow__right { padding-bottom: 0; }
     .pp-tabsearch { flex: 1 1 auto; }
@@ -752,47 +726,6 @@
     .pp-filterbar__row { flex-wrap: wrap; }
     .pp-filterbar__row .cx-selectwrap { flex: 1 1 calc(50% - 5px); min-width: 0; }
     .pp-filterbar__actions { width: 100%; justify-content: flex-end; padding-bottom: 4px; }
-
-    .pp-table { background: transparent; border: none; box-shadow: none; overflow: visible; }
-    .pp-thead { display: none; }
-
-    .pp-row {
-      display: block; position: relative;
-      background: var(--surface-card); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
-      padding: 16px; margin-bottom: 14px; min-height: 0; min-width: 0;
-    }
-    .pp-row:last-child { margin-bottom: 0; }
-    .pp-row:hover { background: var(--surface-card); }
-
-    /* property header inside card */
-    .pp-col--prop { margin-bottom: 14px; padding-inline-end: 44px; }
-    .pp-prop__thumb { width: 60px; height: 60px; }
-
-    /* actions kebab pinned to card corner */
-    .pp-col--actions { position: absolute; top: 12px; inset-inline-end: 12px; }
-    .pp-actions { justify-self: auto; }
-
-    /* status + listing sit as a chip row under the title */
-    .pp-col--listing, .pp-col--status {
-      display: inline-flex; vertical-align: middle; margin: 0 8px 12px 0;
-    }
-
-    /* labelled detail rows */
-    .pp-col--owner, .pp-col--agent, .pp-col--price, .pp-col--date {
-      display: flex; align-items: center; justify-content: space-between; gap: 14px;
-      padding: 9px 0; border-top: 1px solid var(--border-subtle);
-    }
-    .pp-celllabel {
-      display: block; flex: none;
-      font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
-      color: var(--text-tertiary);
-    }
-    .pp-owner, .pp-agent { align-items: flex-end; text-align: end; }
-    .pp-owner { align-items: flex-end; }
-    .pp-owner__contact { display: inline-flex; }
-    .pp-price { justify-self: auto; }
-    .pp-date { text-align: end; }
   }
 
   /* ============================================================

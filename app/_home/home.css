@@ -56,8 +56,11 @@ body.cx-pop-open .cxhero { z-index: 1000; }
 .cxbar__sep { width: 1px; align-self: center; height: 40px; background: var(--border-subtle); flex: none; }
 
 .cxpop { position: relative; flex: 0 0 auto; display: flex; }
-/* Fixed field widths so the bar never resizes as selections change (desktop). */
+/* Fixed flex-basis so the bar never resizes as selections change (desktop),
+   but fields may shrink (min-width: 0 + ellipsis) on narrower viewports like
+   iPad so the Search button never overflows the bar frame. */
 @media (min-width: 881px) {
+  .cxpop { flex: 0 1 auto; min-width: 0; }
   .cxpop--deal { width: 148px; }
   .cxpop--location { width: 190px; }
   .cxpop--type { width: 230px; }
@@ -69,7 +72,8 @@ body.cx-pop-open .cxhero { z-index: 1000; }
 .cxfield:hover { background: var(--gray-50); }
 .cxfield--open { background: var(--gray-50); }
 .cxfield__label { font-family: var(--font-sans); font-size: 11px; font-weight: 700; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; }
+  text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .cxfield__val { display: flex; align-items: center; gap: 9px; width: 100%; min-width: 0;
   font-family: var(--font-sans); font-size: 16px; font-weight: 600; color: var(--text-primary); line-height: 22px; }
 .cxfield__val > svg { color: var(--text-brand-muted); flex: none; }

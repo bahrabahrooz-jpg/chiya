@@ -481,33 +481,6 @@
     .ag-pagination { justify-content: center; flex-wrap: wrap; }
   }
 
-  /* mobile — table reflows to stacked cards */
-  @media (max-width: 920px) {
-    .ag-tablecard { background: transparent; border: none; box-shadow: none; overflow: visible; }
-    .ag-tbl { overflow: visible; }
-    .ag-thead { display: none; }
-    .ag-row {
-      display: block; position: relative; min-height: 0; min-width: 0; padding: 16px;
-      background: var(--surface-card); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card); box-shadow: var(--shadow-xs); margin-bottom: 14px;
-    }
-    .ag-row:last-child { margin-bottom: 0; }
-    .ag-row:hover { background: var(--surface-card); }
-    .ag-col--agent { margin-bottom: 12px; padding-inline-end: 44px; }
-    .ag-col--actions { position: absolute; top: 12px; inset-inline-end: 12px; }
-    .ag-actions { justify-self: auto; }
-    .ag-col--verification, .ag-col--phone, .ag-col--city,
-    .ag-col--listings, .ag-col--sold, .ag-col--rented, .ag-col--members, .ag-col--status {
-      display: flex; align-items: center; justify-content: space-between; gap: 14px;
-      padding: 9px 0; border-top: 1px solid var(--border-subtle); text-align: end;
-    }
-    .ag-celllabel {
-      display: block; flex: none;
-      font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
-      color: var(--text-tertiary);
-    }
-  }
-
   /* ============================================================
      SHARED — action menu + empty state  (reused styling)
      ============================================================ */

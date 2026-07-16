@@ -28,6 +28,10 @@ function NavItem({
 
   const showTip = () => {
     if (!collapsed || !ref.current) return;
+    // Tooltips are a hover affordance: skip touch devices (a tap-tooltip would
+    // stick — no mouseleave), and skip the <768px drawer where "collapsed"
+    // renders full text labels anyway.
+    if (!window.matchMedia("(hover: hover) and (pointer: fine) and (min-width: 768px)").matches) return;
     const r = ref.current.getBoundingClientRect();
     // Flyout sits on the inline-end side of the rail — mirror it in RTL.
     setTip({ top: r.top + r.height / 2, left: dir === "rtl" ? r.left - 14 : r.right + 14 });
@@ -46,6 +50,7 @@ function NavItem({
           e.preventDefault();
           return;
         }
+        hideTip(); // don't leave a stale tooltip behind after navigating
         onNavigate();
       }}
       onMouseEnter={showTip}

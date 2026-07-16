@@ -149,7 +149,7 @@ export function SiteHeader({ active = null, stickyAfterId = "properties" }: Site
         footer={
           <div className="cx-mnav__row">
             <ThemeToggle />
-            <LanguageSwitcher />
+            <LanguageSwitcher dropUp />
           </div>
         }
       />

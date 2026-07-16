@@ -68,6 +68,18 @@
 }
 .cx-langsw__soon + .cx-langsw__check { margin-inline-start: 8px; }
 
+/* Drop-up — trigger sits near the bottom of a panel (e.g. mobile nav footer),
+   so the menu opens above it instead of below. */
+.cx-langsw--up .cx-langsw__drop {
+  top: auto;
+  bottom: calc(100% + 8px);
+  animation-name: cx-langsw-in-up;
+}
+@keyframes cx-langsw-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* Footer (dark band) variant */
 .cx-langsw--footer .cx-langsw__trigger {
   background: rgba(255, 255, 255, 0.07);

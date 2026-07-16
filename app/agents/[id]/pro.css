@@ -117,7 +117,7 @@
 .pro-sold:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-3px); }
 .pro-sold__media { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--gray-100); }
 .pro-sold__media img { width: 100%; height: 100%; object-fit: cover; }
-.pro-sold__badge { position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; height: 26px; padding: 0 11px; border-radius: var(--radius-pill); background: var(--gray-900); color: #fff; font-family: var(--font-sans); font-size: 11.5px; font-weight: 700; letter-spacing: .03em; }
+.pro-sold__badge { position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; height: 26px; padding: 0 11px; border-radius: var(--radius-pill); background: var(--gray-900); color: var(--gray-25); font-family: var(--font-sans); font-size: 11.5px; font-weight: 700; letter-spacing: .03em; }
 .pro-sold__body { padding: 16px 18px 18px; }
 .pro-sold__price { font-family: var(--font-sans); font-size: 19px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .pro-sold__price small { font-size: 13px; font-weight: 600; color: var(--text-tertiary); }

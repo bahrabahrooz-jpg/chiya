@@ -345,7 +345,7 @@
     font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
     color: var(--text-tertiary); white-space: nowrap;
   }
-  .mpf-th--end, .mpf-cell--end { justify-self: end; text-align: right; }
+  .mpf-th--end, .mpf-cell--end { justify-self: end; text-align: end; }
   .mpf-trow {
     min-height: 72px; border-bottom: 1px solid var(--border-subtle); transition: background-color .14s ease;
   }
@@ -424,30 +424,6 @@
   }
   .mpf-empty h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--text-primary); margin: 0; }
   .mpf-empty p { font-size: 13.5px; color: var(--text-secondary); margin: 0; max-width: 320px; }
-
-  /* ---------- TABLE → CARD reflow (mobile) ---------- */
-  @media (max-width: 640px) {
-    .mpf-tablewrap { overflow-x: visible; }
-    .mpf-table .mpf-thead { display: none; }
-    .mpf-table--portfolio .mpf-trow,
-    .mpf-table--saved .mpf-trow,
-    .mpf-table--viewings .mpf-trow,
-    .mpf-table--inquiries .mpf-trow {
-      grid-template-columns: 1fr; min-width: 0; gap: 0; padding: 16px 16px 14px;
-      position: relative;
-    }
-    .mpf-prop { margin-bottom: 10px; padding-right: 44px; }
-    .mpf-cell {
-      display: flex; align-items: center; justify-content: space-between; gap: 14px;
-      padding: 9px 0; border-top: 1px solid var(--border-subtle);
-    }
-    .mpf-cell--end { justify-self: stretch; text-align: left; }
-    .mpf-cell__label {
-      display: block; flex: none;
-      font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary);
-    }
-    .mpf-cell--action { position: absolute; top: 14px; right: 14px; padding: 0; border: none; }
-  }
 
   /* ============================================================
      SHARED MODAL + TOAST  (pp- namespace — from Property Details)

@@ -17,7 +17,9 @@
   box-shadow: var(--shadow-2xl);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* No overflow:hidden here — it would clip popovers opened from the footer
+     (language switcher). Children keep their own radius/padding, links scroll
+     in .cx-mnav__links. */
   transform-origin: top var(--mnav-origin-x, right);
   animation: cx-mnav-in .16s cubic-bezier(.2, .7, .2, 1);
 }

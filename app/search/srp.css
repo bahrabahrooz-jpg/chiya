@@ -207,9 +207,12 @@
 }
 @media (max-width: 900px) {
   .srp-split { grid-template-columns: 1fr; }
-  .srp-split__list { order: 0; }
-  .srp-split__map { position: relative; top: 0; order: 1; }
-  .srp-realmap { height: 460px; }
+  /* Map first and pinned to the viewport top; the property list scrolls
+     beneath it. z-index keeps the (later-painted) cards from covering it,
+     while staying under the header (1200) and sort panel (1400). */
+  .srp-split__list { order: 1; }
+  .srp-split__map { order: 0; position: sticky; top: 0; z-index: 900; }
+  .srp-realmap { height: min(440px, 44vh); }
 }
 @media (max-width: 1024px) {
   .srp-layout { grid-template-columns: 1fr; }
@@ -224,6 +227,10 @@
   .srp-rhead__tools { flex-wrap: wrap; }
   .srp-grid, .srp-grid--split { grid-template-columns: 1fr; }
   .srp-rhead__title { font-size: 28px; }
+  /* The toolbar stacks here, putting the Sort button at the inline-start edge —
+     anchor the panel to the same edge so it can't hang off-screen. */
+  .srp-sort__panel { right: auto; left: 0; max-width: calc(100vw - 48px); }
+  [dir="rtl"] .srp-sort .srp-sort__panel { left: auto; right: 0; }
 }
 /* Only collapse Filters to an icon-only button once the full text no longer
    fits beside Sort + the switcher on one row. */

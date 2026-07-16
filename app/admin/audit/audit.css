@@ -103,65 +103,11 @@
 .au-details__note { color: var(--text-secondary); }
 
 /* ============================================================
-   TABLET — tighten every track; all five columns still fit
-   ============================================================ */
-@media (max-width: 1180px) and (min-width: 768px) {
-  .mp-table--audit .mp-thead,
-  .mp-table--audit .mp-row {
-    grid-template-columns:
-      minmax(132px, 1.2fr)
-      92px
-      minmax(104px, .9fr)
-      minmax(200px, 2.4fr)
-      104px;
-    gap: 14px;
-    min-width: 0;
-  }
-}
-
-/* ============================================================
-   MOBILE — the members card layout, re-laid as an audit card:
-     [action] [module]
-     [ details spanning ]
-     [user] ········ [time]
+   MOBILE — filters stack; the table itself scrolls horizontally
    ============================================================ */
 @media (max-width: 767px) {
   /* Members stretches .mp-datebtn-wrap to 100% here; these three are narrower
      than that rule expects, so restate them as a 2-up grid that wraps. */
   .au-filters { width: 100%; }
   .au-filters .mp-datebtn-wrap { flex: 1 1 calc(50% - 5px); min-width: 0; }
-
-  /* Rows are cards here, so the desktop track min-width must not survive. */
-  .mp-table--audit .mp-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "action  module"
-      "details details"
-      "user    time";
-    align-items: center;
-    /* No column gap: the footer's two cells carry one border-top between them,
-       and a gap would break that line. They pad themselves apart instead. */
-    gap: 12px 0;
-    min-width: 0;
-  }
-
-  .au-col--action { grid-area: action; justify-self: start; padding-inline-end: 12px; }
-  .au-col--module { grid-area: module; justify-self: end; }
-  .au-col--details { grid-area: details; }
-  .au-details__target { white-space: normal; }
-  .au-details__desc { -webkit-line-clamp: 3; }
-
-  /* user + time close the card as a footer */
-  .au-col--user, .au-col--time {
-    padding-top: 12px;
-    border-top: 1px solid var(--border-subtle);
-    align-self: stretch;
-  }
-  .au-col--user { grid-area: user; padding-inline-end: 12px; }
-  .au-col--time {
-    grid-area: time;
-    align-items: flex-end;
-    justify-content: center;
-  }
 }

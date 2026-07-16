@@ -144,16 +144,6 @@
   .agx-statuscell { position: relative; display: inline-flex; align-items: center; }
   .agx-statuscell__sel { position: absolute; inset: -6px -8px; width: calc(100% + 16px); height: calc(100% + 12px); opacity: 0; cursor: pointer; }
 
-  /* stacked cards on narrow screens */
-  @media (max-width: 720px) {
-    .agx-thead { display: none; }
-    .agx-tbl { background: transparent; }
-    .agx-trow {
-      grid-template-columns: 1fr auto !important; row-gap: 10px; padding: 16px;
-      border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); margin-bottom: 12px;
-    }
-  }
-
   .agx-toast {
     position: fixed; inset-inline-end: 24px; bottom: 24px; z-index: 60;
     display: inline-flex; align-items: center; gap: 10px;

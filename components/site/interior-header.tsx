@@ -89,7 +89,7 @@ export function InteriorHeader({ active = null }: InteriorHeaderProps) {
         footer={
           <div className="cx-mnav__row">
             <ThemeToggle />
-            <LanguageSwitcher />
+            <LanguageSwitcher dropUp />
           </div>
         }
       />

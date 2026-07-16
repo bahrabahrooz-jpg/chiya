@@ -259,7 +259,7 @@
     background: var(--brand-primary); color: #fff; font-weight: 600;
   }
 
-  /* ---------- TABLE (CSS grid rows; reflows to cards on mobile) ---------- */
+  /* ---------- TABLE (CSS grid rows; scrolls horizontally on mobile) ---------- */
   .mp-table { overflow-x: auto; overflow-y: visible; }
   .mp-table::-webkit-scrollbar { height: 9px; }
   .mp-table::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
@@ -456,33 +456,9 @@
   }
 
   /* ============================================================
-     TABLET — condensed table (fold email + joined; tighten)
-     ============================================================ */
-  @media (max-width: 1180px) and (min-width: 768px) {
-    .mp-thead, .mp-row {
-      grid-template-columns:
-        minmax(150px, 2.4fr)
-        minmax(120px, 1.6fr)
-        minmax(104px, 1.1fr)
-        88px
-        100px
-        46px;
-      gap: 12px;
-      min-width: 0;
-    }
-    .mp-col--joined { display: none; }
-  }
-
-  /* ============================================================
-     MOBILE — card-based member list
+     MOBILE — toolbar + footer stack; the table scrolls horizontally
      ============================================================ */
   @media (max-width: 767px) {
-    .mp-tablecard { background: transparent; border: none; box-shadow: none; overflow: visible; }
-    .mp-tablecard__head {
-      background: var(--surface-card); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
-      margin-bottom: 14px; padding: 16px;
-    }
     .mp-tabrow { flex-direction: column; align-items: stretch; gap: 10px; }
     .mp-tabs { width: 100%; }
     .mp-tabrow__right { width: 100%; }
@@ -491,47 +467,7 @@
     .mp-filterbar__row { flex-wrap: wrap; }
     .mp-datebtn-wrap { flex: 1 1 100%; }
 
-    .mp-table { background: transparent; border: none; box-shadow: none; overflow: visible; }
-    .mp-thead { display: none; }
-
-    .mp-row {
-      display: block; position: relative;
-      background: var(--surface-card); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
-      padding: 16px; margin-bottom: 14px; min-height: 0; min-width: 0;
-    }
-    .mp-row:last-child { margin-bottom: 0; }
-    .mp-row:hover { background: var(--surface-card); }
-
-    /* member header inside card */
-    .mp-col--member { margin-bottom: 12px; padding-inline-end: 44px; }
-
-    /* actions kebab pinned to card corner */
-    .mp-col--actions { position: absolute; top: 12px; inset-inline-end: 12px; }
-    .mp-actions { justify-self: auto; }
-
-    /* roles sit as a chip row under the name */
-    .mp-col--roles { margin: 0 0 4px; }
-
-    /* labelled detail rows */
-    .mp-col--phone, .mp-col--props, .mp-col--joined, .mp-col--status {
-      display: flex; align-items: center; justify-content: space-between; gap: 14px;
-      padding: 9px 0; border-top: 1px solid var(--border-subtle);
-    }
-    .mp-celllabel {
-      display: block; flex: none;
-      font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
-      color: var(--text-tertiary);
-    }
-    .mp-contact { white-space: normal; text-align: end; }
-    .mp-date { text-align: end; }
-
-    .mp-tablefooter {
-      flex-direction: column; align-items: stretch; gap: 12px;
-      margin-top: 14px; padding: 16px;
-      border: 1px solid var(--border-subtle); border-radius: var(--radius-card);
-      box-shadow: var(--shadow-xs);
-    }
+    .mp-tablefooter { flex-direction: column; align-items: stretch; gap: 12px; }
     .mp-pagination { justify-content: center; flex-wrap: wrap; }
     .mp-pagination__info { text-align: center; }
   }

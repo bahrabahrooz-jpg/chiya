@@ -1,6 +1,8 @@
 /* Table — ported from the design system (cx-table). */
-.cx-tablewrap { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; font-family: var(--font-sans); }
-.cx-table { width: 100%; border-collapse: collapse; }
+.cx-tablewrap { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow-x: auto; overflow-y: hidden; font-family: var(--font-sans); }
+.cx-tablewrap::-webkit-scrollbar { height: 9px; }
+.cx-tablewrap::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+.cx-table { width: 100%; min-width: 640px; border-collapse: collapse; }
 .cx-table th {
   text-align: start;
   font-size: 12px;

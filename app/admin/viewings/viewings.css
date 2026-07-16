@@ -402,39 +402,8 @@
   .vw-empty h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--text-primary); margin: 0; }
   .vw-empty p { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 360px; }
 
-  /* Mobile label (hidden on desktop) */
+  /* Mobile label (hidden — table scrolls horizontally on mobile) */
   .vw-celllabel { display: none; }
-
-  /* Mobile: reflow to stacked cards */
-  @media (max-width: 767px) {
-    .vw-tablecard { background: transparent; border: none; box-shadow: none; overflow: visible; }
-    .vw-tablecard__head {
-      background: var(--surface-card); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
-      margin-bottom: 14px; padding: 16px;
-    }
-    .vw-table { overflow: visible; }
-    .vw-thead { display: none; }
-    .vw-row {
-      display: block; position: relative; min-height: 0; min-width: 0;
-      background: var(--surface-card); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
-      padding: 16px; margin-bottom: 14px;
-    }
-    .vw-row:last-child { margin-bottom: 0; }
-    .vw-row:hover { background: var(--surface-card); }
-    .vw-col--prop { margin-bottom: 12px; }
-    .vw-col--acts { position: absolute; top: 12px; inset-inline-end: 12px; }
-    .vw-col--loc, .vw-col--member, .vw-col--agent, .vw-col--dt, .vw-col--status {
-      display: flex; align-items: center; justify-content: space-between; gap: 14px;
-      padding: 9px 0; border-top: 1px solid var(--border-subtle); text-align: end;
-    }
-    .vw-celllabel {
-      display: block; flex: none;
-      font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
-      color: var(--text-tertiary);
-    }
-  }
 
   /* ============================================================
      SCHEDULE VIEWING MODAL  (vw-modal)

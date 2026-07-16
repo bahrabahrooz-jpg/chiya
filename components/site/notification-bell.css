@@ -187,3 +187,20 @@
 .cxn__seeall:hover { text-decoration: underline; }
 
 [dir="rtl"] .cxn__menu { inset-inline-end: auto; inset-inline-start: 0; }
+
+/* Mobile — only the admin/agent topbars keep the bell this small (the site
+   header hides it ≤980px). Anchoring the 360px panel to the bell pushes it
+   past the viewport edge, so pin it to the viewport under the 68px topbar
+   instead. The [dir="rtl"] selector is repeated to outweigh the base RTL rule. */
+@media (max-width: 767px) {
+  .cxn__menu,
+  [dir="rtl"] .cxn__menu {
+    position: fixed;
+    top: 76px;
+    inset-inline: 12px;
+    width: auto;
+    max-width: none;
+  }
+  /* Keep the header + footer on screen on short viewports. */
+  .cxn__list { max-height: min(384px, calc(100dvh - 240px)); }
+}
