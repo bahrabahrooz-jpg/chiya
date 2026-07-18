@@ -1,6 +1,8 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
-import { AGENTS as CATALOG_AGENTS, PROPERTIES as CATALOG_PROPERTIES, getAgentByName, type PropertyDetails, type PropertyRecord } from "../_data/catalog";
+import { AGENTS as CATALOG_AGENTS, MEMBERS as CATALOG_MEMBERS, PROPERTIES as CATALOG_PROPERTIES, getAgentByName, type PropertyDetails, type PropertyRecord } from "../_data/catalog";
+import { VIEWINGS as ALL_VIEWINGS, AGENT_IMG } from "../_viewings/data";
+import { REVIEWS } from "../_reviews/data";
 export { statusRequiresAgent } from "../_data/catalog";
 
 export const STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean; icon?: IconName }> = {
@@ -68,6 +70,14 @@ interface BaseProperty {
   published: boolean; featured: boolean; listingDate: string; updated: string;
 }
 
+/* Rating shown on the assigned-agent card = mean of the agent's approved
+   reviews (0 when none — the card then hides the rating line). */
+function agentRating(name: string): { rating: string; reviews: number } {
+  const approved = REVIEWS.filter((r) => r.agentName === name && r.status === "Approved");
+  const avg = approved.length ? (approved.reduce((s, r) => s + r.stars, 0) / approved.length).toFixed(1) : "0";
+  return { rating: avg, reviews: approved.length };
+}
+
 /* Adapt the shared catalog records into the richer detail-page shape. */
 function toBase(p: PropertyRecord): BaseProperty {
   const roster = p.agent ? getAgentByName(p.agent.name) : undefined;
@@ -82,7 +92,7 @@ function toBase(p: PropertyRecord): BaseProperty {
     agent: p.agent
       // Only verified agents can be assigned, so an assigned agent is always
       // shown as verified — never "Pending" — regardless of any stale record.
-      ? { name: p.agent.name, verified: true, phone: roster?.phone || "+964 750 000 0000", img: p.agent.img, listings: roster?.listings }
+      ? { name: p.agent.name, verified: true, phone: roster?.phone || "+964 750 000 0000", img: p.agent.img, listings: roster?.listings, ...agentRating(p.agent.name) }
       : null,
     listing: p.listing,
     status: p.status,
@@ -176,7 +186,7 @@ const AMENITY_POOL: Amenity[] = [
 function buildAmenities(p: BaseProperty, seed: number): Amenity[] {
   const t = p.type.toLowerCase();
   if (t === "land") return [];
-  const count = t === "villa" || t === "penthouse" || t === "townhouse" ? 9 : t === "office" ? 6 : 7;
+  const count = t === "villa" || t === "house" ? 9 : t === "office" ? 6 : 7;
   const out: Amenity[] = [];
   for (let i = 0; i < AMENITY_POOL.length && out.length < count; i++) {
     if ((seed + i * 3) % 7 < 5) out.push(AMENITY_POOL[(seed + i) % AMENITY_POOL.length]);
@@ -197,11 +207,14 @@ function buildAmenities(p: BaseProperty, seed: number): Amenity[] {
 export interface Specs {
   address: string; coords: string; mapUrl: string; landSize: number | null; garages: number | null;
   yearBuilt: number | null; furnished: string | null; floor: string | null; currency: string;
-  pricePerM2: number | null; dateCreated: string; amenities: Amenity[];
+  pricePerM2: number | null; orientation: string | null; condition: string | null;
+  dateCreated: string; amenities: Amenity[];
 }
+const ORIENTATION_POOL = ["North facing", "South facing", "East facing", "West facing"];
+const CONDITION_POOL = ["New", "Good", "Needs renovation"];
 function buildSpecs(p: BaseProperty): Specs {
   const t = p.type.toLowerCase();
-  const isUnit = t === "apartment" || t === "office" || t === "penthouse";
+  const isUnit = t === "apartment" || t === "office";
   const seed = (p.id.charCodeAt(4) || 0) + (p.id.charCodeAt(5) || 0);
   const base = CITY_COORDS[p.city] || CITY_COORDS["Erbil"];
   const lat = (base[0] + ((seed % 20) - 10) / 1000).toFixed(4);
@@ -210,13 +223,15 @@ function buildSpecs(p: BaseProperty): Specs {
     address: `${p.area}, ${p.city}, Kurdistan Region, Iraq`,
     coords: `${lat}° N, ${lng}° E`,
     mapUrl: `https://www.google.com/maps?q=${lat},${lng}`,
-    landSize: t === "villa" || t === "townhouse" ? Math.round(p.size * (1.6 + (seed % 6) / 10)) : t === "land" ? p.size : null,
+    landSize: t === "villa" || t === "house" ? Math.round(p.size * (1.6 + (seed % 6) / 10)) : t === "land" ? p.size : null,
     garages: t === "land" ? null : p.beds >= 4 ? 2 : p.beds >= 1 ? 1 : t === "office" ? 3 : null,
     yearBuilt: t === "land" ? null : 2014 + (seed % 11),
     furnished: t === "land" ? null : t === "office" ? "Unfurnished" : ["Furnished", "Semi-furnished", "Unfurnished"][seed % 3],
-    floor: isUnit ? (t === "penthouse" ? "Top floor · Penthouse" : "Floor " + (2 + (seed % 14))) : null,
+    floor: isUnit ? "Floor " + (2 + (seed % 14)) : null,
     currency: "USD · US Dollar",
     pricePerM2: p.listing === "sale" && p.size ? Math.round(p.price / p.size) : null,
+    orientation: ORIENTATION_POOL[seed % 4],
+    condition: t === "land" ? null : CONDITION_POOL[seed % 3],
     dateCreated: p.date,
     amenities: buildAmenities(p, seed),
   };
@@ -240,12 +255,20 @@ function buildSpecsWith(p: BaseProperty, d: PropertyDetails): Specs {
     furnished: d.furnishing || base.furnished,
     floor: typeof d.floors === "number" && d.floors > 0 ? `${d.floors} floor${d.floors > 1 ? "s" : ""}` : base.floor,
     currency: d.currency ? CURRENCY_LABEL[d.currency] || base.currency : base.currency,
+    orientation: d.orientation || base.orientation,
+    condition: d.condition || base.condition,
     amenities: d.amenities && d.amenities.length ? d.amenities : base.amenities,
   };
 }
 
 export interface DetailProperty extends Omit<BaseProperty, "agent"> {
   location: string;
+  /* Raw location parts, mirroring the Add-property Location step so the detail
+     page can surface exactly those fields (optional ones blank when unfilled). */
+  district: string;
+  project: string;
+  street: string;
+  building: string;
   gallery: string[];
   owner: Required<OwnerRef>;
   agent: DetailAgent | null;
@@ -266,6 +289,12 @@ export function toDetailProperty(rec: PropertyRecord): DetailProperty {
   return {
     ...p,
     location: p.area + ", " + p.city,
+    district: rec.district,
+    // Seed records carry the project in `rec.area` (area === project when it
+    // differs from the district); wizard records carry it explicitly in details.
+    project: d?.project || (rec.area !== rec.district ? rec.area : ""),
+    street: d?.street || "",
+    building: d?.building || "",
     gallery: d?.gallery && d.gallery.length ? d.gallery : GALLERY[p.type.toLowerCase()] || GALLERY.villa,
     owner: { ...p.owner, type: d?.ownerType || p.owner.type, email: d?.ownerEmail || emailFromName(p.owner.name) },
     agent,
@@ -303,18 +332,15 @@ export const VIEWING_STATUS: Record<string, { variant: BadgeVariant; icon: IconN
   "No Show": { variant: "warning", icon: "user-x" },
 };
 
-export interface ViewingReq { id: string; member: string; img: string; phone: string; date: string; time: string; status: string }
-const VIEWING_REQUESTS: Record<string, ViewingReq[]> = {
-  "CH-2041": [
-    { id: "VW-1042", member: "Sara Hassan", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=70", phone: "+964 750 112 4408", date: "Jun 24, 2026", time: "11:00 AM", status: "Confirmed" },
-    { id: "VW-1039", member: "Karzan Omar", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=70", phone: "+964 750 663 2204", date: "Jun 25, 2026", time: "2:30 PM", status: "Requested" },
-    { id: "VW-1031", member: "Nadia Farid", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=70", phone: "+964 770 884 1196", date: "Jun 20, 2026", time: "10:00 AM", status: "Completed" },
-    { id: "VW-1024", member: "Ahmad Karimi", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=70", phone: "+964 751 339 7720", date: "Jun 16, 2026", time: "4:00 PM", status: "Cancelled" },
-  ],
-  "CH-2038": [
-    { id: "VW-1040", member: "Zana Rashid", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=70", phone: "+964 750 226 5531", date: "Jun 24, 2026", time: "9:30 AM", status: "Requested" },
-    { id: "VW-1033", member: "Hana Bakr", img: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=160&q=70", phone: "+964 751 447 9082", date: "Jun 21, 2026", time: "1:00 PM", status: "Completed" },
-  ],
-  "CH-2029": [{ id: "VW-1037", member: "Dara Karim", img: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=160&q=70", phone: "+964 750 770 1184", date: "Jun 23, 2026", time: "3:30 PM", status: "Confirmed" }],
-};
-export const getViewings = (id: string): ViewingReq[] => VIEWING_REQUESTS[id] || [];
+export interface ViewingReq { id: string; member: string; img: string; phone: string; agent: string; agentImg: string; date: string; time: string; status: string }
+/* Viewing requests for a property = the shared viewings ledger filtered to it,
+   with the requesting member's avatar and phone resolved from the roster — so
+   the property page, the Viewings page, and member profiles always agree. */
+export function getViewings(id: string): ViewingReq[] {
+  const title = CATALOG_PROPERTIES.find((p) => p.id === id)?.title;
+  if (!title) return [];
+  return ALL_VIEWINGS.filter((v) => v.property.title === title).map((v) => {
+    const m = CATALOG_MEMBERS.find((mm) => mm.name === v.member);
+    return { id: v.id, member: v.member, img: m?.img || "", phone: m?.phone || "—", agent: v.agent, agentImg: AGENT_IMG[v.agent] || "", date: v.date, time: v.time, status: v.status };
+  });
+}

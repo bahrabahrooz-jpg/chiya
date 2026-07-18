@@ -10,8 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { useFavorites } from "@/lib/favorites";
 import { agents, type Agent } from "@/lib/home-data";
 
-const list = [agents.lana, agents.daban, agents.avan, agents.shene];
-const slug = (name: string) => name.toLowerCase().replace(/\s+/g, "-");
+const list = agents.slice(0, 4);
 
 /** Featured agents — verified agent profiles. */
 export function FeaturedAgents() {
@@ -21,21 +20,20 @@ export function FeaturedAgents() {
   const { isAgentSaved, toggleAgent } = useFavorites();
   const [saved, setSaved] = useState<string[]>([]);
   const toggleSave = (ag: Agent) => {
-    const id = slug(ag.name);
     if (user) {
       toggleAgent({
-        id,
+        id: ag.id,
         name: ag.name,
         photo: ag.avatar,
         city: ag.city,
         verified: ag.verified,
         rating: ag.rating,
         listings: ag.listings,
-        href: `/agents/${id}`,
+        href: `/agents/${ag.id}`,
       });
       return;
     }
-    setSaved((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+    setSaved((s) => (s.includes(ag.id) ? s.filter((x) => x !== ag.id) : [...s, ag.id]));
   };
   return (
     <section className="cxk-section">
@@ -59,9 +57,9 @@ export function FeaturedAgents() {
             verified={ag.verified}
             rating={ag.rating}
             listings={ag.listings}
-            favorite={user ? isAgentSaved(slug(ag.name)) : saved.includes(slug(ag.name))}
+            favorite={user ? isAgentSaved(ag.id) : saved.includes(ag.id)}
             onFavorite={() => toggleSave(ag)}
-            href={`/agents/${slug(ag.name)}`}
+            href={`/agents/${ag.id}`}
           />
         ))}
       </div>

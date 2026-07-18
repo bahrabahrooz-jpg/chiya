@@ -14,10 +14,28 @@ import { useLang } from "@/lib/i18n";
 import { openAuth, useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/profile";
 import * as D from "./data";
+import type { AgentProfile, ProfileAgent } from "./data";
 
-const { agent } = D;
+/** Relative "N ago" label for a review, from its age in days. */
+function useRelative() {
+  const { t } = useLang();
+  return (days: number) => {
+    if (days <= 0) return t("profile.reviewJustNow");
+    if (days < 7) return t("profile.daysAgo", { count: String(days) });
+    if (days < 30) {
+      const w = Math.round(days / 7);
+      return t("profile.weeksAgo", { count: String(w) });
+    }
+    if (days < 365) {
+      const m = Math.round(days / 30);
+      return t("profile.monthsAgo", { count: String(m) });
+    }
+    const y = Math.round(days / 365);
+    return t("profile.yearsAgo", { count: String(y) });
+  };
+}
 
-function Crumb() {
+function Crumb({ agent }: { agent: ProfileAgent }) {
   const { t } = useLang();
   return (
     <nav className="pdp-crumb" aria-label="Breadcrumb">
@@ -36,7 +54,9 @@ function Crumb() {
   );
 }
 
-function Hero({ saved, onSave, onShare, onCall, onWhatsApp, onEmail }: {
+function Hero({ agent, intro, saved, onSave, onShare, onCall, onWhatsApp, onEmail }: {
+  agent: ProfileAgent;
+  intro: string;
   saved: boolean;
   onSave: () => void;
   onShare: () => void;
@@ -45,12 +65,17 @@ function Hero({ saved, onSave, onShare, onCall, onWhatsApp, onEmail }: {
   onEmail: () => void;
 }) {
   const { t } = useLang();
+  const initials = agent.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   return (
     <header className="pro-hero">
       <div className="pro-hero__photowrap">
         <div className="pro-hero__photo">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={agent.photo} alt={agent.name} />
+          {agent.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={agent.photo} alt={agent.name} />
+          ) : (
+            <div className="pro-hero__initials" aria-hidden="true">{initials}</div>
+          )}
           <div className="pro-hero__photograd" />
           {agent.verified && (
             <span className="pro-hero__vbadge">
@@ -87,13 +112,17 @@ function Hero({ saved, onSave, onShare, onCall, onWhatsApp, onEmail }: {
         </div>
 
         <div className="pro-hero__facts">
-          <div className="pro-hero__fact">
-            <Icon name="star" size={16} fill="currentColor" className="pro-hero__star" />
-            <span>
-              <b>{agent.rating.toFixed(1)}</b> ({agent.reviews} {t("profile.reviews")})
-            </span>
-          </div>
-          <span className="pro-hero__vrule" />
+          {agent.reviews > 0 && (
+            <>
+              <div className="pro-hero__fact">
+                <Icon name="star" size={16} fill="currentColor" className="pro-hero__star" />
+                <span>
+                  <b>{agent.rating.toFixed(1)}</b> ({agent.reviews} {t("profile.reviews")})
+                </span>
+              </div>
+              <span className="pro-hero__vrule" />
+            </>
+          )}
           <div className="pro-hero__fact">
             <Icon name="calendar-check" size={16} />
             <span>
@@ -108,7 +137,7 @@ function Hero({ saved, onSave, onShare, onCall, onWhatsApp, onEmail }: {
         </div>
 
         <div className="pro-hero__rule" />
-        <p className="pro-hero__intro">{D.intro}</p>
+        <p className="pro-hero__intro">{intro}</p>
 
         <div className="pro-hero__actions">
           <button type="button" className="pro-act pro-act--wa" onClick={onWhatsApp}>
@@ -137,14 +166,14 @@ function Hero({ saved, onSave, onShare, onCall, onWhatsApp, onEmail }: {
 }
 
 const METRIC_KEYS = ["active", "sold", "years", "rating"] as const;
-function TrustMetrics() {
+function TrustMetrics({ metrics }: { metrics: D.Metric[] }) {
   const { t } = useLang();
   return (
     <section className="pro-metrics">
-      {D.metrics.map((m, i) => {
+      {metrics.map((m, i) => {
         const k = METRIC_KEYS[i];
         return (
-          <div key={m.label} className="pro-metric">
+          <div key={k} className="pro-metric">
             <span className="pro-metric__ic">
               <Icon name={m.icon as IconName} size={22} />
             </span>
@@ -160,31 +189,21 @@ function TrustMetrics() {
   );
 }
 
-function About() {
+function About({ agent, about, areas }: { agent: ProfileAgent; about: string[]; areas: D.Area[] }) {
   const { t } = useLang();
   return (
     <section className="pdp-sec pro-about">
       <h2 className="pdp-sec__title">{t("profile.about")} {agent.name}</h2>
       <div className="pdp-desc">
-        {D.about.map((p, i) => (
+        {about.map((p, i) => (
           <p key={i}>{p}</p>
         ))}
       </div>
       <div className="pro-tags">
         <div className="pro-tagblock">
-          <div className="pro-taglabel">{t("profile.specialties")}</div>
-          <div className="pro-chips">
-            {D.specialties.map((s) => (
-              <span key={s} className="pro-chip">
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="pro-tagblock">
           <div className="pro-taglabel">{t("profile.areas")}</div>
           <div className="pro-chips">
-            {D.areas.map((a) => (
+            {areas.map((a) => (
               <span key={a.name} className="pro-chip">
                 <Icon name="map-pin" size={15} />
                 {a.name}
@@ -240,12 +259,13 @@ function sortListings(list: D.ProListing[], sort: string) {
   return arr; // "default" → natural order
 }
 
-function ActiveListings({ favorites, onFavorite }: { favorites: string[]; onFavorite: (id: string) => void }) {
+function ActiveListings({ agent, listings, favorites, onFavorite }: { agent: ProfileAgent; listings: D.ProListing[]; favorites: string[]; onFavorite: (id: string) => void }) {
   const router = useRouter();
   const { t } = useLang();
   const [sort, setSort] = useState("default");
-  const list = useMemo(() => sortListings(D.listings, sort), [sort]);
+  const list = useMemo(() => sortListings(listings, sort), [listings, sort]);
   const fmt = (l: D.ProListing) => "$" + l.price.toLocaleString("en-US");
+  if (!listings.length) return null;
   return (
     <section className="pdp-sec pro-listings">
       <div className="pro-secrow">
@@ -290,15 +310,16 @@ function ActiveListings({ favorites, onFavorite }: { favorites: string[]; onFavo
   );
 }
 
-function RecentlySold() {
+function RecentlySold({ sold }: { sold: D.Sold[] }) {
   const { t } = useLang();
   const fmt = (n: number) => "$" + n.toLocaleString("en-US");
+  if (!sold.length) return null;
   return (
     <section className="pdp-sec">
       <h2 className="pdp-sec__title">{t("profile.sold")}</h2>
       <p className="pdp-sec__lead">{t("profile.soldLead")}</p>
       <div className="pro-soldgrid">
-        {D.sold.map((s) => (
+        {sold.map((s) => (
           <article key={s.id} className="pro-sold">
             <div className="pro-sold__media">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -350,6 +371,7 @@ interface RevItem {
   deal?: string;
   text: string;
   own?: boolean;
+  pending?: boolean;
 }
 
 /** Interactive 1–5 star picker used by the review composer. */
@@ -425,14 +447,25 @@ function ReviewComposer({ initial, onSubmit, onCancel }: {
   );
 }
 
-function Reviews() {
+function Reviews({ agent, reviews }: { agent: ProfileAgent; reviews: D.Review[] }) {
   const { t } = useLang();
   const { user } = useAuth();
   const { profile } = useProfile();
+  const rel = useRelative();
 
   const seed = useMemo<RevItem[]>(
-    () => D.reviews.map((r) => ({ id: "seed-" + r.id, name: r.name, avatar: r.avatar, stars: r.stars, when: r.when, deal: r.deal, text: r.text })),
-    [],
+    () =>
+      reviews.map((r) => ({
+        id: r.id,
+        name: r.name,
+        avatar: r.avatar,
+        stars: r.stars,
+        when: rel(r.daysAgo),
+        deal: r.dealKey ? t(r.dealKey, { title: r.dealTitle ?? "" }) : undefined,
+        text: r.text,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reviews],
   );
   const [items, setItems] = useState<RevItem[]>(seed);
   const [editing, setEditing] = useState<RevItem | null>(null);
@@ -440,14 +473,18 @@ function Reviews() {
 
   const authorName = profile.fullName || user?.name || t("acct.member");
 
+  /* A member's own submission is held for moderation — it shows a Pending badge
+     and is not counted toward the public rating (mirrors the admin queue). */
   const addReview = (stars: number, text: string) =>
     setItems((rs) => [
-      { id: "own-" + Date.now(), name: authorName, avatar: profile.avatar || undefined, stars, when: t("profile.reviewJustNow"), deal: t("profile.reviewYou"), text, own: true },
+      { id: "own-" + Date.now(), name: authorName, avatar: profile.avatar || undefined, stars, when: t("profile.reviewJustNow"), deal: t("profile.reviewYou"), text, own: true, pending: true },
       ...rs,
     ]);
   const updateReview = (id: string, stars: number, text: string) =>
     setItems((rs) => rs.map((r) => (r.id === id ? { ...r, stars, text, when: t("profile.reviewEdited") } : r)));
   const deleteReview = (id: string) => setItems((rs) => rs.filter((r) => r.id !== id));
+
+  const publicCount = agent.reviews;
 
   return (
     <section className="pdp-sec">
@@ -481,34 +518,50 @@ function Reviews() {
         </div>
       )}
 
-      <div className="pro-rev__list">
-        {items.map((r) => (
-          <article key={r.id} className={"pro-revcard" + (r.own ? " pro-revcard--own" : "")}>
-            <div className="pro-revcard__head">
-              <Avatar src={r.avatar} name={r.name} size="md" />
-              <div className="pro-revcard__id">
-                <div className="pro-revcard__name">{r.name}</div>
-                {r.deal && <div className="pro-revcard__deal">{r.deal}</div>}
+      {items.length === 0 ? (
+        <div className="pro-revempty">
+          <span className="pro-revempty__ic">
+            <Icon name="message-square" size={26} />
+          </span>
+          <div className="pro-revempty__title">{t("profile.noReviews")}</div>
+          <p className="pro-revempty__sub">{t("profile.noReviewsSub", { name: agent.name })}</p>
+        </div>
+      ) : (
+        <div className="pro-rev__list">
+          {items.map((r) => (
+            <article key={r.id} className={"pro-revcard" + (r.own ? " pro-revcard--own" : "")}>
+              <div className="pro-revcard__head">
+                <Avatar src={r.avatar} name={r.name} size="md" />
+                <div className="pro-revcard__id">
+                  <div className="pro-revcard__name">
+                    {r.name}
+                    {r.pending && <span className="pro-revcard__pending">{t("profile.pendingBadge")}</span>}
+                  </div>
+                  {r.deal && <div className="pro-revcard__deal">{r.deal}</div>}
+                </div>
+                <span className="pro-revcard__when">{r.when}</span>
               </div>
-              <span className="pro-revcard__when">{r.when}</span>
-            </div>
-            <Stars n={r.stars} />
-            <p className="pro-revcard__text">{`“${r.text}”`}</p>
-            {r.own && user && (
-              <div className="pro-revcard__actions">
-                <button type="button" className="pro-revcard__act" onClick={() => setEditing(r)}>
-                  <Icon name="pencil" size={15} />
-                  {t("profile.reviewEdit")}
-                </button>
-                <button type="button" className="pro-revcard__act pro-revcard__act--danger" onClick={() => setPendingDelete(r.id)}>
-                  <Icon name="trash-2" size={15} />
-                  {t("profile.reviewDelete")}
-                </button>
-              </div>
-            )}
-          </article>
-        ))}
-      </div>
+              <Stars n={r.stars} />
+              <p className="pro-revcard__text">{`“${r.text}”`}</p>
+              {r.pending && <p className="pro-revcard__pendingnote">{t("profile.pendingNote")}</p>}
+              {r.own && user && (
+                <div className="pro-revcard__actions">
+                  <button type="button" className="pro-revcard__act" onClick={() => setEditing(r)}>
+                    <Icon name="pencil" size={15} />
+                    {t("profile.reviewEdit")}
+                  </button>
+                  <button type="button" className="pro-revcard__act pro-revcard__act--danger" onClick={() => setPendingDelete(r.id)}>
+                    <Icon name="trash-2" size={15} />
+                    {t("profile.reviewDelete")}
+                  </button>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {publicCount > 0 && <p className="pro-rev__count">{t("profile.basedOn", { count: String(publicCount) })}</p>}
 
       <Modal
         open={pendingDelete !== null}
@@ -544,8 +597,9 @@ function Reviews() {
   );
 }
 
-export function ProfileApp() {
+export function ProfileApp({ profile }: { profile: AgentProfile }) {
   const { t } = useLang();
+  const { agent } = profile;
   const [saved, setSaved] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [authOpen, setAuthOpen] = useState(false);
@@ -572,15 +626,15 @@ export function ProfileApp() {
     <>
       <main className="pro-main">
         <div className="pdp">
-          <Crumb />
-          <Hero saved={saved} onSave={onSave} onShare={onShare} onCall={onCall} onWhatsApp={onWhatsApp} onEmail={onEmail} />
-          <TrustMetrics />
+          <Crumb agent={agent} />
+          <Hero agent={agent} intro={profile.intro} saved={saved} onSave={onSave} onShare={onShare} onCall={onCall} onWhatsApp={onWhatsApp} onEmail={onEmail} />
+          <TrustMetrics metrics={profile.metrics} />
           <div className="pdp-body pro-body">
             <div className="pdp-content">
-              <About />
-              <ActiveListings favorites={favorites} onFavorite={onFavorite} />
-              <RecentlySold />
-              <Reviews />
+              <About agent={agent} about={profile.about} areas={profile.areas} />
+              <ActiveListings agent={agent} listings={profile.listings} favorites={favorites} onFavorite={onFavorite} />
+              <RecentlySold sold={profile.sold} />
+              <Reviews agent={agent} reviews={profile.reviews} />
             </div>
           </div>
         </div>

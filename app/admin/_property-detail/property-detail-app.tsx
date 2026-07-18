@@ -514,7 +514,7 @@ function Field({ icon, label, value, mono, em }: { icon: IconName; label: string
   return (
     <div className={"pd-field" + (em ? " pd-field--em" : "")}>
       <span className="pd-field__icon">
-        <Icon name={icon} size={15} />
+        <Icon name={icon} size={18} />
       </span>
       <div className="pd-field__text">
         <span className="pd-field__label">{label}</span>
@@ -566,7 +566,7 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
         <div className="pd-head__intro">
           <div className="pd-head__titlerow">
             <h1 className="pd-head__title">{p.title}</h1>
-            <Badge variant={st.variant} size="md" dot={st.dot} icon={st.icon}>
+            <Badge variant={st.variant} size="sm" dot={st.dot} icon={st.icon}>
               {t(valueKey("status", p.status))}
             </Badge>
           </div>
@@ -625,18 +625,6 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
                     {t(p.agent ? "admin.pd.reassignAgent" : "admin.props.assignAgent")}
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="pd-moreitem"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onArchive();
-                  }}
-                >
-                  <Icon name="archive" size={17} />
-                  {t("admin.props.archiveProperty")}
-                </button>
                 <div className="pd-moremenu__sep" />
                 <button
                   type="button"
@@ -712,22 +700,35 @@ function PropertyInfo({ p }: { p: DetailProperty }) {
             label={t("admin.pd.f.listingType")}
             value={t(p.listing === "sale" ? "admin.pd.forSale" : "admin.pd.forRent")}
           />
+          <Field
+            icon="circle-dot"
+            label={t("admin.props.th.status")}
+            value={t(valueKey("status", p.status))}
+          />
+          <Field
+            icon="sparkles"
+            label={t("admin.pd.f.featured")}
+            value={t(p.featured ? "admin.pd.featured" : "admin.pd.standard")}
+          />
+          <Field icon="calendar-plus" label={t("admin.pd.f.dateCreated")} value={fmtDate(lang, new Date(p.specs.dateCreated))} />
+          <Field icon="clock" label={t("admin.pd.f.lastUpdated")} value={fmtDate(lang, new Date(p.updated))} />
         </DGroup>
 
         <DGroup title={t("admin.pd.pricing")} desc={t("admin.pd.pricingDesc")}>
           <Field
             icon="wallet"
             label={t(p.listing === "sale" ? "admin.pd.f.askingPrice" : "admin.pd.f.monthlyRent")}
-            value={fmtCurrency(lang, p.price, s.currency) + (p.per ? t("admin.pd.perMonth") : "")}
+            value={fmtNum(lang, p.price) + " " + s.currency + (p.per ? t("admin.pd.perMonth") : "")}
             em
           />
-          <Field icon="banknote" label={t("admin.pd.f.currency")} value={s.currency} />
         </DGroup>
 
         <DGroup title={t("admin.pd.location")} desc={t("admin.pd.locationDesc")} noRowDivider>
           <Field icon="building" label={t("admin.pd.f.city")} value={tOr(`city.${p.city}`, p.city)} />
-          <Field icon="map-pin" label={t("admin.pd.f.area")} value={tOr(`loc.${p.area}`, p.area)} />
-          <Field icon="navigation" label={t("admin.pd.f.address")} value={s.address} />
+          <Field icon="map-pin" label={t("admin.pd.f.area")} value={dash(p.district && tOr(`loc.${p.district}`, p.district))} />
+          <Field icon="layers" label={t("admin.ap.f.project")} value={dash(p.project && tOr(`loc.${p.project}`, p.project))} />
+          <Field icon="navigation" label={t("admin.ap.f.street")} value={dash(p.street)} />
+          <Field icon="hash" label={t("admin.ap.f.building")} value={dash(p.building)} />
           <Field
             icon="map"
             label={t("admin.pd.f.map")}
@@ -744,11 +745,12 @@ function PropertyInfo({ p }: { p: DetailProperty }) {
           <Field icon="bed-double" label={t("admin.pd.f.beds")} value={p.beds ? fmtNum(lang, p.beds) : "—"} />
           <Field icon="bath" label={t("admin.pd.f.baths")} value={p.baths ? fmtNum(lang, p.baths) : "—"} />
           <Field icon="maximize-2" label={t("admin.pd.f.size")} value={num(p.size, "unit.sqm")} />
-          <Field icon="land-plot" label={t("admin.pd.f.landSize")} value={num(s.landSize, "unit.sqm")} />
           <Field icon="car" label={t("admin.pd.f.garages")} value={num(s.garages)} />
-          <Field icon="calendar" label={t("admin.pd.f.yearBuilt")} value={s.yearBuilt ? localizeDigits(lang, String(s.yearBuilt)) : "—"} />
-          <Field icon="sofa" label={t("admin.pd.f.furnished")} value={s.furnished ? tOr(valueKey("furnished", s.furnished), s.furnished) : "—"} />
           <Field icon="layers" label={t("admin.pd.f.floor")} value={dash(s.floor && localizeDigits(lang, String(s.floor)))} />
+          <Field icon="calendar" label={t("admin.pd.f.yearBuilt")} value={s.yearBuilt ? localizeDigits(lang, String(s.yearBuilt)) : "—"} />
+          <Field icon="compass" label={t("admin.pd.f.orientation")} value={s.orientation ? tOr(valueKey("admin.ap.orient", s.orientation), s.orientation) : "—"} />
+          <Field icon="badge-check" label={t("admin.pd.f.condition")} value={s.condition ? tOr(valueKey("admin.ap.cond", s.condition), s.condition) : "—"} />
+          <Field icon="sofa" label={t("admin.pd.f.furnished")} value={s.furnished ? tOr(valueKey("furnished", s.furnished), s.furnished) : "—"} />
         </DGroup>
 
         {s.amenities && s.amenities.length > 0 && (
@@ -769,54 +771,6 @@ function PropertyInfo({ p }: { p: DetailProperty }) {
             </div>
           </section>
         )}
-      </div>
-    </SectionCard>
-  );
-}
-
-function ListingInfo({ p }: { p: DetailProperty }) {
-  const { t, lang } = useLang();
-  const st = STATUS_META[p.status] || { variant: "neutral" as const };
-  return (
-    <SectionCard title={t("admin.pd.listingInfo")} desc={t("admin.pd.listingInfoDesc")} id="listing" flush>
-      <div className="pd-detailgroups">
-        <DGroup title={t("admin.pd.listingDetails")} desc={t("admin.pd.listingDetailsDesc")} noRowDivider>
-          <Field
-            icon={p.listing === "sale" ? "tag" : "key"}
-            label={t("admin.pd.f.listingType")}
-            value={
-              <Badge variant={p.listing === "sale" ? "brand" : "info"} size="sm" icon={p.listing === "sale" ? "tag" : "key"}>
-                {t(p.listing === "sale" ? "admin.pd.forSale" : "admin.pd.forRent")}
-              </Badge>
-            }
-          />
-          <Field icon="calendar-plus" label={t("admin.pd.f.dateCreated")} value={fmtDate(lang, new Date(p.specs.dateCreated))} />
-          <Field
-            icon="sparkles"
-            label={t("admin.pd.f.featured")}
-            value={
-              p.featured ? (
-                <Badge variant="gold" size="sm" icon="sparkles">
-                  {t("admin.pd.featured")}
-                </Badge>
-              ) : (
-                <Badge variant="neutral" size="sm" icon="minus">
-                  {t("admin.pd.standard")}
-                </Badge>
-              )
-            }
-          />
-          <Field icon="clock" label={t("admin.pd.f.lastUpdated")} value={fmtDate(lang, new Date(p.updated))} />
-          <Field
-            icon="circle-dot"
-            label={t("admin.props.th.status")}
-            value={
-              <Badge variant={st.variant} size="sm" dot={st.dot} icon={st.icon}>
-                {t(valueKey("status", p.status))}
-              </Badge>
-            }
-          />
-        </DGroup>
       </div>
     </SectionCard>
   );
@@ -1000,24 +954,32 @@ function Timeline({ p, onViewAll }: { p: DetailProperty; onViewAll: () => void }
   );
 }
 
-function Ownership({ p }: { p: DetailProperty }) {
-  const tOr = (key: string, fallback: string) => {
-    const out = t(key);
-    return out === key ? fallback : out;
-  };
-  const { t } = useLang();
+function Ownership({ p, agentSurface }: { p: DetailProperty; agentSurface?: boolean }) {
+  const { t, lang } = useLang();
+  // Owners are members, so link the profile to the member's detail page — like
+  // the assigned-agent card. Fall back to a plain block when the owner has no
+  // matching member record (e.g. a listing created with a free-typed owner).
+  const { members } = useProperties();
+  const member = members.find((m) => m.name === p.owner.name);
+  const href = member ? `${agentSurface ? "/agent" : "/admin"}/members/${encodeURIComponent(member.id)}` : null;
   return (
     <SectionCard title={t("admin.pd.ownership")} desc={t("admin.pd.ownershipDesc")} id="owner">
-      <div className="pd-owner">
-        <Avatar name={p.owner.name} size="lg" />
-        <div className="pd-owner__id">
-          <span className="pd-owner__name">{p.owner.name}</span>
-          <span className="pd-owner__type">
-            <Icon name={p.owner.type.startsWith("Company") ? "building" : "user"} size={13} />
-            {tOr(valueKey("admin.pd.ownerType", p.owner.type), p.owner.type)}
-          </span>
+      {href ? (
+        <Link className="pd-owner pd-owner--link" href={href} title={t("admin.pd.viewMemberDetails", { name: p.owner.name })}>
+          <Avatar name={p.owner.name} size="lg" />
+          <div className="pd-owner__id">
+            <span className="pd-owner__name">{p.owner.name}</span>
+          </div>
+          <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={18} className="pd-owner__go" />
+        </Link>
+      ) : (
+        <div className="pd-owner">
+          <Avatar name={p.owner.name} size="lg" />
+          <div className="pd-owner__id">
+            <span className="pd-owner__name">{p.owner.name}</span>
+          </div>
         </div>
-      </div>
+      )}
       <div className="pd-contactlist">
         <a className="pd-contact" href={"tel:" + p.owner.phone.replace(/\s/g, "")}>
           <span className="pd-contact__icon">
@@ -1067,6 +1029,7 @@ function ViewingRequests({ p, onViewAll }: { p: DetailProperty; onViewAll: () =>
         ) : null
       }
       id="viewings"
+      flush={rows.length > 0}
     >
       {rows.length === 0 ? (
         <div className="pd-noagent">
@@ -1076,22 +1039,55 @@ function ViewingRequests({ p, onViewAll }: { p: DetailProperty; onViewAll: () =>
           <p>{t("admin.pd.viewingsEmpty")}</p>
         </div>
       ) : (
-        <div className="pd-viewings">
-          {rows.map((r) => {
-            const st = VIEWING_STATUS[r.status] || { variant: "neutral" as const, icon: "clock" as const };
-            return (
-              <div className="pd-viewing" key={r.id}>
-                <Avatar src={r.img} name={r.member} size="lg" />
-                <div className="pd-viewing__main">
-                  <span className="pd-viewing__name">{r.member}</span>
-                  <span className="pd-viewing__meta">{fmtStamp(lang, r.date) + " · " + localizeDigits(lang, r.time)}</span>
+        <div className="pd-vtablewrap">
+          <div className="pd-vtable">
+            <div className="pd-vthead" role="row">
+              <span className="pd-vth">{t("admin.members.th.member")}</span>
+              <span className="pd-vth">{t("admin.props.th.agentShort")}</span>
+              <span className="pd-vth">{t("admin.viewings.th.dateTime")}</span>
+              <span className="pd-vth">{t("admin.props.th.status")}</span>
+            </div>
+            {rows.map((r) => {
+              const st = VIEWING_STATUS[r.status] || { variant: "neutral" as const, icon: "clock" as const };
+              return (
+                <div className="pd-vrow" key={r.id}>
+                  <div className="pd-vcell">
+                    <span className="pd-vcell__label">{t("admin.members.th.member")}</span>
+                    <div className="pd-vmember">
+                      <Avatar src={r.img} name={r.member} size="md" />
+                      <div className="pd-vmember__body">
+                        <span className="pd-vmember__name">{r.member}</span>
+                        {r.phone && r.phone !== "—" && <span className="pd-vmember__phone">{localizeDigits(lang, r.phone)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pd-vcell">
+                    <span className="pd-vcell__label">{t("admin.props.th.agentShort")}</span>
+                    <div className="pd-vagent">
+                      <Avatar src={r.agentImg || undefined} name={r.agent} size="sm" verified />
+                      <span className="pd-vagent__name">{r.agent}</span>
+                    </div>
+                  </div>
+                  <div className="pd-vcell">
+                    <span className="pd-vcell__label">{t("admin.viewings.th.dateTime")}</span>
+                    <div className="pd-vdt">
+                      <span className="pd-vdt__date">{fmtStamp(lang, r.date)}</span>
+                      <span className="pd-vdt__time">
+                        <Icon name="clock" size={11} />
+                        {localizeDigits(lang, r.time)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="pd-vcell">
+                    <span className="pd-vcell__label">{t("admin.props.th.status")}</span>
+                    <Badge variant={st.variant} size="sm" icon={st.icon}>
+                      {t(valueKey("status", r.status))}
+                    </Badge>
+                  </div>
                 </div>
-                <Badge variant={st.variant} size="sm" icon={st.icon}>
-                  {t(valueKey("status", r.status))}
-                </Badge>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </SectionCard>
@@ -1120,8 +1116,9 @@ function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; 
   const a = p.agent;
   const phoneHref = "tel:" + a.phone.replace(/\s/g, "");
   const waHref = "https://wa.me/" + a.phone.replace(/[^\d]/g, "");
-  const rating = a.rating || "4.8";
-  const reviews = a.reviews || 96;
+  // Real figures only: agents with no approved reviews show no rating line.
+  const rating = a.rating ?? "0";
+  const reviews = a.reviews ?? 0;
   return (
     <SectionCard
       title={t("admin.pd.assignedAgent")}
@@ -1150,13 +1147,15 @@ function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; 
               </Badge>
             )}
           </span>
-          <span className="pd-agent__meta">
-            <span className="pd-agent__rate">
-              <Icon name="star" size={15} />
-              {localizeDigits(lang, String(rating))}
+          {reviews > 0 && (
+            <span className="pd-agent__meta">
+              <span className="pd-agent__rate">
+                <Icon name="star" size={15} />
+                {localizeDigits(lang, String(rating))}
+              </span>
+              <span className="pd-agent__reviews">({t("admin.pd.reviewsCount", { count: fmtNum(lang, Number(reviews)) })})</span>
             </span>
-            <span className="pd-agent__reviews">({t("admin.pd.reviewsCount", { count: fmtNum(lang, Number(reviews)) })})</span>
-          </span>
+          )}
         </div>
         <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={18} className="pd-agent__go" />
       </Link>
@@ -1275,13 +1274,12 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
         <div className="pd-grid__main">
           <Gallery p={property} />
           <PropertyInfo p={property} />
-          <ListingInfo p={property} />
           <InternalNotes p={property} onAdd={handleAddNote} onEdit={handleEditNote} onDelete={(i) => setNoteToDelete(i)} />
           <ViewingRequests p={property} onViewAll={() => router.push("/admin/viewings")} />
           <Timeline p={property} onViewAll={agentSurface ? () => {} : () => router.push("/admin/properties")} />
         </div>
         <aside className="pd-grid__aside">
-          <Ownership p={property} />
+          <Ownership p={property} agentSurface={agentSurface} />
           <AssignedAgent p={property} onAssignAgent={() => setAgentOpen(true)} agentSurface={agentSurface} />
         </aside>
       </div>

@@ -10,7 +10,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
-import { fmtNum, monthName, valueKey, weekdayName, popupLeft } from "@/lib/fmt";
+import { fmtNum, localizeDigits, monthName, valueKey, weekdayName, popupLeft } from "@/lib/fmt";
 import {
   AGENTS,
   AGENT_IMG,
@@ -256,7 +256,7 @@ function DatePicker({ id, value, onChange, placeholder, dayStatus }: { id?: stri
               <Icon name="chevron-left" size={18} />
             </button>
             <span className="vw-cal__title">
-              {monthName(lang, month, true)} {fmtNum(lang, year)}
+              {monthName(lang, month, true)} {localizeDigits(lang, String(year))}
             </span>
             <button type="button" className="vw-cal__nav" aria-label="Next month" onClick={() => setView(new Date(year, month + 1, 1))}>
               <Icon name="chevron-right" size={18} />
@@ -417,13 +417,13 @@ function FilterDatePicker({ value, onChange, placeholder }: { value: string; onC
     createPortal(
       <>
         <div className="vw-combo__backdrop" style={{ position: "fixed", inset: 0, zIndex: 590 }} onMouseDown={() => setOpen(false)} />
-        <div className="vw-pop vw-cal" style={{ left: pos.left, top: pos.top, width: Math.max(pos.width, 264) }} onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Filter by date">
+        <div className="vw-pop vw-cal" style={{ left: pos.left, top: pos.top, width: pos.width }} onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Filter by date">
           <div className="vw-cal__head">
             <button type="button" className="vw-cal__nav" aria-label="Previous month" onClick={() => setView(new Date(year, month - 1, 1))}>
               <Icon name="chevron-left" size={18} />
             </button>
             <span className="vw-cal__title">
-              {monthName(lang, month, true)} {fmtNum(lang, year)}
+              {monthName(lang, month, true)} {localizeDigits(lang, String(year))}
             </span>
             <button type="button" className="vw-cal__nav" aria-label="Next month" onClick={() => setView(new Date(year, month + 1, 1))}>
               <Icon name="chevron-right" size={18} />

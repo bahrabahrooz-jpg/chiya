@@ -1,24 +1,28 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Breadcrumb } from "@/components/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { Tag } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { useLang } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useFavorites } from "@/lib/favorites";
 import { AgentCard } from "@/components/real-estate";
-import { agents, cities, sortOptions, type DirAgent } from "./data";
+import { AgentFiltersPanel } from "./agent-filters";
+import {
+  agents,
+  sortOptions,
+  experienceMatch,
+  countAgentFilters,
+  emptyAgentFilters,
+  type DirAgent,
+  type AgentFilters,
+} from "./data";
 
 const PER_PAGE = 12;
-
-interface Filters {
-  city: string;
-}
-const emptyFilters: Filters = { city: "" };
 
 function sortAgents(list: DirAgent[], sort: string) {
   const arr = [...list];
@@ -28,38 +32,59 @@ function sortAgents(list: DirAgent[], sort: string) {
   return arr; // "default" → natural order
 }
 
-function pageList(current: number, total: number): (number | string)[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const out: (number | string)[] = [1];
-  const lo = Math.max(2, current - 1);
-  const hi = Math.min(total - 1, current + 1);
-  if (lo > 2) out.push("gap-l");
-  for (let p = lo; p <= hi; p++) out.push(p);
-  if (hi < total - 1) out.push("gap-r");
-  out.push(total);
+/** Page tokens for the grid pager: all pages when few, else 1 … window … last. */
+function pageTokens(current: number, count: number): (number | "…")[] {
+  if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1);
+  const left = Math.max(2, current - 1);
+  const right = Math.min(count - 1, current + 1);
+  const out: (number | "…")[] = [1];
+  if (left > 2) out.push("…");
+  for (let p = left; p <= right; p++) out.push(p);
+  if (right < count - 1) out.push("…");
+  out.push(count);
   return out;
 }
 
-function AgentsSort({ sort, setSort }: { sort: string; setSort: (s: string) => void }) {
+/** Sort dropdown — reuses the SRP sort-menu chrome (.srp-sort*). */
+function SortMenu({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false), open);
-  const current = sortOptions.find((o) => o.value === sort) || sortOptions[0];
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+  const current = sortOptions.find((o) => o.value === value) || sortOptions[0];
   return (
-    <div className="agt-sort" ref={ref}>
-      <button type="button" className={"agt-sort__btn" + (open ? " agt-sort__btn--open" : "")} onClick={() => setOpen((v) => !v)}>
-        <Icon name="arrow-up-down" size={17} className="agt-sort__lead" />
-        <span className="agt-sort__cap">{t("srp.sortLabel")}</span>
-        <span className="agt-sort__val">{t("agents.sort." + current.value)}</span>
-        <Icon name="chevron-down" size={16} className={"agt-sort__chev" + (open ? " agt-sort__chev--open" : "")} />
+    <div className="srp-sort" ref={ref}>
+      <button
+        type="button"
+        className={"srp-sort__btn" + (open ? " srp-sort__btn--open" : "")}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Icon name="arrow-up-down" size={16} className="srp-sort__lead" />
+        <span className="srp-sort__cap">{t("srp.sortLabel")}</span>
+        <span className="srp-sort__val">{t("agents.sort." + current.value)}</span>
+        <Icon name="chevron-down" size={16} className={"srp-sort__chev" + (open ? " srp-sort__chev--open" : "")} />
       </button>
       {open && (
-        <div className="agt-sort__panel">
+        <div className="srp-sort__panel">
           {sortOptions.map((o) => (
-            <button key={o.value} type="button" className={"agt-sort__opt" + (o.value === sort ? " agt-sort__opt--on" : "")} onClick={() => { setSort(o.value); setOpen(false); }}>
+            <button
+              key={o.value}
+              type="button"
+              className={"srp-sort__opt" + (o.value === value ? " srp-sort__opt--on" : "")}
+              onClick={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+            >
               <span>{t("agents.sort." + o.value)}</span>
-              {o.value === sort && <Icon name="check" size={16} />}
+              {o.value === value && <Icon name="check" size={17} />}
             </button>
           ))}
         </div>
@@ -68,51 +93,10 @@ function AgentsSort({ sort, setSort }: { sort: string; setSort: (s: string) => v
   );
 }
 
-function CityPopover({ value, onPick }: { value: string; onPick: (v: string) => void }) {
-  const { t } = useLang();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useClickOutside(ref, () => setOpen(false), open);
-  const opts = [{ value: "", label: t("agents.allCities") }, ...cities.map((c) => ({ value: c, label: t("city." + c) }))];
-  return (
-    <div className="agt-pop" ref={ref}>
-      <button type="button" className={"agt-sort__btn" + (open ? " agt-sort__btn--open" : "")} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        <Icon name="map-pin" size={17} className="agt-sort__lead" />
-        <span className="agt-sort__cap">{t("agents.cityCap")}</span>
-        <span className="agt-sort__val">{value ? t("city." + value) : t("agents.allCities")}</span>
-        <Icon name="chevron-down" size={16} className={"agt-sort__chev" + (open ? " agt-sort__chev--open" : "")} />
-      </button>
-      {open && (
-        <div className="agt-panel">
-          <div className="agt-panel__scroll">
-            <div className="agt-panel__label">{t("agents.cityCap").replace(":", "")}</div>
-            {opts.map((o) => (
-              <button key={o.value} type="button" className={"agt-row" + (value === o.value ? " agt-row--sel" : "")} onClick={() => { onPick(o.value); setOpen(false); }}>
-                <span>{o.label}</span>
-                {value === o.value && <Icon name="check" size={17} className="agt-row__check" />}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FilterControls({ filters, on }: { filters: Filters; on: { setCity: (v: string) => void } }) {
-  const { t } = useLang();
-  return (
-    <div className="agt-ctl agt-ctl--block">
-      <label className="agt-ctl__label">{t("agents.cityCap").replace(":", "")}</label>
-      <Select size="md" value={filters.city} onChange={(e) => on.setCity(e.target.value)} options={[{ value: "", label: t("agents.allCities") }, ...cities.map((c) => ({ value: c, label: t("city." + c) }))]} />
-    </div>
-  );
-}
-
 export function AgentsApp() {
   const { t } = useLang();
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<Filters>(emptyFilters);
+  const [filters, setFilters] = useState<AgentFilters>(emptyAgentFilters);
   const [sort, setSort] = useState("default");
   const { user } = useAuth();
   const { isAgentSaved, toggleAgent } = useFavorites();
@@ -121,31 +105,58 @@ export function AgentsApp() {
   const [pendingAgent, setPendingAgent] = useState<DirAgent | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const stickyRef = useRef<HTMLDivElement>(null);
+  const asideScrollRef = useRef<HTMLDivElement>(null);
+
+  // Premium fade overlays on the sticky filter rail — only when it overflows.
+  useEffect(() => {
+    const el = asideScrollRef.current;
+    if (!el) return;
+    const aside = el.closest(".srp-aside");
+    if (!aside) return;
+    const update = () => {
+      aside.classList.toggle("is-fade-top", el.scrollTop > 2);
+      aside.classList.toggle("is-fade-bottom", el.scrollTop + el.clientHeight < el.scrollHeight - 2);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
   const on = {
-    setCity: (v: string) => setFilters((f) => ({ ...f, city: v })),
+    toggleCity: (v: string) =>
+      setFilters((f) => ({ ...f, cities: f.cities.includes(v) ? f.cities.filter((x) => x !== v) : [...f.cities, v] })),
+    toggleLanguage: (v: string) =>
+      setFilters((f) => ({ ...f, languages: f.languages.includes(v) ? f.languages.filter((x) => x !== v) : [...f.languages, v] })),
+    setExperience: (v: string) => setFilters((f) => ({ ...f, experience: f.experience === v ? "" : v })),
   };
   const clearAll = () => {
-    setFilters(emptyFilters);
+    setFilters(emptyAgentFilters);
     setQuery("");
   };
 
-  const activeCount = filters.city ? 1 : 0;
-  const showClear = (filters.city ? 1 : 0) + (query ? 1 : 0) > 0;
+  const activeCount = countAgentFilters(filters);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = agents.slice();
-    if (q) list = list.filter((a) => a.name.toLowerCase().includes(q));
-    if (filters.city) list = list.filter((a) => a.city === filters.city);
+    if (filters.cities.length) list = list.filter((a) => filters.cities.includes(a.city));
+    if (filters.languages.length) list = list.filter((a) => filters.languages.some((l) => a.languages.includes(l)));
+    if (filters.experience) list = list.filter((a) => experienceMatch(a.experience, filters.experience));
+    if (q) list = list.filter((a) => `${a.name} ${a.city}`.toLowerCase().includes(q));
     return sortAgents(list, sort);
   }, [query, filters, sort]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PER_PAGE));
 
   // Reset to page 1 when the query/filters/sort change (adjust state during render).
-  const filterKey = `${query}|${filters.city}|${sort}`;
+  const filterKey = `${query}|${filters.cities.join(",")}|${filters.languages.join(",")}|${filters.experience}|${sort}`;
   const [prevKey, setPrevKey] = useState(filterKey);
   if (filterKey !== prevKey) {
     setPrevKey(filterKey);
@@ -159,10 +170,7 @@ export function AgentsApp() {
   const goPage = (p: number) => {
     const next = Math.min(Math.max(1, p), totalPages);
     setPage(next);
-    requestAnimationFrame(() => {
-      const el = stickyRef.current;
-      if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 6, behavior: "smooth" });
-    });
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
 
   const onSave = (agent: DirAgent) => {
@@ -185,124 +193,146 @@ export function AgentsApp() {
     setAuthOpen(true);
   };
 
+  // Active-filter chips (filters only — never the free-text search query).
+  const chips: { key: string; label: string; onRemove: () => void }[] = [];
+  filters.cities.forEach((c) => chips.push({ key: "city-" + c, label: t("city." + c), onRemove: () => on.toggleCity(c) }));
+  filters.languages.forEach((l) => chips.push({ key: "lang-" + l, label: t("admin.agents.langOpt." + l), onRemove: () => on.toggleLanguage(l) }));
+  if (filters.experience) chips.push({ key: "exp", label: t("agents.exp." + filters.experience), onRemove: () => on.setExperience("") });
+
+  const filterPanel = <AgentFiltersPanel f={filters} on={on} activeCount={activeCount} onClearAll={clearAll} />;
+
   return (
     <>
-      <main className="agt-main">
-        <div className="agt-container">
-          <nav className="agt-crumb" aria-label="Breadcrumb">
-            <div className="agt-crumb__inner">
-              <Link className="agt-crumb__link" href="/">
-                Home
-              </Link>
-              <Icon name="chevron-right" size={15} className="agt-crumb__sep" />
-              <span className="agt-crumb__current" aria-current="page">
-                {t("agents.crumb")}
-              </span>
-            </div>
-          </nav>
+      <div className="srp-top">
+        <div className="srp-top__crumb">
+          <Breadcrumb items={[{ label: t("srp.crumb.home"), href: "/" }, { label: t("agents.crumb") }]} />
+        </div>
+      </div>
 
-          <header className="agt-hero">
-            <div className="agt-hero__text">
-              <h1 className="agt-hero__title">{t("agents.heroTitle")}</h1>
-              <p className="agt-hero__sub">
+      <main className="srp-main">
+        <div className="srp-layout">
+          <aside className="srp-aside">
+            <div className="srp-aside__fade srp-aside__fade--top" aria-hidden="true" />
+            <div className="srp-aside__scroll" ref={asideScrollRef}>
+              {filterPanel}
+            </div>
+            <div className="srp-aside__fade srp-aside__fade--bottom" aria-hidden="true" />
+          </aside>
+
+          <div className="srp-results">
+            <div className="srp-rtop">
+              <h1 className="srp-rhead__title">{t("agents.resTitle")}</h1>
+              <p className="srp-rhead__count">
                 <b>{results.length}</b>{" "}
                 {results.length === 1 ? t("agents.verifiedAgent") : t("agents.verifiedAgents")}
-                {filters.city ? " " + t("agents.inCity") + " " + t("city." + filters.city) : " " + t("agents.across")}
+                {activeCount > 0 && <span className="srp-rhead__note"> · {t("agents.filtered")}</span>}
               </p>
             </div>
-          </header>
 
-          <div className="agt-stickybar" ref={stickyRef}>
-            <div className="agt-toolbar">
-              <form className="agt-toolbar__search" onSubmit={(e) => e.preventDefault()}>
-                <div className="agt-searchbar">
-                  <Icon name="search" size={20} className="agt-searchbar__ic" />
-                  <input className="agt-searchbar__input" type="text" placeholder={t("agents.searchPh")} value={query} onChange={(e) => setQuery(e.target.value)} />
+            <div className="srp-rhead">
+              <form className="srp-toolbar__search" role="search" onSubmit={(e) => e.preventDefault()}>
+                <div className="srp-bar">
+                  <Icon name="search" size={20} className="srp-bar__ic" />
+                  <input
+                    className="srp-bar__input"
+                    type="text"
+                    aria-label={t("agents.searchPh")}
+                    placeholder={t("agents.searchPh")}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
                   {query && (
-                    <button type="button" className="agt-searchbar__clear" aria-label={t("srp.clearSearch")} onClick={() => setQuery("")}>
-                      <Icon name="x" size={16} />
+                    <button type="button" className="srp-bar__clear" aria-label={t("srp.clearSearch")} onClick={() => setQuery("")}>
+                      <Icon name="x" size={15} />
                     </button>
                   )}
                 </div>
-                <div className="agt-toolbar__controls">
-                  <CityPopover value={filters.city} onPick={on.setCity} />
-                  <AgentsSort sort={sort} setSort={setSort} />
-                </div>
-                <button type="button" className="agt-toolbar__mfilters" onClick={() => setDrawerOpen(true)}>
-                  <Icon name="sliders-horizontal" size={18} />
-                  {t("agents.filters")}
-                </button>
               </form>
-            </div>
-          </div>
-
-          <div className="agt-resbar">
-            <div />
-            {activeCount > 0 && showClear && (
-              <button type="button" className="agt-resbar__clear" onClick={clearAll}>
-                <Icon name="x" size={14} />
-                {t("agents.clearFilters")}
-              </button>
-            )}
-          </div>
-
-          {results.length > 0 ? (
-            <>
-              <div className="agt-grid agt-grid--c3">
-                {paged.map((a) => (
-                  <AgentCard
-                    key={a.id}
-                    name={a.name}
-                    photo={a.photo}
-                    city={a.city}
-                    verified={a.verified}
-                    rating={a.rating}
-                    listings={a.listings}
-                    favorite={user ? isAgentSaved(a.id) : saved.includes(a.id)}
-                    onFavorite={() => onSave(a)}
-                    href={`/agents/${a.id}`}
-                  />
-                ))}
+              <div className="srp-rhead__tools">
+                <SortMenu value={sort} onChange={setSort} />
+                <button type="button" className="srp-summary__filters" onClick={() => setDrawerOpen(true)} aria-label={t("srp.filters")}>
+                  <Icon name="sliders-horizontal" size={18} />
+                  <span className="srp-summary__filters-txt">{t("srp.filters")}</span>
+                </button>
               </div>
-              {totalPages > 1 && (
-                <nav className="agt-pager" aria-label="Pagination">
-                  <div className="agt-pager__info">
+            </div>
+
+            {chips.length > 0 && (
+              <div className="srp-chips">
+                <span className="srp-chips__label">{t("srp.activeFilters")}</span>
+                <div className="srp-chips__row">
+                  {chips.map((c) => (
+                    <Tag key={c.key} onRemove={c.onRemove}>
+                      {c.label}
+                    </Tag>
+                  ))}
+                  <button type="button" className="srp-chips__clear" onClick={clearAll}>
+                    {t("srp.clearAll")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {results.length > 0 ? (
+              <>
+                <div className="srp-grid">
+                  {paged.map((a) => (
+                    <AgentCard
+                      key={a.id}
+                      name={a.name}
+                      photo={a.photo}
+                      city={a.city}
+                      verified={a.verified}
+                      rating={a.rating}
+                      listings={a.listings}
+                      favorite={user ? isAgentSaved(a.id) : saved.includes(a.id)}
+                      onFavorite={() => onSave(a)}
+                      href={`/agents/${a.id}`}
+                    />
+                  ))}
+                </div>
+                <div className="srp-pager">
+                  <span className="srp-pager__info">
                     {t("agents.showing")} <b>{pageStart + 1}–{pageStart + paged.length}</b> {t("agents.of")} <b>{results.length}</b> {t("agents.agentsLower")}
-                  </div>
-                  <div className="agt-pager__ctrls">
-                    <button type="button" className="agt-pager__nav" disabled={safePage <= 1} onClick={() => goPage(safePage - 1)}>
-                      <Icon name="chevron-left" size={15} />
+                  </span>
+                  <div className="srp-pager__ctrls">
+                    <button type="button" className="pp-page-btn pp-page-btn--nav" disabled={safePage === 1} onClick={() => goPage(safePage - 1)}>
+                      <Icon name="chevron-left" size={15} className="srp-pager__previc" />
                       {t("srp.prev")}
                     </button>
-                    {pageList(safePage, totalPages).map((p) =>
-                      typeof p === "string" ? (
-                        <span key={p} className="agt-pager__num agt-pager__num--gap">…</span>
+                    {pageTokens(safePage, totalPages).map((p, i) =>
+                      p === "…" ? (
+                        <span key={"gap-" + i} className="pp-page-ellipsis">
+                          …
+                        </span>
                       ) : (
-                        <button key={p} type="button" className={"agt-pager__num" + (p === safePage ? " agt-pager__num--on" : "")} aria-current={p === safePage ? "page" : undefined} onClick={() => goPage(p)}>
+                        <button key={p} type="button" className={"pp-page-btn" + (p === safePage ? " is-active" : "")} onClick={() => goPage(p)}>
                           {p}
                         </button>
                       ),
                     )}
-                    <button type="button" className="agt-pager__nav" disabled={safePage >= totalPages} onClick={() => goPage(safePage + 1)}>
+                    <button type="button" className="pp-page-btn pp-page-btn--nav" disabled={safePage === totalPages} onClick={() => goPage(safePage + 1)}>
                       {t("srp.next")}
-                      <Icon name="chevron-right" size={15} />
+                      <Icon name="chevron-right" size={15} className="srp-pager__nextic" />
                     </button>
                   </div>
-                </nav>
-              )}
-            </>
-          ) : (
-            <div className="agt-empty">
-              <span className="agt-empty__ic">
-                <Icon name="users" size={30} />
-              </span>
-              <h2 className="agt-empty__title">{t("agents.empty.title")}</h2>
-              <p className="agt-empty__sub">{t("agents.empty.sub")}</p>
-              <Button hierarchy="secondary" iconLeading="rotate-ccw" onClick={clearAll}>
-                {t("agents.clearFilters")}
-              </Button>
-            </div>
-          )}
+                </div>
+              </>
+            ) : (
+              <div className="srp-empty">
+                <div className="srp-empty__ic">
+                  <Icon name="users" size={30} />
+                </div>
+                <h3 className="srp-empty__title">{t("agents.empty.title")}</h3>
+                <p className="srp-empty__sub">{t("agents.empty.sub")}</p>
+                <div className="srp-empty__actions">
+                  <Button hierarchy="secondary" iconLeading="rotate-ccw" onClick={clearAll}>
+                    {t("agents.clearFilters")}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </main>
 
@@ -338,24 +368,19 @@ export function AgentsApp() {
         </ul>
       </Modal>
 
-      <div className={"agt-drawer" + (drawerOpen ? " agt-drawer--open" : "")}>
-        <div className="agt-drawer__scrim" onClick={() => setDrawerOpen(false)} />
-        <div className="agt-drawer__sheet">
-          <div className="agt-drawer__head">
-            <span className="agt-drawer__title">{t("agents.filterTitle")}</span>
-            <button type="button" className="agt-drawer__close" aria-label={t("srp.closeFilters")} onClick={() => setDrawerOpen(false)}>
+      {/* mobile filter drawer */}
+      <div className={"srp-drawer" + (drawerOpen ? " srp-drawer--open" : "")}>
+        <div className="srp-drawer__scrim" onClick={() => setDrawerOpen(false)} />
+        <div className="srp-drawer__sheet">
+          <div className="srp-drawer__head">
+            <span className="srp-drawer__title">{t("agents.filterTitle")}</span>
+            <button type="button" className="srp-drawer__close" aria-label={t("srp.closeFilters")} onClick={() => setDrawerOpen(false)}>
               <Icon name="x" size={20} />
             </button>
           </div>
-          <div className="agt-drawer__body">
-            <FilterControls filters={filters} on={on} />
-            <div className="agt-drawer__sortwrap">
-              <label className="agt-ctl__label">{t("agents.sortBy")}</label>
-              <AgentsSort sort={sort} setSort={setSort} />
-            </div>
-          </div>
-          <div className="agt-drawer__foot">
-            <button type="button" className="agt-drawer__apply" onClick={() => setDrawerOpen(false)}>
+          <div className="srp-drawer__body">{filterPanel}</div>
+          <div className="srp-drawer__foot">
+            <button type="button" className="srp-drawer__apply" onClick={() => setDrawerOpen(false)}>
               {t("agents.show")} {results.length} {t("agents.agentsLower")}
             </button>
           </div>

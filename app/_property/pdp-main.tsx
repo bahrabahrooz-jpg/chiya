@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { useLang } from "@/lib/i18n";
-import { property, description, features, amenities } from "./data";
+import { usePdp } from "./pdp-context";
 
 function QuickFacts() {
   const { t } = useLang();
+  const { property } = usePdp();
   const facts = [
     { icon: "bed-double", val: property.beds, lbl: t("pdp.beds") },
     { icon: "bath", val: property.baths, lbl: t("pdp.baths") },
@@ -31,6 +32,7 @@ function QuickFacts() {
 
 function Description() {
   const { t } = useLang();
+  const { description } = usePdp();
   const [expanded, setExpanded] = useState(false);
   return (
     <section className="pdp-sec">
@@ -50,6 +52,7 @@ function Description() {
 
 function Features() {
   const { t } = useLang();
+  const { features } = usePdp();
   return (
     <section className="pdp-sec">
       <h2 className="pdp-sec__title">{t("pdp.features")}</h2>
@@ -72,6 +75,7 @@ function Features() {
 
 function Amenities() {
   const { t } = useLang();
+  const { amenities } = usePdp();
   return (
     <section className="pdp-sec">
       <h2 className="pdp-sec__title">{t("pdp.amenities")}</h2>
@@ -91,8 +95,8 @@ function Amenities() {
 
 function Location() {
   const { t } = useLang();
-  const lat = 36.4078;
-  const lng = 44.3239;
+  const { property } = usePdp();
+  const { lat, lng } = property;
   // Google Maps embed (keyless "output=embed" form) so the preview matches the
   // mobile app's Google map, dropping a marker at the property's coordinates.
   const embedSrc = `https://maps.google.com/maps?q=${lat},${lng}&z=15&hl=en&output=embed`;

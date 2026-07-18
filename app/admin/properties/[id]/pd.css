@@ -164,35 +164,34 @@
 
   .pd-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
   .pd-dl--one { grid-template-columns: 1fr; column-gap: 0; }
-  .pd-field { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0 13px; min-width: 0; }
+  .pd-field { display: flex; align-items: center; gap: 13px; padding: 14px 0 13px; min-width: 0; }
   /* dividers only BETWEEN rows (each column keeps its own subtle rule) */
   .pd-dl > .pd-field:nth-child(n + 3) { border-top: 1px solid var(--border-subtle); }
   .pd-dl--one > .pd-field:nth-child(n + 2) { border-top: 1px solid var(--border-subtle); }
   .pd-dl--no-divider > .pd-field { border-top: none !important; }
 
-  /* ---------- AMENITIES GRID ---------- */
-  .pd-amen { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px 18px; margin-top: 14px; }
+  /* ---------- AMENITIES PILLS (matches the website & mobile PDP) ---------- */
+  .pd-amen { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
   .pd-amenrow {
-    display: flex; align-items: center; gap: 11px;
-    font-size: 14px; font-weight: 500; color: var(--text-primary); min-width: 0;
+    display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 13px;
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-pill);
+    background: var(--surface-card);
+    font-family: var(--font-sans); font-size: 14px; font-weight: 500; color: var(--text-secondary);
   }
   .pd-amenrow__ic {
     flex: none; display: inline-flex; align-items: center; justify-content: center;
-    width: 34px; height: 34px; border-radius: 50%;
-    background: var(--green-50); color: var(--text-brand);
+    color: var(--text-brand);
   }
-  @media (max-width: 720px) { .pd-amen { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 460px) { .pd-amen { grid-template-columns: 1fr; } }
   .pd-field__icon {
-    flex: none; width: 30px; height: 30px; border-radius: 8px; margin-top: 1px;
+    flex: none; width: 40px; height: 40px; border-radius: var(--radius-md);
     display: flex; align-items: center; justify-content: center;
     background: var(--gray-50); color: var(--text-tertiary);
     box-shadow: inset 0 0 0 1px var(--border-subtle);
   }
-  .pd-field__text { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .pd-field__text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .pd-field__label { font-size: 12.5px; font-weight: 500; color: var(--text-tertiary); line-height: 1.2; }
   .pd-field__value {
-    font-size: 15.5px; font-weight: 600; color: var(--text-primary); line-height: 1.3;
+    font-size: 15px; font-weight: 600; color: var(--text-primary); line-height: 1.3;
     letter-spacing: -.006em; overflow-wrap: anywhere; text-wrap: pretty;
   }
   .pd-field__value--mono { font-family: var(--font-mono); font-size: 14px; font-weight: 600; letter-spacing: 0; }
@@ -351,13 +350,17 @@
 
   /* ---------- OWNERSHIP ---------- */
   .pd-owner { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
-  .pd-owner__id { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-  .pd-owner__name { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -.01em; }
-  .pd-owner__type {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; color: var(--text-tertiary);
+  .pd-owner--link {
+    margin: -10px -12px 14px; padding: 10px 12px; border-radius: var(--radius-md);
+    text-decoration: none; cursor: pointer; outline: none;
+    transition: background-color .15s;
   }
-  .pd-owner__type svg { color: var(--text-tertiary); }
+  .pd-owner--link:hover { background: var(--gray-50); }
+  .pd-owner--link:focus-visible { box-shadow: var(--shadow-focus-brand); }
+  .pd-owner__id { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 5px; }
+  .pd-owner__name { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -.01em; }
+  .pd-owner__go { flex: none; color: var(--text-tertiary); transition: transform .15s, color .15s; }
+  .pd-owner--link:hover .pd-owner__go { color: var(--text-brand); transform: translateX(2px); }
 
   /* contact list (shared owner + agent) */
   .pd-contactlist { display: flex; flex-direction: column; gap: 10px; }
@@ -449,16 +452,52 @@
   }
   .pd-noagent p { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin: 0; max-width: 240px; text-wrap: pretty; }
 
-  /* ---------- VIEWING REQUESTS ---------- */
-  .pd-viewings { display: flex; flex-direction: column; gap: 10px; }
-  .pd-viewing {
-    display: flex; align-items: center; gap: 14px;
-    padding: 11px 0;
+  /* ---------- VIEWING REQUESTS (table — matches the Viewings / member-profile tables) ---------- */
+  .pd-vtablewrap { overflow-x: auto; }
+  .pd-vtablewrap::-webkit-scrollbar { height: 9px; }
+  .pd-vtablewrap::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+
+  .pd-vthead, .pd-vrow {
+    display: grid; align-items: center; gap: 14px; padding: 0 22px;
+    grid-template-columns: minmax(190px, 2fr) minmax(150px, 1.3fr) minmax(150px, 1.2fr) 128px;
+    min-width: 720px;
   }
-  .pd-viewing__main { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; }
-  .pd-viewing__name { font-size: 14.5px; font-weight: 600; color: var(--text-primary); }
-  .pd-viewing__meta { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
-  .pd-viewing__meta svg { color: var(--text-tertiary); flex: none; }
+  .pd-vthead {
+    height: 44px; background: var(--gray-50); border-bottom: 1px solid var(--border-subtle);
+  }
+  .pd-vth {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-tertiary); white-space: nowrap;
+  }
+  .pd-vrow { min-height: 72px; border-bottom: 1px solid var(--border-subtle); transition: background-color .14s ease; }
+  .pd-vrow:last-child { border-bottom: none; }
+  .pd-vrow:hover { background: var(--gray-25); }
+
+  .pd-vcell { min-width: 0; }
+  .pd-vcell__label { display: none; }
+
+  /* member cell (avatar + name + phone) */
+  .pd-vmember { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .pd-vmember__body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .pd-vmember__name {
+    font-size: 14px; font-weight: 600; letter-spacing: -.005em; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pd-vmember__phone { font-size: 12.5px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* agent cell — the host agent for this viewing (may differ from the property's
+     current assignee after a reassignment) */
+  .pd-vagent { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+  .pd-vagent__name { font-size: 13.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* stacked date + time (matches the main Viewings table) */
+  .pd-vdt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .pd-vdt__date { font-size: 13px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pd-vdt__time {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .pd-vdt__time svg { flex: none; color: var(--text-tertiary); }
 
   /* ---------- RESPONSIVE HEADER ---------- */
   @media (max-width: 900px) {

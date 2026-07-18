@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { AppointmentWidget } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
 import { addViewing, useViewings } from "@/lib/viewings";
-import { property, agent, gallery } from "./data";
+import { usePdp } from "./pdp-context";
 import { DatePicker, TimePicker } from "./datetime-picker";
 import { buildReservedIndex, seedReservedSlots, isSlot } from "./reservations";
 
@@ -24,6 +24,7 @@ export interface ActionPanelProps {
 export function ActionPanel({ onBook, onCall, onWhatsApp, className }: ActionPanelProps) {
   const router = useRouter();
   const { t } = useLang();
+  const { agent } = usePdp();
   const goProfile = () => router.push(`/agents/${agent.id}`);
   return (
     <div className={"pdp-panel " + (className || "")}>
@@ -88,6 +89,7 @@ export function ActionPanel({ onBook, onCall, onWhatsApp, className }: ActionPan
 
 export function BookModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLang();
+  const { property, agent, gallery } = usePdp();
   const { items } = useViewings();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -100,7 +102,7 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
       .filter((v) => v.propertyId === property.id && isSlot(v.time))
       .map((v) => ({ date: v.date, time: v.time }));
     return buildReservedIndex([...seedReservedSlots(), ...own]);
-  }, [items]);
+  }, [items, property.id]);
   const reservedTimes = date ? byDate.get(date) : undefined;
 
   /* Picking a new date clears a time that is reserved (or not a valid slot). */

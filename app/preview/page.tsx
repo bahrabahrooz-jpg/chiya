@@ -18,7 +18,7 @@ const PAGES: PreviewLink[] = [
   { href: "/search?deal=buy", key: "search", desc: "Filters, sort, grid + interactive map view, pagination.", icon: "search", source: "export" },
   { href: "/property/olive-grove", key: "property", desc: "Gallery, facts, description, features, amenities, map, agent panel.", icon: "building-2", source: "export" },
   { href: "/agents", key: "agents", desc: "Searchable, filterable grid of verified agents.", icon: "users", source: "export" },
-  { href: "/agents/daban-ali", key: "profile", desc: "Hero, performance metrics, listings, recently sold, reviews.", icon: "user-round", source: "export" },
+  { href: "/agents/lana-aziz", key: "profile", desc: "Hero, performance metrics, listings, recently sold, reviews.", icon: "user-round", source: "export" },
   { href: "/about", key: "about", desc: "Not in the export — routed placeholder.", icon: "info", source: "placeholder" },
   { href: "/contact", key: "contact", desc: "Not in the export — routed placeholder.", icon: "mail", source: "placeholder" },
   { href: "/login", key: "login", desc: "Opens the auth modal.", icon: "log-in", source: "placeholder" },

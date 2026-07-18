@@ -18,6 +18,7 @@ import {
   statusRequiresAgent,
   withAgentStats,
   withMemberCounts,
+  withMemberRoles,
   type AgentCounts,
   type AgentRecord,
   type CityDef,
@@ -115,8 +116,12 @@ function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
 /* Bump the version whenever the seed schema/semantics change so stale caches are
    discarded. v2: only verified agents can be assigned (no "Pending" agent cards).
    v3: sold/rented "updated" dates spread between listing and today (period KPIs).
-   v4: live listings (Published/Sold/Rented) always have an assigned agent. */
-const STORAGE_KEY = "chiya:admin-store:v4";
+   v4: live listings (Published/Sold/Rented) always have an assigned agent.
+   v5: hand-curated seed — 24 properties / 14 members / 7 agents, one record per
+   scenario (replaces the old 320/240/48 generated dataset).
+   v6: transactional roles — Sold records carry a buyer, Rented may carry a
+   tenant, and member roles are derived from those links instead of declared. */
+const STORAGE_KEY = "chiya:admin-store:v6";
 
 /**
  * Single source of truth for the whole admin area. Properties, members, and
@@ -131,10 +136,13 @@ export function PropertiesProvider({ children }: { children: React.ReactNode }) 
   const [locationDefs, setLocationDefs] = useState<CityDef[]>(() => cloneLocationDefs(LOCATION_DEF));
 
   const counts = useMemo(() => countProperties(properties), [properties]);
-  const members = useMemo(() => withMemberCounts(memberRoster, properties), [memberRoster, properties]);
+  /* Roles are derived live from property links (owner / buyer / tenant), so a
+     role can never exist without a backing record. Roles set explicitly on a
+     roster record (e.g. via Add member) are kept as a base. */
+  const members = useMemo(() => withMemberCounts(withMemberRoles(memberRoster, properties), properties), [memberRoster, properties]);
   const agents = useMemo(() => withAgentStats(agentRoster, properties), [agentRoster, properties]);
   const locationTree = useMemo(() => buildLocationTree(locationDefs, properties), [locationDefs, properties]);
-  const memberCounts = useMemo(() => countMembers(memberRoster), [memberRoster]);
+  const memberCounts = useMemo(() => countMembers(members), [members]);
   const agentCounts = useMemo(() => countAgents(agentRoster), [agentRoster]);
   const locationCounts = useMemo(() => countLocations(locationDefs, properties), [locationDefs, properties]);
 

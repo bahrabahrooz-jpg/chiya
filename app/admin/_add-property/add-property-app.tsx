@@ -17,6 +17,7 @@ import { useLang, isRtl } from "@/lib/i18n";
 import { fmtCurrency, fmtNum, localizeDigits, valueKey } from "@/lib/fmt";
 import {
   AMENITIES,
+  AMENITY_GROUPS,
   CONDITIONS,
   COVER_IMG,
   EMPTY_FORM,
@@ -44,9 +45,7 @@ function todayLabel(): string {
 // persisted to localStorage) don't collide on lookup.
 const ID_BASE = 10000 + Math.floor(Date.now() % 90000);
 let addedSeq = 0;
-/** `pending` forces the record to await admin approval even though an agent is
- *  attached — agents submit, they don't publish (mode="agent"). */
-function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader, pending = false): PropertyRecord {
+function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader): PropertyRecord {
   const listing: "sale" | "rent" = f.listing === "rent" ? "rent" : "sale";
   const district = f.district || "Ankawa";
   const area = f.project || district; // most specific location (project → district)
@@ -69,9 +68,8 @@ function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader,
     agent: agent ? { name: agent.name, verified: true, img: agent.avatar } : null,
     listing,
     // A property can only go live with an assigned agent; without one it stays
-    // Pending until an agent is assigned. Agent-submitted listings stay Pending
-    // regardless, until an admin approves them.
-    status: agent && !pending ? "Published" : "Pending",
+    // Pending until an agent is assigned.
+    status: agent ? "Published" : "Pending",
     price: Number(String(f.price).replace(/[^0-9.]/g, "")) || 0,
     per: listing === "rent" ? "/mo" : undefined,
     date,
@@ -80,7 +78,7 @@ function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader,
     baths: f.baths,
     size: Number(String(f.area).replace(/[^0-9.]/g, "")) || 0,
     featured: false,
-    published: !!agent && !pending,
+    published: !!agent,
     listingDate: date,
     updated: date,
     details: {
@@ -927,21 +925,40 @@ export function AmenityGrid({ value, onChange }: { value: string[]; onChange: (v
   const { t } = useLang();
   const toggle = (label: string) => onChange(value.includes(label) ? value.filter((x) => x !== label) : [...value, label]);
   return (
-    <div className="ap-amen" role="group" aria-label={t("admin.pd.amenities")}>
-      {AMENITIES.map((a) => {
-        const on = value.includes(a.label);
-        return (
-          <button key={a.label} type="button" aria-pressed={on} className={"ap-amen__item" + (on ? " is-on" : "")} onClick={() => toggle(a.label)}>
-            <span className="ap-amen__ic">
-              <Icon name={a.icon} size={16} />
-            </span>
-            <span className="ap-amen__label">{t(a.labelKey)}</span>
-            {on && (
-              <span className="ap-amen__check">
-                <Icon name="check" size={11} strokeWidth={3} />
-              </span>
-            )}
+    <div className="ap-amen-wrap" role="group" aria-label={t("admin.pd.amenities")}>
+      {value.length > 0 && (
+        <div className="ap-amen__bar">
+          <span className="ap-amen__count">{t("admin.ap.amSelectedCount", { n: value.length })}</span>
+          <button type="button" className="ap-amen__clear" onClick={() => onChange([])}>
+            {t("admin.ap.amClearAll")}
           </button>
+        </div>
+      )}
+      {AMENITY_GROUPS.map((grp) => {
+        const items = AMENITIES.filter((a) => a.group === grp.key);
+        if (items.length === 0) return null;
+        return (
+          <div className="ap-amen__group" key={grp.key}>
+            <div className="ap-amen__grouphd">{t(grp.labelKey)}</div>
+            <div className="ap-amen">
+              {items.map((a) => {
+                const on = value.includes(a.label);
+                return (
+                  <button key={a.label} type="button" aria-pressed={on} className={"ap-amen__item" + (on ? " is-on" : "")} onClick={() => toggle(a.label)}>
+                    <span className="ap-amen__ic">
+                      <Icon name={a.icon} size={16} />
+                    </span>
+                    <span className="ap-amen__label">{t(a.labelKey)}</span>
+                    {on && (
+                      <span className="ap-amen__check">
+                        <Icon name="check" size={11} strokeWidth={3} />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         );
       })}
     </div>
@@ -951,11 +968,26 @@ export function AmenityGrid({ value, onChange }: { value: string[]; onChange: (v
 export function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; onAdd: (t: string) => void; onRemove: (i: number) => void }) {
   const { t } = useLang();
   const [val, setVal] = useState("");
+  const [dupe, setDupe] = useState("");
+  // Reject a custom amenity that duplicates a preset chip (matched against both the
+  // canonical English label and its translated display) or an existing custom tag.
+  const findMatch = (raw: string) => {
+    const q = raw.trim().toLowerCase();
+    const preset = AMENITIES.find((a) => a.label.toLowerCase() === q || t(a.labelKey).toLowerCase() === q);
+    if (preset) return t(preset.labelKey);
+    return items.find((it) => it.toLowerCase() === q) ?? "";
+  };
   const add = () => {
-    const t = val.trim();
-    if (!t) return;
-    onAdd(t);
+    const v = val.trim();
+    if (!v) return;
+    const match = findMatch(v);
+    if (match) {
+      setDupe(t("admin.ap.amDupeHint", { name: match }));
+      return;
+    }
+    onAdd(v);
     setVal("");
+    setDupe("");
   };
   return (
     <div className="ap-custom-wrap">
@@ -966,7 +998,10 @@ export function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; o
           placeholder={t("admin.ap.customAmenityName")}
           aria-label={t("admin.ap.customAmenityName")}
           value={val}
-          onChange={(e) => setVal(e.target.value)}
+          onChange={(e) => {
+            setVal(e.target.value);
+            if (dupe) setDupe("");
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -978,6 +1013,7 @@ export function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; o
           {t("admin.ap.addAmenity")}
         </Button>
       </div>
+      {dupe && <span className="ap-custom__dupe" role="alert">{dupe}</span>}
       {items.length > 0 && (
         <div className="ap-taglist">
           {items.map((it, i) => (
@@ -1075,15 +1111,9 @@ function PublishedSuccess({ preview, agentMode = false }: { preview: PublishPrev
           </span>
         </div>
         <h1 className="pp-title" id="pp-title">
-          {t(view.published ? "admin.ap.publishedTitle" : agentMode ? "admin.ap.submittedTitle" : "admin.ap.pendingTitle")}
+          {t(view.published ? "admin.ap.publishedTitle" : "admin.ap.pendingTitle")}
         </h1>
-        <p className="pp-desc">
-          {view.published
-            ? t("admin.ap.publishedBody")
-            : agentMode
-              ? t("admin.ap.agentSubmittedBody")
-              : t("admin.ap.pendingBody")}
-        </p>
+        <p className="pp-desc">{t(view.published ? "admin.ap.publishedBody" : "admin.ap.pendingBody")}</p>
         <div className="pp-listing">
           <div className="pp-listing__media">
             <img src={view.cover} alt="" />
@@ -1248,14 +1278,16 @@ export function AddPropertyApp({
   editListingId,
 }: { lockedAgentId?: string; mode?: "admin" | "member" | "agent"; editListingId?: string } = {}) {
   const { t, lang } = useLang();
+  const router = useRouter();
   const tOr = (key: string, fallback: string) => {
     const out = t(key);
     return out === key ? fallback : out;
   };
-  const { addProperty, locationTree } = useProperties();
+  const { addProperty, updateProperty, locationTree } = useProperties();
   const { items: memberListings, add: addMemberListing, update: updateMemberListing } = useListings();
   const member = mode === "member";
-  // Agents submit for approval rather than publishing directly.
+  // Agents publish directly, same as admins — agentMode only changes the
+  // console the flow links back to. Only members submit for approval.
   const agentMode = mode === "agent";
   const assignableAgents = useAssignableAgents();
   const photos = usePhotoUploader(false);
@@ -1333,6 +1365,34 @@ export function AddPropertyApp({
   const revAgent = assignableAgents.find((a) => a.id === f.agent) || null;
   const AMEN_IC: Record<string, IconName> = Object.fromEntries(AMENITIES.map((a) => [a.label, a.icon]));
 
+  // "Save draft" files whatever is filled in so far — no validation, from any
+  // step. Members get a `draft` listing in My Properties; admins/agents get a
+  // Draft catalog record (Drafts tab). A ref keeps a double-click from filing
+  // the same draft twice while navigation is in flight.
+  const draftIdRef = useRef<string | null>(null);
+  const saveDraft = () => {
+    if (member) {
+      const id = editing && editId ? editId : draftIdRef.current ?? undefined;
+      const rec: MemberListing = { ...formToMemberListing(f, photos, priceStr, areaStr, id), status: "draft" };
+      if (id) {
+        updateMemberListing(id, rec);
+      } else {
+        addMemberListing(rec);
+        draftIdRef.current = rec.id;
+      }
+      router.push("/my-listings");
+      return;
+    }
+    const rec: PropertyRecord = { ...formToProperty(f, f.agent ? revAgent : null, photos), status: "Draft", published: false };
+    if (draftIdRef.current) {
+      updateProperty(draftIdRef.current, { ...rec, id: draftIdRef.current });
+    } else {
+      addProperty(rec);
+      draftIdRef.current = rec.id;
+    }
+    router.push((agentMode ? "/agent/properties" : "/admin/properties") + "?status=draft");
+  };
+
   // City / district options come from the live Locations structure, so a
   // location added on the Locations page shows up here immediately.
   const cityOptions = locationTree.map((c) => c.name);
@@ -1402,6 +1462,7 @@ export function AddPropertyApp({
                 <div className="ap-combo">
                   <ComboSelect side="left" value={f.currency} onChange={(v) => set("currency", v)} options={["USD", "IQD"]} />
                   <input id="ap-price" className="ap-combo__input" inputMode="numeric" placeholder={t("admin.ap.pricePh")} value={f.price} onChange={(e) => set("price", e.target.value.replace(/[^\d]/g, ""))} />
+                  {f.listing === "rent" && <span className="ap-combo__suffix cx-tnum" aria-hidden="true">{t("admin.mp.perMo")}</span>}
                 </div>
               </div>
               <div className="ap-field">
@@ -1418,7 +1479,7 @@ export function AddPropertyApp({
               {t("admin.common.cancel")}
             </Button>
             <div className="ap-foot__right">
-              <Button hierarchy="secondary" size="lg" iconLeading="save">
+              <Button hierarchy="secondary" size="lg" iconLeading="save" onClick={saveDraft}>
                 {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(1)}>
@@ -1511,7 +1572,7 @@ export function AddPropertyApp({
               {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
-              <Button hierarchy="secondary" size="lg" iconLeading="save">
+              <Button hierarchy="secondary" size="lg" iconLeading="save" onClick={saveDraft}>
                 {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(2)}>
@@ -1558,7 +1619,7 @@ export function AddPropertyApp({
               {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
-              <Button hierarchy="secondary" size="lg" iconLeading="save">
+              <Button hierarchy="secondary" size="lg" iconLeading="save" onClick={saveDraft}>
                 {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(3)}>
@@ -1632,7 +1693,7 @@ export function AddPropertyApp({
               {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
-              <Button hierarchy="secondary" size="lg" iconLeading="save">
+              <Button hierarchy="secondary" size="lg" iconLeading="save" onClick={saveDraft}>
                 {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(4)}>
@@ -1701,7 +1762,7 @@ export function AddPropertyApp({
               {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
-              <Button hierarchy="secondary" size="lg" iconLeading="save">
+              <Button hierarchy="secondary" size="lg" iconLeading="save" onClick={saveDraft}>
                 {t("admin.ap.saveDraft")}
               </Button>
               <Button hierarchy="primary" size="lg" iconTrailing="arrow-right" onClick={() => goTo(5)}>
@@ -1837,7 +1898,7 @@ export function AddPropertyApp({
               {t("admin.ap.prev")}
             </Button>
             <div className="ap-foot__right">
-              <Button hierarchy="secondary" size="lg" iconLeading="save">
+              <Button hierarchy="secondary" size="lg" iconLeading="save" onClick={saveDraft}>
                 {t("admin.ap.saveDraft")}
               </Button>
               <Button
@@ -1857,7 +1918,7 @@ export function AddPropertyApp({
                     goTo(6);
                     return;
                   }
-                  const rec = formToProperty(f, f.agent ? revAgent : null, photos, agentMode);
+                  const rec = formToProperty(f, f.agent ? revAgent : null, photos);
                   addProperty(rec);
                   setPreview({
                     id: rec.id,
@@ -1879,9 +1940,7 @@ export function AddPropertyApp({
                     ? editing
                       ? "admin.ap.saveChanges"
                       : "admin.ap.submitProperty"
-                    : agentMode
-                      ? "admin.ap.submitProperty"
-                      : "admin.ap.publishProperty",
+                    : "admin.ap.publishProperty",
                 )}
               </Button>
             </div>

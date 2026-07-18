@@ -9,40 +9,52 @@ export const STEP_KEYS = [
   "admin.ap.step.review",
 ];
 
-export const PROPERTY_TYPES = ["Villa", "Apartment", "House", "Land", "Commercial", "Office", "Building"];
+export const PROPERTY_TYPES = ["Apartment", "House", "Land", "Office", "Villa"];
 export const CONDITIONS = ["New", "Good", "Needs renovation"];
 export const CITIES = ["Erbil", "Sulaymaniyah", "Duhok", "Halabja", "Kirkuk", "Zakho"];
 export const DISTRICTS = ["Ankawa", "Italian Village", "Dream City", "Empire World", "English Village", "Downtown", "Naz City"];
 export const FURNISHING = ["Unfurnished", "Semi-furnished", "Fully furnished"];
 export const ORIENTATIONS = ["North facing", "South facing", "East facing", "West facing"];
 
+/* Assignable agents come from the live roster via useAssignableAgents()
+   (add-property-app.tsx) — never from a static list, so the picker always
+   matches the Agents page in names, photos, and verification. */
 export interface ApAgent { id: string; name: string; area: string; phone: string; avatar: string }
-export const AGENTS: ApAgent[] = [
-  { id: "lana", name: "Lana Aziz", area: "Erbil · Ankawa", phone: "+964 770 552 1190", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=160&q=70" },
-  { id: "karwan", name: "Karwan Mahmoud", area: "Erbil · Downtown", phone: "+964 750 118 4420", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=70" },
-  { id: "dashne", name: "Dashne Salar", area: "Sulaymaniyah", phone: "+964 773 220 5567", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=70" },
-  { id: "shilan", name: "Shilan Aram", area: "Erbil · Italian V.", phone: "+964 751 209 3341", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=70" },
-  { id: "diyar", name: "Diyar Salih", area: "Duhok", phone: "+964 770 118 5540", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=70" },
+
+/* Amenity groups — the canonical order + grouping shared 1:1 with the mobile
+   listing form (apps/mobile/components/listing/data.ts). Web and mobile are
+   separate build roots and can't import a common module, so the two AMENITIES
+   lists must be kept in lockstep by hand: same labels, same order, same groups. */
+export type AmenityGroup = "comfort" | "security" | "outdoor" | "building";
+export const AMENITY_GROUPS: { key: AmenityGroup; labelKey: string }[] = [
+  { key: "comfort", labelKey: "admin.ap.am.group.comfort" },
+  { key: "security", labelKey: "admin.ap.am.group.security" },
+  { key: "outdoor", labelKey: "admin.ap.am.group.outdoor" },
+  { key: "building", labelKey: "admin.ap.am.group.building" },
 ];
 
-export interface Amenity { label: string; icon: IconName; labelKey: string }
+export interface Amenity { label: string; icon: IconName; labelKey: string; group: AmenityGroup }
 export const AMENITIES: Amenity[] = [
-  { label: "Swimming pool", icon: "waves", labelKey: "admin.ap.am.pool" },
-  { label: "Garden", icon: "trees", labelKey: "admin.ap.am.garden" },
-  { label: "Gym", icon: "dumbbell", labelKey: "admin.ap.am.gym" },
-  { label: "Elevator", icon: "arrow-up-down", labelKey: "admin.ap.am.elevator" },
-  { label: "Balcony", icon: "fence", labelKey: "admin.ap.am.balcony" },
-  { label: "Security", icon: "shield-check", labelKey: "admin.ap.am.security" },
-  { label: "CCTV", icon: "cctv", labelKey: "admin.ap.am.cctv" },
-  { label: "Smart home", icon: "house-wifi", labelKey: "admin.ap.am.smartHome" },
-  { label: "Generator", icon: "zap", labelKey: "admin.ap.am.generator" },
-  { label: "Storage room", icon: "package", labelKey: "admin.ap.am.storage" },
-  { label: "Maid room", icon: "bed-single", labelKey: "admin.ap.am.maid" },
-  { label: "Fireplace", icon: "flame", labelKey: "admin.ap.am.fireplace" },
-  { label: "Play area", icon: "blocks", labelKey: "admin.ap.am.play" },
-  { label: "BBQ area", icon: "utensils-crossed", labelKey: "admin.ap.am.bbq" },
-  { label: "Laundry room", icon: "washing-machine", labelKey: "admin.ap.am.laundry" },
-  { label: "Central AC", icon: "air-vent", labelKey: "admin.ap.am.ac" },
+  // Comfort
+  { label: "Smart home", icon: "house-wifi", labelKey: "admin.ap.am.smartHome", group: "comfort" },
+  { label: "Central AC", icon: "air-vent", labelKey: "admin.ap.am.ac", group: "comfort" },
+  { label: "Maid room", icon: "bed-single", labelKey: "admin.ap.am.maid", group: "comfort" },
+  { label: "Fireplace", icon: "flame", labelKey: "admin.ap.am.fireplace", group: "comfort" },
+  // Security & Utilities
+  { label: "Security", icon: "shield-check", labelKey: "admin.ap.am.security", group: "security" },
+  { label: "CCTV", icon: "cctv", labelKey: "admin.ap.am.cctv", group: "security" },
+  { label: "Generator", icon: "zap", labelKey: "admin.ap.am.generator", group: "security" },
+  { label: "Elevator", icon: "arrow-up-down", labelKey: "admin.ap.am.elevator", group: "security" },
+  // Outdoor & Leisure
+  { label: "Swimming pool", icon: "waves", labelKey: "admin.ap.am.pool", group: "outdoor" },
+  { label: "Garden", icon: "trees", labelKey: "admin.ap.am.garden", group: "outdoor" },
+  { label: "Gym", icon: "dumbbell", labelKey: "admin.ap.am.gym", group: "outdoor" },
+  { label: "Balcony", icon: "fence", labelKey: "admin.ap.am.balcony", group: "outdoor" },
+  { label: "BBQ area", icon: "utensils-crossed", labelKey: "admin.ap.am.bbq", group: "outdoor" },
+  { label: "Play area", icon: "blocks", labelKey: "admin.ap.am.play", group: "outdoor" },
+  // Building & Storage
+  { label: "Storage room", icon: "package", labelKey: "admin.ap.am.storage", group: "building" },
+  { label: "Laundry room", icon: "washing-machine", labelKey: "admin.ap.am.laundry", group: "building" },
 ];
 
 export const GUIDELINE_KEYS = [
@@ -73,7 +85,6 @@ export const PUBLISHED = {
   area: "420 m²",
   ref: "CHE-2026-0418",
   cover: COVER_IMG,
-  agent: AGENTS[0],
 };
 
 export interface ApForm {

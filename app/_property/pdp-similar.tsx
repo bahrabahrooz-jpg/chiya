@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { PropertyCard } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { similar } from "./data";
+import { usePdp } from "./pdp-context";
 
 export function PdpSimilar({ favorites, onFavorite }: { favorites: string[]; onFavorite: (id: string) => void }) {
   const router = useRouter();
   const { t } = useLang();
+  const { similar } = usePdp();
   const fmt = (n: number) => "$" + n.toLocaleString("en-US");
   return (
     <section className="pdp-similar">

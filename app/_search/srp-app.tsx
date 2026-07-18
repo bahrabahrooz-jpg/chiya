@@ -13,9 +13,9 @@ import { SrpResults } from "./srp-results";
 
 const detectCity = (q: string): string | null => {
   const s = (q || "").toLowerCase();
-  if (s.includes("erbil") || s.includes("ankawa") || s.includes("shaqlawa") || s.includes("dream city") || s.includes("empire")) return "Erbil";
-  if (s.includes("duhok") || s.includes("sarsang") || s.includes("azadi") || s.includes("masike")) return "Duhok";
-  if (s.includes("sulay") || s.includes("suli") || s.includes("goizha")) return "Sulaymaniyah";
+  if (s.includes("erbil") || s.includes("ankawa") || s.includes("gulan") || s.includes("english village") || s.includes("empire") || s.includes("dream city") || s.includes("naz city")) return "Erbil";
+  if (s.includes("duhok") || s.includes("masike") || s.includes("malta")) return "Duhok";
+  if (s.includes("sulay") || s.includes("suli") || s.includes("salim") || s.includes("sarchnar")) return "Sulaymaniyah";
   return null;
 };
 
@@ -91,6 +91,7 @@ export function SrpApp() {
   const [sort, setSort] = useState("default");
   const [view, setView] = useState("grid");
   const [filters, setFilters] = useState<Filters>(init.filters);
+  const [page, setPage] = useState(1);
   const { properties: savedProps, toggleProperty } = useFavorites();
   const favorites = useMemo(() => savedProps.map((p) => p.id), [savedProps]);
   const [loading, setLoading] = useState(true);
@@ -145,10 +146,6 @@ export function SrpApp() {
   };
 
   const clearAll = () => setFilters(emptyFilters);
-  const browseAll = () => {
-    setFilters(emptyFilters);
-    setQuery("");
-  };
   const toggleFav = (id: string) => {
     const l = D.listings.find((x) => x.id === id);
     if (l) toggleProperty(toSavedProperty(l));
@@ -185,7 +182,9 @@ export function SrpApp() {
     return sortListings(list, sort);
   }, [deal, query, filters, sort]);
 
-  const total = baseline ? (city ? D.BASE_COUNT[city] : 1284) : results.length;
+  // Honest count — the real number of available listings matching the current
+  // deal + query + filters (no inflated placeholder totals).
+  const total = results.length;
 
   // Simulated load on any change — drives the skeleton cards (faithful to the export).
   useEffect(() => {
@@ -194,6 +193,12 @@ export function SrpApp() {
     const t = setTimeout(() => setLoading(false), 460);
     return () => clearTimeout(t);
   }, [deal, query, filters, sort, view]);
+
+  // A change to the result set (not the view) returns to the first page.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(1);
+  }, [deal, query, filters, sort]);
 
   // active chips (filters only — never the search query)
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
@@ -266,11 +271,12 @@ export function SrpApp() {
             sort={sort}
             setSort={setSort}
             setView={setView}
+            page={page}
+            setPage={setPage}
             onSearch={() => {}}
             onOpenFilters={() => setDrawerOpen(true)}
             chips={chips}
             onClearAll={clearAll}
-            onBrowseAll={browseAll}
             loading={loading}
             favorites={favorites}
             onFavorite={toggleFav}

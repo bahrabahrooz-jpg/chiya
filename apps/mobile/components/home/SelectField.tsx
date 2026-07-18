@@ -354,9 +354,25 @@ export function MultiSelectField({ label, placeholder, options, value, onChange,
         <SheetHeader title={sheetTitle ?? label ?? ""} onClose={() => setOpen(false)} />
         {searchable ? <SheetSearch value={query} onChangeText={setQuery} /> : null}
         <ScrollView style={styles.list} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {shown.map((o) => (
-            <OptionRow key={o.value} opt={o} selected={value.includes(o.value)} multi onPress={() => toggle(o.value)} />
-          ))}
+          {(() => {
+            // Group headers only make sense in the full list — hide them while searching,
+            // where filtered results can jump across groups.
+            const searching = query.trim().length > 0;
+            const rows: ReactNode[] = [];
+            let lastGroup: string | undefined;
+            shown.forEach((o) => {
+              if (!searching && o.group && o.group !== lastGroup) {
+                lastGroup = o.group;
+                rows.push(
+                  <Text key={`grp-${o.group}`} style={[type.label, styles.groupHd, { color: colors.textTertiary }]}>
+                    {o.group}
+                  </Text>,
+                );
+              }
+              rows.push(<OptionRow key={o.value} opt={o} selected={value.includes(o.value)} multi onPress={() => toggle(o.value)} />);
+            });
+            return rows;
+          })()}
           {shown.length === 0 ? (
             <Text style={[type.body, styles.noMatch, { color: colors.textSecondary }]}>{t("filters.noMatches", { query: query.trim() })}</Text>
           ) : null}
@@ -404,6 +420,7 @@ const styles = StyleSheet.create({
   },
   rowLabel: { flex: 1 },
   box: { width: 20, height: 20, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  groupHd: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 },
   noMatch: { textAlign: "center", paddingVertical: 24 },
   foot: {
     flexDirection: "row",

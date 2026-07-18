@@ -14,23 +14,18 @@ import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtCurrency, fmtDate, fmtNum, fmtPercent, fmtStamp, localizeDigits, resolveParams, roleKey, valueKey, popupLeft } from "@/lib/fmt";
 import {
-  AGENT,
   INIT_NOTES,
-  KPIS,
-  LISTINGS,
   LISTING_STATUS_META,
   LISTING_TYPE_META,
-  MEMBERS,
   MEMBER_STATUS_META,
   NOTE_KIND,
-  RATING_BARS,
-  REVIEWS,
   ROLE_META,
   STATUS_DOT,
-  TIMELINE,
-  VIEWINGS,
   VIEW_STATUS_META,
   buildAgentMembers,
+  buildAgentReviews,
+  buildAgentTimeline,
+  buildAgentViewings,
   buildKpis,
   buildListings,
   toDetailAgent,
@@ -39,6 +34,8 @@ import {
   type MemberRow,
   type NoteItem,
   type AvViewing,
+  type Review,
+  type TLItem,
 } from "./data";
 import { EditAgentModal, type AgentEditSeed } from "../_shared/agent-edit-modal";
 import { useProperties } from "../_shared/properties-store";
@@ -664,8 +661,18 @@ function Stars({ n, size }: { n: number; size?: number }) {
   );
 }
 
-function Reviews({ agent }: { agent: AgentDetail }) {
+function Reviews({ agent, reviews, bars }: { agent: AgentDetail; reviews: Review[]; bars: { star: number; pct: number }[] }) {
   const { t, lang } = useLang();
+  if (!reviews.length) {
+    return (
+      <div className="pd-noagent">
+        <span className="pd-noagent__art">
+          <Icon name="star" size={24} strokeWidth={1.6} />
+        </span>
+        <p>{t("admin.ad.reviewsEmpty")}</p>
+      </div>
+    );
+  }
   return (
     <div className="adr">
       <div className="adr__summary">
@@ -677,7 +684,7 @@ function Reviews({ agent }: { agent: AgentDetail }) {
         </span>
         <div className="adr__count">{t("admin.ad.basedOn", { count: fmtNum(lang, agent.reviews) })}</div>
         <div className="adr__bars">
-          {RATING_BARS.map((b) => (
+          {bars.map((b) => (
             <div className="adr__barrow" key={b.star}>
               <span className="adr__barlbl">
                 {b.star}
@@ -692,13 +699,13 @@ function Reviews({ agent }: { agent: AgentDetail }) {
         </div>
       </div>
       <div className="adr__list">
-        {REVIEWS.map((r, i) => (
+        {reviews.map((r, i) => (
           <article className="adr-card" key={i}>
             <div className="adr-card__head">
-              <Avatar name={r.name} size="md" />
+              <Avatar src={r.img || undefined} name={r.name} size="md" />
               <div className="adr-card__id">
                 <div className="adr-card__name">{r.name}</div>
-                <div className="adr-card__deal">{r.deal}</div>
+                {r.deal && <div className="adr-card__deal">{t(r.deal.key, { title: r.deal.title })}</div>}
               </div>
               <div style={{ textAlign: "right" }}>
                 <Stars n={r.stars} size={14} />
@@ -714,11 +721,11 @@ function Reviews({ agent }: { agent: AgentDetail }) {
 }
 
 const TL_TONE: Record<string, string> = { brand: "#7F56D9", success: "#15B79E", info: "#2E90FA", warning: "#EAB308", error: "#F04438", gold: "#EE46BC", neutral: "#6172F3" };
-function Timeline() {
+function Timeline({ items }: { items: TLItem[] }) {
   const { t, lang } = useLang();
   return (
     <ul className="pd-timeline">
-      {TIMELINE.map((it, i) => (
+      {items.map((it, i) => (
         <li className="pd-tl" key={i}>
           <span className="pd-tl__dot" style={{ background: TL_TONE[it.tone], boxShadow: `0 0 0 4px color-mix(in srgb, ${TL_TONE[it.tone]} 16%, transparent)` }}>
             <Icon name={it.icon} size={13} strokeWidth={2.2} />
@@ -870,11 +877,16 @@ export function AgentDetailApp() {
   const { agents, members, properties } = useProperties();
   const params = useParams();
   const id = String((params?.id as string) ?? "");
-  const catalogAgent = useMemo(() => agents.find((ag) => ag.id === id), [agents, id]);
-  const resolved = useMemo(() => (catalogAgent ? toDetailAgent(catalogAgent) : AGENT), [catalogAgent]);
-  const kpis = useMemo(() => (catalogAgent ? buildKpis(catalogAgent) : KPIS), [catalogAgent]);
-  const listings = useMemo(() => (catalogAgent ? buildListings(properties, catalogAgent.name) : LISTINGS), [catalogAgent, properties]);
-  const agentMembers = useMemo(() => (catalogAgent ? buildAgentMembers(properties, members, catalogAgent.name) : MEMBERS), [catalogAgent, properties, members]);
+  // Unknown ids fall back to the first agent on the roster so the page always
+  // renders a real, catalog-consistent record.
+  const catalogAgent = useMemo(() => agents.find((ag) => ag.id === id) ?? agents[0], [agents, id]);
+  const resolved = useMemo(() => toDetailAgent(catalogAgent), [catalogAgent]);
+  const kpis = useMemo(() => buildKpis(catalogAgent), [catalogAgent]);
+  const listings = useMemo(() => buildListings(properties, catalogAgent.name), [catalogAgent, properties]);
+  const agentMembers = useMemo(() => buildAgentMembers(properties, members, catalogAgent.name), [catalogAgent, properties, members]);
+  const agentViewings = useMemo(() => buildAgentViewings(properties, catalogAgent.name), [catalogAgent, properties]);
+  const { reviews: agentReviews, bars: ratingBars } = useMemo(() => buildAgentReviews(properties, catalogAgent.name), [catalogAgent, properties]);
+  const timeline = useMemo(() => buildAgentTimeline(properties, catalogAgent.name), [catalogAgent, properties]);
 
   const [a, setA] = useState<AgentDetail>(resolved);
   const [status, setStatus] = useState(resolved.status);
@@ -928,10 +940,10 @@ export function AgentDetailApp() {
             <div className="pd-head__intro">
               <div className="pd-head__titlerow">
                 <h1 className="pd-head__title">{a.name}</h1>
-                <Badge variant={statusVariant} dot>
+                <Badge variant={statusVariant} size="sm" dot>
                   {status}
                 </Badge>
-                <Badge variant={a.verification === "Verified" ? "brand" : "warning"} icon={a.verification === "Verified" ? "badge-check" : "clock"}>
+                <Badge variant={a.verification === "Verified" ? "brand" : "warning"} size="sm" icon={a.verification === "Verified" ? "badge-check" : "clock"}>
                   {t(valueKey("status", a.verification))}
                 </Badge>
               </div>
@@ -1064,7 +1076,7 @@ export function AgentDetailApp() {
 
         <SectionCard
           title={t("admin.nav.viewings")}
-          count={VIEWINGS.length}
+          count={agentViewings.length}
           desc={t("admin.ad.viewingsDesc")}
           action={
             <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/viewings" className="agt-linkbtn">
@@ -1073,7 +1085,16 @@ export function AgentDetailApp() {
           }
           flush
         >
-          <ViewingsTable rows={VIEWINGS} />
+          {agentViewings.length > 0 ? (
+            <ViewingsTable rows={agentViewings} />
+          ) : (
+            <div className="pd-noagent">
+              <span className="pd-noagent__art">
+                <Icon name="calendar" size={24} strokeWidth={1.6} />
+              </span>
+              <p>{t("admin.ad.viewingsEmpty")}</p>
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard
@@ -1092,7 +1113,7 @@ export function AgentDetailApp() {
             </Button>
           }
         >
-          <Reviews agent={a} />
+          <Reviews agent={a} reviews={agentReviews} bars={ratingBars} />
         </SectionCard>
 
         <NotesSection
@@ -1123,7 +1144,7 @@ export function AgentDetailApp() {
             </Button>
           }
         >
-          <Timeline />
+          <Timeline items={timeline} />
         </SectionCard>
       </div>
 

@@ -1,7 +1,9 @@
-/** Search Results — demo listings & filter config (ported from search/data.js). */
+/** Search Results — listings derived from the admin catalog's public subset
+    (lib/site-properties) plus the filter/sort configuration. The results are the
+    SAME available (Published) listings the admin manages and the homepage shows;
+    Pending / Draft / Sold / Rented never appear here. */
 
-const img = (id: string, w = 1000, h = 750) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop`;
+import { SITE_PROPERTIES, publicCountByCity, allPlacesByCity, PUBLIC_CITIES, type SiteProperty } from "@/lib/site-properties";
 
 export interface SrpListing {
   id: string;
@@ -22,24 +24,27 @@ export interface SrpListing {
   cover: string;
 }
 
-export const listings: SrpListing[] = [
-  { id: "olive-grove", title: "Olive Grove Estate", address: "Shaqlawa Hills, Erbil", city: "Erbil", deal: "buy", price: 1240000, status: "For Sale", featured: true, type: "villa", beds: 6, baths: 5, area: 680, photoCount: 32, pstatus: "ready", amenities: ["pool", "garden", "parking", "security"], cover: img("1613490493576-7fde63acd811") },
-  { id: "marble-hill", title: "Marble Hill Villa", address: "Ankawa, Erbil", city: "Erbil", deal: "buy", price: 620000, status: "For Sale", featured: true, type: "villa", beds: 4, baths: 3, area: 420, photoCount: 28, pstatus: "ready", amenities: ["pool", "garden", "parking"], cover: img("1613977257363-707ba9348227") },
-  { id: "cedarwood-villa", title: "Cedarwood Villa", address: "Dream City, Erbil", city: "Erbil", deal: "buy", price: 485000, status: "For Sale", type: "villa", beds: 4, baths: 3, area: 265, photoCount: 24, pstatus: "ready", amenities: ["garden", "parking", "security"], cover: img("1580587771525-78b9dba3b914") },
-  { id: "rowanberry-villa", title: "Rowanberry Villa", address: "Italian Village, Erbil", city: "Erbil", deal: "buy", price: 560000, status: "For Sale", featured: true, type: "villa", beds: 3, baths: 3, area: 240, photoCount: 21, pstatus: "ready", amenities: ["pool", "garden", "parking"], cover: img("1605276374104-dee2a0ed3cd6") },
-  { id: "empire-world", title: "Empire World Residence", address: "Empire World, Erbil", city: "Erbil", deal: "buy", price: 295000, status: "New", type: "apartment", beds: 2, baths: 2, area: 135, photoCount: 19, pstatus: "new", amenities: ["balcony", "elevator", "parking", "security"], cover: img("1545324418-cc1a3fa10c00") },
-  { id: "cedar-court", title: "Cedar Court 4B", address: "Dream City, Erbil", city: "Erbil", deal: "buy", price: 285000, status: "For Sale", type: "apartment", beds: 2, baths: 2, area: 130, photoCount: 16, pstatus: "ready", amenities: ["elevator", "parking"], cover: img("1502672260266-1c1ef2d93688") },
-  { id: "skyline-pent", title: "Skyline Penthouse", address: "Downtown, Erbil", city: "Erbil", deal: "rent", price: 2800, status: "For Rent", type: "apartment", beds: 3, baths: 3, area: 210, photoCount: 24, pstatus: "ready", amenities: ["balcony", "elevator", "parking", "furnished", "security"], cover: img("1600607687939-ce8a6c25118c") },
-  { id: "park-residence", title: "Park Residence 12", address: "Italian Village, Erbil", city: "Erbil", deal: "buy", price: 410000, status: "For Sale", type: "apartment", beds: 3, baths: 2, area: 160, photoCount: 14, pstatus: "construction", amenities: ["balcony", "elevator", "parking", "security"], cover: img("1522708323590-d24dbb6b0267") },
-  { id: "garden-townhouse", title: "Garden Townhouse", address: "Empire City, Erbil", city: "Erbil", deal: "buy", price: 430000, status: "For Sale", featured: true, type: "house", beds: 3, baths: 3, area: 240, photoCount: 20, pstatus: "ready", amenities: ["garden", "parking", "balcony"], cover: img("1568605114967-8130f3a36994") },
-  { id: "italian-village", title: "Italian Village Apartment", address: "Italian Village, Erbil", city: "Erbil", deal: "rent", price: 1850, status: "For Rent", type: "apartment", beds: 2, baths: 2, area: 115, photoCount: 12, pstatus: "ready", amenities: ["balcony", "elevator", "parking"], cover: img("1493809842364-78817add7ffb") },
-  { id: "shaqlawa-land", title: "Shaqlawa Hillside Land", address: "Shaqlawa, Erbil", city: "Erbil", deal: "buy", price: 180000, status: "New", type: "land", area: 950, photoCount: 8, pstatus: "new", amenities: [], cover: img("1500382017468-9049fed747ef") },
-  { id: "sarsang-house", title: "Sarsang Family House", address: "Sarsang, Duhok", city: "Duhok", deal: "buy", price: 540000, status: "For Sale", type: "house", beds: 4, baths: 4, area: 360, photoCount: 22, pstatus: "ready", amenities: ["garden", "parking", "security"], cover: img("1564013799919-ab600027ffc6") },
-  { id: "azadi-villa", title: "Azadi Heights Villa", address: "Azadi, Duhok", city: "Duhok", deal: "buy", price: 760000, status: "For Sale", type: "villa", beds: 5, baths: 4, area: 520, photoCount: 26, pstatus: "construction", amenities: ["pool", "garden", "parking", "security"], cover: img("1600585154340-be6161a56a0c") },
-  { id: "masike-house", title: "Masike Garden House", address: "Masike, Duhok", city: "Duhok", deal: "rent", price: 1650, status: "For Rent", type: "house", beds: 3, baths: 2, area: 240, photoCount: 15, pstatus: "ready", amenities: ["garden", "parking", "furnished"], cover: img("1576941089067-2de3c901e126") },
-  { id: "suli-commercial", title: "Salim Street Office Suite", address: "Salim St, Sulaymaniyah", city: "Sulaymaniyah", deal: "rent", price: 4200, status: "For Rent", type: "office", area: 320, photoCount: 11, pstatus: "ready", amenities: ["parking", "elevator", "security"], cover: img("1486406146926-c627a92ad1ab") },
-  { id: "goizha-apt", title: "Goizha View Apartment", address: "Goizha, Sulaymaniyah", city: "Sulaymaniyah", deal: "buy", price: 230000, status: "New", type: "apartment", beds: 2, baths: 1, area: 105, photoCount: 13, pstatus: "new", amenities: ["balcony", "elevator"], cover: img("1567496898669-ee935f5f647a") },
-];
+const toSrp = (p: SiteProperty): SrpListing => ({
+  id: p.id,
+  title: p.title,
+  address: p.address,
+  city: p.city,
+  deal: p.deal,
+  price: p.price,
+  status: p.status,
+  featured: p.featured,
+  type: p.type,
+  // Land / office carry no bedrooms; drop the field so the card hides it.
+  beds: p.type === "land" || p.beds === 0 ? undefined : p.beds,
+  baths: p.type === "land" || p.baths === 0 ? undefined : p.baths,
+  area: p.size,
+  photoCount: p.photoCount,
+  pstatus: "ready", // every published listing is available/ready to move
+  amenities: p.amenities,
+  cover: p.cover,
+});
+
+export const listings: SrpListing[] = SITE_PROPERTIES.map(toSrp);
 
 export interface Opt {
   value: string;
@@ -48,11 +53,11 @@ export interface Opt {
 }
 
 export const propertyTypes: Opt[] = [
-  { value: "villa", label: "Villa", icon: "home" },
   { value: "apartment", label: "Apartment", icon: "building-2" },
   { value: "house", label: "House", icon: "house" },
   { value: "land", label: "Land", icon: "trees" },
   { value: "office", label: "Office", icon: "briefcase" },
+  { value: "villa", label: "Villa", icon: "home" },
 ];
 export const buyPresets: Opt[] = [
   { value: "0-150000", label: "Up to $150K" },
@@ -75,7 +80,6 @@ export const sizePresets: Opt[] = [
   { value: "500-", label: "500 m² and above" },
 ];
 export const beds: Opt[] = [
-  { value: "0", label: "Studio" },
   { value: "1", label: "1+" },
   { value: "2", label: "2+" },
   { value: "3", label: "3+" },
@@ -87,6 +91,7 @@ export const baths: Opt[] = [
   { value: "2", label: "2+" },
   { value: "3", label: "3+" },
   { value: "4", label: "4+" },
+  { value: "5", label: "5+" },
 ];
 export const amenities: Opt[] = [
   { value: "parking", label: "Parking", icon: "square-parking" },
@@ -97,6 +102,9 @@ export const amenities: Opt[] = [
   { value: "security", label: "Security", icon: "shield-check" },
   { value: "furnished", label: "Furnished", icon: "sofa" },
 ];
+/** Listings shown per page in the grid pager. */
+export const PAGE_SIZE = 9;
+
 export const sortOptions: Opt[] = [
   { value: "default", label: "Default" },
   { value: "newest", label: "Newest" },
@@ -105,45 +113,30 @@ export const sortOptions: Opt[] = [
   { value: "recommended", label: "Featured" },
 ];
 
-export const BASE_COUNT: Record<string, number> = { Erbil: 248, Duhok: 86, Sulaymaniyah: 154 };
+/** Available-listing counts per city, from the live catalog (drives the SRP
+    baseline "N results in {city}" figure). */
+export const BASE_COUNT: Record<string, number> = publicCountByCity();
 
-/* ── Location filter (City / Area / Project) — mirrors the mobile FilterDrawer.
-   Option `value`s are exact substrings of the listing addresses so a simple
-   `address.includes(value)` matches (e.g. "Shaqlawa" covers both "Shaqlawa
-   Hills, Erbil" and "Shaqlawa, Erbil"). Areas are districts; projects are named
-   communities. */
-export const searchCities = ["Erbil", "Sulaymaniyah", "Duhok"];
+/* ── Location filter (City / Area / Project) — built from the admin catalog's
+   Locations, so the filter mirrors the admin definitions exactly: every city,
+   district, and project defined in admin is selectable here, and adding one in
+   admin surfaces it automatically. Option `value`s are exact substrings of the
+   listing addresses ("{area}, {city}") so `address.includes(value)` matches. */
+export const searchCities = PUBLIC_CITIES;
 export const cityOpts: Opt[] = searchCities.map((c) => ({ value: c, label: c }));
 
-/** Districts per city. */
-export const areasByCity: Record<string, Opt[]> = {
-  Erbil: [
-    { value: "Ankawa", label: "Ankawa" },
-    { value: "Downtown", label: "Downtown" },
-    { value: "Shaqlawa", label: "Shaqlawa" },
-  ],
-  Sulaymaniyah: [
-    { value: "Salim St", label: "Salim Street" },
-    { value: "Goizha", label: "Goizha" },
-  ],
-  Duhok: [
-    { value: "Azadi", label: "Azadi" },
-    { value: "Sarsang", label: "Sarsang" },
-    { value: "Masike", label: "Masike" },
-  ],
-};
+const PLACES = allPlacesByCity();
+const toOpts = (names: string[]): Opt[] => names.map((n) => ({ value: n, label: n }));
 
-/** Named communities / developments per city. */
-export const projectsByCity: Record<string, Opt[]> = {
-  Erbil: [
-    { value: "Dream City", label: "Dream City" },
-    { value: "Empire World", label: "Empire World" },
-    { value: "Empire City", label: "Empire City" },
-    { value: "Italian Village", label: "Italian Village" },
-  ],
-  Sulaymaniyah: [],
-  Duhok: [],
-};
+/** Districts per city (only those with an available listing). */
+export const areasByCity: Record<string, Opt[]> = Object.fromEntries(
+  searchCities.map((c) => [c, toOpts(PLACES[c]?.areas ?? [])]),
+);
+
+/** Named communities / developments per city (only those with a listing). */
+export const projectsByCity: Record<string, Opt[]> = Object.fromEntries(
+  searchCities.map((c) => [c, toOpts(PLACES[c]?.projects ?? [])]),
+);
 
 const flattenByCity = (byCity: Record<string, Opt[]>, cities: string[]): Opt[] => {
   const keys = cities.length ? cities.filter((c) => byCity[c]) : Object.keys(byCity);

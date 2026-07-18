@@ -10,3 +10,4 @@ export { ConfirmHost } from "./ConfirmHost";
 export { HighlightText } from "./HighlightText";
 export { SwipeRow } from "./SwipeRow";
 export { InstagramIcon, FacebookIcon, LinkedInIcon } from "./SocialIcons";
+export { AgentAvatar } from "./AgentAvatar";

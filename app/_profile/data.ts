@@ -1,62 +1,38 @@
-/** Agent Profile — Daban Ali (ported from profile/data.js). */
+/** Agent Profile — built per-agent from the shared catalog so the public
+    profile shows the same person, listings, and approved reviews the admin
+    manages. profileFor(slug) returns everything the profile page renders, or
+    null for an unknown slug (the route then 404s). */
 
-const img = (id: string, w = 1000, h = 750) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop`;
-const por = (id: string) => `https://images.unsplash.com/photo-${id}?w=120&h=120&fit=crop&crop=faces`;
+import { PROPERTIES } from "@/app/admin/_data/catalog";
+import { getSiteAgent, portraitUrl, siteReviewsFor, type SiteAgent } from "@/lib/site-agents";
 
-export const agent = {
-  id: "daban-ali",
-  name: "Daban Ali",
-  verified: true,
-  city: "Erbil, Kurdistan",
-  title: "Senior luxury property advisor",
-  photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=640&h=720&fit=crop&crop=faces",
-  languages: ["English", "Kurdish", "Arabic"],
-  experience: 9,
-  rating: 4.8,
-  reviews: 96,
-  listings: 42,
-  sold: 210,
-  phone: "+964 750 118 4042",
-  whatsapp: "9647501184042",
-  email: "daban.ali@chiyaestate.com",
-};
+/* ---- shapes the profile page renders ---- */
+export interface ProfileAgent {
+  id: string;
+  name: string;
+  verified: boolean;
+  city: string;
+  title: string;
+  photo: string;
+  languages: string[];
+  experience: number;
+  rating: number;
+  reviews: number;
+  listings: number;
+  sold: number;
+  phone: string;
+  whatsapp: string;
+  email: string;
+}
 
 export interface Metric {
   icon: string;
   value: string;
-  label: string;
-  desc: string;
 }
-export const metrics: Metric[] = [
-  { icon: "building-2", value: "42", label: "Active listings", desc: "Premium properties currently on the market" },
-  { icon: "key", value: "210", label: "Properties sold", desc: "Successfully closed for happy clients" },
-  { icon: "calendar-check", value: "9", label: "Years experience", desc: "Deep market expertise and proven track record" },
-  { icon: "star", value: "4.8", label: "Client rating", desc: "Based on 96 reviews from satisfied clients" },
-];
-
-export const about = [
-  "Daban Ali is a senior advisor specialising in luxury villas and high-yield investment property across Erbil and the wider Kurdistan Region. Over the past nine years he has guided more than two hundred families and investors through confident, well-informed moves — from first viewings to handover of keys.",
-  "His approach is unhurried and precise: he leads with the home and the lifestyle, then backs every recommendation with hard local market data. Clients return to Daban for his discretion, his deep knowledge of Erbil's premier communities, and a standard of service that treats every brief as the only brief.",
-];
-
-export const intro =
-  "Daban Ali specialises in luxury villas, premium residences, and investment opportunities across Erbil and the Kurdistan Region. Over the past nine years he has guided more than 200 families and investors through confident moves — backed by an intimate knowledge of the local market.";
-
-export const specialties = ["Luxury villas", "Apartments", "Commercial properties", "Investment properties", "New developments"];
 
 export interface Area {
   name: string;
-  note: string;
 }
-export const areas: Area[] = [
-  { name: "Erbil", note: "City centre & premier districts" },
-  { name: "Ankawa", note: "Villas & family residences" },
-  { name: "Dream City", note: "Gated luxury community" },
-  { name: "Empire World", note: "Landmark residential towers" },
-  { name: "Italian Village", note: "Boutique villa enclave" },
-  { name: "Shaqlawa", note: "Hillside retreats & estates" },
-];
 
 export interface ProListing {
   id: string;
@@ -73,17 +49,6 @@ export interface ProListing {
   since: number;
   cover: string;
 }
-export const listings: ProListing[] = [
-  { id: "olive-grove", title: "Olive Grove Estate", address: "Shaqlawa Hills, Erbil", deal: "buy", price: 1240000, status: "For Sale", featured: true, beds: 6, baths: 5, area: 680, photoCount: 32, since: 8, cover: img("1613490493576-7fde63acd811") },
-  { id: "marble-hill", title: "Marble Hill Villa", address: "Ankawa, Erbil", deal: "buy", price: 620000, status: "For Sale", featured: true, beds: 4, baths: 3, area: 420, photoCount: 28, since: 22, cover: img("1613977257363-707ba9348227") },
-  { id: "rowanberry-villa", title: "Rowanberry Villa", address: "Italian Village, Erbil", deal: "buy", price: 560000, status: "For Sale", featured: true, beds: 3, baths: 3, area: 240, photoCount: 21, since: 3, cover: img("1605276374104-dee2a0ed3cd6") },
-  { id: "cedarwood-villa", title: "Cedarwood Villa", address: "Dream City, Erbil", deal: "buy", price: 485000, status: "For Sale", beds: 4, baths: 3, area: 265, photoCount: 24, since: 14, cover: img("1580587771525-78b9dba3b914") },
-  { id: "skyline-pent", title: "Skyline Penthouse", address: "Downtown, Erbil", deal: "rent", price: 2800, status: "For Rent", beds: 3, baths: 3, area: 210, photoCount: 24, since: 1, cover: img("1600607687939-ce8a6c25118c") },
-  { id: "empire-world", title: "Empire World Residence", address: "Empire World, Erbil", deal: "buy", price: 295000, status: "New", beds: 2, baths: 2, area: 135, photoCount: 19, since: 2, cover: img("1545324418-cc1a3fa10c00") },
-  { id: "garden-townhouse", title: "Garden Townhouse", address: "Empire City, Erbil", deal: "buy", price: 430000, status: "For Sale", featured: true, beds: 3, baths: 3, area: 240, photoCount: 20, since: 18, cover: img("1568605114967-8130f3a36994") },
-  { id: "park-residence", title: "Park Residence 12", address: "Italian Village, Erbil", deal: "buy", price: 410000, status: "For Sale", beds: 3, baths: 2, area: 160, photoCount: 14, since: 30, cover: img("1522708323590-d24dbb6b0267") },
-  { id: "cedar-court", title: "Cedar Court 4B", address: "Dream City, Erbil", deal: "buy", price: 285000, status: "For Sale", beds: 2, baths: 2, area: 130, photoCount: 16, since: 11, cover: img("1502672260266-1c1ef2d93688") },
-];
 
 export interface Sold {
   id: string;
@@ -97,27 +62,20 @@ export interface Sold {
   when: string;
   cover: string;
 }
-export const sold: Sold[] = [
-  { id: "azadi-villa", title: "Azadi Heights Villa", address: "Azadi, Erbil", price: 760000, deal: "Sold", beds: 5, baths: 4, area: 520, when: "Apr 2026", cover: img("1600585154340-be6161a56a0c", 800, 600) },
-  { id: "sarsang-house", title: "Cypress Family House", address: "Dream City, Erbil", price: 540000, deal: "Sold", beds: 4, baths: 4, area: 360, when: "Feb 2026", cover: img("1564013799919-ab600027ffc6", 800, 600) },
-  { id: "italian-apt", title: "Italian Village Apartment", address: "Italian Village, Erbil", price: 1850, deal: "Rented", beds: 2, baths: 2, area: 115, when: "Jan 2026", cover: img("1493809842364-78817add7ffb", 800, 600) },
-];
 
+/** A review card. The deal line is an i18n key + property title resolved from
+    live records; the component translates it (and the relative "when"). */
 export interface Review {
-  id: number;
+  id: string;
   name: string;
-  avatar: string;
+  avatar?: string;
   stars: number;
-  when: string;
-  deal: string;
+  daysAgo: number;
+  when: string; // formatted date fallback
+  dealKey?: string;
+  dealTitle?: string;
   text: string;
 }
-export const reviews: Review[] = [
-  { id: 1, name: "Rawa Othman", avatar: por("1573496359142-b8d87734a5a2"), stars: 5, when: "2 weeks ago", deal: "Bought a villa in Ankawa", text: "Excellent communication and remarkably fast responses. Daban understood exactly what our family needed and never pushed us toward anything that did not fit. The whole purchase felt calm and well-managed." },
-  { id: 2, name: "Hemin Tahir", avatar: por("1500648767791-00dcc994a43e"), stars: 5, when: "1 month ago", deal: "Sold an apartment in Empire World", text: "Sold my apartment well above what I expected, and faster than I thought possible. His read on the Erbil market is genuinely impressive — every recommendation was backed by real figures." },
-  { id: 3, name: "Lina Aziz", avatar: por("1544005313-94ddf0286df2"), stars: 5, when: "2 months ago", deal: "Rented in Dream City", text: "Professional, patient, and completely transparent from the first viewing to signing. He arranged everything around my schedule and confirmed within the hour, every time." },
-  { id: 4, name: "Karwan Sabir", avatar: por("1506794778202-cad84cf45f1d"), stars: 4, when: "3 months ago", deal: "Investment purchase, Italian Village", text: "A trustworthy advisor for investment property. Honest about the trade-offs on each option and clearly focused on long-term value rather than a quick sale." },
-];
 
 export interface SortOpt {
   value: string;
@@ -130,3 +88,135 @@ export const sortOptions: SortOpt[] = [
   { value: "price-asc", label: "Price: low to high", icon: "arrow-up-wide-narrow" },
   { value: "price-desc", label: "Price: high to low", icon: "arrow-down-wide-narrow" },
 ];
+
+export interface AgentProfile {
+  agent: ProfileAgent;
+  metrics: Metric[];
+  about: string[];
+  intro: string;
+  specialties: string[];
+  areas: Area[];
+  listings: ProListing[];
+  sold: Sold[];
+  reviews: Review[];
+}
+
+/* Property type → the specialty chip label shown on the profile. */
+const TYPE_SPECIALTY: Record<string, string> = {
+  Villa: "Luxury villas",
+  Apartment: "Apartments",
+  House: "Houses",
+  Office: "Commercial properties",
+  Land: "Land & investment",
+};
+
+const hash = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+};
+/* Deterministic photo count so a listing card always shows the same number. */
+const photoCountFor = (id: string) => 12 + (hash(id) % 20);
+/* "Jun 20, 2026" → "Jun 2026" for the recently-sold "when" line. */
+const monthYear = (date: string) => {
+  const m = /^([A-Za-z]{3})\s+\d+,\s*(\d+)$/.exec(date);
+  return m ? `${m[1]} ${m[2]}` : date;
+};
+
+function buildProfile(a: SiteAgent): AgentProfile {
+  const handled = PROPERTIES.filter((p) => p.agent?.name === a.name);
+  const live = handled.filter((p) => p.status === "Published");
+  const closed = handled.filter((p) => p.status === "Sold" || p.status === "Rented");
+  const firstName = a.name.split(" ")[0];
+
+  const specialties = [...new Set(handled.map((p) => TYPE_SPECIALTY[p.type]).filter(Boolean))];
+  if (!specialties.length) specialties.push("Residential properties");
+
+  const areaNames = [...new Set([a.area, ...handled.map((p) => p.area)])].slice(0, 6);
+
+  const listings: ProListing[] = live.map((p) => ({
+    id: p.id,
+    title: p.title,
+    address: `${p.area}, ${p.city}`,
+    deal: p.listing === "rent" ? "rent" : "buy",
+    price: p.price,
+    status: p.featured ? "Featured" : p.listing === "rent" ? "For Rent" : "For Sale",
+    featured: p.featured,
+    beds: p.beds,
+    baths: p.baths,
+    area: p.size,
+    photoCount: photoCountFor(p.id),
+    since: p.daysAgo,
+    cover: p.img,
+  }));
+
+  const sold: Sold[] = closed.map((p) => ({
+    id: p.id,
+    title: p.title,
+    address: `${p.area}, ${p.city}`,
+    price: p.price,
+    deal: p.status, // "Sold" | "Rented"
+    beds: p.beds,
+    baths: p.baths,
+    area: p.size,
+    when: monthYear(p.updated),
+    cover: p.img,
+  }));
+
+  const reviews: Review[] = siteReviewsFor(a.name).map((r) => ({
+    id: r.id,
+    name: r.name,
+    stars: r.stars,
+    daysAgo: r.daysAgo,
+    when: r.when,
+    dealKey: r.dealKey,
+    dealTitle: r.dealTitle,
+    text: r.text,
+  }));
+
+  const dealsCount = a.sold + a.rented;
+  const specialtyList = specialties.map((s) => s.toLowerCase()).join(", ");
+  const about = [
+    `${a.name} is a verified property consultant based in ${a.city}, specialising in ${specialtyList} across the Kurdistan Region. With ${a.experience} years of experience${dealsCount ? ` and ${dealsCount} completed ${dealsCount === 1 ? "deal" : "deals"} on Chiya` : ""}, ${firstName} guides buyers, sellers, and renters through confident, well-informed moves — from first viewing to handover of keys.`,
+    `${firstName}'s approach is straightforward and client-first: clear advice backed by real local market knowledge, and steady communication at every step. Clients value ${firstName}'s honesty, responsiveness, and deep familiarity with ${a.area} and the surrounding districts of ${a.city}.`,
+  ];
+  const intro = `${a.name} specialises in ${specialtyList} across ${a.city} and the wider Kurdistan Region, backed by ${a.experience} years of local market experience.`;
+
+  return {
+    agent: {
+      id: a.id,
+      name: a.name,
+      verified: a.verified,
+      city: `${a.city}, Kurdistan`,
+      title: a.verified ? "Senior property consultant" : "Property consultant",
+      photo: portraitUrl(a.photo, 640, 720),
+      languages: a.languages,
+      experience: a.experience,
+      rating: a.rating,
+      reviews: a.reviewCount,
+      listings: live.length,
+      sold: dealsCount,
+      phone: a.phone,
+      whatsapp: a.whatsapp,
+      email: a.email,
+    },
+    metrics: [
+      { icon: "building-2", value: String(live.length) },
+      { icon: "key", value: String(dealsCount) },
+      { icon: "calendar-check", value: String(a.experience) },
+      { icon: "star", value: a.rating > 0 ? a.rating.toFixed(1) : "—" },
+    ],
+    about,
+    intro,
+    specialties,
+    areas: areaNames.map((name) => ({ name })),
+    listings,
+    sold,
+    reviews,
+  };
+}
+
+export function profileFor(id: string): AgentProfile | null {
+  const a = getSiteAgent(id);
+  return a ? buildProfile(a) : null;
+}

@@ -33,6 +33,9 @@
 .cxct-card__body { display: flex; flex-direction: column; gap: 8px; }
 .cxct-card__ic { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; flex: none;
   border-radius: var(--radius-md); background: var(--green-50); color: var(--text-brand); margin-bottom: 6px; }
+/* Dark mode: match the property-detail key-fact tiles — neutral surface + subtle
+   border so the green glyph pops (mirrors .pdp-fact__ic). */
+:root[data-theme="dark"] .cxct-card__ic { background: var(--surface-sunken); border: 1px solid var(--border-subtle); color: var(--text-brand-muted); }
 .cxct-card__title { font-family: var(--font-display); font-weight: 600; font-size: 19px; color: var(--text-primary); margin: 0; }
 .cxct-card__link { font-family: var(--font-sans); font-size: 15px; line-height: 22px; color: var(--text-secondary);
   text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border-default); width: fit-content;

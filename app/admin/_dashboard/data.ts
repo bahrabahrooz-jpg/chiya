@@ -2,6 +2,7 @@ import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
 import type { PropertyCounts } from "../_properties/data";
+import { AGENTS as CATALOG_AGENTS, PROPERTIES as CATALOG_PROPERTIES } from "../_data/catalog";
 
 /* KPI periods + cards (Section 2) */
 export interface KpiPeriod {
@@ -59,11 +60,13 @@ export interface ActivityItem {
   timeParams?: { count: number };
   params?: Record<string, string | number>;
 }
+/* Names/places reference the curated catalog roster so the feed matches
+   records visible on the other admin pages. */
 export const ACTIVITY_ITEMS: ActivityItem[] = [
-  { id: 1, icon: "file-plus-2", tone: "info", timeKey: "time.minsAgo", timeParams: { count: 2 }, params: { name: "Ahmed Karim" } },
+  { id: 1, icon: "file-plus-2", tone: "info", timeKey: "time.minsAgo", timeParams: { count: 2 }, params: { name: "Karwan Mahmoud" } },
   { id: 2, icon: "user-plus", tone: "gold", timeKey: "time.hrsAgo", timeParams: { count: 1 }, params: { name: "Sara Hama" } },
   { id: 3, icon: "badge-check", tone: "success", timeKey: "time.today", params: { place: "Empire World" } },
-  { id: 4, icon: "key", tone: "brand", timeKey: "time.today", params: { name: "Marble Hill Villa" } },
+  { id: 4, icon: "key", tone: "brand", timeKey: "time.today", params: { name: "Olive Grove Estate" } },
   { id: 5, icon: "shield-check", tone: "success", timeKey: "time.yesterday", params: { name: "Lana Aziz" } },
   { id: 6, icon: "calendar-check", tone: "info", timeKey: "time.yesterday", params: { count: 12, place: "Erbil" } },
 ];
@@ -97,33 +100,44 @@ export const PROP_STATUS: Record<string, { variant: BadgeVariant; dot: boolean }
 };
 
 export interface RecentProperty {
-  id: number;
+  id: string;
   title: string;
   location: string;
   agent: string;
+  agentImg: string;
   status: string;
   img: string;
 }
-export const RECENT_PROPERTIES: RecentProperty[] = [
-  { id: 1, title: "Olive Grove Estate", location: "Ankawa, Erbil", agent: "Lana Aziz", status: "Pending", img: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=200&q=70" },
-  { id: 2, title: "Marble Hill Villa", location: "Empire World, Erbil", agent: "Ahmed Karim", status: "Published", img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=200&q=70" },
-  { id: 3, title: "Cedar Court Residence", location: "Italian Village, Erbil", agent: "Sara Hama", status: "Published", img: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=200&q=70" },
-  { id: 4, title: "Tigris View Apartment", location: "Dream City, Erbil", agent: "Rawa Jalal", status: "Rented", img: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=200&q=70" },
-  { id: 5, title: "Naz City Penthouse", location: "Naz City, Erbil", agent: "Diyar Salih", status: "Published", img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=200&q=70" },
-];
+/* Latest listed properties, resolved from the shared catalog by id so title /
+   location / agent (name + photo) / status / thumbnail always match the
+   Properties page, and the row links to the real property. */
+const RECENT_PROPERTY_IDS = ["CH-3190", "CH-3200", "CH-3194", "CH-3183", "CH-3198"];
+export const RECENT_PROPERTIES: RecentProperty[] = RECENT_PROPERTY_IDS.map((id) => {
+  const p = CATALOG_PROPERTIES.find((cp) => cp.id === id);
+  if (!p) throw new Error(`dashboard: unknown recent property "${id}"`);
+  return { id: p.id, title: p.title, location: `${p.area}, ${p.city}`, agent: p.agent?.name ?? "Unassigned", agentImg: p.agent?.img ?? "", status: p.status, img: p.img };
+});
 
 export interface RecentAgent {
-  id: number;
+  id: string;
   name: string;
   team: string;
   verified: boolean;
   joined: string;
   img: string;
 }
-export const RECENT_AGENTS: RecentAgent[] = [
-  { id: 1, name: "Lana Aziz", team: "Chiya Select · Erbil", verified: false, joined: "Jun 12, 2026", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=70" },
-  { id: 2, name: "Ahmed Karim", team: "Empire Realty", verified: true, joined: "Jun 10, 2026", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=70" },
-  { id: 3, name: "Sara Hama", team: "Independent agent", verified: true, joined: "Jun 8, 2026", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=70" },
-  { id: 4, name: "Rawa Jalal", team: "Dream City Homes", verified: true, joined: "Jun 5, 2026", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=70" },
-  { id: 5, name: "Diyar Salih", team: "Naz Properties", verified: false, joined: "Jun 3, 2026", img: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=120&q=70" },
+/* Recently joined agents, resolved from the shared roster by name so the
+   photo / verification always match the Agents page (no photo → initials)
+   and the row links to the real agent profile. */
+const RECENT_AGENT_ROWS: { name: string; team: string; joined: string }[] = [
+  { name: "Hana Rashid", team: "Independent agent · Duhok", joined: "Jun 12, 2026" },
+  { name: "Bilal Noori", team: "Raparin Homes", joined: "Jun 10, 2026" },
+  { name: "Sara Hama", team: "Independent agent", joined: "Jun 8, 2026" },
+  { name: "Rawa Jamal", team: "Malta Properties", joined: "Jun 5, 2026" },
+  { name: "Karwan Mahmoud", team: "Ankawa Estates", joined: "Jun 3, 2026" },
 ];
+export const RECENT_AGENTS: RecentAgent[] = RECENT_AGENT_ROWS.map((r) => {
+  const a = CATALOG_AGENTS.find((ca) => ca.name === r.name);
+  if (!a) throw new Error(`dashboard: unknown recent agent "${r.name}"`);
+  return { id: a.id, name: a.name, team: r.team, verified: a.verification === "Verified", joined: r.joined, img: a.img || "" };
+});

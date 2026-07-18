@@ -14,23 +14,23 @@ import { useLang, isRtl } from "@/lib/i18n";
 import { fmtCurrency, fmtDate, fmtNum, fmtStamp, localizeDigits, roleKey, valueKey, popupLeft } from "@/lib/fmt";
 import {
   INIT_NOTES,
-  MEMBER,
+  MEMBER_STATUS_META,
   NOTE_KIND,
-  PORTFOLIO,
   PROP_STATUS_META,
-  REASSIGN_AGENTS,
   ROLE_META,
   STATUS_DOT,
-  TIMELINE,
-  VIEWINGS,
   VIEW_STATUS_META,
+  buildMemberTimeline,
+  buildMemberViewings,
   buildPortfolio,
+  buildReassignAgents,
   toDetailMember,
   type MemberAgent,
   type MemberRecord,
   type NoteItem,
   type PortfolioRow,
   type MpfViewing,
+  type TLItem,
 } from "./data";
 import { AddMemberModal } from "../_members/add-member-modal";
 import { useProperties } from "../_shared/properties-store";
@@ -142,7 +142,7 @@ function ChangeStatusModal({ current, onCancel, onConfirm }: { current: string; 
   );
 }
 
-function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; onCancel: () => void; onConfirm: (a: MemberAgent) => void }) {
+function AssignAgentModal({ current, agents, onCancel, onConfirm }: { current: string; agents: MemberAgent[]; onCancel: () => void; onConfirm: (a: MemberAgent) => void }) {
   const { t } = useLang();
   const [selected, setSelected] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
@@ -183,7 +183,7 @@ function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; o
       window.removeEventListener("resize", calcPos);
     };
   }, [dropOpen]);
-  const selectedAgent = selected ? REASSIGN_AGENTS.find((a) => a.name === selected) : null;
+  const selectedAgent = selected ? agents.find((a) => a.name === selected) : null;
   const canConfirm = selected && selected !== current;
   return (
     <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
@@ -211,7 +211,7 @@ function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; o
         </button>
         {dropOpen && dropPos && (
           <div className="pp-amodal__drop" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
-            {REASSIGN_AGENTS.map((agent) => (
+            {agents.map((agent) => (
               <button
                 key={agent.name}
                 type="button"
@@ -242,7 +242,7 @@ function AssignAgentModal({ current, onCancel, onConfirm }: { current: string; o
             className="pp-modal__confirm"
             disabled={!canConfirm}
             onClick={() => {
-              const a = REASSIGN_AGENTS.find((x) => x.name === selected);
+              const a = agents.find((x) => x.name === selected);
               if (a) onConfirm(a);
             }}
           >
@@ -435,6 +435,7 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
         <div className="adh__detail__text">
           <span className="adh__detail__label">{t("admin.mp.memberTypes")}</span>
           <div className="adh__detailchips">
+            {member.types.length === 0 && <span className="adh__detail__value">—</span>}
             {member.types.map((mt) => (
               <span className={"adh__chip adh__chip--" + mt.toLowerCase()} key={mt}>
                 {tOr(roleKey(mt), mt)}
@@ -794,20 +795,26 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
 }
 
 const TL_TONE: Record<string, string> = { brand: "#7F56D9", success: "#15B79E", info: "#2E90FA", warning: "#EAB308", error: "#F04438", gold: "#EE46BC", neutral: "#6172F3" };
-function Timeline() {
+function Timeline({ items }: { items: TLItem[] }) {
+  const { t, lang } = useLang();
   return (
     <ul className="pd-timeline">
-      {TIMELINE.map((it, i) => (
+      {items.map((it, i) => (
         <li className="pd-tl" key={i}>
           <span className="pd-tl__dot" style={{ background: TL_TONE[it.tone], boxShadow: `0 0 0 4px color-mix(in srgb, ${TL_TONE[it.tone]} 16%, transparent)` }}>
             <Icon name={it.icon} size={13} strokeWidth={2.2} />
           </span>
           <div className="pd-tl__body">
             <div className="pd-tl__top">
-              <span className="pd-tl__title">{it.title}</span>
-              <span className="pd-tl__time">{it.time}</span>
+              <span className="pd-tl__title">{t(it.titleKey)}</span>
+              <span className="pd-tl__time">{fmtStamp(lang, it.time)}</span>
             </div>
-            <p className="pd-tl__desc">{it.desc}</p>
+            <p className="pd-tl__desc">
+              {t(it.descKey, {
+                ...(it.params || {}),
+                ...(it.price !== undefined ? { price: fmtCurrency(lang, it.price) + (it.per ? t("admin.mp.perMo") : "") } : {}),
+              })}
+            </p>
           </div>
         </li>
       ))}
@@ -817,19 +824,23 @@ function Timeline() {
 
 export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
   const { t, lang } = useLang();
-  const { members, properties } = useProperties();
+  const { members, properties, agents } = useProperties();
   // In the agent surface, list-level links point at the agent's own routes.
   const surfaceBase = scopeAgent ? "/agent" : "/admin";
   const params = useParams();
   const id = String((params?.id as string) ?? "");
-  const catalogMember = useMemo(() => members.find((mm) => mm.id === id), [members, id]);
-  const resolved = useMemo(() => (catalogMember ? toDetailMember(catalogMember, properties) : MEMBER), [catalogMember, properties]);
-  const portfolio = useMemo(() => (catalogMember ? buildPortfolio(properties, catalogMember.name) : PORTFOLIO), [catalogMember, properties]);
+  // Unknown ids fall back to the first member on the roster so the page always
+  // renders a real, catalog-consistent record.
+  const catalogMember = useMemo(() => members.find((mm) => mm.id === id) ?? members[0], [members, id]);
+  const resolved = useMemo(() => toDetailMember(catalogMember, properties), [catalogMember, properties]);
+  const portfolio = useMemo(() => buildPortfolio(properties, catalogMember.name), [catalogMember, properties]);
+  const timeline = useMemo(() => buildMemberTimeline(properties, catalogMember), [catalogMember, properties]);
+  const reassignAgents = useMemo(() => buildReassignAgents(agents), [agents]);
 
   // Agent scope: portfolio + viewing requests show only what involves this agent.
   const shownPortfolio = useMemo(() => (scopeAgent ? portfolio.filter((r) => r.agent === scopeAgent) : portfolio), [portfolio, scopeAgent]);
   const shownViewings = useMemo(() => {
-    if (!scopeAgent) return VIEWINGS;
+    if (!scopeAgent) return buildMemberViewings(properties, catalogMember.name);
     const SMAP: Record<string, string> = { Requested: "Pending", Confirmed: "Confirmed", Completed: "Completed", Cancelled: "Cancelled", "No Show": "Cancelled" };
     // Viewings under this agent that touch this member: on the member's own
     // listings (same properties as the portfolio) or requested by the member.
@@ -844,11 +855,11 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
       agentImg: "",
       status: SMAP[v.status] || v.status,
     }));
-  }, [scopeAgent, resolved.name, shownPortfolio]);
+  }, [scopeAgent, resolved.name, shownPortfolio, properties, catalogMember.name]);
 
   const [m, setM] = useState<MemberRecord>(resolved);
   const [status, setStatus] = useState(resolved.status);
-  const [, setAgent] = useState<MemberAgent>(resolved.agent);
+  const [, setAgent] = useState<MemberAgent | null>(resolved.agent);
   // reset editable state when navigating to a different member
   const [prevId, setPrevId] = useState(id);
   if (prevId !== id) {
@@ -873,8 +884,6 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
     return () => document.removeEventListener("mousedown", onClick);
   }, [moreOpen]);
 
-  const statusVariant: BadgeVariant = status === "Active" ? "success" : status === "Suspended" ? "error" : "neutral";
-
   return (
     <>
       <header className="pd-head">
@@ -890,9 +899,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
             <div className="pd-head__intro">
               <div className="pd-head__titlerow">
                 <h1 className="pd-head__title">{m.name}</h1>
-                <Badge variant={statusVariant} dot>
-                  {status}
-                </Badge>
+                <StatusBadge value={status} meta={MEMBER_STATUS_META} />
               </div>
               <div className="pd-head__meta">
                 <span className="pd-head__metaitem pd-head__metaitem--id">
@@ -940,31 +947,6 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
               </button>
               {moreOpen && (
                 <div className="pd-moremenu" role="menu">
-                  <button
-                    type="button"
-                    className="pd-moreitem"
-                    role="menuitem"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      setModal("assign");
-                    }}
-                  >
-                    <Icon name="user-cog" size={17} />
-                    {t("admin.props.assignAgent")}
-                  </button>
-                  <button
-                    type="button"
-                    className="pd-moreitem"
-                    role="menuitem"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      pushToast({ tone: "default", icon: "download", title: t("admin.mp.toast.exportTitle"), msg: t("admin.mp.toast.exportMsg", { name: m.name }) });
-                    }}
-                  >
-                    <Icon name="download" size={17} />
-                    {t("admin.mp.exportSummary")}
-                  </button>
-                  <div className="pd-moremenu__sep" />
                   <button
                     type="button"
                     className="pd-moreitem pd-moreitem--danger"
@@ -1025,7 +1007,16 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
             }
             flush
           >
-            <ViewingsTable rows={shownViewings} hideAgent={!!scopeAgent} />
+            {shownViewings.length > 0 ? (
+              <ViewingsTable rows={shownViewings} hideAgent={!!scopeAgent} />
+            ) : (
+              <div className="pd-noagent">
+                <span className="pd-noagent__art">
+                  <Icon name="calendar" size={24} strokeWidth={1.6} />
+                </span>
+                <p>{t("admin.mp.viewingsEmpty")}</p>
+              </div>
+            )}
           </SectionCard>
 
           <NotesSection
@@ -1056,7 +1047,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
               </Button>
             }
           >
-            <Timeline />
+            <Timeline items={timeline} />
           </SectionCard>
         </div>
       </div>
@@ -1074,7 +1065,8 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
       )}
       {modal === "assign" && (
         <AssignAgentModal
-          current={m.agent.name}
+          current={m.agent?.name ?? ""}
+          agents={reassignAgents}
           onCancel={() => setModal(null)}
           onConfirm={(a) => {
             setAgent(a);

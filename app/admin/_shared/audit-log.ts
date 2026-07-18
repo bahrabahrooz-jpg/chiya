@@ -119,7 +119,7 @@ function currentActor(): AuditActor {
 /* ----------------------------- deterministic seed -------------------------- */
 /* Fixed base so module-load produces identical output on server + client (no
    hydration mismatch). Mirrors the deterministic buildReviews() seed. */
-const SEED_BASE = new Date("2026-07-15T14:30:00").getTime();
+const SEED_BASE = new Date("2026-06-30T14:30:00").getTime(); // matches the catalog anchor (Jun 30, 2026)
 const HOUR = 3_600_000;
 const seedAt = (hoursAgo: number) => new Date(SEED_BASE - hoursAgo * HOUR).toISOString();
 
@@ -145,24 +145,27 @@ interface SeedSpec {
    read-only everywhere else, so every moderation, account-control, role and
    location event below belongs to the super admin. */
 const ADMIN_ACTOR: AuditActor = { name: ADMIN.name, role: "superAdmin" };
-const REEM: AuditActor = { name: "Reem Salih", role: "agent" };
 const LANA: AuditActor = { name: "Lana Aziz", role: "agent" };
+const SARA: AuditActor = { name: "Sara Hama", role: "agent" };
 
+/* Every person / property named below exists in the curated catalog
+   (app/admin/_data/catalog.ts) so the log cross-references records the admin
+   can actually open on other pages. */
 const SEED_SPECS: SeedSpec[] = [
-  { h: 1, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.approvedReview", target: "Dara Kamal → Rawa Jamal" },
-  { h: 2, actor: REEM, category: "property", actionKey: "audit.action.changedStatus", actionParams: { status: "@status.sold" }, target: "Marble Hill Villa" },
+  { h: 1, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.approvedReview", target: "Zana Ibrahim → Lana Aziz" },
+  { h: 2, actor: LANA, category: "property", actionKey: "audit.action.changedStatus", actionParams: { status: "@status.sold" }, target: "Olive Grove Estate" },
   { h: 3, actor: ADMIN_ACTOR, category: "agent", actionKey: "audit.action.verifiedAgent", target: "Lana Aziz" },
-  { h: 5, actor: LANA, category: "property", actionKey: "audit.action.createdProperty", target: "Olive Grove Estate", meta: "Ankawa, Erbil" },
-  { h: 7, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.rejectedReview", target: "Sara Amin → Karwan Ali", metaKey: "audit.meta.flaggedSpam" },
+  { h: 5, actor: LANA, category: "property", actionKey: "audit.action.createdProperty", target: "Italian Village Rose Flat", meta: "Italian Village, Erbil" },
+  { h: 7, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.rejectedReview", target: "Sara Amin → Karwan Mahmoud", metaKey: "audit.meta.flaggedSpam" },
   { h: 9, actor: ADMIN_ACTOR, category: "member", actionKey: "audit.action.suspendedMember", target: "Hersh Qadir" },
   { h: 26, actor: ADMIN_ACTOR, category: "role", actionKey: "audit.action.createdRole", target: "Senior Agent" },
-  { h: 28, actor: ADMIN_ACTOR, category: "property", actionKey: "audit.action.assignedAgent", target: "Cedar Court Apartments", metaKey: "audit.meta.assignedTo", metaParams: { name: "Rawa Jamal" } },
-  { h: 30, actor: ADMIN_ACTOR, category: "agent", actionKey: "audit.action.suspendedAgent", target: "Bilal Noori" },
+  { h: 28, actor: ADMIN_ACTOR, category: "property", actionKey: "audit.action.assignedAgent", target: "Cedar Court Apartments", metaKey: "audit.meta.assignedTo", metaParams: { name: "Sara Hama" } },
+  { h: 30, actor: ADMIN_ACTOR, category: "agent", actionKey: "audit.action.suspendedAgent", target: "Diyar Salih" },
   { h: 49, actor: ADMIN_ACTOR, category: "location", actionKey: "audit.action.addedDistrict", target: "Ankawa · Erbil" },
-  { h: 52, actor: LANA, category: "property", actionKey: "audit.action.updatedProperty", target: "Riverside Loft" },
+  { h: 52, actor: SARA, category: "property", actionKey: "audit.action.updatedProperty", target: "Sarchnar Hillside Villa" },
   { h: 54, actor: ADMIN_ACTOR, category: "member", actionKey: "audit.action.activatedMember", target: "Nma Rashid" },
-  { h: 73, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.deletedReview", target: "Aland Tariq → Shad Omar" },
-  { h: 78, actor: ADMIN_ACTOR, category: "property", actionKey: "audit.action.archivedProperty", target: "Sunset Terrace" },
+  { h: 73, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.deletedReview", target: "Rebwar Tofiq → Rawa Jamal" },
+  { h: 78, actor: ADMIN_ACTOR, category: "property", actionKey: "audit.action.archivedProperty", target: "Nizarke Sunset Terrace" },
 ];
 
 function buildSeed(): AuditEvent[] {

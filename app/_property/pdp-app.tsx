@@ -6,14 +6,27 @@ import { Icon } from "@/components/ui/icon";
 import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
 import { useFavorites, type SavedProperty } from "@/lib/favorites";
-import { property, gallery, agent, similar } from "./data";
+import type { PdpData } from "./data";
+import { PdpProvider, usePdp } from "./pdp-context";
 import { PdpGallery } from "./pdp-gallery";
 import { PdpMain } from "./pdp-main";
 import { ActionPanel, BookModal } from "./pdp-aside";
 import { PdpSimilar } from "./pdp-similar";
 
-export function PdpApp() {
+/** Renders the detail page for the property resolved by the /property/[id]
+    route. The data is built on the server (buildPdp) and passed in, so the admin
+    catalog stays out of the client bundle. */
+export function PdpApp({ data }: { data: PdpData }) {
+  return (
+    <PdpProvider value={data}>
+      <PdpAppInner />
+    </PdpProvider>
+  );
+}
+
+function PdpAppInner() {
   const { t } = useLang();
+  const { property, gallery, agent, similar } = usePdp();
   const { properties: savedProps, isPropertySaved, toggleProperty } = useFavorites();
   const [bookOpen, setBookOpen] = useState(false);
 
@@ -65,12 +78,12 @@ export function PdpApp() {
             {t("srp.crumb.home")}
           </Link>
           <Icon name="chevron-right" size={14} className="pdp-crumb__sep" />
-          <Link className="pdp-crumb__link" href="/search">
-            {t("nav.buy")}
+          <Link className="pdp-crumb__link" href={`/search?deal=${property.deal}`}>
+            {property.deal === "rent" ? t("nav.rent") : t("nav.buy")}
           </Link>
           <Icon name="chevron-right" size={14} className="pdp-crumb__sep" />
-          <Link className="pdp-crumb__link" href="/search?q=Erbil">
-            {t("city.Erbil")}
+          <Link className="pdp-crumb__link" href={`/search?q=${encodeURIComponent(property.city)}`}>
+            {t("city." + property.city)}
           </Link>
           <Icon name="chevron-right" size={14} className="pdp-crumb__sep" />
           <span className="pdp-crumb__current">{property.title}</span>
@@ -83,11 +96,14 @@ export function PdpApp() {
             <div className="pdp-head__title">{property.title}</div>
             <div className="pdp-head__addr">
               <Icon name="map-pin" size={17} />
-              <Link href="/search?q=Erbil">{property.address}</Link>
+              <Link href={`/search?q=${encodeURIComponent(property.city)}`}>{property.address}</Link>
             </div>
           </div>
           <div className="pdp-head__priceblock">
-            <div className="pdp-head__price">${property.price.toLocaleString("en-US")}</div>
+            <div className="pdp-head__price">
+              ${property.price.toLocaleString("en-US")}
+              {property.per ? <span className="pdp-head__per">{property.per}</span> : null}
+            </div>
           </div>
         </div>
 

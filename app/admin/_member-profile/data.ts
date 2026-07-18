@@ -1,6 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
-import { getAgentByName, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
+import { getAgentByName, daysAgoFrom, type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
+import { VIEWINGS as ALL_VIEWINGS, AGENT_IMG } from "../_viewings/data";
 
 export const ROLE_META: Record<string, { variant: BadgeVariant; cls: string }> = {
   Buyer: { variant: "info", cls: "mp-role--buyer" },
@@ -24,84 +25,39 @@ export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; icon?: Ic
   Completed: { variant: "brand", icon: "check-check", cls: "vw-st--completed" },
   Cancelled: { variant: "error", icon: "circle-x", cls: "vw-st--cancelled" },
 };
+// Mirrors the members table status badge so the profile header renders identically.
+export const MEMBER_STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean }> = {
+  Active: { variant: "success", dot: true },
+  Suspended: { variant: "error", dot: true },
+};
 
 export interface MemberAgent { name: string; verified: boolean; phone: string; email: string; img: string; listings?: number; rating?: string; reviews?: number }
-export const AGENT: MemberAgent = {
-  name: "Lana Aziz", verified: true, phone: "+964 751 880 2200", email: "lana.aziz@mail.chiya.estate",
-  img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=70",
-  listings: 14, rating: "4.9", reviews: 87,
-};
 
 export interface MemberRecord {
   id: string; name: string; status: string; types: string[]; joinedShort: string; joinedFull: string;
-  email: string; phone: string; language: string; contactMethod: string; img: string; agent: MemberAgent;
+  email: string; phone: string; language: string; contactMethod: string; img: string; agent: MemberAgent | null;
 }
-export const MEMBER: MemberRecord = {
-  id: "MEM-2041",
-  name: "Ahmed Karim",
-  status: "Active",
-  types: ["Buyer", "Seller", "Landlord"],
-  joinedShort: "Jan 2026",
-  joinedFull: "January 14, 2026",
-  email: "ahmed.karim@gmail.com",
-  phone: "+964 750 441 7788",
-  language: "Kurdish (Sorani)",
-  contactMethod: "Phone call",
-  img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=75",
-  agent: AGENT,
-};
-
-const TH = (w: string) => "https://images.unsplash.com/" + w + "?auto=format&fit=crop&w=160&q=70";
 
 export interface PortfolioRow { id: string; title: string; loc: string; type: string; img: string; rel: string; status: string; price: number; per?: string; agent: string; agentImg: string; date: string }
-const AGENT_IMG_LANA = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=70";
-const AGENT_IMG_SARA = TH("photo-1438761681033-6461ffad8d80");
-const AGENT_IMG_HAWRE = TH("photo-1633332755192-727a05c4013d");
-export const PORTFOLIO: PortfolioRow[] = [
-  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", type: "Villa", img: TH("photo-1613490493576-7fde63acd811"), rel: "Seller", status: "Published", price: 1200000, agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "Jun 12, 2026" },
-  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", type: "Villa", img: TH("photo-1568605114967-8130f3a36994"), rel: "Seller", status: "Sold", price: 845000, agent: "Sara Hama", agentImg: AGENT_IMG_SARA, date: "Jun 6, 2026" },
-  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", type: "Penthouse", img: TH("photo-1600607687939-ce8a6c25118c"), rel: "Buyer", status: "Sold", price: 980000, agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "May 30, 2026" },
-  { id: "CH-2022", title: "Park View Loft", loc: "Salim Street, Sulaymaniyah", type: "Apartment", img: TH("photo-1502672260266-1c1ef2d93688"), rel: "Landlord", status: "Rented", price: 1100, per: "/mo", agent: "Hawre Ako", agentImg: AGENT_IMG_HAWRE, date: "May 28, 2026" },
-  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", type: "Apartment", img: TH("photo-1545324418-cc1a3fa10c00"), rel: "Landlord", status: "Published", price: 1650, per: "/mo", agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "May 21, 2026" },
-  { id: "CH-2008", title: "Lakeside Apartment", loc: "Dukan, Sulaymaniyah", type: "Apartment", img: TH("photo-1560448204-e02f11c3d0e2"), rel: "Buyer", status: "Pending", price: 365000, agent: "Lana Aziz", agentImg: AGENT_IMG_LANA, date: "Jun 15, 2026" },
-];
 
 export interface MpfViewing { id: string; title: string; loc: string; img: string; requested: string; agent: string; agentImg: string; status: string }
-export const VIEWINGS: MpfViewing[] = [
-  { id: "CH-2038", title: "Marble Hill Villa", loc: "Empire World, Erbil", img: TH("photo-1600596542815-ffad4c1539a9"), requested: "Jun 24, 2026 · 14:00", agent: "Ahmed Karim", agentImg: TH("photo-1507003211169-0a1dd7228f2d"), status: "Confirmed" },
-  { id: "CH-2026", title: "Goizha Mountain House", loc: "Goizha, Sulaymaniyah", img: TH("photo-1599809275671-b5942cabc7a2"), requested: "Jun 22, 2026 · 11:30", agent: "Lana Aziz", agentImg: TH("photo-1494790108377-be9c29b29330"), status: "Pending" },
-  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", img: TH("photo-1600607687939-ce8a6c25118c"), requested: "Jun 8, 2026 · 16:00", agent: "Lana Aziz", agentImg: TH("photo-1494790108377-be9c29b29330"), status: "Completed" },
-  { id: "CH-2014", title: "Zagros Garden Townhouse", loc: "Masif, Duhok", img: TH("photo-1576941089067-2de3c901e126"), requested: "Jun 5, 2026 · 10:00", agent: "Sara Hama", agentImg: TH("photo-1438761681033-6461ffad8d80"), status: "Completed" },
-  { id: "CH-2009", title: "Citadel Heights Land", loc: "Qalat, Erbil", img: TH("photo-1500382017468-9049fed747ef"), requested: "May 30, 2026 · 13:00", agent: "Diyar Salih", agentImg: TH("photo-1500648767791-00dcc994a43e"), status: "Cancelled" },
-];
 
 export interface NoteItem { author: string; role: string; time: string; kind: string; text: string }
 export const INIT_NOTES: NoteItem[] = [
-  { author: "Rêbîn Kawa", role: "Super Admin", time: "Jun 16, 2026 · 10:18", kind: "review", text: "High-value member managing both sale and rental portfolios. Verified ID and ownership documents on file. Eligible for the premium concierge tier." },
-  { author: "Lana Aziz", role: "Agent", time: "Jun 11, 2026 · 15:42", kind: "note", text: "Spoke with Ahmed about listing the Olive Grove Estate. He prefers phone contact in the afternoons and responds quickly. Photography for the villa is scheduled." },
-  { author: "Rêbîn Kawa", role: "Super Admin", time: "Jan 14, 2026 · 09:05", kind: "approval", text: "Account approved and onboarded. Assigned Lana Aziz as the primary relationship agent." },
+  { author: "Rêbîn Kawa", role: "Super Admin", time: "Jun 16, 2026 · 10:18", kind: "review", text: "Verified ID and ownership documents on file. Eligible for the premium concierge tier." },
+  { author: "Rêbîn Kawa", role: "Super Admin", time: "Jan 14, 2026 · 09:05", kind: "approval", text: "Account approved and onboarded." },
 ];
 
-export interface TLItem { icon: IconName; tone: string; title: string; desc: string; time: string }
-export const TIMELINE: TLItem[] = [
-  { icon: "shopping-bag", tone: "info", title: "Inquiry submitted", desc: "Purchase offer sent for Lakeside Apartment.", time: "Jun 17, 2026" },
-  { icon: "calendar-plus", tone: "brand", title: "Viewing requested", desc: "Requested a viewing for Marble Hill Villa.", time: "Jun 16, 2026" },
-  { icon: "heart", tone: "gold", title: "Property saved", desc: "Saved Marble Hill Villa to favourites.", time: "Jun 16, 2026" },
-  { icon: "building-2", tone: "brand", title: "Property listed", desc: "Listed Olive Grove Estate for sale at $1,200,000.", time: "Jun 12, 2026" },
-  { icon: "key", tone: "error", title: "Property sold", desc: "Cedar Court Residence sold for $845,000.", time: "Jun 6, 2026" },
-  { icon: "circle-check", tone: "success", title: "Property purchased", desc: "Completed purchase of Naz City Penthouse.", time: "May 30, 2026" },
-  { icon: "key-round", tone: "info", title: "Property rented", desc: "Park View Loft rented out at $1,100/mo.", time: "May 28, 2026" },
-  { icon: "user-check", tone: "brand", title: "Agent assigned", desc: "Lana Aziz assigned as the relationship agent.", time: "Jan 14, 2026" },
-  { icon: "user-plus", tone: "neutral", title: "Account created", desc: "Member registered on Chiya Estate.", time: "Jan 14, 2026" },
-];
+/* Timeline entries are i18n-keyed and parameterized so derived items localize
+   like the rest of the admin. */
+export interface TLItem { icon: IconName; tone: string; titleKey: string; descKey: string; params?: Record<string, string>; price?: number; per?: string; time: string }
 
-export const REASSIGN_AGENTS: MemberAgent[] = [
-  AGENT,
-  { name: "Ahmed Karim", verified: true, phone: "+964 750 441 7788", email: "ahmed.karim@mail.chiya.estate", img: TH("photo-1507003211169-0a1dd7228f2d") },
-  { name: "Sara Hama", verified: true, phone: "+964 770 220 9911", email: "sara.hama@mail.chiya.estate", img: TH("photo-1438761681033-6461ffad8d80") },
-  { name: "Rawa Jalal", verified: true, phone: "+964 751 330 6655", email: "rawa.jalal@mail.chiya.estate", img: TH("photo-1500648767791-00dcc994a43e") },
-  { name: "Hawre Ako", verified: true, phone: "+964 770 118 9090", email: "hawre.ako@mail.chiya.estate", img: TH("photo-1506794778202-cad84cf45f1d") },
-];
+/** Agents offered by the reassign modal = the live verified roster. */
+export function buildReassignAgents(agents: AgentRecord[]): MemberAgent[] {
+  return agents
+    .filter((a) => a.verification === "Verified")
+    .map((a) => ({ name: a.name, verified: true, phone: a.phone, email: a.email, img: a.img || "" }));
+}
 
 export const NOTE_KIND: Record<string, { icon: IconName; cls: string }> = {
   approval: { icon: "circle-check", cls: "is-approval" },
@@ -122,20 +78,22 @@ function parseJoined(s: string): { short: string; full: string } {
   return { short, full };
 }
 
-/** The relationship agent for a member = the agent on one of their listings. */
-export function memberAgentFor(properties: PropertyRecord[], name: string): MemberAgent {
+/** The relationship agent for a member, by strength of the relationship: the
+    agent on one of their listings, else the agent who closed their purchase /
+    tenancy, else the agent who hosted a viewing for them; null when none. */
+export function memberAgentFor(properties: PropertyRecord[], name: string): MemberAgent | null {
   const owned = properties.find((p) => p.owner.name === name && p.agent);
-  if (owned && owned.agent) {
-    const roster = getAgentByName(owned.agent.name);
-    return {
-      name: owned.agent.name,
-      verified: owned.agent.verified,
-      phone: roster?.phone || "+964 750 000 0000",
-      email: (roster?.email as string) || owned.agent.name.toLowerCase().replace(/\s+/g, ".") + "@chiya.estate",
-      img: owned.agent.img,
-    };
-  }
-  return AGENT;
+  const dealt = properties.find((p) => (p.buyer === name || p.tenant === name) && p.agent);
+  const agentName = owned?.agent?.name ?? dealt?.agent?.name ?? ALL_VIEWINGS.find((v) => v.member === name)?.agent;
+  if (!agentName) return null;
+  const roster = getAgentByName(agentName);
+  return {
+    name: agentName,
+    verified: roster ? roster.verification === "Verified" : true,
+    phone: roster?.phone || "—",
+    email: roster?.email || agentName.toLowerCase().replace(/\s+/g, ".") + "@chiya.estate",
+    img: roster?.img || owned?.agent?.img || dealt?.agent?.img || AGENT_IMG[agentName] || "",
+  };
 }
 
 export function toDetailMember(m: CatalogMember, properties: PropertyRecord[]): MemberRecord {
@@ -156,22 +114,89 @@ export function toDetailMember(m: CatalogMember, properties: PropertyRecord[]): 
   };
 }
 
-/** Every property connected to this member as owner (seller / landlord). */
+/** Every property connected to this member: listings they own (seller /
+    landlord side) plus properties they bought or rent (counterparty side).
+    Bought / renting rows date from when the deal closed (p.updated). */
 export function buildPortfolio(properties: PropertyRecord[], name: string): PortfolioRow[] {
-  return properties
-    .filter((p) => p.owner.name === name)
-    .map((p) => ({
-      id: p.id,
-      title: p.title,
-      loc: `${p.area}, ${p.city}`,
-      type: p.type,
-      img: p.img,
-      rel: p.listing === "rent" ? "Landlord" : "Seller",
-      status: p.status,
-      price: p.price,
-      per: p.per,
-      agent: p.agent?.name || "Unassigned",
-      agentImg: p.agent?.img || "",
-      date: p.date,
-    }));
+  const row = (p: PropertyRecord, rel: string, date: string): PortfolioRow => ({
+    id: p.id,
+    title: p.title,
+    loc: `${p.area}, ${p.city}`,
+    type: p.type,
+    img: p.img,
+    rel,
+    status: p.status,
+    price: p.price,
+    per: p.per,
+    agent: p.agent?.name || "Unassigned",
+    agentImg: p.agent?.img || "",
+    date,
+  });
+  const rows: PortfolioRow[] = [];
+  for (const p of properties) {
+    if (p.owner.name === name) rows.push(row(p, p.listing === "rent" ? "Landlord" : "Seller", p.date));
+    if (p.buyer === name) rows.push(row(p, "Buyer", p.updated));
+    if (p.tenant === name) rows.push(row(p, "Tenant", p.updated));
+  }
+  return rows;
+}
+
+/* Shared viewings ledger status → member-profile badge vocabulary. */
+const VIEW_SMAP: Record<string, string> = { Requested: "Pending", Confirmed: "Confirmed", Completed: "Completed", Cancelled: "Cancelled", "No Show": "Cancelled" };
+
+/** Viewings this member requested, from the shared viewings ledger — the same
+    records the Viewings page shows, so both surfaces always agree. */
+export function buildMemberViewings(properties: PropertyRecord[], name: string): MpfViewing[] {
+  const propId = new Map(properties.map((p) => [p.title, p.id]));
+  return ALL_VIEWINGS.filter((v) => v.member === name).map((v) => ({
+    id: propId.get(v.property.title) || v.id,
+    title: v.property.title,
+    loc: v.property.location,
+    img: v.property.img,
+    requested: `${v.date} · ${v.time}`,
+    agent: v.agent,
+    agentImg: AGENT_IMG[v.agent] || "",
+    status: VIEW_SMAP[v.status] || v.status,
+  }));
+}
+
+/** Activity timeline derived from this member's real records: their listings
+    (listed / sold / rented), purchases and tenancies they closed, their
+    viewing requests, agent assignment, and account creation — newest first. */
+export function buildMemberTimeline(properties: PropertyRecord[], member: CatalogMember): TLItem[] {
+  interface Ev { item: TLItem; ago: number }
+  const events: Ev[] = [];
+  for (const p of properties) {
+    const updatedAgo = daysAgoFrom(p.updated);
+    if (p.owner.name === member.name) {
+      events.push({ item: { icon: "building-2", tone: "brand", titleKey: "admin.mp.tl.listed", descKey: p.listing === "rent" ? "admin.mp.tl.listedRentDesc" : "admin.mp.tl.listedSaleDesc", params: { title: p.title }, price: p.price, per: p.per, time: p.date }, ago: p.daysAgo });
+      if (p.status === "Sold" && updatedAgo != null) {
+        events.push({ item: { icon: "key", tone: "error", titleKey: "admin.mp.tl.sold", descKey: "admin.mp.tl.soldDesc", params: { title: p.title }, price: p.price, time: p.updated }, ago: updatedAgo });
+      } else if (p.status === "Rented" && updatedAgo != null) {
+        events.push({ item: { icon: "key-round", tone: "info", titleKey: "admin.mp.tl.rented", descKey: "admin.mp.tl.rentedDesc", params: { title: p.title }, price: p.price, per: p.per, time: p.updated }, ago: updatedAgo });
+      }
+    }
+    if (p.buyer === member.name && updatedAgo != null) {
+      events.push({ item: { icon: "circle-check", tone: "success", titleKey: "admin.mp.tl.purchased", descKey: "admin.mp.tl.purchasedDesc", params: { title: p.title }, price: p.price, time: p.updated }, ago: updatedAgo });
+    }
+    if (p.tenant === member.name && updatedAgo != null) {
+      events.push({ item: { icon: "key-round", tone: "info", titleKey: "admin.mp.tl.moved", descKey: "admin.mp.tl.movedDesc", params: { title: p.title }, price: p.price, per: p.per, time: p.updated }, ago: updatedAgo });
+    }
+  }
+  for (const v of ALL_VIEWINGS) {
+    if (v.member !== member.name) continue;
+    const ago = daysAgoFrom(v.date);
+    if (ago == null) continue;
+    if (v.status === "Completed" && ago >= 0) {
+      events.push({ item: { icon: "calendar-check", tone: "success", titleKey: "admin.mp.tl.viewingDone", descKey: "admin.mp.tl.viewingDoneDesc", params: { title: v.property.title }, time: v.date }, ago });
+    } else if (v.status === "Requested" || v.status === "Confirmed") {
+      events.push({ item: { icon: "calendar-plus", tone: "brand", titleKey: "admin.mp.tl.viewingReq", descKey: "admin.mp.tl.viewingReqDesc", params: { title: v.property.title }, time: v.date }, ago: Math.max(ago, 0) });
+    }
+  }
+  events.sort((a, b) => a.ago - b.ago);
+  const items = events.slice(0, 7).map((e) => e.item);
+  const agent = memberAgentFor(properties, member.name);
+  if (agent) items.push({ icon: "user-check", tone: "brand", titleKey: "admin.mp.tl.agent", descKey: "admin.mp.tl.agentDesc", params: { name: agent.name }, time: member.joined });
+  items.push({ icon: "user-plus", tone: "neutral", titleKey: "admin.mp.tl.created", descKey: "admin.mp.tl.createdDesc", time: member.joined });
+  return items;
 }

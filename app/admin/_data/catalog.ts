@@ -1,7 +1,7 @@
 /* =============================================================================
    Chiya admin — central data catalog (single source of truth).
 
-   Everything the admin area shows is generated here and cross-linked by name:
+   Everything the admin area shows lives here and is cross-linked by name:
    - properties reference a real location (city → district → project), a real
      owner (a Seller/Landlord member) and, usually, a real agent.
    - members carry buyer / seller / landlord / tenant roles; their "properties"
@@ -9,9 +9,11 @@
    - agents' listing / sold / rented / members stats are counted from the
      properties assigned to them.
 
-   The records are generated once, deterministically, so the numbers are stable
-   across renders. List/KPI pages derive their figures from these helpers, so
-   adding or removing a property updates every count consistently.
+   The dataset is a small, hand-curated set of records: every scenario appears
+   exactly once (each valid status × listing combo, each property type, each
+   city, agents/members in every state) so nothing is duplicated and every
+   record exists for a reason. List/KPI pages derive their figures from these
+   helpers, so adding or removing a property updates every count consistently.
    ========================================================================== */
 
 import type { IconName } from "@/components/ui/icon";
@@ -35,7 +37,7 @@ export interface PropertyAmenity {
   label: string;
 }
 /** Rich, user-entered detail carried from the Add-property wizard. Every field
-    is optional: the 320 generated seed records omit it and the detail page falls
+    is optional: the curated seed records omit it and the detail page falls
     back to its deterministic generators, while a listing created through the
     form fills it in so the detail page shows exactly what was entered. */
 export interface PropertyDetails {
@@ -71,6 +73,10 @@ export interface PropertyRecord {
   img: string;
   owner: OwnerRef;
   agent: AgentRef | null;
+  /** Member who bought this property — present on every Sold record. */
+  buyer?: string;
+  /** Member renting this property — optional on Rented (tenant may be off-platform). */
+  tenant?: string;
   listing: "sale" | "rent";
   status: string;
   price: number;
@@ -139,18 +145,8 @@ export interface LocationNode {
 }
 
 /* ----------------------------------------------------------------------------
-   Deterministic helpers
+   Date helpers (all record dates anchor to a fixed "today")
    ------------------------------------------------------------------------- */
-function rng(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
-const pick = <T>(r: () => number, arr: T[]): T => arr[Math.floor(r() * arr.length)];
-const randInt = (r: () => number, min: number, max: number) => min + Math.floor(r() * (max - min + 1));
-
 const MONTHS_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const TODAY = new Date(2026, 5, 30); // Jun 30, 2026
 function dateFromDaysAgo(days: number): string {
@@ -158,23 +154,6 @@ function dateFromDaysAgo(days: number): string {
   d.setDate(d.getDate() - days);
   return `${MONTHS_ABBR[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
-
-/* ----------------------------------------------------------------------------
-   Name pools
-   ------------------------------------------------------------------------- */
-const FIRST = [
-  "Karwan", "Lana", "Sirwan", "Dashne", "Awat", "Hewa", "Nyan", "Shilan", "Berivan", "Tara",
-  "Rebwar", "Diyar", "Aland", "Avan", "Baban", "Chiman", "Darya", "Evar", "Hawre", "Jiyan",
-  "Kani", "Lavin", "Media", "Nali", "Peshraw", "Rojan", "Sazan", "Twana", "Zhino", "Aram",
-  "Bawar", "Choman", "Delan", "Ezel", "Goran", "Helin", "Karox", "Midya", "Newroz", "Payam",
-  "Rezan", "Soran", "Tania", "Viyan", "Warya", "Zana", "Hana", "Shad", "Bahar", "Kosrat",
-  "Sara", "Ahmad", "Nadia", "Dara", "Shno", "Bnar", "Peshawa", "Rawa", "Karzan", "Vian",
-];
-const LAST = [
-  "Mahmoud", "Aziz", "Tofiq", "Salar", "Rashid", "Botan", "Faraj", "Aram", "Khalid", "Jamal",
-  "Ahmad", "Barzani", "Hama", "Hassan", "Ibrahim", "Karim", "Mustafa", "Omar", "Qadir", "Rasul",
-  "Salih", "Tahir", "Wali", "Xoshnaw", "Yusuf", "Zebari", "Amin", "Hawrami", "Mohammed", "Saleh",
-];
 
 /* ----------------------------------------------------------------------------
    Image pools
@@ -192,12 +171,7 @@ const PROP_IMG: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=240&q=70",
     "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=240&q=70",
   ],
-  Penthouse: [
-    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=240&q=70",
-    "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=240&q=70",
-    "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=240&q=70",
-  ],
-  Townhouse: [
+  House: [
     "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=240&q=70",
     "https://images.unsplash.com/photo-1576941089067-2de3c901e126?auto=format&fit=crop&w=240&q=70",
     "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=240&q=70",
@@ -213,19 +187,19 @@ const PROP_IMG: Record<string, string[]> = {
   ],
 };
 
+/* Agent portraits only — exactly one photo per photographed agent, each index
+   used by at most one agent. Members deliberately carry NO photo (img: null →
+   initials avatar everywhere), so a member can never share a face with an
+   agent and every surface renders the same thing for the same person. The
+   admin user's portrait (lib/admin-profile.ts) is intentionally NOT in this
+   pool either. */
 const PORTRAITS: string[] = [
-  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=120&q=70",
-  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=70",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=70", // Diyar Salih
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=70", // Lana Aziz
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=70", // Karwan Mahmoud
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=70", // Sara Hama
+  "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=120&q=70", // Rawa Jamal
+  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=70", // Bilal Noori
 ];
 
 /* ----------------------------------------------------------------------------
@@ -283,227 +257,277 @@ export const LOCATION_DEF: CityDef[] = [
   },
 ];
 
-interface PlaceableArea {
+/* Resolve a placeable area name (project or district) to its district + city.
+   Throws at module load on a typo so a bad cross-link fails the dev server
+   immediately instead of rendering a broken record. */
+function resolvePlace(area: string): { area: string; district: string; city: string } {
+  for (const c of LOCATION_DEF) {
+    for (const d of c.districts) {
+      if (d.name === area) return { area, district: d.name, city: c.city };
+      if (d.projects.includes(area)) return { area, district: d.name, city: c.city };
+    }
+  }
+  throw new Error(`catalog: unknown area "${area}"`);
+}
+
+/* ----------------------------------------------------------------------------
+   Curated members (14) — every role state exactly once.
+   Roles are NOT declared here: a member is a Buyer/Seller/Landlord/Tenant only
+   because a property record links them (owner of a sale/rent listing, buyer of
+   a Sold, tenant of a Rented). deriveMemberRoles() fills roles after
+   PROPERTIES is built, so a role can never exist without a backing record.
+   Members with no property link at all (empty roles) are prospective lookers —
+   they must appear in at least one viewing (checked in _viewings/data).
+   Covers: each single role, multi-role combos (incl. one all-four member and a
+   Landlord+Tenant), no-role prospectives, Active/Suspended, with/without avatar.
+   ------------------------------------------------------------------------- */
+interface MemberSpec {
+  id: string;
+  name: string;
+  status?: string; // default Active
+  daysAgo: number; // joined
+  phone: string;
+}
+const MEMBER_SPECS: MemberSpec[] = [
+  { id: "M-5014", name: "Dara Kamal", daysAgo: 12, phone: "+964 750 214 3308" }, // prospective buyer (viewings only)
+  { id: "M-5013", name: "Shilan Aziz", daysAgo: 420, phone: "+964 770 331 5124" },
+  { id: "M-5012", name: "Hersh Qadir", status: "Suspended", daysAgo: 510, phone: "+964 751 448 2019" },
+  { id: "M-5011", name: "Nma Rashid", daysAgo: 260, phone: "+964 773 902 6641" },
+  { id: "M-5010", name: "Tara Botan", daysAgo: 190, phone: "+964 750 605 7812" },
+  { id: "M-5009", name: "Aland Tariq", daysAgo: 75, phone: "+964 770 128 9903" },
+  { id: "M-5008", name: "Sara Amin", daysAgo: 44, phone: "+964 751 776 4530" }, // prospective tenant (viewings only)
+  { id: "M-5007", name: "Awat Faraj", daysAgo: 610, phone: "+964 773 350 1287" },
+  { id: "M-5006", name: "Berivan Salar", daysAgo: 150, phone: "+964 750 491 8256" },
+  { id: "M-5005", name: "Rebwar Tofiq", status: "Suspended", daysAgo: 330, phone: "+964 770 883 4471" },
+  { id: "M-5004", name: "Chiman Rasul", daysAgo: 490, phone: "+964 751 267 9145" },
+  { id: "M-5003", name: "Kani Omar", daysAgo: 220, phone: "+964 773 514 6098" },
+  { id: "M-5002", name: "Zana Ibrahim", daysAgo: 700, phone: "+964 750 739 2264" }, // all four roles via links
+  { id: "M-5001", name: "Avan Mustafa", daysAgo: 28, phone: "+964 770 460 1173" },
+];
+export const MEMBERS: MemberRecord[] = MEMBER_SPECS.map((s) => ({
+  id: s.id,
+  name: s.name,
+  roles: [], // derived from property links after PROPERTIES is built
+  phone: s.phone,
+  email: s.name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@gmail.com",
+  properties: 0, // filled in by withMemberCounts
+  joined: dateFromDaysAgo(s.daysAgo),
+  daysAgo: s.daysAgo,
+  status: s.status ?? "Active",
+  img: null, // members never carry a photo — initials avatars everywhere
+}));
+
+/* ----------------------------------------------------------------------------
+   Curated agents (7) — every state exactly once.
+   Verified+Active (one per city + a second in Erbil), Verified+Suspended,
+   Pending+Active, Pending+no-avatar. Only Verified agents may appear on
+   properties or viewings.
+   ------------------------------------------------------------------------- */
+interface AgentSpec {
+  id: string;
+  name: string;
   area: string;
-  district: string;
-  city: string;
+  verification?: string; // default Verified
+  status?: string; // default Active
+  img?: number | null;
+  phone: string;
+  experience: string; // years in the field, e.g. "9"
+  languages: string[];
 }
-const PLACEABLE: PlaceableArea[] = [];
-for (const c of LOCATION_DEF) {
-  for (const d of c.districts) {
-    if (d.projects.length) {
-      for (const p of d.projects) PLACEABLE.push({ area: p, district: d.name, city: c.city });
-    } else {
-      PLACEABLE.push({ area: d.name, district: d.name, city: c.city });
-    }
+const AGENT_SPECS: AgentSpec[] = [
+  /* TOP_AGENT — must keep strictly the most assigned listings: the agent
+     surface signs in as pickTopAgent(), and its demo data (viewings, reviews)
+     is scoped to this agent. Reducing Lana's listings below everyone else's
+     breaks the agent console demo. */
+  { id: "A-2107", name: "Lana Aziz", area: "Empire World", img: 1, phone: "+964 750 118 2044", experience: "9", languages: ["Kurdish", "English", "Arabic"] },
+  { id: "A-2106", name: "Karwan Mahmoud", area: "Ankawa", img: 2, phone: "+964 770 236 7180", experience: "7", languages: ["Kurdish", "English"] },
+  { id: "A-2105", name: "Sara Hama", area: "Bakhtiari", img: 3, phone: "+964 751 342 9066", experience: "6", languages: ["Kurdish", "Arabic"] },
+  { id: "A-2104", name: "Rawa Jamal", area: "Malta", img: 4, phone: "+964 773 458 1237", experience: "5", languages: ["Kurdish", "English"] },
+  { id: "A-2103", name: "Diyar Salih", area: "Gulan", status: "Suspended", img: 0, phone: "+964 750 561 8829", experience: "8", languages: ["Kurdish", "Arabic"] },
+  { id: "A-2102", name: "Bilal Noori", area: "Raparin", verification: "Pending", img: 5, phone: "+964 770 674 3315", experience: "3", languages: ["Kurdish"] },
+  { id: "A-2101", name: "Hana Rashid", area: "Nizarke", verification: "Pending", img: null, phone: "+964 751 785 9402", experience: "2", languages: ["Kurdish", "English"] },
+];
+export const AGENTS: AgentRecord[] = AGENT_SPECS.map((s) => {
+  const place = resolvePlace(s.area);
+  return {
+    id: s.id,
+    name: s.name,
+    phone: s.phone,
+    email: s.name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@chiya.estate",
+    city: place.city,
+    area: s.area,
+    verification: s.verification ?? "Verified",
+    listings: 0, // filled in by withAgentStats
+    sold: 0,
+    rented: 0,
+    members: 0,
+    status: s.status ?? "Active",
+    img: s.img === null ? null : PORTRAITS[s.img ?? 0],
+    experience: s.experience,
+    languages: s.languages,
+    areas: [s.area],
+  };
+});
+
+/* No two agents may share a portrait — a face must identify exactly one person. */
+{
+  const seen = new Map<string, string>();
+  for (const a of AGENTS) {
+    if (!a.img) continue;
+    const other = seen.get(a.img);
+    if (other) throw new Error(`catalog: agents "${other}" and "${a.name}" share the same portrait`);
+    seen.set(a.img, a.name);
   }
 }
-const AREAS_BY_CITY: Record<string, PlaceableArea[]> = {};
-for (const a of PLACEABLE) (AREAS_BY_CITY[a.city] ||= []).push(a);
-const CITY_WEIGHTED: string[] = [];
-for (const c of LOCATION_DEF) for (let k = 0; k < Math.round(c.weight * 100); k++) CITY_WEIGHTED.push(c.city);
+
+const MEMBER_BY_NAME = new Map(MEMBERS.map((m) => [m.name, m]));
+const AGENT_BY_NAME = new Map(AGENTS.map((a) => [a.name, a]));
 
 /* ----------------------------------------------------------------------------
-   Property type config
+   Curated properties (24) — every scenario exactly once.
+   Coverage: each valid status × listing combo (Published sale/rent, Pending
+   sale/rent, Sold [sale only], Rented [rent only], Draft sale/rent), each type
+   at least once, Erbil/Sulaymaniyah/Duhok all represented, project locations,
+   featured, Company owners, agent-less Pending + Drafts. The Sold/Rented rows
+   spread `updated` across today / this week / this month / this year so every
+   dashboard period KPI is non-zero.
    ------------------------------------------------------------------------- */
-const TYPE_WEIGHTED = ["Villa", "Villa", "Apartment", "Apartment", "Apartment", "Penthouse", "Townhouse", "Townhouse", "Office", "Land"];
-const TITLE_ADJ = [
-  "Olive Grove", "Marble Hill", "Cedar Court", "Tigris View", "Goizha", "Park View", "Citadel", "Zagros", "Lakeside", "Empire",
-  "Dream", "Royal", "Golden", "Crystal", "Garden", "Sunrise", "Hillside", "Riverside", "Pearl", "Emerald",
-  "Skyline", "Highland", "Maple", "Rose", "Cypress", "Jasmine", "Almond", "Vineyard", "Summit", "Azadi",
-];
-const NOUN_BY_TYPE: Record<string, string[]> = {
-  Villa: ["Villa", "Estate", "Residence", "Mansion"],
-  Apartment: ["Apartment", "Loft", "Flat", "Residences"],
-  Penthouse: ["Penthouse", "Sky Suite", "Tower Suite"],
-  Townhouse: ["Townhouse", "Court", "Terrace"],
-  Office: ["Office", "Business Suite", "Tower", "Plaza"],
-  Land: ["Land", "Plot", "Grounds"],
-};
-const STATUS_WEIGHTED = [
-  "Published", "Published", "Published", "Published", "Published", "Published",
-  "Pending", "Pending",
-  "Sold", "Sold", "Sold",
-  "Rented", "Rented",
-  "Draft",
+interface PropSpec {
+  id: string;
+  title: string;
+  area: string; // placeable: district or project name
+  type: string;
+  listing: "sale" | "rent";
+  status: string;
+  agent: string | null; // agent name — Published/Sold/Rented must have one
+  owner: string; // member name — owning makes them a Seller (sale) / Landlord (rent)
+  buyer?: string; // member name — required on Sold, makes them a Buyer
+  tenant?: string; // member name — optional on Rented (may be off-platform), makes them a Tenant
+  companyOwner?: boolean;
+  price: number;
+  beds: number;
+  baths: number;
+  size: number;
+  featured?: boolean;
+  daysAgo: number; // listed
+  updatedDaysAgo: number; // last activity (status change / edit)
+  img?: number; // index into PROP_IMG[type]
+}
+const PROP_SPECS: PropSpec[] = [
+  /* -------- Published (6 sale + 4 rent) -------- */
+  { id: "CH-3200", title: "Marble Hill Villa", area: "Empire World", type: "Villa", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Shilan Aziz", price: 850000, beds: 5, baths: 4, size: 480, featured: true, daysAgo: 34, updatedDaysAgo: 10 },
+  { id: "CH-3199", title: "Dream City Garden Flat", area: "Dream City", type: "Apartment", listing: "rent", status: "Published", agent: "Lana Aziz", owner: "Nma Rashid", price: 1400, beds: 2, baths: 2, size: 130, featured: true, daysAgo: 18, updatedDaysAgo: 5, img: 1 },
+  { id: "CH-3198", title: "Naz City Sky Suite", area: "Naz City", type: "Apartment", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Berivan Salar", price: 690000, beds: 3, baths: 3, size: 300, daysAgo: 60, updatedDaysAgo: 12 },
+  { id: "CH-3197", title: "English Village Court", area: "English Village", type: "House", listing: "sale", status: "Published", agent: "Karwan Mahmoud", owner: "Chiman Rasul", price: 420000, beds: 4, baths: 3, size: 260, daysAgo: 90, updatedDaysAgo: 15, img: 1 },
+  { id: "CH-3196", title: "Gulan Business Suite", area: "Gulan", type: "Office", listing: "rent", status: "Published", agent: "Karwan Mahmoud", owner: "Awat Faraj", companyOwner: true, price: 2800, beds: 0, baths: 1, size: 210, daysAgo: 45, updatedDaysAgo: 8 },
+  { id: "CH-3195", title: "Ankawa Olive Grove Land", area: "Ankawa", type: "Land", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Hersh Qadir", price: 320000, beds: 0, baths: 0, size: 1200, daysAgo: 120, updatedDaysAgo: 20 },
+  { id: "CH-3194", title: "Cedar Court Apartments", area: "Salim Street", type: "Apartment", listing: "sale", status: "Published", agent: "Sara Hama", owner: "Shilan Aziz", price: 210000, beds: 3, baths: 2, size: 150, featured: true, daysAgo: 25, updatedDaysAgo: 18, img: 2 },
+  { id: "CH-3193", title: "Sarchnar Hillside Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Published", agent: "Sara Hama", owner: "Kani Omar", price: 2200, beds: 4, baths: 3, size: 380, daysAgo: 30, updatedDaysAgo: 6, img: 2 },
+  { id: "CH-3192", title: "Masike Highland Villa", area: "Masike", type: "Villa", listing: "sale", status: "Published", agent: "Rawa Jamal", owner: "Chiman Rasul", price: 380000, beds: 4, baths: 3, size: 340, daysAgo: 150, updatedDaysAgo: 22, img: 3 },
+  { id: "CH-3191", title: "Malta Riverside Loft", area: "Malta", type: "Apartment", listing: "rent", status: "Published", agent: "Rawa Jamal", owner: "Tara Botan", price: 900, beds: 1, baths: 1, size: 95, daysAgo: 12, updatedDaysAgo: 4, img: 3 },
+  /* -------- Pending (3: sale+agent, rent+no agent, land sale) -------- */
+  { id: "CH-3190", title: "Italian Village Rose Flat", area: "Italian Village", type: "Apartment", listing: "sale", status: "Pending", agent: "Lana Aziz", owner: "Berivan Salar", price: 260000, beds: 2, baths: 2, size: 140, daysAgo: 3, updatedDaysAgo: 3 },
+  { id: "CH-3189", title: "Raparin Terrace House", area: "Raparin", type: "House", listing: "rent", status: "Pending", agent: null, owner: "Nma Rashid", price: 1100, beds: 3, baths: 2, size: 220, daysAgo: 2, updatedDaysAgo: 2, img: 2 },
+  { id: "CH-3188", title: "Nizarke Vineyard Plot", area: "Nizarke", type: "Land", listing: "sale", status: "Pending", agent: "Rawa Jamal", owner: "Awat Faraj", companyOwner: true, price: 180000, beds: 0, baths: 0, size: 800, daysAgo: 7, updatedDaysAgo: 7, img: 1 },
+  /* -------- Sold (4, sale only) — updated: today / week / month / year --------
+     Every Sold record links its buyer; buyers must have joined before the sale
+     closed (buyer joined-daysAgo ≥ updatedDaysAgo, validated in buildProperty). */
+  { id: "CH-3187", title: "Olive Grove Estate", area: "Italian Village", type: "Villa", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Shilan Aziz", buyer: "Berivan Salar", price: 720000, beds: 5, baths: 4, size: 520, daysAgo: 200, updatedDaysAgo: 0 },
+  { id: "CH-3186", title: "Bakhtiari Pearl Flat", area: "Bakhtiari", type: "Apartment", listing: "sale", status: "Sold", agent: "Sara Hama", owner: "Chiman Rasul", buyer: "Avan Mustafa", price: 195000, beds: 2, baths: 1, size: 120, daysAgo: 160, updatedDaysAgo: 4 },
+  { id: "CH-3185", title: "Gulan Tower Office", area: "Gulan", type: "Office", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Awat Faraj", buyer: "Zana Ibrahim", companyOwner: true, price: 540000, beds: 0, baths: 2, size: 320, daysAgo: 240, updatedDaysAgo: 18, img: 1 },
+  { id: "CH-3184", title: "Malta Summit Grounds", area: "Malta", type: "Land", listing: "sale", status: "Sold", agent: "Rawa Jamal", owner: "Zana Ibrahim", buyer: "Rebwar Tofiq", price: 260000, beds: 0, baths: 0, size: 1600, daysAgo: 400, updatedDaysAgo: 140 },
+  /* -------- Rented (4, rent only) — updated: today / week / month / year --------
+     Tenants link like buyers but are optional: CH-3183 is deliberately rented to
+     an off-platform tenant so the "looker with viewings but no tenancy" members
+     (Dara, Sara) stay prospective. */
+  { id: "CH-3183", title: "Empire World Loft", area: "Empire World", type: "Apartment", listing: "rent", status: "Rented", agent: "Lana Aziz", owner: "Nma Rashid", price: 1600, beds: 2, baths: 2, size: 125, daysAgo: 80, updatedDaysAgo: 0 },
+  { id: "CH-3182", title: "Sarchnar Cypress Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Rented", agent: "Sara Hama", owner: "Kani Omar", tenant: "Aland Tariq", price: 2600, beds: 4, baths: 4, size: 420, daysAgo: 110, updatedDaysAgo: 5, img: 1 },
+  { id: "CH-3181", title: "Ankawa Tower Suite", area: "Ankawa", type: "Apartment", listing: "rent", status: "Rented", agent: "Karwan Mahmoud", owner: "Awat Faraj", tenant: "Kani Omar", price: 3400, beds: 3, baths: 3, size: 280, daysAgo: 140, updatedDaysAgo: 25, img: 1 },
+  { id: "CH-3180", title: "Nizarke Sunset Terrace", area: "Nizarke", type: "House", listing: "rent", status: "Rented", agent: "Rawa Jamal", owner: "Tara Botan", tenant: "Zana Ibrahim", price: 850, beds: 3, baths: 2, size: 230, daysAgo: 380, updatedDaysAgo: 258 },
+  /* -------- Draft (3: sale+agent, rent+no agent, sale+no agent) -------- */
+  { id: "CH-3179", title: "Gulan Emerald Suite", area: "Gulan", type: "Apartment", listing: "sale", status: "Draft", agent: "Karwan Mahmoud", owner: "Zana Ibrahim", price: 610000, beds: 3, baths: 3, size: 340, daysAgo: 1, updatedDaysAgo: 1, img: 2 },
+  { id: "CH-3178", title: "Salim Street Studio", area: "Salim Street", type: "Apartment", listing: "rent", status: "Draft", agent: null, owner: "Zana Ibrahim", price: 600, beds: 1, baths: 1, size: 90, daysAgo: 9, updatedDaysAgo: 9 },
+  { id: "CH-3177", title: "Masike Zagros Villa", area: "Masike", type: "Villa", listing: "sale", status: "Draft", agent: null, owner: "Hersh Qadir", price: 450000, beds: 5, baths: 3, size: 400, daysAgo: 13, updatedDaysAgo: 13 },
 ];
 
-function phone(r: () => number): string {
-  const p = pick(r, ["750", "751", "770", "773"]);
-  return `+964 ${p} ${randInt(r, 100, 999)} ${randInt(r, 1000, 9999)}`;
+function buildProperty(s: PropSpec): PropertyRecord {
+  const place = resolvePlace(s.area);
+  const owner = MEMBER_BY_NAME.get(s.owner);
+  if (!owner) throw new Error(`catalog: property ${s.id} has unknown owner "${s.owner}"`);
+  /* Buyer / tenant counterparty links. Every Sold record must name its buyer;
+     Rented may omit the tenant (off-platform). Either link must be a real
+     member, not the owner, and must have joined before the deal closed. */
+  if (s.status === "Sold" && !s.buyer) throw new Error(`catalog: property ${s.id} is Sold but has no buyer`);
+  if (s.buyer && s.status !== "Sold") throw new Error(`catalog: property ${s.id} has a buyer but is not Sold`);
+  if (s.tenant && s.status !== "Rented") throw new Error(`catalog: property ${s.id} has a tenant but is not Rented`);
+  for (const [kind, name] of [["buyer", s.buyer], ["tenant", s.tenant]] as const) {
+    if (!name) continue;
+    const m = MEMBER_BY_NAME.get(name);
+    if (!m) throw new Error(`catalog: property ${s.id} has unknown ${kind} "${name}"`);
+    if (name === s.owner) throw new Error(`catalog: property ${s.id} ${kind} "${name}" is also the owner`);
+    if (m.daysAgo < s.updatedDaysAgo) throw new Error(`catalog: property ${s.id} ${kind} "${name}" joined after the deal closed`);
+  }
+  let agent: AgentRef | null = null;
+  if (s.agent) {
+    const rec = AGENT_BY_NAME.get(s.agent);
+    if (!rec) throw new Error(`catalog: property ${s.id} has unknown agent "${s.agent}"`);
+    if (rec.verification !== "Verified") throw new Error(`catalog: property ${s.id} agent "${s.agent}" is not verified`);
+    agent = { name: rec.name, verified: true, img: rec.img || "" };
+  } else if (statusRequiresAgent(s.status)) {
+    throw new Error(`catalog: property ${s.id} is ${s.status} but has no agent`);
+  }
+  const published = s.status === "Published" || s.status === "Sold" || s.status === "Rented";
+  return {
+    id: s.id,
+    title: s.title,
+    area: place.area,
+    district: place.district,
+    city: place.city,
+    type: s.type,
+    img: PROP_IMG[s.type][(s.img ?? 0) % PROP_IMG[s.type].length],
+    owner: { name: owner.name, phone: owner.phone, type: s.companyOwner ? "Company owner" : "Individual owner" },
+    agent,
+    buyer: s.buyer,
+    tenant: s.tenant,
+    listing: s.listing,
+    status: s.status,
+    price: s.price,
+    per: s.listing === "rent" ? "/mo" : undefined,
+    date: dateFromDaysAgo(s.daysAgo),
+    daysAgo: s.daysAgo,
+    beds: s.beds,
+    baths: s.baths,
+    size: s.size,
+    featured: s.featured ?? false,
+    published,
+    listingDate: published ? dateFromDaysAgo(s.daysAgo) : "—",
+    updated: dateFromDaysAgo(s.updatedDaysAgo),
+  };
 }
-function emailFor(name: string, host: string): string {
-  return name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@" + host;
-}
+export const PROPERTIES: PropertyRecord[] = PROP_SPECS.map(buildProperty);
 
 /* ----------------------------------------------------------------------------
-   Roster generation
+   Derived roles — a role exists only because a property record backs it:
+   Seller = owns a sale listing · Landlord = owns a rent listing ·
+   Buyer = bought a Sold property · Tenant = rents a Rented property.
+   `base` preserves roles set explicitly through the UI (e.g. Add member).
    ------------------------------------------------------------------------- */
-const MEMBER_COUNT = 240;
-const AGENT_COUNT = 48;
-const PROPERTY_COUNT = 320;
-
-/* Pair indices so every n yields a distinct (first, last) combo: the first name
-   cycles fastest, the surname advances once per full pass. 60×30 = 1,800 unique
-   names, far more than we need — and, crucially, no unbounded search loop. */
-function uniqueName(n: number, firstOffset: number, lastOffset: number): string {
-  const first = FIRST[(n + firstOffset) % FIRST.length];
-  const last = LAST[(Math.floor(n / FIRST.length) + lastOffset) % LAST.length];
-  return `${first} ${last}`;
-}
-
-function buildMembers(): MemberRecord[] {
-  const r = rng(20260630);
-  const out: MemberRecord[] = [];
-  for (let n = 0; n < MEMBER_COUNT; n++) {
-    const name = uniqueName(n, 0, 0); // surnames 0..3 → the "member" namespace
-    const roles: string[] = [];
-    if (r() < 0.62) roles.push("Buyer");
-    if (r() < 0.3) roles.push("Seller");
-    if (r() < 0.22) roles.push("Landlord");
-    if (r() < 0.16) roles.push("Tenant");
-    if (roles.length === 0) roles.push("Buyer");
-    const daysAgo = randInt(r, 1, 720);
-    out.push({
-      id: "M-" + (5000 - out.length),
-      name,
-      roles,
-      phone: phone(r),
-      email: emailFor(name, r() < 0.5 ? "gmail.com" : "outlook.com"),
-      properties: 0, // filled in by withMemberCounts
-      joined: dateFromDaysAgo(daysAgo),
-      daysAgo,
-      status: r() < 0.92 ? "Active" : "Suspended",
-      img: r() < 0.78 ? PORTRAITS[out.length % PORTRAITS.length] : null,
-    });
+const ROLE_ORDER = ["Buyer", "Seller", "Landlord", "Tenant"];
+export function deriveMemberRoles(name: string, list: PropertyRecord[], base: string[] = []): string[] {
+  const roles = new Set(base);
+  for (const p of list) {
+    if (p.owner.name === name) roles.add(p.listing === "rent" ? "Landlord" : "Seller");
+    if (p.buyer === name) roles.add("Buyer");
+    if (p.tenant === name) roles.add("Tenant");
   }
-  return out;
+  return ROLE_ORDER.filter((r) => roles.has(r));
 }
-export const MEMBERS: MemberRecord[] = buildMembers();
-
-const SELLER_MEMBERS = MEMBERS.filter((m) => m.roles.includes("Seller"));
-const LANDLORD_MEMBERS = MEMBERS.filter((m) => m.roles.includes("Landlord"));
-
-function buildAgents(): AgentRecord[] {
-  const r = rng(778899);
-  const out: AgentRecord[] = [];
-  for (let n = 0; n < AGENT_COUNT; n++) {
-    // lastOffset 12 keeps agent surnames out of the member surname range (0..3)
-    const name = uniqueName(n, 0, 12);
-    const place = PLACEABLE[(n * 4) % PLACEABLE.length];
-    out.push({
-      id: "A-" + (2100 - n),
-      name,
-      phone: phone(r),
-      email: emailFor(name, "chiya.estate"),
-      city: place.city,
-      area: place.area,
-      verification: r() < 0.8 ? "Verified" : "Pending",
-      listings: 0,
-      sold: 0,
-      rented: 0,
-      members: 0,
-      status: r() < 0.94 ? "Active" : "Suspended",
-      img: r() < 0.85 ? PORTRAITS[n % PORTRAITS.length] : null,
-    });
-  }
-  return out;
+/* Raw MEMBERS keeps roles empty — the store overlays live-derived roles via
+   withMemberRoles so they always track the current property list. Consumers
+   needing roles for the raw seed call deriveMemberRoles(name, PROPERTIES). */
+export function withMemberRoles(members: MemberRecord[], list: PropertyRecord[]): MemberRecord[] {
+  return members.map((m) => ({ ...m, roles: deriveMemberRoles(m.name, list, m.roles) }));
 }
-export const AGENTS: AgentRecord[] = buildAgents();
-
-/* Only verified agents can be assigned to a listing, so a property never shows
-   a "Pending" agent on its card. */
-const VERIFIED_AGENTS: AgentRecord[] = AGENTS.filter((a) => a.verification === "Verified");
-
-function buildProperties(): PropertyRecord[] {
-  const r = rng(424242);
-  const out: PropertyRecord[] = [];
-  let sellerCursor = 0;
-  let landlordCursor = 0;
-  for (let i = 0; i < PROPERTY_COUNT; i++) {
-    const city = CITY_WEIGHTED[Math.floor(r() * CITY_WEIGHTED.length)];
-    const place = pick(r, AREAS_BY_CITY[city]);
-    const type = pick(r, TYPE_WEIGHTED);
-    let status = pick(r, STATUS_WEIGHTED);
-    // Land is never "Rented"; offices skew to rent.
-    let listing: "sale" | "rent";
-    if (type === "Land") {
-      listing = "sale";
-      if (status === "Rented") status = "Published";
-    } else if (type === "Office" || type === "Apartment") {
-      listing = r() < 0.55 ? "rent" : "sale";
-    } else {
-      listing = r() < 0.25 ? "rent" : "sale";
-    }
-    // Keep status and listing coherent.
-    if (status === "Rented") listing = "rent";
-    if (status === "Sold") listing = "sale";
-
-    const ownerPool = listing === "rent" ? LANDLORD_MEMBERS : SELLER_MEMBERS;
-    const owner = listing === "rent" ? ownerPool[landlordCursor++ % ownerPool.length] : ownerPool[sellerCursor++ % ownerPool.length];
-
-    // A live listing (Published / Sold / Rented) must always have a verified
-    // agent — you can't sell, rent, or publish a property with nobody on it.
-    // Only Draft / Pending listings may be left unassigned.
-    const mustHaveAgent = status === "Published" || status === "Sold" || status === "Rented";
-    const hasAgent = mustHaveAgent || r() < 0.5;
-    let agentRec: AgentRecord | null = null;
-    if (hasAgent) {
-      const sameCity = VERIFIED_AGENTS.filter((a) => a.city === city);
-      agentRec = sameCity.length && r() < 0.7 ? pick(r, sameCity) : pick(r, VERIFIED_AGENTS);
-    }
-
-    const beds = type === "Land" || type === "Office" ? 0 : randInt(r, 1, 6);
-    const baths = type === "Land" ? 0 : Math.max(1, beds - randInt(r, 0, 2));
-    const size =
-      type === "Land" ? randInt(r, 400, 2400)
-      : type === "Villa" ? randInt(r, 280, 620)
-      : type === "Townhouse" ? randInt(r, 200, 360)
-      : type === "Penthouse" ? randInt(r, 220, 420)
-      : type === "Office" ? randInt(r, 90, 360)
-      : randInt(r, 90, 240);
-
-    const price =
-      listing === "rent"
-        ? randInt(r, 6, 45) * 100 // 600 – 4,500 /mo
-        : randInt(r, 150, 1600) * 1000; // 150k – 1.6M
-
-    const daysAgo = randInt(r, 1, 540);
-    // Last activity (sale/rental close or edit) happens sometime between the
-    // listing date and today — so recent transactions actually exist.
-    const updatedDaysAgo = randInt(r, 0, daysAgo);
-    const adj = TITLE_ADJ[(i * 3) % TITLE_ADJ.length];
-    const noun = pick(r, NOUN_BY_TYPE[type]);
-    const published = status === "Published" || status === "Sold" || status === "Rented";
-
-    out.push({
-      id: "CH-" + (3200 - i),
-      title: `${adj} ${noun}`,
-      area: place.area,
-      district: place.district,
-      city,
-      type,
-      img: pick(r, PROP_IMG[type]),
-      owner: { name: owner.name, phone: owner.phone, type: r() < 0.85 ? "Individual owner" : "Company owner" },
-      agent: agentRec ? { name: agentRec.name, verified: agentRec.verification === "Verified", img: agentRec.img || PORTRAITS[0] } : null,
-      listing,
-      status,
-      price,
-      per: listing === "rent" ? "/mo" : undefined,
-      date: dateFromDaysAgo(daysAgo),
-      daysAgo,
-      beds,
-      baths,
-      size,
-      featured: r() < 0.15,
-      published,
-      listingDate: published ? dateFromDaysAgo(daysAgo) : "—",
-      updated: dateFromDaysAgo(updatedDaysAgo),
-    });
-  }
-  return out;
-}
-export const PROPERTIES: PropertyRecord[] = buildProperties();
 
 /* The verified agent holding the most assigned listings. The agent surface signs
    this agent in by default (lib/agent-session), so any seed that should look
@@ -520,7 +544,8 @@ function pickTopAgent(): AgentRecord {
 export const TOP_AGENT: AgentRecord = pickTopAgent();
 
 /* Distinct assignable agents (for the "assign agent" picker). */
-export const AGENTS_LIST: AgentRef[] = AGENTS.map((a) => ({ name: a.name, verified: a.verification === "Verified", img: a.img || PORTRAITS[0] })).sort((x, y) =>
+/* Empty img falls back to an initials avatar — never to another agent's photo. */
+export const AGENTS_LIST: AgentRef[] = AGENTS.map((a) => ({ name: a.name, verified: a.verification === "Verified", img: a.img || "" })).sort((x, y) =>
   x.name.localeCompare(y.name),
 );
 
@@ -577,11 +602,19 @@ export function countSoldRentedInPeriod(list: PropertyRecord[], period: CountPer
   return { sold, rented };
 }
 
-/** Overlay each member's owned-listing count from the live property list. */
+/** Overlay each member's related-property count (owned + bought + renting)
+    from the live property list — the members page shows "{n} related". */
 export function withMemberCounts(members: MemberRecord[], list: PropertyRecord[]): MemberRecord[] {
-  const owned: Record<string, number> = {};
-  for (const p of list) owned[p.owner.name] = (owned[p.owner.name] || 0) + 1;
-  return members.map((m) => ({ ...m, properties: owned[m.name] || 0 }));
+  const related: Record<string, number> = {};
+  const add = (name: string | undefined) => {
+    if (name) related[name] = (related[name] || 0) + 1;
+  };
+  for (const p of list) {
+    add(p.owner.name);
+    add(p.buyer);
+    add(p.tenant);
+  }
+  return members.map((m) => ({ ...m, properties: related[m.name] || 0 }));
 }
 export interface MemberCounts {
   total: number;
@@ -601,20 +634,24 @@ export function countMembers(members: MemberRecord[]): MemberCounts {
   return c;
 }
 
-/** Overlay each agent's listing / sold / rented / members stats from properties. */
+/** Overlay each agent's listing / sold / rented / members stats from properties.
+    `members` counts every distinct client: owners plus the buyers / tenants the
+    agent closed deals with. */
 export function withAgentStats(agents: AgentRecord[], list: PropertyRecord[]): AgentRecord[] {
-  const stats: Record<string, { listings: number; sold: number; rented: number; owners: Set<string> }> = {};
+  const stats: Record<string, { listings: number; sold: number; rented: number; clients: Set<string> }> = {};
   for (const p of list) {
     if (!p.agent) continue;
-    const s = (stats[p.agent.name] ||= { listings: 0, sold: 0, rented: 0, owners: new Set() });
+    const s = (stats[p.agent.name] ||= { listings: 0, sold: 0, rented: 0, clients: new Set() });
     if (p.status === "Published" || p.status === "Pending") s.listings++;
     else if (p.status === "Sold") s.sold++;
     else if (p.status === "Rented") s.rented++;
-    s.owners.add(p.owner.name);
+    s.clients.add(p.owner.name);
+    if (p.buyer) s.clients.add(p.buyer);
+    if (p.tenant) s.clients.add(p.tenant);
   }
   return agents.map((a) => {
     const s = stats[a.name];
-    return s ? { ...a, listings: s.listings, sold: s.sold, rented: s.rented, members: s.owners.size } : { ...a, listings: 0, sold: 0, rented: 0, members: 0 };
+    return s ? { ...a, listings: s.listings, sold: s.sold, rented: s.rented, members: s.clients.size } : { ...a, listings: 0, sold: 0, rented: 0, members: 0 };
   });
 }
 export interface AgentCounts {

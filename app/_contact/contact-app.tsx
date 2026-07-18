@@ -38,7 +38,6 @@ export function ContactApp() {
       <main className="cxct">
         <section className="cxct-hero">
           <div className="cxct-container">
-            <span className="cxct-hero__eyebrow">{t("contact.hero.eyebrow")}</span>
             <h1 className="cxct-hero__title">{t("contact.hero.title")}</h1>
             <p className="cxct-hero__sub">{t("contact.hero.sub")}</p>
           </div>

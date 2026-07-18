@@ -7,7 +7,7 @@ import { Tag } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { sortOptions, type SrpListing } from "./data";
+import { sortOptions, PAGE_SIZE, type SrpListing } from "./data";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { RealMap, buildMarkers } from "./real-map";
 
@@ -101,7 +101,20 @@ function SkeletonCard() {
   );
 }
 
-function EmptyState({ onClearAll, onBrowseAll }: { onClearAll: () => void; onBrowseAll: () => void }) {
+/** Page tokens for the grid pager: all pages when few, else 1 … window … last. */
+function pageTokens(current: number, count: number): (number | "…")[] {
+  if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1);
+  const left = Math.max(2, current - 1);
+  const right = Math.min(count - 1, current + 1);
+  const out: (number | "…")[] = [1];
+  if (left > 2) out.push("…");
+  for (let p = left; p <= right; p++) out.push(p);
+  if (right < count - 1) out.push("…");
+  out.push(count);
+  return out;
+}
+
+function EmptyState({ onClearAll }: { onClearAll: () => void }) {
   const { t } = useLang();
   return (
     <div className="srp-empty">
@@ -111,11 +124,8 @@ function EmptyState({ onClearAll, onBrowseAll }: { onClearAll: () => void; onBro
       <h3 className="srp-empty__title">{t("srp.empty.title")}</h3>
       <p className="srp-empty__sub">{t("srp.empty.sub")}</p>
       <div className="srp-empty__actions">
-        <Button hierarchy="primary" iconLeading="rotate-ccw" onClick={onClearAll}>
+        <Button hierarchy="secondary" iconLeading="rotate-ccw" onClick={onClearAll}>
           {t("srp.empty.clear")}
-        </Button>
-        <Button hierarchy="secondary" iconLeading="layout-grid" onClick={onBrowseAll}>
-          {t("srp.empty.browse")}
         </Button>
       </div>
     </div>
@@ -134,10 +144,11 @@ export interface SrpResultsProps {
   sort: string;
   setSort: (s: string) => void;
   setView: (v: string) => void;
+  page: number;
+  setPage: (p: number) => void;
   onOpenFilters: () => void;
   chips: Chip[];
   onClearAll: () => void;
-  onBrowseAll: () => void;
   loading: boolean;
   favorites: string[];
   onFavorite: (id: string) => void;
@@ -156,10 +167,11 @@ export function SrpResults({
   sort,
   setSort,
   setView,
+  page,
+  setPage,
   onOpenFilters,
   chips,
   onClearAll,
-  onBrowseAll,
   loading,
   favorites,
   onFavorite,
@@ -172,7 +184,7 @@ export function SrpResults({
   const titleText = deal === "rent" ? t("srp.titleRent") : t("srp.titleSale");
   const fmtPrice = (l: SrpListing) => "$" + l.price.toLocaleString("en-US");
 
-  const cards = results.map((l) => (
+  const renderCard = (l: SrpListing) => (
     <PropertyCard
       key={l.id}
       image={l.cover}
@@ -191,7 +203,16 @@ export function SrpResults({
       onClick={() => router.push(`/property/${l.id}`)}
       style={{ cursor: "pointer" }}
     />
-  ));
+  );
+
+  // Grid view paginates; the map view lists every result alongside its markers.
+  const pageCount = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), pageCount);
+  const start = (safePage - 1) * PAGE_SIZE;
+  const pageItems = results.slice(start, start + PAGE_SIZE);
+  const gridCards = pageItems.map(renderCard);
+  const mapCards = results.map(renderCard);
+  const goTo = (p: number) => setPage(Math.min(Math.max(p, 1), pageCount));
 
   const pins = buildMarkers(results);
   const mapArea = (cityName || t("srp.kurdistanRegion")) + " · " + total.toLocaleString("en-US") + " " + t("srp.homes");
@@ -258,7 +279,6 @@ export function SrpResults({
               </Tag>
             ))}
             <button type="button" className="srp-chips__clear" onClick={onClearAll}>
-              <Icon name="x" size={14} />
               {t("srp.clearAll")}
             </button>
           </div>
@@ -272,11 +292,11 @@ export function SrpResults({
           ))}
         </div>
       ) : results.length === 0 ? (
-        <EmptyState onClearAll={onClearAll} onBrowseAll={onBrowseAll} />
+        <EmptyState onClearAll={onClearAll} />
       ) : view === "map" ? (
         <div className="srp-split">
           <div className="srp-split__list">
-            <div className="srp-grid srp-grid--split">{cards}</div>
+            <div className="srp-grid srp-grid--split">{mapCards}</div>
           </div>
           <div className="srp-split__map">
             <RealMap markers={pins} city={city} areaLabel={mapArea} />
@@ -284,35 +304,49 @@ export function SrpResults({
         </div>
       ) : (
         <>
-          <div className="srp-grid">{cards}</div>
-          {baseline && (
-            <div className="srp-pager">
-              <span className="srp-pager__info">
-                {t("srp.showing")} <b>1–{results.length}</b> {t("srp.of")} <b>{total.toLocaleString("en-US")}</b> {t("srp.propertiesLower")}
+          <div className="srp-grid">{gridCards}</div>
+          <div className="srp-pager">
+            <span className="srp-pager__info">
+                {t("srp.showing")} <b>{(start + 1).toLocaleString("en-US")}–{(start + pageItems.length).toLocaleString("en-US")}</b> {t("srp.of")}{" "}
+                <b>{total.toLocaleString("en-US")}</b> {t("srp.propertiesLower")}
               </span>
               <div className="srp-pager__ctrls">
-                <button type="button" className="pp-page-btn pp-page-btn--nav" disabled>
+                <button
+                  type="button"
+                  className="pp-page-btn pp-page-btn--nav"
+                  disabled={safePage === 1}
+                  onClick={() => goTo(safePage - 1)}
+                >
                   <Icon name="chevron-left" size={15} className="srp-pager__previc" />
                   {t("srp.prev")}
                 </button>
-                {["1", "2", "3", "4", "…", "21"].map((p, i) =>
+                {pageTokens(safePage, pageCount).map((p, i) =>
                   p === "…" ? (
-                    <span key={i} className="pp-page-ellipsis">
+                    <span key={"gap-" + i} className="pp-page-ellipsis">
                       …
                     </span>
                   ) : (
-                    <button key={i} type="button" className={"pp-page-btn" + (p === "1" ? " is-active" : "")}>
+                    <button
+                      key={p}
+                      type="button"
+                      className={"pp-page-btn" + (p === safePage ? " is-active" : "")}
+                      onClick={() => goTo(p)}
+                    >
                       {p}
                     </button>
                   ),
                 )}
-                <button type="button" className="pp-page-btn pp-page-btn--nav">
+                <button
+                  type="button"
+                  className="pp-page-btn pp-page-btn--nav"
+                  disabled={safePage === pageCount}
+                  onClick={() => goTo(safePage + 1)}
+                >
                   {t("srp.next")}
                   <Icon name="chevron-right" size={15} className="srp-pager__nextic" />
                 </button>
               </div>
             </div>
-          )}
         </>
       )}
     </div>

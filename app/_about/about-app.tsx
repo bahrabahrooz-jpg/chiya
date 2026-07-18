@@ -8,17 +8,6 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { useLang } from "@/lib/i18n";
 import "./about.css";
 
-interface Stat {
-  key: "listings" | "agents" | "cities" | "years";
-}
-
-const STATS: Stat[] = [
-  { key: "listings" },
-  { key: "agents" },
-  { key: "cities" },
-  { key: "years" },
-];
-
 interface Value {
   icon: IconName;
 }
@@ -44,34 +33,8 @@ export function AboutApp() {
       <main className="cxab">
         <section className="cxab-hero">
           <div className="cxab-container">
-            <span className="cxab-hero__eyebrow">{t("about.hero.eyebrow")}</span>
             <h1 className="cxab-hero__title">{t("about.hero.title")}</h1>
             <p className="cxab-hero__sub">{t("about.hero.sub")}</p>
-          </div>
-        </section>
-
-        <section className="cxab-stats">
-          <div className="cxab-container cxab-stats__grid">
-            {STATS.map((s) => (
-              <div key={s.key} className="cxab-stat">
-                <span className="cxab-stat__value">{t(`about.stat.${s.key}.value`)}</span>
-                <span className="cxab-stat__label">{t(`about.stat.${s.key}.label`)}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="cxab-story">
-          <div className="cxab-container cxab-story__grid">
-            <div className="cxab-story__media">
-              <img src="/images/hero-villa-bright.png" alt="" loading="lazy" />
-            </div>
-            <div className="cxab-story__text">
-              <span className="cxab-story__eyebrow">{t("about.story.eyebrow")}</span>
-              <h2 className="cxab-story__title">{t("about.story.title")}</h2>
-              <p className="cxab-story__body">{t("about.story.p1")}</p>
-              <p className="cxab-story__body">{t("about.story.p2")}</p>
-            </div>
           </div>
         </section>
 
@@ -103,7 +66,6 @@ export function AboutApp() {
             <div className="cxab-cta__actions">
               <Link className="cxab-cta__btn cxab-cta__btn--primary" href="/search">
                 {t("about.cta.browse")}
-                <Icon name="arrow-right" size={18} />
               </Link>
               <Link className="cxab-cta__btn cxab-cta__btn--ghost" href="/contact">
                 {t("about.cta.contact")}

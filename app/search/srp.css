@@ -97,7 +97,10 @@
 .srp-results { min-width: 0; }
 .srp-rtop { margin-bottom: 22px; }
 .srp-rhead { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
-.srp-rhead .srp-toolbar__search { flex: 1 1 auto; min-width: 0; display: flex; }
+/* Lock the search bar to the width of two grid cards + one gap (the 3-col grid
+   is repeat(3,1fr) with a 24px gap) so it ends flush with the second card below
+   and never resizes when the Sort button's selected label changes width. */
+.srp-rhead .srp-toolbar__search { flex: 0 0 calc(66.6667% - 8px); width: calc(66.6667% - 8px); min-width: 0; display: flex; }
 .srp-rhead .srp-bar { flex: 1; height: 48px; }
 .srp-rhead__title { font-family: var(--font-display); font-weight: 600; font-size: 35px; line-height: 1.08; letter-spacing: -0.02em; color: var(--text-primary); margin: 0; text-wrap: balance; }
 .srp-rhead__place { color: var(--text-brand); }
@@ -132,8 +135,8 @@
 .srp-chips__label { flex: none; font-family: var(--font-sans); font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-tertiary); padding-top: 7px; white-space: nowrap; }
 .srp-chips__row { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
 .srp-chips__row .cx-tag { box-shadow: var(--shadow-xs); white-space: nowrap; }
-.srp-chips__clear { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; background: none; border: 1px dashed var(--border-strong); border-radius: var(--radius-pill); cursor: pointer; font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-secondary); transition: color .14s, border-color .14s, background-color .14s; }
-.srp-chips__clear:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--gray-50); }
+.srp-chips__clear { display: inline-flex; align-items: center; height: 30px; padding: 0 4px; background: none; border: none; cursor: pointer; font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-secondary); transition: color .14s; }
+.srp-chips__clear:hover { color: var(--text-primary); text-decoration: underline; }
 
 .srp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
 .srp-grid--split { grid-template-columns: 1fr; gap: 18px; }
@@ -204,6 +207,9 @@
 @media (max-width: 1180px) {
   .srp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .srp-grid--split { grid-template-columns: 1fr; }
+  /* Below the 3-col grid the fixed two-card width no longer maps to a card
+     edge — let the search bar flex again so Sort + Filters keep their room. */
+  .srp-rhead .srp-toolbar__search { flex: 1 1 auto; width: auto; }
 }
 @media (max-width: 900px) {
   .srp-split { grid-template-columns: 1fr; }

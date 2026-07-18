@@ -66,8 +66,6 @@ function bucketSeries(inputs: SeriesInput[], days: number): { labels: string[]; 
   return { labels, series };
 }
 
-/* Portrait fallback for agents that have no avatar set. */
-const AGENT_FALLBACK = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=70";
 
 /* -------------------------------------------------------------------------
    Month-bucketing helpers — turn the catalog's "Mon D, YYYY" date strings
@@ -257,7 +255,7 @@ export function buildAgentRows(agents: AgentRecord[], properties: PropertyRecord
         viewings: vtotal[a.name] || 0,
         completed: vdone[a.name] || 0,
         verified: a.verification === "Verified",
-        img: a.img || AGENT_FALLBACK,
+        img: a.img || "", // no photo → initials avatar
       };
     })
     .filter((r) => r.viewings > 0) // rate is only defined with viewings

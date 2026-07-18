@@ -76,7 +76,7 @@ export const STATUS_DOT_COLOR: Record<string, string> = {
   brand: "var(--brand-primary)",
 };
 
-export const TYPE_OPTIONS = ["Villa", "Apartment", "Penthouse", "Townhouse", "Office", "Land"];
+export const TYPE_OPTIONS = ["Apartment", "House", "Land", "Office", "Villa"];
 export const CITY_OPTIONS = ["Erbil", "Sulaymaniyah", "Duhok"];
 export const PRICE_RANGES = ["Under $500K", "$500K – $1M", "Over $1M", "Under $2,000/mo", "Over $2,000/mo"];
 export const DATE_PRESETS = ["Last 7 days", "Last 30 days", "Last 3 months", "Last 6 months"];

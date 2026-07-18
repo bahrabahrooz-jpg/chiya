@@ -1,7 +1,9 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
-import { type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
+import { type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord, MEMBERS as CAT_MEMBERS, daysAgoFrom } from "../_data/catalog";
+import { VIEWINGS as ALL_VIEWINGS, type ViewingRecord } from "../_viewings/data";
+import { REVIEWS as ALL_REVIEWS, type ReviewRecord } from "../_reviews/data";
 
 export const ROLE_META: Record<string, { variant: BadgeVariant; cls: string }> = {
   Buyer: { variant: "info", cls: "mp-role--buyer" },
@@ -47,91 +49,22 @@ export interface AgentDetail {
   reviews: number;
   img: string;
 }
-export const AGENT: AgentDetail = {
-  id: "A-2041",
-  name: "Lana Aziz",
-  title: "Senior Property Consultant",
-  status: "Active",
-  verification: "Verified",
-  joinedShort: "Mar 2023",
-  joinedFull: "March 12, 2023",
-  phone: "+964 770 552 1190",
-  email: "lana.aziz@chiya.estate",
-  experience: 8,
-  languages: ["Kurdish", "English", "Arabic"],
-  areas: ["Ankawa", "Dream City", "Italian Village", "Empire World"],
-  rating: 4.9,
-  reviews: 64,
-  img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=75",
-};
-
 export interface KpiCard { key: string; labelKey: string; value: number; percent?: boolean; icon: IconName; tone: StatTone; subKey: string }
-export const KPIS: KpiCard[] = [
-  { key: "active", labelKey: "admin.ad.kpi.active", value: 14, icon: "building-2", tone: "brand", subKey: "admin.ad.kpi.activeSub" },
-  { key: "sold", labelKey: "admin.ad.kpi.sold", value: 32, icon: "badge-check", tone: "success", subKey: "admin.ad.kpi.soldSub" },
-  { key: "rented", labelKey: "admin.ad.kpi.rented", value: 19, icon: "key-round", tone: "gold", subKey: "admin.ad.kpi.rentedSub" },
-  { key: "viewings", labelKey: "admin.ad.kpi.viewings", value: 148, icon: "calendar-check", tone: "info", subKey: "admin.ad.kpi.viewingsSub" },
-  { key: "conv", labelKey: "admin.ad.kpi.conv", value: 38, percent: true, icon: "trending-up", tone: "brand", subKey: "admin.ad.kpi.convSub" },
-];
-
-const TH = (w: string) => "https://images.unsplash.com/" + w + "?auto=format&fit=crop&w=160&q=70";
 
 export interface ListingRow { id: string; title: string; loc: string; img: string; propertyType: string; type: string; owner: string; status: string; price: number; per?: string; date: string }
-export const LISTINGS: ListingRow[] = [
-  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", img: TH("photo-1613490493576-7fde63acd811"), propertyType: "Villa", type: "For sale", owner: "Rawa Jalal", status: "Published", price: 1200000, date: "Jun 12, 2026" },
-  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", img: TH("photo-1545324418-cc1a3fa10c00"), propertyType: "Apartment", type: "For rent", owner: "Dilan Rashid", status: "Published", price: 1650, per: "/mo", date: "Jun 4, 2026" },
-  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", img: TH("photo-1600607687939-ce8a6c25118c"), propertyType: "Penthouse", type: "For sale", owner: "Sara Hama", status: "Sold", price: 980000, date: "May 30, 2026" },
-  { id: "CH-2008", title: "Lakeside Apartment", loc: "Dukan, Sulaymaniyah", img: TH("photo-1560448204-e02f11c3d0e2"), propertyType: "Apartment", type: "For sale", owner: "Ahmed Karim", status: "Pending", price: 365000, date: "May 22, 2026" },
-  { id: "CH-2022", title: "Park View Loft", loc: "Dream City, Erbil", img: TH("photo-1502672260266-1c1ef2d93688"), propertyType: "Apartment", type: "For rent", owner: "Dilan Rashid", status: "Rented", price: 1100, per: "/mo", date: "May 18, 2026" },
-  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", img: TH("photo-1568605114967-8130f3a36994"), propertyType: "Villa", type: "For sale", owner: "Rawa Jalal", status: "Published", price: 845000, date: "May 9, 2026" },
-];
 
 export interface MemberRow { id: string; name: string; phone: string; img: string; roles: string[]; status: string; activity: string }
-export const MEMBERS: MemberRow[] = [
-  { id: "MEM-2041", name: "Ahmed Karim", phone: "+964 750 441 7788", img: TH("photo-1507003211169-0a1dd7228f2d"), roles: ["Buyer", "Seller"], status: "Active", activity: "Jun 17, 2026" },
-  { id: "MEM-2033", name: "Dilan Rashid", phone: "+964 770 118 3320", img: TH("photo-1438761681033-6461ffad8d80"), roles: ["Landlord"], status: "Active", activity: "Jun 14, 2026" },
-  { id: "MEM-2026", name: "Hawre Ako", phone: "+964 751 904 2218", img: TH("photo-1506794778202-cad84cf45f1d"), roles: ["Tenant"], status: "Active", activity: "Jun 9, 2026" },
-  { id: "MEM-2014", name: "Sara Hama", phone: "+964 773 220 5567", img: TH("photo-1544005313-94ddf0286df2"), roles: ["Buyer"], status: "Inactive", activity: "May 28, 2026" },
-  { id: "MEM-2009", name: "Rawa Jalal", phone: "+964 750 600 1234", img: TH("photo-1487412720507-e7ab37603c6f"), roles: ["Seller", "Landlord"], status: "Active", activity: "May 21, 2026" },
-];
 
 export interface AvViewing { id: string; title: string; loc: string; img: string; member: string; memberImg: string; when: string; status: string }
-export const VIEWINGS: AvViewing[] = [
-  { id: "CH-2041", title: "Olive Grove Estate", loc: "Ankawa, Erbil", img: TH("photo-1613490493576-7fde63acd811"), member: "Ahmed Karim", memberImg: TH("photo-1507003211169-0a1dd7228f2d"), when: "Jun 24, 2026 · 14:00", status: "Confirmed" },
-  { id: "CH-2017", title: "Empire Tower Suite", loc: "Empire World, Erbil", img: TH("photo-1545324418-cc1a3fa10c00"), member: "Hawre Ako", memberImg: TH("photo-1506794778202-cad84cf45f1d"), when: "Jun 22, 2026 · 11:30", status: "Pending" },
-  { id: "CH-2029", title: "Naz City Penthouse", loc: "Naz City, Erbil", img: TH("photo-1600607687939-ce8a6c25118c"), member: "Dilan Rashid", memberImg: TH("photo-1438761681033-6461ffad8d80"), when: "Jun 8, 2026 · 16:00", status: "Completed" },
-  { id: "CH-2035", title: "Cedar Court Residence", loc: "Italian Village, Erbil", img: TH("photo-1568605114967-8130f3a36994"), member: "Sara Hama", memberImg: TH("photo-1544005313-94ddf0286df2"), when: "Jun 5, 2026 · 10:00", status: "Completed" },
-  { id: "CH-2022", title: "Park View Loft", loc: "Dream City, Erbil", img: TH("photo-1502672260266-1c1ef2d93688"), member: "Rawa Jalal", memberImg: TH("photo-1487412720507-e7ab37603c6f"), when: "May 30, 2026 · 13:00", status: "Cancelled" },
-];
 
-export const RATING_BARS = [
-  { star: 5, pct: 86 }, { star: 4, pct: 10 }, { star: 3, pct: 3 }, { star: 2, pct: 1 }, { star: 1, pct: 0 },
-];
-
-export interface Review { name: string; deal: string; stars: number; when: string; text: string }
-export const REVIEWS: Review[] = [
-  { name: "Ahmed Karim", deal: "Bought Naz City Penthouse", stars: 5, when: "Jun 2026", text: "Lana made the entire purchase effortless. She knew every detail about the property and negotiated a fair price on my behalf." },
-  { name: "Dilan Rashid", deal: "Listed Park View Loft", stars: 5, when: "May 2026", text: "Professional, responsive, and genuinely cares about getting the right tenant. My loft was rented within two weeks." },
-  { name: "Sara Hama", deal: "Viewing — Cedar Court", stars: 4, when: "May 2026", text: "Punctual and knowledgeable during the viewing. Answered all of my questions clearly and followed up the same day." },
-];
+export interface Review { name: string; img: string | null; deal: { key: string; title: string } | null; stars: number; when: string; text: string }
 
 export interface TLItem { icon: IconName; tone: string; titleKey: string; descKey: string; params?: Record<string, string>; price?: number; per?: string; time: string }
-export const TIMELINE: TLItem[] = [
-  { icon: "refresh-cw", tone: "brand", titleKey: "admin.ad.tl.status", descKey: "admin.ad.tl.statusDesc", params: { status: "@status.active", by: "Rêbîn Kawa" }, time: "Jun 18, 2026" },
-  { icon: "calendar-check", tone: "success", titleKey: "admin.ad.tl.viewing", descKey: "admin.ad.tl.viewingDesc", params: { title: "Naz City Penthouse", member: "Dilan Rashid" }, time: "Jun 8, 2026" },
-  { icon: "key", tone: "error", titleKey: "admin.ad.tl.sold", descKey: "admin.ad.tl.soldDesc", params: { title: "Naz City Penthouse" }, price: 980000, time: "May 30, 2026" },
-  { icon: "key-round", tone: "info", titleKey: "admin.ad.tl.rented", descKey: "admin.ad.tl.rentedDesc", params: { title: "Park View Loft" }, price: 1100, per: "/mo", time: "May 18, 2026" },
-  { icon: "user-plus", tone: "brand", titleKey: "admin.ad.tl.member", descKey: "admin.ad.tl.memberDesc", params: { name: "Ahmed Karim" }, time: "May 14, 2026" },
-  { icon: "building-2", tone: "brand", titleKey: "admin.ad.tl.property", descKey: "admin.ad.tl.propertyDesc", params: { title: "Cedar Court Residence" }, time: "May 9, 2026" },
-  { icon: "pencil", tone: "neutral", titleKey: "admin.ad.tl.profile", descKey: "admin.ad.tl.profileDesc", time: "Apr 2, 2026" },
-  { icon: "badge-check", tone: "gold", titleKey: "admin.ad.tl.verified", descKey: "admin.ad.tl.verifiedDesc", time: "Mar 14, 2023" },
-  { icon: "user-round-plus", tone: "neutral", titleKey: "admin.ad.tl.created", descKey: "admin.ad.tl.createdDesc", time: "Mar 12, 2023" },
-];
 
 export interface NoteItem { author: string; role: string; time: string; kind: string; text: string }
 export const INIT_NOTES: NoteItem[] = [
   { author: "Rêbîn Kawa", role: "Super Admin", time: "Jun 18, 2026 · 11:24", kind: "review", text: "Top-performing senior consultant with a strong sale and rental pipeline across Erbil. Licence and ID documents verified and on file. Cleared for premium listings and high-value clients." },
-  { author: "Rêbîn Kawa", role: "Super Admin", time: "May 30, 2026 · 16:10", kind: "note", text: "Closed the Naz City Penthouse sale ahead of schedule. Consistently responsive and keeps members updated. Consider for the featured-agent program next quarter." },
+  { author: "Rêbîn Kawa", role: "Super Admin", time: "May 30, 2026 · 16:10", kind: "note", text: "Closed the most recent sale ahead of schedule. Consistently responsive and keeps members updated. Consider for the featured-agent program next quarter." },
   { author: "Rêbîn Kawa", role: "Super Admin", time: "Mar 14, 2023 · 09:05", kind: "approval", text: "Agent profile approved and verified. Assigned to the Chiya Prime team as a Senior Property Consultant." },
 ];
 
@@ -149,8 +82,21 @@ function hash(s: string): number {
   return h;
 }
 
+/* Reviews shown on an agent profile = approved reviews about that agent, from
+   the shared reviews queue. Pending / Rejected submissions never surface here. */
+export function approvedReviewsFor(name: string): ReviewRecord[] {
+  return ALL_REVIEWS.filter((r) => r.agentName === name && r.status === "Approved");
+}
+/* Viewings shown on an agent profile = the shared viewings ledger filtered to
+   this agent, so the schedule always matches the Viewings page. */
+export function viewingsFor(name: string): ViewingRecord[] {
+  return ALL_VIEWINGS.filter((v) => v.agent === name);
+}
+
 export function toDetailAgent(a: AgentRecord): AgentDetail {
   const h = hash(a.id);
+  const reviews = approvedReviewsFor(a.name);
+  const rating = reviews.length ? Number((reviews.reduce((s, r) => s + r.stars, 0) / reviews.length).toFixed(1)) : 0;
   return {
     id: a.id,
     name: a.name,
@@ -164,16 +110,16 @@ export function toDetailAgent(a: AgentRecord): AgentDetail {
     experience: a.experience ? Number(String(a.experience).replace(/\D/g, "")) || 5 : 3 + (h % 8),
     languages: a.languages && a.languages.length ? a.languages : ["Kurdish", "English"],
     areas: a.areas && a.areas.length ? a.areas : [a.area, a.city].filter((x, i, arr) => x && arr.indexOf(x) === i),
-    rating: Number((4.4 + (h % 6) / 10).toFixed(1)),
-    reviews: 20 + (h % 80),
-    img: a.img || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=75",
+    rating,
+    reviews: reviews.length,
+    img: a.img || "", // no photo → initials, matching every other surface
   };
 }
 
-/** KPI tiles computed from the agent's live property stats. */
+/** KPI tiles computed from the agent's live property stats + real viewings. */
 export function buildKpis(a: AgentRecord): KpiCard[] {
   const deals = a.sold + a.rented;
-  const viewings = deals * 4 + a.listings * 2;
+  const viewings = viewingsFor(a.name).length;
   const conv = viewings ? Math.round((deals / viewings) * 100) : 0;
   return [
     { key: "active", labelKey: "admin.ad.kpi.active", value: a.listings, icon: "building-2", tone: "brand", subKey: "admin.ad.kpi.activeSub" },
@@ -203,10 +149,16 @@ export function buildListings(properties: PropertyRecord[], name: string): Listi
     }));
 }
 
-/** Members this agent works with = owners of the listings they handle. */
+/** Members this agent works with = owners of the listings they handle, plus
+    the buyers / tenants they closed deals with. */
 export function buildAgentMembers(properties: PropertyRecord[], members: CatalogMember[], name: string): MemberRow[] {
   const owners = new Set<string>();
-  for (const p of properties) if (p.agent?.name === name) owners.add(p.owner.name);
+  for (const p of properties) {
+    if (p.agent?.name !== name) continue;
+    owners.add(p.owner.name);
+    if (p.buyer) owners.add(p.buyer);
+    if (p.tenant) owners.add(p.tenant);
+  }
   const byName: Record<string, CatalogMember> = {};
   for (const m of members) byName[m.name] = m;
   return [...owners].map((owner, i) => {
@@ -215,10 +167,93 @@ export function buildAgentMembers(properties: PropertyRecord[], members: Catalog
       id: m?.id || "M-" + i,
       name: owner,
       phone: m?.phone || "—",
-      img: m?.img || TH("photo-1507003211169-0a1dd7228f2d"),
-      roles: m?.roles || ["Seller"],
+      img: m?.img || "",
+      roles: m?.roles || [],
       status: m?.status === "Suspended" ? "Inactive" : "Active",
       activity: m?.joined || "—",
     };
   });
+}
+
+/** Viewing rows for this agent, drawn from the shared viewings ledger. The row
+    id is the property id so the row action links to the real property page. */
+export function buildAgentViewings(properties: PropertyRecord[], name: string): AvViewing[] {
+  const memberImg = new Map(CAT_MEMBERS.map((m) => [m.name, m.img || ""]));
+  const propId = new Map(properties.map((p) => [p.title, p.id]));
+  return viewingsFor(name).map((v) => ({
+    id: propId.get(v.property.title) || v.id,
+    title: v.property.title,
+    loc: v.property.location,
+    img: v.property.img,
+    member: v.member,
+    memberImg: memberImg.get(v.member) || "",
+    when: `${v.date} · ${v.time}`,
+    status: v.status === "Requested" ? "Pending" : v.status === "No Show" ? "Cancelled" : v.status,
+  }));
+}
+
+/** Review cards + star-distribution bars from this agent's approved reviews.
+    Each card's "deal" line is resolved from the reviewer's real relationship
+    with the agent: a listing of theirs the agent handles, else a viewing the
+    agent hosted for them — so the context always matches live records. */
+export function buildAgentReviews(properties: PropertyRecord[], name: string): { reviews: Review[]; bars: { star: number; pct: number }[] } {
+  const list = approvedReviewsFor(name);
+  const viewings = viewingsFor(name);
+  const dealFor = (member: string): { key: string; title: string } | null => {
+    const handled = properties.filter((p) => p.agent?.name === name);
+    const owned = handled.filter((p) => p.owner.name === member);
+    const closed = owned.find((p) => p.status === "Sold" || p.status === "Rented");
+    if (closed) return { key: closed.status === "Sold" ? "admin.ad.deal.sold" : "admin.ad.deal.rented", title: closed.title };
+    const bought = handled.find((p) => p.buyer === member);
+    if (bought) return { key: "admin.ad.deal.bought", title: bought.title };
+    const renting = handled.find((p) => p.tenant === member);
+    if (renting) return { key: "admin.ad.deal.renting", title: renting.title };
+    if (owned[0]) return { key: "admin.ad.deal.listed", title: owned[0].title };
+    const viewed = viewings.find((v) => v.member === member);
+    if (viewed) return { key: "admin.ad.deal.viewing", title: viewed.property.title };
+    return null;
+  };
+  const reviews: Review[] = list.map((r) => ({
+    name: r.memberName,
+    img: r.memberImg,
+    deal: dealFor(r.memberName),
+    stars: r.stars,
+    when: r.submitted,
+    text: r.text,
+  }));
+  const bars = [5, 4, 3, 2, 1].map((star) => {
+    const n = list.filter((r) => r.stars === star).length;
+    return { star, pct: list.length ? Math.round((n / list.length) * 100) : 0 };
+  });
+  return { reviews, bars };
+}
+
+/** Activity timeline derived from this agent's real records: property
+    assignments, closed sales / rentals (by last update), and completed
+    viewings — newest first, capped to keep the card scannable. */
+export function buildAgentTimeline(properties: PropertyRecord[], name: string): TLItem[] {
+  interface Ev { item: TLItem; ago: number }
+  const events: Ev[] = [];
+  for (const p of properties) {
+    if (p.agent?.name !== name) continue;
+    events.push({ item: { icon: "building-2", tone: "brand", titleKey: "admin.ad.tl.property", descKey: "admin.ad.tl.propertyDesc", params: { title: p.title }, time: p.date }, ago: p.daysAgo });
+    const updatedAgo = daysAgoFrom(p.updated);
+    if (p.status === "Sold" && updatedAgo != null) {
+      events.push({ item: { icon: "key", tone: "error", titleKey: "admin.ad.tl.sold", descKey: "admin.ad.tl.soldDesc", params: { title: p.title }, price: p.price, time: p.updated }, ago: updatedAgo });
+    } else if (p.status === "Rented" && updatedAgo != null) {
+      events.push({ item: { icon: "key-round", tone: "info", titleKey: "admin.ad.tl.rented", descKey: "admin.ad.tl.rentedDesc", params: { title: p.title }, price: p.price, per: p.per, time: p.updated }, ago: updatedAgo });
+    }
+  }
+  for (const v of viewingsFor(name)) {
+    if (v.status !== "Completed") continue;
+    const ago = daysAgoFrom(v.date);
+    if (ago == null || ago < 0) continue; // future viewings aren't history
+    events.push({ item: { icon: "calendar-check", tone: "success", titleKey: "admin.ad.tl.viewing", descKey: "admin.ad.tl.viewingDesc", params: { title: v.property.title, member: v.member }, time: v.date }, ago });
+  }
+  events.sort((a, b) => a.ago - b.ago);
+  const items = events.slice(0, 7).map((e) => e.item);
+  // Anchor rows every agent shares — verification + account creation.
+  items.push({ icon: "badge-check", tone: "gold", titleKey: "admin.ad.tl.verified", descKey: "admin.ad.tl.verifiedDesc", time: "Mar 14, 2023" });
+  items.push({ icon: "user-round-plus", tone: "neutral", titleKey: "admin.ad.tl.created", descKey: "admin.ad.tl.createdDesc", time: "Mar 12, 2023" });
+  return items;
 }

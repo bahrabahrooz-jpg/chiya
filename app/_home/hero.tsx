@@ -29,10 +29,10 @@ const getLocations = (t: T): Option[] => [
 const getTypes = (t: T): Option[] => [
   { value: "", label: t("type.all"), icon: "layout-grid" },
   { value: "apartment", label: t("type.apartment"), icon: "building-2" },
-  { value: "villa", label: t("type.villa"), icon: "home" },
   { value: "house", label: t("type.house"), icon: "house" },
-  { value: "office", label: t("type.office"), icon: "briefcase" },
   { value: "land", label: t("type.land"), icon: "trees" },
+  { value: "office", label: t("type.office"), icon: "briefcase" },
+  { value: "villa", label: t("type.villa"), icon: "home" },
 ];
 const getBuyPrices = (t: T): Option[] => [
   { value: "", label: t("price.any") },

@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/icon";
 import { IconButton } from "@/components/ui/icon-button";
 import { CardStatusPill, FavoriteButton } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { property } from "./data";
+import { usePdp } from "./pdp-context";
 
 export interface PdpGalleryProps {
   images: string[];
@@ -18,6 +18,7 @@ const VISIBLE = 5;
 
 export function PdpGallery({ images, favorite, onFavorite, onShare }: PdpGalleryProps) {
   const { t } = useLang();
+  const { property } = usePdp();
   const total = images.length;
   const [active, setActive] = useState(0);
   const [expanded, setExpanded] = useState(false);

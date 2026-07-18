@@ -101,10 +101,10 @@ const SEEDS: Omit<AppNotification, "read">[] = [
     id: "seed-message",
     icon: "message-circle",
     kind: "info",
-    title: "New message from Lana Hassan",
+    title: "New message from Lana Aziz",
     desc: "Happy to arrange a tour of Olive Grove Estate this week — let me know what suits you.",
     ts: SEED_NOW - 35 * MIN,
-    href: "/agents",
+    href: "/agents/lana-aziz",
   },
   {
     id: "seed-saved",

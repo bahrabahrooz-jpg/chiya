@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { View, Text, Image, ScrollView, Pressable, TextInput, StyleSheet, Alert, Linking } from "react-native";
+import { View, Text, ScrollView, Pressable, TextInput, StyleSheet, Alert, Linking } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
   Share2,
-  BadgeCheck,
   MapPin,
   Star,
   Phone,
@@ -16,19 +15,14 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { useTheme } from "@/theme";
-import { useTranslation, type Locale } from "@/lib/i18n";
+import { useTranslation } from "@/lib/i18n";
 import { rtlFlip } from "@/lib/rtl";
-import { Button, WhatsAppIcon } from "@/components/ui";
+import { AgentAvatar, Button, WhatsAppIcon } from "@/components/ui";
 import { PropertyCard } from "@/components/home/PropertyCard";
 import { getAgent, listings, user } from "@/components/home/data";
+import { reviewsForAgent } from "@/components/home/reviews-data";
 import { confirm } from "@/lib/confirm";
 import { shareAgent } from "@/lib/share";
-
-const SPECIALTIES: Record<Locale, string[]> = {
-  en: ["Luxury villas", "Apartments", "Investment", "New developments", "Family homes"],
-  ar: ["فلل فاخرة", "شقق", "استثمار", "مشاريع جديدة", "منازل عائلية"],
-  ku: ["ڤێلای گرانبەها", "شوقەکان", "وەبەرهێنان", "پڕۆژەی نوێ", "ماڵی خێزانی"],
-};
 
 interface Review {
   id: string;
@@ -40,23 +34,6 @@ interface Review {
   /** New reviews stay "pending" until an admin approves them; approved reviews are public. */
   status?: "pending" | "approved";
 }
-const INITIAL_REVIEWS: Record<Locale, Review[]> = {
-  en: [
-    { id: "r1", name: "Sara Mahmood", stars: 5, when: "2 weeks ago", text: "Incredibly professional and responsive — found us the perfect home within days." },
-    { id: "r2", name: "Karwan Ali", stars: 5, when: "1 month ago", text: "Smooth process from viewing to keys. Deep knowledge of the local market." },
-    { id: "r3", name: "Nma Hassan", stars: 4, when: "2 months ago", text: "Patient and honest throughout. Would happily recommend to friends." },
-  ],
-  ar: [
-    { id: "r1", name: "سارة محمود", stars: 5, when: "قبل أسبوعين", text: "محترفة وسريعة الاستجابة للغاية — وجدت لنا المنزل المثالي خلال أيام." },
-    { id: "r2", name: "كاروان علي", stars: 5, when: "قبل شهر", text: "عملية سلسة من المعاينة حتى استلام المفاتيح. معرفة عميقة بالسوق المحلي." },
-    { id: "r3", name: "نما حسن", stars: 4, when: "قبل شهرين", text: "صبور وصادق طوال الوقت. أوصي به للأصدقاء بكل سرور." },
-  ],
-  ku: [
-    { id: "r1", name: "سارا مەحمود", stars: 5, when: "٢ هەفتە لەمەوپێش", text: "زۆر پیشەگەرانە و خێرا وەڵامدەرەوە — لە ماوەی چەند ڕۆژێکدا ماڵی تەواوی بۆ دۆزینەوە." },
-    { id: "r2", name: "کاروان عەلی", stars: 5, when: "١ مانگ لەمەوپێش", text: "پرۆسێسێکی نەرم لە بینینەوە تا وەرگرتنی کلیلەکان. زانیاری قووڵی بازاڕی ناوخۆیی." },
-    { id: "r3", name: "نما حەسەن", stars: 4, when: "٢ مانگ لەمەوپێش", text: "بە ئارامی و ڕاستگۆییەوە لە هەموو کاتێکدا. بە دڵخۆشییەوە بۆ هاوڕێکانم پێشنیاری دەکەم." },
-  ],
-};
 
 const initials = (name: string) =>
   name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -211,7 +188,17 @@ export default function AgentDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const agent = getAgent(id);
-  const [reviews, setReviews] = useState<Review[]>(() => INITIAL_REVIEWS[locale]);
+  /** Localized "N ago" label for a review, from its age in days. */
+  const relLabel = (days: number) => {
+    if (days <= 0) return t("agentDetail.justNow");
+    if (days < 7) return t("agentDetail.daysAgo", { count: days });
+    if (days < 30) return t("agentDetail.weeksAgo", { count: Math.round(days / 7) });
+    if (days < 365) return t("agentDetail.monthsAgo", { count: Math.round(days / 30) });
+    return t("agentDetail.yearsAgo", { count: Math.round(days / 365) });
+  };
+  const [reviews, setReviews] = useState<Review[]>(() =>
+    reviewsForAgent(agent?.id ?? "").map((r) => ({ id: r.id, name: r.name, stars: r.stars, when: relLabel(r.daysAgo), text: r.text, status: "approved" as const })),
+  );
   const [editing, setEditing] = useState<Review | null>(null);
 
   const addReview = (stars: number, text: string) => {
@@ -244,17 +231,35 @@ export default function AgentDetailScreen() {
   }
 
   const first = agent.name.split(" ")[0];
-  const sold = agent.listings * 4 + (agent.reviews % 15);
-  const experience = 3 + (agent.listings % 7);
+  const sold = agent.sold;
+  const experience = agent.experience;
+  const hasReviews = agent.reviews > 0;
+  /* Track-record clause only when there are approved reviews / closed deals, so
+     new agents (0 reviews) don't read as "0-star across 0 reviews". */
+  const trackAr = hasReviews
+    ? `بتقييم ${agent.rating.toFixed(1)} نجمة عبر ${agent.reviews} مراجعة و${agent.listings} إعلانًا نشطًا، `
+    : `مع ${agent.listings} إعلانًا نشطًا، `;
+  const trackEn = hasReviews
+    ? `With a ${agent.rating.toFixed(1)}-star rating across ${agent.reviews} client reviews and ${agent.listings} active listings, `
+    : `With ${agent.experience} years of experience and ${agent.listings} active listings, `;
+  const trackKu = hasReviews
+    ? `بە هەڵسەنگاندنی ${agent.rating.toFixed(1)} ئەستێرە لە ${agent.reviews} پێداچوونەوە و ${agent.listings} ئاگاداری چالاک، `
+    : `لەگەڵ ${agent.experience} ساڵ ئەزموون و ${agent.listings} ئاگاداری چالاک، `;
   const bio =
     locale === "ar"
-      ? `${agent.name} وكيل موثّق ومقره ${agent.city}. بتقييم ${agent.rating.toFixed(
-          1,
-        )} نجمة عبر ${agent.reviews} مراجعة و${agent.listings} إعلانًا نشطًا، يساعد ${first} المشترين والبائعين والمستأجرين في العثور على المنزل المناسب في ${agent.city}.`
-      : `${agent.name} is a verified agent based in ${agent.city}. With a ${agent.rating.toFixed(
-          1,
-        )}-star rating across ${agent.reviews} client reviews and ${agent.listings} active listings, ${first} helps buyers, sellers, and renters find the right home across ${agent.city}.`;
-  const agentListings = listings;
+      ? `${agent.name} وكيل موثّق ومقره ${agent.city}. ${trackAr}يساعد ${first} المشترين والبائعين والمستأجرين في العثور على المنزل المناسب في ${agent.city}.`
+      : locale === "ku"
+        ? `${agent.name} بریکارێکی پشتڕاستکراوە کە لە ${agent.city} نیشتەجێیە. ${trackKu}${first} یارمەتی کڕیار و فرۆشیار و بەکرێگرەکان دەدات ماڵی گونجاو لە ${agent.city} بدۆزنەوە.`
+        : `${agent.name} is a verified agent based in ${agent.city}. ${trackEn}${first} helps buyers, sellers, and renters find the right home across ${agent.city}.`;
+  const agentListings = listings.filter((l) => l.agentId === agent.id);
+  /* Service areas — the districts the agent actually lists in (address prefix,
+     e.g. "Empire World, Erbil" → "Empire World"), mirroring how the website
+     profile derives them. Falls back to the agent's city when they have no
+     live listings. No admin "specialties" field exists, so we don't fabricate one. */
+  const serviceAreas = (() => {
+    const districts = [...new Set(agentListings.map((l) => l.address.split(",")[0].trim()).filter(Boolean))];
+    return (districts.length ? districts : [agent.city]).slice(0, 6);
+  })();
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
@@ -271,14 +276,7 @@ export default function AgentDetailScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Hero */}
         <View style={styles.hero}>
-          <View>
-            <Image source={{ uri: agent.photo }} style={styles.avatar} resizeMode="cover" />
-            {agent.verified ? (
-              <View style={[styles.vbadge, { backgroundColor: colors.brandPrimary, borderColor: colors.surfacePage }]}>
-                <BadgeCheck size={16} color={colors.textOnBrand} strokeWidth={2.5} />
-              </View>
-            ) : null}
-          </View>
+          <AgentAvatar photo={agent.photo} name={agent.name} verified={agent.verified} size={100} />
           <Text style={[type.displaySm, { color: colors.textPrimary, fontSize: 26, marginTop: 14 }]}>{agent.name}</Text>
           <View style={styles.meta}>
             <View style={styles.metaItem}>
@@ -286,11 +284,13 @@ export default function AgentDetailScreen() {
               <Text style={[type.bodySm, { color: colors.textSecondary }]}>{agent.city}</Text>
             </View>
           </View>
-          <View style={styles.factRow}>
-            <Star size={15} color={colors.warning} fill={colors.warning} strokeWidth={0} />
-            <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{agent.rating.toFixed(1)}</Text>
-            <Text style={[type.bodySm, { color: colors.textTertiary }]}>{t("agentDetail.reviewsParen", { count: agent.reviews })}</Text>
-          </View>
+          {hasReviews ? (
+            <View style={styles.factRow}>
+              <Star size={15} color={colors.warning} fill={colors.warning} strokeWidth={0} />
+              <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{agent.rating.toFixed(1)}</Text>
+              <Text style={[type.bodySm, { color: colors.textTertiary }]}>{t("agentDetail.reviewsParen", { count: agent.reviews })}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Stats */}
@@ -305,9 +305,9 @@ export default function AgentDetailScreen() {
           <View style={styles.section}>
             <Heading>{t("agentDetail.about", { name: first })}</Heading>
             <Text style={[type.body, { color: colors.textSecondary, lineHeight: 24 }]}>{bio}</Text>
-            <Text style={[type.label, { color: colors.textSecondary, marginTop: 18, marginBottom: 10 }]}>{t("agentDetail.specialties")}</Text>
+            <Text style={[type.label, { color: colors.textSecondary, marginTop: 18, marginBottom: 10 }]}>{t("agentDetail.serviceAreas")}</Text>
             <View style={styles.chips}>
-              {SPECIALTIES[locale].map((s) => (
+              {serviceAreas.map((s) => (
                 <View key={s} style={[styles.chip, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.pill }]}>
                   <Text style={[type.bodySm, { color: colors.textSecondary }]}>{s}</Text>
                 </View>
@@ -316,21 +316,25 @@ export default function AgentDetailScreen() {
           </View>
 
           {/* Active listings */}
-          <View style={[styles.sectionDivided, { borderTopColor: colors.borderSubtle }]}>
-            <View style={styles.listHead}>
-              <Heading>{t("agentDetail.activeListings")}</Heading>
-              <Pressable onPress={() => router.push({ pathname: "/agent-listings/[id]", params: { id: agent.id } })} hitSlop={8}>
-                <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.seeAll")}</Text>
-              </Pressable>
+          {agentListings.length > 0 ? (
+            <View style={[styles.sectionDivided, { borderTopColor: colors.borderSubtle }]}>
+              <View style={styles.listHead}>
+                <Heading>{t("agentDetail.activeListings")}</Heading>
+                <Pressable onPress={() => router.push({ pathname: "/agent-listings/[id]", params: { id: agent.id } })} hitSlop={8}>
+                  <Text style={[type.bodySm, { color: colors.textSecondary, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.seeAll")}</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
+          ) : null}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listScroll}>
-          {agentListings.slice(0, 5).map((p) => (
-            <PropertyCard key={p.id} property={p} />
-          ))}
-        </ScrollView>
+        {agentListings.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listScroll}>
+            {agentListings.slice(0, 5).map((p) => (
+              <PropertyCard key={p.id} property={p} />
+            ))}
+          </ScrollView>
+        ) : null}
 
         <View style={styles.body}>
           {/* Reviews */}
@@ -349,16 +353,23 @@ export default function AgentDetailScreen() {
               }}
               onCancel={editing ? () => setEditing(null) : undefined}
             />
-            <View style={{ gap: 12, marginTop: 16 }}>
-              {reviews.map((r) => (
-                <ReviewCard
-                  key={r.id}
-                  review={r}
-                  onEdit={r.own ? () => setEditing(r) : undefined}
-                  onDelete={r.own ? () => confirmDelete(r.id) : undefined}
-                />
-              ))}
-            </View>
+            {reviews.length === 0 ? (
+              <View style={[styles.reviewEmpty, { borderColor: colors.borderDefault, borderRadius: radius.card }]}>
+                <Text style={[type.bodySm, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}>{t("agentDetail.noReviews")}</Text>
+                <Text style={[type.bodySm, { color: colors.textSecondary, textAlign: "center", marginTop: 4 }]}>{t("agentDetail.noReviewsSub", { name: first })}</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 12, marginTop: 16 }}>
+                {reviews.map((r) => (
+                  <ReviewCard
+                    key={r.id}
+                    review={r}
+                    onEdit={r.own ? () => setEditing(r) : undefined}
+                    onDelete={r.own ? () => confirmDelete(r.id) : undefined}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -400,18 +411,6 @@ const styles = StyleSheet.create({
   plainBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center", marginStart: -8 },
   hbtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   hero: { alignItems: "center", paddingHorizontal: 20, paddingTop: 8 },
-  avatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: "#e9edf0" },
-  vbadge: {
-    position: "absolute",
-    end: -2,
-    bottom: -2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 3,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   meta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
   dot: { width: 4, height: 4, borderRadius: 2 },
@@ -431,6 +430,7 @@ const styles = StyleSheet.create({
   composerInput: { minHeight: 88, borderWidth: 1, padding: 12, textAlignVertical: "top" },
   reviewActions: { flexDirection: "row", gap: 18, marginTop: 12 },
   review: { padding: 14, borderWidth: 1 },
+  reviewEmpty: { alignItems: "center", paddingVertical: 26, paddingHorizontal: 18, borderWidth: 1, borderStyle: "dashed", marginTop: 16 },
   reviewHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   pendingBadge: { height: 22, paddingHorizontal: 9, borderRadius: 11, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   pendingStarsRow: { flexDirection: "row", gap: 2, marginTop: 10 },

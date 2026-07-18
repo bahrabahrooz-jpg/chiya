@@ -1,7 +1,8 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import { VIEWINGS, PROPERTIES as VW_PROPS } from "../_viewings/data";
-import { AGENTS as CAT_AGENTS, MEMBERS as CAT_MEMBERS, getAgentByName, getPropertyById } from "../_data/catalog";
+import { AGENTS as CAT_AGENTS, MEMBERS as CAT_MEMBERS, PROPERTIES as CAT_PROPS, deriveMemberRoles, getAgentByName, getPropertyById } from "../_data/catalog";
+import { REVIEWS } from "../_reviews/data";
 
 export const VIEW_STATUS_META: Record<string, { variant: BadgeVariant; icon: IconName; cls: string }> = {
   Requested: { variant: "info", icon: "clock", cls: "vwd-st--scheduled" },
@@ -61,7 +62,7 @@ export const VIEWING: ViewingDetail = {
   reminderWhen: "Jun 15, 2026 · 9:00 AM",
   property: { id: "CH-1042", name: "Marble Hill Villa", location: "Ankawa, Erbil", listing: "sale", type: "Villa", price: 1450000, img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=520&q=75" },
   member: { id: "MEM-1087", name: "Sara Hassan", role: "Buyer", phone: "+964 750 112 4408", email: "sara.hassan@gmail.com" },
-  agent: { id: "A-2041", name: "Lana Aziz", phone: "+964 770 552 1190", email: "lana.aziz@chiya.estate", experience: 8, img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=75", rating: 4.9, reviews: 87, verified: true },
+  agent: { id: "A-2041", name: "Lana Aziz", phone: "+964 770 552 1190", email: "lana.aziz@chiya.estate", experience: 8, img: "", rating: 4.9, reviews: 87, verified: true },
 };
 
 /* Resolve a real viewing (by id) into the rich detail shape, enriching the
@@ -95,21 +96,23 @@ function addMinutes(time: string, mins: number): string {
 }
 
 /* Enrich a bare agent name into the viewing's rich agent shape, pulling real
-   contact details from the catalog roster and deriving stable rating/experience
-   figures from the name. Shared by getViewingDetail and the reassign flow. */
+   contact details from the catalog roster and the rating from the agent's
+   approved reviews. Shared by getViewingDetail and the reassign flow. */
 export function buildViewingAgent(name: string): ViewingDetail["agent"] {
   const catAgent = getAgentByName(name);
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const approved = REVIEWS.filter((r) => r.agentName === name && r.status === "Approved");
+  const rating = approved.length ? Number((approved.reduce((s, r) => s + r.stars, 0) / approved.length).toFixed(1)) : 0;
   return {
     id: catAgent?.id ?? VIEWING.agent.id,
     name,
     phone: catAgent?.phone ?? VIEWING.agent.phone,
     email: catAgent?.email ?? VIEWING.agent.email,
     experience: catAgent?.experience ? Number(String(catAgent.experience).replace(/\D/g, "")) || 5 : 3 + (h % 8),
-    img: catAgent?.img ?? VIEWING.agent.img,
-    rating: Number((4.4 + (h % 6) / 10).toFixed(1)),
-    reviews: 20 + (h % 80),
+    img: catAgent?.img ?? "", // roster photo or initials — never a stand-in portrait
+    rating,
+    reviews: approved.length,
     // Only verified agents can host a viewing, so the card is never "Pending".
     verified: true,
   };
@@ -127,8 +130,9 @@ export const ASSIGNABLE_AGENTS: AssignableAgent[] = CAT_AGENTS.filter((a) => a.v
   .sort((x, y) => x.name.localeCompare(y.name));
 
 export function getViewingDetail(id: string): ViewingDetail {
-  const real = VIEWINGS.find((x) => x.id === id);
-  if (!real) return VIEWING;
+  // Unknown ids resolve to the first real viewing so the page always shows a
+  // catalog-consistent record (never the static demo fixture).
+  const real = VIEWINGS.find((x) => x.id === id) ?? VIEWINGS[0];
 
   const comboProp = VW_PROPS.find((p) => p.title === real.property.title && p.location === real.property.location);
   const fullProp = comboProp ? getPropertyById(comboProp.id) : undefined;
@@ -156,7 +160,9 @@ export function getViewingDetail(id: string): ViewingDetail {
     member: {
       id: catMember?.id ?? VIEWING.member.id,
       name: real.member,
-      role: catMember?.roles[0] ?? VIEWING.member.role,
+      // Roles are derived from property links; a link-less member is a
+      // prospective looker and shows as plain "Member".
+      role: (catMember ? deriveMemberRoles(catMember.name, CAT_PROPS)[0] : undefined) ?? "Member",
       phone: catMember?.phone ?? VIEWING.member.phone,
       email: catMember?.email ?? VIEWING.member.email,
     },

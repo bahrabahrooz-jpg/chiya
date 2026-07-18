@@ -15,13 +15,16 @@ import {
   SquareParking,
   Home,
   CalendarCheck,
+  Layers,
+  Compass,
+  BadgeCheck,
   X,
   Navigation,
   type LucideIcon,
 } from "lucide-react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useTheme } from "@/theme";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation, type TKey } from "@/lib/i18n";
 import { formatTimeSlot } from "@/lib/i18n/format";
 import { rtlFlip } from "@/lib/rtl";
 import { Button } from "@/components/ui";
@@ -31,9 +34,28 @@ import { openDirections } from "@/lib/maps";
 import { addViewing, toISODate, formatViewingDate } from "@/lib/viewings";
 import { addNotification } from "@/lib/notifications";
 import { BookViewingSheet } from "@/components/property/BookViewingSheet";
-import { getListing, galleryFor, listingCoords, priceLabel, propertyTypes, amenities as amenityOpts, labelFor, optLabel, dealCategories, featuredAgents } from "@/components/home/data";
+import { getListing, galleryFor, listingCoords, priceLabel, propertyTypes, amenities as amenityOpts, labelFor, optLabel, dealCategories, featuredAgents, getAgent } from "@/components/home/data";
 
 const GALLERY_W = Dimensions.get("window").width - 40;
+
+/* Map the raw English feature enum values to i18n keys so the Features grid
+   renders them translated (en/ar/ku); fall back to the raw value if unmapped. */
+const FURNISHING_KEYS: Record<string, TKey> = {
+  "Unfurnished": "property.unfurnished",
+  "Semi-furnished": "property.semiFurnished",
+  "Fully furnished": "property.fullyFurnished",
+};
+const ORIENTATION_KEYS: Record<string, TKey> = {
+  "North facing": "property.orientNorth",
+  "South facing": "property.orientSouth",
+  "East facing": "property.orientEast",
+  "West facing": "property.orientWest",
+};
+const CONDITION_KEYS: Record<string, TKey> = {
+  "New": "property.condNew",
+  "Good": "property.condGood",
+  "Needs renovation": "property.condNeedsReno",
+};
 
 function Gallery({ photos, onPressPhoto }: { photos: string[]; onPressPhoto: (i: number) => void }) {
   const { colors, radius } = useTheme();
@@ -165,15 +187,23 @@ export default function PropertyDetailScreen() {
     { key: "area", label: t("property.builtUpArea"), Icon: Maximize, value: areaStr },
   ];
 
+  // The Features grid mirrors exactly the Add-property wizard's fields — each
+  // row shown only when the listing carries a value (land omits most).
+  const tv = (keys: Record<string, TKey>, v: string) => (keys[v] ? t(keys[v]) : v);
   const features: { key: string; Icon: LucideIcon; label: string; value: string }[] = [
     { key: "type", Icon: TypeIcon, label: t("property.propertyType"), value: typeLabel },
     { key: "status", Icon: CircleCheck, label: t("property.status"), value: dealLabel },
-    { key: "furnishing", Icon: Sofa, label: t("property.furnishing"), value: listing.amenities.includes("furnished") ? t("property.furnished") : t("property.unfurnished") },
-    { key: "parking", Icon: SquareParking, label: t("property.parking"), value: listing.amenities.includes("parking") ? t("property.available") : t("property.notAvailable") },
+    ...(listing.parking != null ? [{ key: "parking", Icon: SquareParking, label: t("property.parking"), value: String(listing.parking) }] : []),
+    ...(listing.floor != null ? [{ key: "floor", Icon: Layers, label: t("property.floor"), value: String(listing.floor) }] : []),
+    ...(listing.year != null ? [{ key: "year", Icon: CalendarCheck, label: t("property.yearBuilt"), value: String(listing.year) }] : []),
+    ...(listing.orientation ? [{ key: "orientation", Icon: Compass, label: t("property.orientation"), value: tv(ORIENTATION_KEYS, listing.orientation) }] : []),
+    ...(listing.condition ? [{ key: "condition", Icon: BadgeCheck, label: t("property.condition"), value: tv(CONDITION_KEYS, listing.condition) }] : []),
+    ...(listing.furnishing ? [{ key: "furnishing", Icon: Sofa, label: t("property.furnishing"), value: tv(FURNISHING_KEYS, listing.furnishing) }] : []),
   ];
 
-  // Assign a listing agent deterministically (listings aren't linked to one yet).
-  const agent = featuredAgents[[...listing.id].reduce((s, c) => s + c.charCodeAt(0), 0) % featuredAgents.length];
+  // The property's assigned agent — the same agent the admin manages for this
+  // listing (falls back to a featured agent if the link is ever missing).
+  const agent = getAgent(listing.agentId) ?? featuredAgents[0];
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>

@@ -289,6 +289,8 @@ function MemberRow({
       <div className="mp-col--roles">
         <span className="mp-celllabel">{t("admin.members.th.roles")}</span>
         <div className="mp-roles">
+          {/* No links yet → no roles: a prospective looker (viewings only). */}
+          {m.roles.length === 0 && <span className="mp-propstext mp-propstext--zero">—</span>}
           {m.roles.map((r) => (
             <Badge key={r} variant="neutral" className={(ROLE_META[r] || {}).cls} size="sm">
               {tOr(`role.${r.toLowerCase()}`, r)}

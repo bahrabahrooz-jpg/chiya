@@ -10,7 +10,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
-import { fmtCurrency, fmtDate, fmtNum, monthName, weekdayName, popupLeft } from "@/lib/fmt";
+import { fmtCurrency, fmtDate, fmtNum, localizeDigits, monthName, weekdayName, popupLeft } from "@/lib/fmt";
 import {
   AGENT_ASSIGNED,
   AGENT_FILTER_OPTIONS,
@@ -172,12 +172,12 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => new Date());
   const btnRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const calcCalPos = () => {
     if (!btnRef.current) return;
     const r = btnRef.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 6, left: r.left });
+    setPos({ top: r.bottom + 6, left: r.left, width: r.width });
   };
   const toggle = () => {
     if (!open) calcCalPos();
@@ -246,13 +246,13 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
       {open &&
         pos &&
         createPortal(
-          <div className="pp-calpop" style={{ top: pos.top, left: pos.left }}>
+          <div className="pp-calpop" style={{ top: pos.top, left: pos.left, width: pos.width }}>
             <div className="pp-cal__head">
               <button type="button" className="pp-cal__nav" onClick={prevMonth}>
                 <Icon name="chevron-left" size={16} />
               </button>
               <span className="pp-cal__title">
-                {monthName(lang, mon, true)} {fmtNum(lang, year)}
+                {monthName(lang, mon, true)} {localizeDigits(lang, String(year))}
               </span>
               <button type="button" className="pp-cal__nav" onClick={nextMonth}>
                 <Icon name="chevron-right" size={16} />

@@ -10,12 +10,10 @@
   color: var(--text-brand);
   background: var(--green-50);
   border-radius: var(--radius-full);
-  overflow: hidden;
   background-clip: padding-box;
 }
 .cx-avatar--ring { box-shadow: 0 0 0 2px var(--surface-card), 0 0 0 3px var(--border-subtle); }
-.cx-avatar--gold { box-shadow: 0 0 0 2px var(--surface-card), 0 0 0 3.5px var(--brand-accent); }
-.cx-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cx-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
 .cx-avatar--xs { width: 24px; height: 24px; font-size: 10px; }
 .cx-avatar--sm { width: 32px; height: 32px; font-size: 12px; }
 .cx-avatar--md { width: 40px; height: 40px; font-size: 14px; }
@@ -23,8 +21,8 @@
 .cx-avatar--xl { width: 64px; height: 64px; font-size: 20px; }
 .cx-avatar__badge {
   position: absolute;
-  right: -1px;
-  bottom: -1px;
+  inset-inline-end: -2px;
+  bottom: -2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,7 +31,8 @@
   color: #fff;
   border: 2px solid var(--surface-card);
 }
-.cx-avatar__badge--verified { background: var(--brand-accent); color: var(--text-on-accent); }
+/* Verified seal — mirrors the mobile app's agent avatar badge. */
+.cx-avatar__badge--verified { background: var(--brand-primary); color: var(--text-on-brand); }
 .cx-avatargroup { display: inline-flex; align-items: center; }
 .cx-avatargroup > * { margin-left: -10px; box-shadow: 0 0 0 2px var(--surface-card); border-radius: var(--radius-full); }
 .cx-avatargroup > *:first-child { margin-left: 0; }

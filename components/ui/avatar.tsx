@@ -11,7 +11,7 @@ export interface AvatarProps extends React.HTMLAttributes<HTMLSpanElement> {
   ring?: boolean;
   /** Show a status dot (success green). */
   status?: boolean;
-  /** Gold verified ring + check badge. */
+  /** Brand verified seal badge (matches the mobile app's agent avatar). */
   verified?: boolean;
 }
 
@@ -40,12 +40,13 @@ export function Avatar({
   const cls = [
     "cx-avatar",
     `cx-avatar--${size}`,
-    verified ? "cx-avatar--gold" : ring ? "cx-avatar--ring" : "",
+    ring ? "cx-avatar--ring" : "",
     className,
   ]
     .filter(Boolean)
     .join(" ");
-  const bSize = size === "xl" || size === "lg" ? 18 : 14;
+  // Same proportions as the mobile AgentAvatar: badge ≈ 0.3× avatar (min 14px).
+  const bSize = Math.max(14, Math.round(GROUP_PX[size] * 0.3));
 
   return (
     <span className={cls} {...rest}>
@@ -62,7 +63,7 @@ export function Avatar({
           className={"cx-avatar__badge" + (verified ? " cx-avatar__badge--verified" : "")}
           style={{ width: bSize, height: bSize }}
         >
-          {verified && <Icon name="check" size={bSize - 7} strokeWidth={3.5} />}
+          {verified && <Icon name="badge-check" size={Math.round(bSize * 0.53)} strokeWidth={2.5} />}
         </span>
       )}
     </span>

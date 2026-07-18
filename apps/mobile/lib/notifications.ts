@@ -41,11 +41,11 @@ let items: AppNotification[] = [
   {
     id: "seed-1",
     type: "message",
-    title: "New message from Lana Hassan",
+    title: "New message from Lana Aziz",
     body: "Thanks for reaching out — happy to arrange a tour of Olive Grove Estate this week.",
     createdAt: now - 35 * MIN,
     read: false,
-    href: { pathname: "/agents/[id]", params: { id: "lana-hassan" } },
+    href: { pathname: "/agents/[id]", params: { id: "lana-aziz" } },
   },
   {
     id: "seed-2",

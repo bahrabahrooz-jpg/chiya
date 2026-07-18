@@ -58,7 +58,13 @@ export function AgentCard({
     >
       <div className="cx-agent__media">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {photo && <img src={agentBannerPhoto(photo)} alt={name} loading="lazy" />}
+        {photo ? (
+          <img src={agentBannerPhoto(photo)} alt={name} loading="lazy" />
+        ) : (
+          <div className="cx-agent__initials" aria-hidden="true">
+            {name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+          </div>
+        )}
         {verified && (
           <span className="cx-agent__verify">
             <Icon name="badge-check" size={14} />
@@ -79,11 +85,12 @@ export function AgentCard({
             <span>{city}</span>
           </div>
         )}
-        {rating != null && (
+        {/* A 0 rating means "no approved reviews yet", not a score — hide it. */}
+        {rating != null && rating > 0 && (
           <div className="cx-agent__stat">
             <Icon name="star" size={14} fill="currentColor" />
             <b>{rating.toFixed(1)}</b>
-            {listings != null && (
+            {listings != null && listings > 0 && (
               <span>
                 · {listings} {t("agents.card.listings")}
               </span>

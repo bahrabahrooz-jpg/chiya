@@ -2,14 +2,18 @@ import {
   Waves,
   Trees,
   Dumbbell,
-  ChevronsUp,
-  Sun,
+  ArrowUpDown,
+  Fence,
   ShieldCheck,
   Cctv,
-  Wifi,
+  HouseWifi,
   Zap,
   Package,
+  BedSingle,
   Flame,
+  Blocks,
+  UtensilsCrossed,
+  WashingMachine,
   AirVent,
   type LucideIcon,
 } from "lucide-react-native";
@@ -33,30 +37,13 @@ const LISTING_AR: Record<string, string> = {
   Apartment: "شقة",
   House: "منزل",
   Land: "أرض",
-  Commercial: "تجاري",
   Office: "مكتب",
-  Building: "مبنى",
   // cities
   Erbil: "أربيل",
   Sulaymaniyah: "السليمانية",
   Duhok: "دهوك",
-  Halabja: "حلبجة",
-  Kirkuk: "كركوك",
-  Zakho: "زاخو",
-  // districts
-  Ankawa: "عنكاوة",
-  "Italian Village": "القرية الإيطالية",
-  "Dream City": "دريم سيتي",
-  "Empire World": "إمباير وورلد",
-  "English Village": "القرية الإنجليزية",
-  Downtown: "وسط المدينة",
-  "Naz City": "ناز سيتي",
-  // projects / communities
-  "Park View": "بارك فيو",
-  "Lalav City": "لالاف سيتي",
-  "Atlantic City": "أتلانتيك سيتي",
-  "Ster Towers": "أبراج ستير",
-  "Royal City": "رويال سيتي",
+  // districts and projects are city-scoped and sourced (with their own ar/ku
+  // labels) from components/home/data.ts — see areasByCity / projectsByCity.
   // conditions
   New: "جديد",
   Good: "جيد",
@@ -81,7 +68,11 @@ const LISTING_AR: Record<string, string> = {
   "Smart home": "منزل ذكي",
   Generator: "مولّد كهرباء",
   "Storage room": "غرفة تخزين",
+  "Maid room": "غرفة خادمة",
   Fireplace: "مدفأة",
+  "Play area": "منطقة لعب",
+  "BBQ area": "منطقة شواء",
+  "Laundry room": "غرفة غسيل",
   "Central AC": "تكييف مركزي",
 };
 
@@ -91,33 +82,55 @@ export const listingLabel = (s: string): string => (getActiveLocale() === "ar" ?
 /** Steps of the Add-listing wizard — mirrors the website's member submit flow. */
 export const LISTING_STEPS = ["Property details", "Location", "Media", "Amenities & features", "Ownership & assignment", "Review"];
 
-export const PROPERTY_TYPES = ["Villa", "Apartment", "House", "Land", "Commercial", "Office", "Building"];
-export const CITIES = ["Erbil", "Sulaymaniyah", "Duhok", "Halabja", "Kirkuk", "Zakho"];
-export const DISTRICTS = ["Ankawa", "Italian Village", "Dream City", "Empire World", "English Village", "Downtown", "Naz City"];
-export const PROJECTS = ["Dream City", "Empire World", "Italian Village", "Park View", "Lalav City", "Atlantic City", "Ster Towers", "Royal City"];
+export const PROPERTY_TYPES = ["Apartment", "House", "Land", "Office", "Villa"];
+export const CITIES = ["Erbil", "Sulaymaniyah", "Duhok"];
+// Districts (areas) and projects are city-scoped; the wizard sources them from
+// the shared catalog mirror in components/home/data.ts (areasByCity /
+// projectsByCity) so they stay in lockstep with the web LOCATION_DEF.
 export const CURRENCIES = ["USD", "IQD"];
 export const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", IQD: "IQD " };
 export const CONDITIONS = ["New", "Good", "Needs renovation"];
 export const FURNISHING = ["Unfurnished", "Semi-furnished", "Fully furnished"];
 export const ORIENTATIONS = ["North facing", "South facing", "East facing", "West facing"];
 
+export type AmenityGroup = "comfort" | "security" | "outdoor" | "building";
+/** Amenity group headers shown in the picker sheet — order matches the list below. */
+export const AMENITY_GROUPS: { key: AmenityGroup; label: string }[] = [
+  { key: "comfort", label: "Comfort" },
+  { key: "security", label: "Security & Utilities" },
+  { key: "outdoor", label: "Outdoor & Leisure" },
+  { key: "building", label: "Building & Storage" },
+];
+
 export interface AmenityOpt {
   label: string;
   Icon: LucideIcon;
+  group: AmenityGroup;
 }
+/* Canonical order + grouping is kept in lockstep with the web admin form
+   (app/admin/_add-property/data.ts) — same labels, order, and groups. The two
+   apps are separate build roots and can't share a module, so edit both together. */
 export const AMENITIES: AmenityOpt[] = [
-  { label: "Swimming pool", Icon: Waves },
-  { label: "Garden", Icon: Trees },
-  { label: "Gym", Icon: Dumbbell },
-  { label: "Elevator", Icon: ChevronsUp },
-  { label: "Balcony", Icon: Sun },
-  { label: "Security", Icon: ShieldCheck },
-  { label: "CCTV", Icon: Cctv },
-  { label: "Smart home", Icon: Wifi },
-  { label: "Generator", Icon: Zap },
-  { label: "Storage room", Icon: Package },
-  { label: "Fireplace", Icon: Flame },
-  { label: "Central AC", Icon: AirVent },
+  // Comfort
+  { label: "Smart home", Icon: HouseWifi, group: "comfort" },
+  { label: "Central AC", Icon: AirVent, group: "comfort" },
+  { label: "Maid room", Icon: BedSingle, group: "comfort" },
+  { label: "Fireplace", Icon: Flame, group: "comfort" },
+  // Security & Utilities
+  { label: "Security", Icon: ShieldCheck, group: "security" },
+  { label: "CCTV", Icon: Cctv, group: "security" },
+  { label: "Generator", Icon: Zap, group: "security" },
+  { label: "Elevator", Icon: ArrowUpDown, group: "security" },
+  // Outdoor & Leisure
+  { label: "Swimming pool", Icon: Waves, group: "outdoor" },
+  { label: "Garden", Icon: Trees, group: "outdoor" },
+  { label: "Gym", Icon: Dumbbell, group: "outdoor" },
+  { label: "Balcony", Icon: Fence, group: "outdoor" },
+  { label: "BBQ area", Icon: UtensilsCrossed, group: "outdoor" },
+  { label: "Play area", Icon: Blocks, group: "outdoor" },
+  // Building & Storage
+  { label: "Storage room", Icon: Package, group: "building" },
+  { label: "Laundry room", Icon: WashingMachine, group: "building" },
 ];
 
 export interface ListingForm {

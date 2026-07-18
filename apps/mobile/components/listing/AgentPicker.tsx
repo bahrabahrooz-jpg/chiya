@@ -1,35 +1,11 @@
 import { useMemo, useState } from "react";
-import { View, Text, Image, Pressable, ScrollView, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import { BadgeCheck, Check, ChevronDown, UserRoundX, X } from "lucide-react-native";
 import { useTheme } from "@/theme";
 import { useTranslation } from "@/lib/i18n";
+import { AgentAvatar } from "@/components/ui";
 import { agents, type Agent } from "@/components/home/data";
 import { Sheet, SheetHeader, SheetSearch } from "@/components/home/SelectField";
-
-/** Circular agent avatar with an optional verified check overlay. */
-function Avatar({ agent, size }: { agent: Agent; size: number }) {
-  const { colors } = useTheme();
-  const ring = Math.round(size * 0.42);
-  return (
-    <View style={{ width: size, height: size }}>
-      <Image
-        source={{ uri: agent.photo }}
-        style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.surfaceSunken }}
-        resizeMode="cover"
-      />
-      {agent.verified ? (
-        <View
-          style={[
-            styles.tick,
-            { width: ring, height: ring, borderRadius: ring / 2, backgroundColor: colors.brandPrimary, borderColor: colors.surfaceCard },
-          ]}
-        >
-          <BadgeCheck size={Math.round(ring * 0.66)} color={colors.textOnBrand} strokeWidth={2.5} />
-        </View>
-      ) : null}
-    </View>
-  );
-}
 
 /** One agent row inside the picker sheet: avatar + name + city + check. */
 function AgentRow({ agent, selected, onPress }: { agent: Agent; selected: boolean; onPress: () => void }) {
@@ -41,7 +17,7 @@ function AgentRow({ agent, selected, onPress }: { agent: Agent; selected: boolea
       accessibilityRole="button"
       accessibilityState={{ selected }}
     >
-      <Avatar agent={agent} size={44} />
+      <AgentAvatar photo={agent.photo} name={agent.name} verified={agent.verified} size={44} />
       <View style={styles.rowBody}>
         <Text
           style={[type.body, { color: selected ? colors.brandForeground : colors.textPrimary, fontFamily: fontFamily.sansSemibold }]}
@@ -64,7 +40,7 @@ function AgentSummary({ agent, onClear }: { agent: Agent; onClear: () => void })
   const { t } = useTranslation();
   return (
     <View style={[styles.card, { backgroundColor: colors.surfaceCard, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
-      <Avatar agent={agent} size={52} />
+      <AgentAvatar photo={agent.photo} name={agent.name} verified={agent.verified} size={52} ringColor={colors.surfaceCard} />
       <View style={styles.cardBody}>
         <View style={styles.nameRow}>
           <Text style={[type.body, { color: colors.textPrimary, fontFamily: fontFamily.sansSemibold }]} numberOfLines={1}>
@@ -97,7 +73,8 @@ export function AgentPicker({ value, onChange }: { value: string; onChange: (v: 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const verified = useMemo(() => agents.filter((a) => a.verified), []);
+  // Only verified agents in good standing can be assigned to a listing.
+  const verified = useMemo(() => agents.filter((a) => a.verified && a.active), []);
   const selected = verified.find((a) => a.id === value) ?? null;
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -168,7 +145,6 @@ const styles = StyleSheet.create({
     minHeight: 54,
     paddingVertical: 8,
   },
-  tick: { position: "absolute", right: -1, bottom: -1, alignItems: "center", justifyContent: "center", borderWidth: 2 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
   rowBody: { flex: 1, gap: 2 },
   list: { paddingHorizontal: 8, paddingBottom: 8 },

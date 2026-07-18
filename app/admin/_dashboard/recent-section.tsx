@@ -24,7 +24,7 @@ function PropertyRow({ item }: { item: RecentProperty }) {
           </span>
           <span className="ax-row__sep" />
           <span className="ax-row__agent">
-            <Avatar name={item.agent} size="xs" />
+            <Avatar src={item.agentImg || undefined} name={item.agent} size="xs" />
             <b>{item.agent}</b>
           </span>
         </div>

@@ -586,13 +586,15 @@ function AgentCard({ a, href, onReassign, agentSurface }: { a: ViewingDetail["ag
               </Badge>
             )}
           </span>
-          <span className="pd-agent__meta">
-            <span className="pd-agent__rate">
-              <Icon name="star" size={15} />
-              {a.rating}
+          {a.reviews > 0 && (
+            <span className="pd-agent__meta">
+              <span className="pd-agent__rate">
+                <Icon name="star" size={15} />
+                {a.rating}
+              </span>
+              <span className="pd-agent__reviews">({a.reviews} reviews)</span>
             </span>
-            <span className="pd-agent__reviews">({a.reviews} reviews)</span>
-          </span>
+          )}
         </div>
         <Icon name="chevron-right" size={18} className="pd-agent__go" />
       </Link>
@@ -606,10 +608,6 @@ function AgentCard({ a, href, onReassign, agentSurface }: { a: ViewingDetail["ag
           WhatsApp
         </a>
       </div>
-      <p className="pd-agent__trust">
-        <Icon name="shield-check" size={15} />
-        Verified agent · no obligation · ID-checked
-      </p>
     </SectionCard>
   );
 }
@@ -820,7 +818,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
           <div className="pd-head__intro">
             <div className="pd-head__titlerow">
               <h1 className="pd-head__title">{v.id}</h1>
-              <StatusBadge status={status} size="md" />
+              <StatusBadge status={status} />
             </div>
             <div className="pd-head__meta">
               <span className="pd-head__metaitem pd-head__metaitem--accent">

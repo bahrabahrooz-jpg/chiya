@@ -14,13 +14,11 @@ import { AgentPicker } from "@/components/listing/AgentPicker";
 import { confirm } from "@/lib/confirm";
 import { useProfile } from "@/lib/profile";
 import { addMyListing, updateMyListing, getMyListing } from "@/lib/my-listings";
-import { labelFor, dealCategories, agents, type Opt } from "@/components/home/data";
+import { labelFor, dealCategories, agents, areasByCity, projectsByCity, type Opt } from "@/components/home/data";
 import {
   LISTING_STEPS,
   PROPERTY_TYPES,
   CITIES,
-  DISTRICTS,
-  PROJECTS,
   CURRENCIES,
   CONDITIONS,
   FURNISHING,
@@ -37,9 +35,6 @@ const CITY_CENTER: Record<string, { latitude: number; longitude: number }> = {
   Erbil: { latitude: 36.1911, longitude: 43.993 },
   Sulaymaniyah: { latitude: 35.5556, longitude: 45.4329 },
   Duhok: { latitude: 36.8669, longitude: 42.9503 },
-  Halabja: { latitude: 35.1778, longitude: 45.9864 },
-  Kirkuk: { latitude: 35.4681, longitude: 44.3922 },
-  Zakho: { latitude: 37.1436, longitude: 42.6872 },
 };
 const DEFAULT_CENTER = { latitude: 36.19, longitude: 44.0 };
 
@@ -223,17 +218,39 @@ function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; onAdd: (
   const { colors, type, fontFamily, radius } = useTheme();
   const { t: tr } = useTranslation();
   const [text, setText] = useState("");
+  const [dupe, setDupe] = useState("");
+  // Reject a custom amenity that duplicates a preset (English label or localized
+  // display) or an existing custom tag — mirrors the web admin form.
+  const findMatch = (raw: string) => {
+    const q = raw.trim().toLowerCase();
+    const preset = AMENITIES.find((a) => a.label.toLowerCase() === q || listingLabel(a.label).toLowerCase() === q);
+    if (preset) return listingLabel(preset.label);
+    return items.find((it) => it.toLowerCase() === q) ?? "";
+  };
   const add = () => {
-    const t = text.trim();
-    if (!t) return;
-    onAdd(t);
+    const v = text.trim();
+    if (!v) return;
+    const match = findMatch(v);
+    if (match) {
+      setDupe(tr("listingForm.amDupeHint", { name: match }));
+      return;
+    }
+    onAdd(v);
     setText("");
+    setDupe("");
   };
   return (
     <View style={{ gap: 10 }}>
       <View style={styles.customRow}>
         <View style={{ flex: 1 }}>
-          <TextBox value={text} onChangeText={setText} placeholder={tr("listingForm.customPlaceholder")} />
+          <TextBox
+            value={text}
+            onChangeText={(v) => {
+              setText(v);
+              if (dupe) setDupe("");
+            }}
+            placeholder={tr("listingForm.customPlaceholder")}
+          />
         </View>
         <Pressable
           onPress={add}
@@ -243,6 +260,7 @@ function CustomAmenities({ items, onAdd, onRemove }: { items: string[]; onAdd: (
           <Plus size={20} color={colors.textOnBrand} strokeWidth={2.5} />
         </Pressable>
       </View>
+      {dupe ? <Text style={[type.bodySm, { color: colors.textError }]}>{dupe}</Text> : null}
       {items.length ? (
         <View style={styles.wrap}>
           {items.map((it, i) => (
@@ -392,12 +410,21 @@ export default function AddListingScreen() {
   const noneOpt: Opt = { value: "", label: t("listingForm.none") };
   const typeOpts = opts(PROPERTY_TYPES);
   const cityOpts = opts(CITIES);
-  const districtOpts = [noneOpt, ...opts(DISTRICTS)];
-  const projectOpts = [noneOpt, ...opts(PROJECTS)];
+  // Areas / projects are scoped to the selected city, mirroring the web form
+  // (add-property-app.tsx) and the home filter — both derive from the shared
+  // catalog (areasByCity / projectsByCity). Their Opts already carry ar/ku.
+  const districtOpts = [noneOpt, ...(areasByCity[f.city] ?? [])];
+  const projectOpts = [noneOpt, ...(projectsByCity[f.city] ?? [])];
   const orientationOpts = [noneOpt, ...opts(ORIENTATIONS)];
   const conditionOpts = [noneOpt, ...opts(CONDITIONS)];
   const furnishingOpts = [noneOpt, ...opts(FURNISHING)];
-  const amenityOpts: Opt[] = AMENITIES.map((a) => ({ value: a.label, label: listingLabel(a.label), Icon: a.Icon }));
+  const groupKey = {
+    comfort: "listingForm.amGroup.comfort",
+    security: "listingForm.amGroup.security",
+    outdoor: "listingForm.amGroup.outdoor",
+    building: "listingForm.amGroup.building",
+  } as const;
+  const amenityOpts: Opt[] = AMENITIES.map((a) => ({ value: a.label, label: listingLabel(a.label), Icon: a.Icon, group: t(groupKey[a.group]) }));
   const assignedAgentName = agents.find((a) => a.id === f.assignedAgent)?.name ?? "";
 
   // In-input currency / unit dropdowns open a compact bottom-sheet menu.
@@ -540,7 +567,7 @@ export default function AddListingScreen() {
                   searchable
                   options={cityOpts}
                   value={f.city}
-                  onChange={(v) => { set("city", v); set("district", ""); }}
+                  onChange={(v) => { set("city", v); set("district", ""); set("project", ""); }}
                 />
               </Field>
               <Field label={t("listingForm.district")} optional>

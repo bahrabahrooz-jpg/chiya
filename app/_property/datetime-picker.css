@@ -21,7 +21,7 @@
 
 /* Portaled popover shell */
 .cx-dtp__pop {
-  position: fixed; z-index: 1100;
+  position: fixed; z-index: 1100; box-sizing: border-box;
   background: var(--surface-card); border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card); box-shadow: var(--shadow-2xl);
   overflow: hidden; animation: cx-dtp-pop .14s cubic-bezier(.2,.7,.2,1);

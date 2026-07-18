@@ -1,10 +1,9 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
-import { PROPERTIES as CAT_PROPS, MEMBERS as CAT_MEMBERS, AGENTS as CAT_AGENTS } from "../_data/catalog";
+import { PROPERTIES as CAT_PROPS, MEMBERS as CAT_MEMBERS, AGENTS as CAT_AGENTS, deriveMemberRoles } from "../_data/catalog";
 
 export const VIEWINGS_PER_PAGE = 10;
-const FALLBACK_PORTRAIT = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=96&q=80";
 
 /* ---------------- bookable slots ----------------
    Viewings are booked in fixed 1-hour slots during working hours; Fridays are
@@ -43,7 +42,8 @@ export interface ComboAgent { id: string; name: string; phone: string; img: stri
 /* Only verified agents can host viewings, so an unverified agent is never
    assignable in the schedule form or generated onto a viewing. */
 const VERIFIED_CAT_AGENTS = CAT_AGENTS.filter((a) => a.verification === "Verified");
-export const AGENTS: ComboAgent[] = VERIFIED_CAT_AGENTS.map((a) => ({ id: a.id, name: a.name, phone: a.phone, img: a.img || FALLBACK_PORTRAIT }));
+/* Photo comes straight from the roster; agents without one show initials. */
+export const AGENTS: ComboAgent[] = VERIFIED_CAT_AGENTS.map((a) => ({ id: a.id, name: a.name, phone: a.phone, img: a.img || "" }));
 
 export const AGENT_IMG: Record<string, string> = Object.fromEntries(AGENTS.map((a) => [a.name, a.img]));
 
@@ -62,15 +62,7 @@ const GEN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep
 /* Generated viewings sit on the same fixed hourly slots the booking pickers
    offer, so an existing record always maps back to a selectable slot on edit. */
 const GEN_TIMES = VIEWING_SLOTS.map((s) => fmtTimeLabel(s)!);
-const GEN_STATUS = ["Requested", "Requested", "Confirmed", "Confirmed", "Completed", "Completed", "Completed", "Cancelled", "No Show"];
 const GEN_TODAY = new Date(2026, 5, 30);
-function gvRng(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
 function gvDate(offset: number): string {
   const d = new Date(GEN_TODAY);
   d.setDate(d.getDate() + offset);
@@ -78,30 +70,66 @@ function gvDate(offset: number): string {
   return `${GEN_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
-const VIEWING_COUNT = 96;
+/* Hand-curated viewings (13) — every status at least once, spread across
+   today / upcoming / past so each KPI card is non-zero. Six belong to the
+   TOP_AGENT (Lana Aziz) so the agent console's schedule looks populated.
+   Property title/location/img are looked up from the curated catalog by id,
+   so they can never drift out of sync; a bad id throws at module load. */
+interface ViewingSpec {
+  id: string;
+  propertyId: string;
+  member: string;
+  agent: string;
+  offset: number; // days from "today" (negative = past); Fridays auto-bump
+  slot: number; // index into VIEWING_SLOTS
+  status: string;
+}
+const VIEWING_SPECS: ViewingSpec[] = [
+  { id: "VW-1100", propertyId: "CH-3200", member: "Dara Kamal", agent: "Lana Aziz", offset: 0, slot: 1, status: "Confirmed" },
+  { id: "VW-1099", propertyId: "CH-3199", member: "Sara Amin", agent: "Lana Aziz", offset: 2, slot: 3, status: "Requested" },
+  { id: "VW-1098", propertyId: "CH-3194", member: "Avan Mustafa", agent: "Sara Hama", offset: 5, slot: 0, status: "Confirmed" },
+  { id: "VW-1097", propertyId: "CH-3192", member: "Aland Tariq", agent: "Rawa Jamal", offset: 9, slot: 5, status: "Requested" },
+  { id: "VW-1096", propertyId: "CH-3198", member: "Zana Ibrahim", agent: "Lana Aziz", offset: -3, slot: 2, status: "Completed" },
+  { id: "VW-1095", propertyId: "CH-3197", member: "Dara Kamal", agent: "Karwan Mahmoud", offset: -6, slot: 4, status: "Completed" },
+  { id: "VW-1094", propertyId: "CH-3193", member: "Sara Amin", agent: "Sara Hama", offset: -8, slot: 6, status: "Cancelled" },
+  { id: "VW-1093", propertyId: "CH-3191", member: "Avan Mustafa", agent: "Rawa Jamal", offset: -10, slot: 1, status: "No Show" },
+  { id: "VW-1092", propertyId: "CH-3196", member: "Aland Tariq", agent: "Karwan Mahmoud", offset: -1, slot: 7, status: "Completed" },
+  { id: "VW-1091", propertyId: "CH-3187", member: "Berivan Salar", agent: "Lana Aziz", offset: -4, slot: 3, status: "Completed" },
+  { id: "VW-1090", propertyId: "CH-3190", member: "Avan Mustafa", agent: "Lana Aziz", offset: 1, slot: 2, status: "Requested" },
+  { id: "VW-1089", propertyId: "CH-3183", member: "Sara Amin", agent: "Lana Aziz", offset: -12, slot: 5, status: "Cancelled" },
+  /* Hosted by Diyar Salih before his suspension — grounds his review (RV-4189).
+     He is Verified (suspension is a status, not a verification state), so the
+     verified-agent guard accepts him. */
+  { id: "VW-1088", propertyId: "CH-3196", member: "Berivan Salar", agent: "Diyar Salih", offset: -45, slot: 2, status: "Completed" },
+];
 function buildViewings(): ViewingRecord[] {
-  const r = gvRng(606060);
-  const list: ViewingRecord[] = [];
-  for (let n = 0; n < VIEWING_COUNT; n++) {
-    const p = CAT_PROPS[(n * 7 + 3) % CAT_PROPS.length];
-    const m = CAT_MEMBERS[(n * 5 + 1) % CAT_MEMBERS.length];
-    const agent = p.agent ? p.agent.name : VERIFIED_CAT_AGENTS[(n * 3) % VERIFIED_CAT_AGENTS.length].name;
-    const status = GEN_STATUS[Math.floor(r() * GEN_STATUS.length)];
-    const offset = Math.floor(r() * 43) - 14; // -14 … +28 days around "today"
-    list.push({
-      id: "VW-" + (1100 - n),
+  return VIEWING_SPECS.map((s) => {
+    const p = CAT_PROPS.find((cp) => cp.id === s.propertyId);
+    if (!p) throw new Error(`viewings: unknown property "${s.propertyId}"`);
+    if (!CAT_MEMBERS.some((m) => m.name === s.member)) throw new Error(`viewings: unknown member "${s.member}"`);
+    if (!VERIFIED_CAT_AGENTS.some((a) => a.name === s.agent)) throw new Error(`viewings: agent "${s.agent}" is not a verified agent`);
+    return {
+      id: s.id,
       property: { title: p.title, location: `${p.area}, ${p.city}`, img: p.img },
-      member: m.name,
-      agent,
-      date: gvDate(offset),
-      time: GEN_TIMES[Math.floor(r() * GEN_TIMES.length)],
-      status,
-    });
-  }
-  return list;
+      member: s.member,
+      agent: s.agent,
+      date: gvDate(s.offset),
+      time: GEN_TIMES[s.slot],
+      status: s.status,
+    };
+  });
 }
 export const VIEWINGS: ViewingRecord[] = buildViewings();
 export const TOTAL_VIEWINGS = VIEWINGS.length;
+
+/* Roles are derived from property links, so a member with no links carries no
+   role — they're a prospective looker. A looker must at least appear in one
+   viewing; a member with zero activity anywhere is a seed bug. */
+for (const m of CAT_MEMBERS) {
+  if (deriveMemberRoles(m.name, CAT_PROPS).length === 0 && !VIEWINGS.some((v) => v.member === m.name)) {
+    throw new Error(`viewings: member "${m.name}" has no property link and no viewing — dead seed record`);
+  }
+}
 
 /* Filter option lists — the agents, properties and locations in viewings. */
 export const AGENTS_LIST: string[] = [...new Set(VIEWINGS.map((v) => v.agent))].sort();

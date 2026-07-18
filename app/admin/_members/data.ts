@@ -46,10 +46,15 @@ export interface AmAgent {
   phone: string;
   img: string;
 }
-/* Relationship-agent picker for the add-member modal — drawn from the roster. */
-export const AM_AGENTS: AmAgent[] = AGENTS.filter((a) => a.img)
-  .slice(0, 8)
-  .map((a) => ({ id: a.id, name: a.name, area: `${a.city} · ${a.area}`, phone: a.phone, img: a.img as string }));
+/* Relationship-agent picker for the add-member modal — the verified roster.
+   Agents without a photo render as initials (never someone else's portrait). */
+export const AM_AGENTS: AmAgent[] = AGENTS.filter((a) => a.verification === "Verified").map((a) => ({
+  id: a.id,
+  name: a.name,
+  area: `${a.city} · ${a.area}`,
+  phone: a.phone,
+  img: a.img || "",
+}));
 
 export const MP_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 export const MP_MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

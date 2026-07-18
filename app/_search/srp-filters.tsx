@@ -79,7 +79,7 @@ function CheckGroup({
 function QuickRow({ options, value, onPick }: { options: D.Opt[]; value: string; onPick: (v: string) => void }) {
   const { t } = useLang();
   const opts = [{ value: "", label: "Any" }, ...options];
-  const labelFor = (o: D.Opt) => (o.value === "" ? t("srp.any") : o.label === "Studio" ? t("srp.studio") : o.label);
+  const labelFor = (o: D.Opt) => (o.value === "" ? t("srp.any") : o.label);
   return (
     <div className="srp-quickrow">
       {opts.map((o) => (

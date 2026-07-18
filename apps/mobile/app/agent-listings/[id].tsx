@@ -13,7 +13,7 @@ export default function AgentListingsScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const agent = getAgent(id);
-  const agentListings = listings;
+  const agentListings = listings.filter((l) => l.agentId === id);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.surfacePage }]} edges={["top"]}>
