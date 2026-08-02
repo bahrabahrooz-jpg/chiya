@@ -29,7 +29,8 @@
 .cx-footer__contact li { display: flex; align-items: center; gap: 11px; font-family: var(--font-sans); font-size: 14px; color: #fff; }
 .cx-footer__contact svg { color: #fff; flex: none; }
 .cx-footer__social { display: flex; gap: 10px; }
-.cx-footer__social a {
+.cx-footer__social a,
+.cx-footer__social .cx-footer__social--off {
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -41,6 +42,8 @@
   transition: background-color .15s, color .15s;
 }
 .cx-footer__social a:hover { background: var(--brand-primary); color: #fff; }
+/* No URL configured yet — dimmed and non-interactive. */
+.cx-footer__social .cx-footer__social--off { opacity: .4; cursor: default; }
 .cx-footer__cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; }
 .cx-footer__col h4 {
   font-family: var(--font-sans);

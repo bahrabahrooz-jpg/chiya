@@ -445,6 +445,43 @@ function ConfirmModal({ kind, property, onCancel, onConfirm }: { kind: "archive"
   );
 }
 
+function FeatureModal({ featured, onCancel, onConfirm }: { featured: boolean; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  // featured → the action removes it; otherwise it features.
+  const copy = featured
+    ? { icon: "sparkle" as IconName, iconCls: " pp-modal__icon--warn", title: t("admin.props.unfeature"), body: t("admin.props.unfeatureBody"), cta: t("admin.props.unfeature"), ctaCls: " pp-modal__confirm--warn" }
+    : { icon: "sparkles" as IconName, iconCls: " pp-modal__icon--status", title: t("admin.props.feature"), body: t("admin.props.featureBody"), cta: t("admin.props.feature"), ctaCls: "" };
+  return createPortal(
+    <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="pp-modal" role="dialog" aria-modal="true" aria-labelledby="pd-feature-title">
+        <div className={"pp-modal__icon" + copy.iconCls}>
+          <Icon name={copy.icon} size={24} strokeWidth={1.8} />
+        </div>
+        <h2 className="pp-modal__title" id="pd-feature-title">
+          {copy.title}
+        </h2>
+        <p className="pp-modal__body">{copy.body}</p>
+        <div className="pp-modal__actions">
+          <button type="button" className="pp-modal__cancel" onClick={onCancel}>
+            {t("admin.common.cancel")}
+          </button>
+          <button type="button" className={"pp-modal__confirm" + copy.ctaCls} onClick={onConfirm}>
+            {copy.cta}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function DeleteNoteModal({ note, onCancel, onConfirm }: { note: NoteItem; onCancel: () => void; onConfirm: () => void }) {
   const { t } = useLang();
   const tOr = (key: string, fallback: string) => {
@@ -536,7 +573,7 @@ function DGroup({ title, desc, children, cols, noRowDivider }: { title: string; 
   );
 }
 
-function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onDelete, agentSurface }: { p: DetailProperty; onEdit: () => void; onChangeStatus: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void; agentSurface?: boolean }) {
+function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onDelete, onFeature, agentSurface }: { p: DetailProperty; onEdit: () => void; onChangeStatus: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void; onFeature: () => void; agentSurface?: boolean }) {
   const { t, lang } = useLang();
   const tOr = (key: string, fallback: string) => {
     const out = t(key);
@@ -555,14 +592,7 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
 
   const st = STATUS_META[p.status] || { variant: "neutral" as const };
   return (
-    <header className="pd-head">
-      <nav className="pd-breadcrumb" aria-label={t("admin.common.breadcrumb")}>
-        <Link href="/admin/properties">{t("admin.nav.properties")}</Link>
-        <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={14} />
-        <span aria-current="page">{p.title}</span>
-      </nav>
-
-      <div className="pd-head__main">
+    <div className="pd-head__main">
         <div className="pd-head__intro">
           <div className="pd-head__titlerow">
             <h1 className="pd-head__title">{p.title}</h1>
@@ -625,6 +655,20 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
                     {t(p.agent ? "admin.pd.reassignAgent" : "admin.props.assignAgent")}
                   </button>
                 )}
+                {!agentSurface && (
+                  <button
+                    type="button"
+                    className="pd-moreitem"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onFeature();
+                    }}
+                  >
+                    <Icon name={p.featured ? "sparkles" : "sparkle"} size={17} />
+                    {t(p.featured ? "admin.props.unfeature" : "admin.props.feature")}
+                  </button>
+                )}
                 <div className="pd-moremenu__sep" />
                 <button
                   type="button"
@@ -643,7 +687,6 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
           </div>
         </div>
       </div>
-    </header>
   );
 }
 
@@ -1178,10 +1221,10 @@ function AssignedAgent({ p, onAssignAgent, agentSurface }: { p: DetailProperty; 
 }
 
 export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurface?: boolean }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { properties } = useProperties();
+  const { properties, updateProperty } = useProperties();
 
   // Prefer the live record from the admin store — a property created through the
   // Add-property wizard lives only there (and in localStorage). Fall back to the
@@ -1201,7 +1244,9 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
   const [statusOpen, setStatusOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);
+  const [featureOpen, setFeatureOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
+  const [tab, setTab] = useState<"overview" | "viewings" | "activity">("overview");
   const [toasts, pushToast, dismissToast] = useToasts();
 
   const onEdit = () => router.push(`/admin/properties/${encodeURIComponent(property.id)}/edit?from=details`);
@@ -1227,6 +1272,20 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
     setProperty((p) => ({ ...p, agent: enriched }));
     setAgentOpen(false);
     pushToast({ tone: "success", icon: "user-check", title: t(wasAssigned ? "admin.pd.toast.agentChangedTitle" : "admin.pd.toast.agentAssignedTitle"), msg: t("admin.pd.toast.agentMsg", { name: agent.name, title: property.title }) });
+  };
+  // Feature toggle — updates local view for instant feedback AND the store
+  // (audited + persisted), matching the properties-list behaviour.
+  const handleFeature = () => {
+    const next = !property.featured;
+    setProperty((p) => ({ ...p, featured: next }));
+    updateProperty(property.id, { featured: next });
+    setFeatureOpen(false);
+    pushToast({
+      tone: next ? "success" : "brand",
+      icon: next ? "sparkles" : "sparkle",
+      title: t(next ? "admin.props.toast.featuredTitle" : "admin.props.toast.unfeaturedTitle"),
+      msg: t(next ? "admin.props.toast.featuredMsg" : "admin.props.toast.unfeaturedMsg", { title: property.title }),
+    });
   };
   const handleArchive = () => {
     setProperty((p) => ({ ...p, status: "Archived", published: false }));
@@ -1266,27 +1325,73 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
     });
   };
 
+  const viewingsCount = getViewings(property.id).length;
+  const activityCount = property.timeline.length;
+
   return (
     <>
-      <DetailHeader p={property} onEdit={onEdit} onChangeStatus={() => setStatusOpen(true)} onAssignAgent={() => setAgentOpen(true)} onArchive={() => setConfirm("archive")} onDelete={() => setConfirm("delete")} agentSurface={agentSurface} />
+      <header className="pd-head">
+        <nav className="pd-breadcrumb" aria-label={t("admin.common.breadcrumb")}>
+          <Link href="/admin/properties">{t("admin.nav.properties")}</Link>
+          <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={14} />
+          <span aria-current="page">{property.title}</span>
+        </nav>
 
-      <div className="pd-grid">
-        <div className="pd-grid__main">
-          <Gallery p={property} />
-          <PropertyInfo p={property} />
-          <InternalNotes p={property} onAdd={handleAddNote} onEdit={handleEditNote} onDelete={(i) => setNoteToDelete(i)} />
-          <ViewingRequests p={property} onViewAll={() => router.push("/admin/viewings")} />
-          <Timeline p={property} onViewAll={agentSurface ? () => {} : () => router.push("/admin/properties")} />
+        <div className="vwd-panel">
+          <div className="vwd-hero">
+            <DetailHeader p={property} onEdit={onEdit} onChangeStatus={() => setStatusOpen(true)} onAssignAgent={() => setAgentOpen(true)} onArchive={() => setConfirm("archive")} onDelete={() => setConfirm("delete")} onFeature={() => setFeatureOpen(true)} agentSurface={agentSurface} />
+          </div>
+
+          <div className="vwd-segwrap">
+            <div className="vwd-seg" role="tablist" aria-label={t("admin.nav.properties")}>
+              <button type="button" role="tab" aria-selected={tab === "overview"} className={"vwd-seg__btn" + (tab === "overview" ? " is-active" : "")} onClick={() => setTab("overview")}>
+                {t("admin.vd.tab.overview")}
+              </button>
+              <button type="button" role="tab" aria-selected={tab === "viewings"} className={"vwd-seg__btn" + (tab === "viewings" ? " is-active" : "")} onClick={() => setTab("viewings")}>
+                {t("admin.nav.viewings")}
+                <span className="vwd-seg__count">{fmtNum(lang, viewingsCount)}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={tab === "activity"} className={"vwd-seg__btn" + (tab === "activity" ? " is-active" : "")} onClick={() => setTab("activity")}>
+                {t("admin.vd.tab.audit")}
+                <span className="vwd-seg__count">{fmtNum(lang, activityCount)}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="vwd-panel__body">
+            {tab === "overview" && (
+              <div className="pd-grid">
+                <div className="pd-grid__main">
+                  <Gallery p={property} />
+                  <PropertyInfo p={property} />
+                  <InternalNotes p={property} onAdd={handleAddNote} onEdit={handleEditNote} onDelete={(i) => setNoteToDelete(i)} />
+                </div>
+                <aside className="pd-grid__aside">
+                  <Ownership p={property} agentSurface={agentSurface} />
+                  <AssignedAgent p={property} onAssignAgent={() => setAgentOpen(true)} agentSurface={agentSurface} />
+                </aside>
+              </div>
+            )}
+
+            {tab === "viewings" && (
+              <div className="pd-grid__main">
+                <ViewingRequests p={property} onViewAll={() => router.push("/admin/viewings")} />
+              </div>
+            )}
+
+            {tab === "activity" && (
+              <div className="pd-grid__main">
+                <Timeline p={property} onViewAll={agentSurface ? () => {} : () => router.push("/admin/properties")} />
+              </div>
+            )}
+          </div>
         </div>
-        <aside className="pd-grid__aside">
-          <Ownership p={property} agentSurface={agentSurface} />
-          <AssignedAgent p={property} onAssignAgent={() => setAgentOpen(true)} agentSurface={agentSurface} />
-        </aside>
-      </div>
+      </header>
 
       {statusOpen && <ChangeStatusModal property={property} onCancel={() => setStatusOpen(false)} onConfirm={handleStatus} />}
       {agentOpen && <AssignAgentModal property={property} onCancel={() => setAgentOpen(false)} onConfirm={handleAssign} />}
       {confirm && <ConfirmModal kind={confirm} property={property} onCancel={() => setConfirm(null)} onConfirm={confirm === "delete" ? handleDelete : handleArchive} />}
+      {featureOpen && <FeatureModal featured={property.featured} onCancel={() => setFeatureOpen(false)} onConfirm={handleFeature} />}
       {noteToDelete !== null && property.notes[noteToDelete] && <DeleteNoteModal note={property.notes[noteToDelete]} onCancel={() => setNoteToDelete(null)} onConfirm={handleDeleteNote} />}
 
       <div className="pp-toaster" aria-live="polite">

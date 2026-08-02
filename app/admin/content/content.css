@@ -1,0 +1,119 @@
+  /* ============================================================
+     CONTENT / CMS  (ct- namespace)
+     Reuses the Settings shell (st-split / st-nav / st-savebar) and
+     the profile card chrome (pf-card / pf-toast). ct- adds the CMS
+     pieces: the per-language LocField, list rows, and row controls.
+     ============================================================ */
+
+  /* ---------- field stacks ---------- */
+  .ct-fields { display: flex; flex-direction: column; gap: 18px; }
+
+  /* ---------- localized field ---------- */
+  .ct-locfield { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .ct-locfield__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ct-locfield__label {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  /* EN/AR/KU switch */
+  .ct-langsw {
+    display: inline-flex; gap: 2px; padding: 2px;
+    background: var(--surface-sunken); border-radius: var(--radius-control);
+  }
+  .ct-langsw__btn {
+    position: relative;
+    padding: 3px 10px; border: none; background: transparent; cursor: pointer;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .03em;
+    color: var(--text-tertiary); border-radius: calc(var(--radius-control) - 2px);
+    transition: background-color .15s, color .15s;
+  }
+  .ct-langsw__btn:hover { color: var(--text-secondary); }
+  .ct-langsw__btn.is-active {
+    background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs);
+  }
+  /* a dot flags a language with no translation yet */
+  .ct-langsw__btn.is-empty::after {
+    content: ""; position: absolute; top: 3px; inset-inline-end: 3px;
+    width: 5px; height: 5px; border-radius: var(--radius-pill);
+    background: var(--warning-500);
+  }
+  .ct-langsw__btn.is-active.is-empty::after { background: var(--warning-500); }
+
+  .ct-plain { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+
+  /* ---------- editable lists (FAQ / legal sections / about values) ---------- */
+  .ct-list { display: flex; flex-direction: column; gap: 16px; }
+  .ct-list--values { margin-top: 20px; }
+
+  .ct-item {
+    display: flex; flex-direction: column; gap: 14px;
+    padding: 18px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+  .ct-item__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ct-item__num {
+    font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .ct-valicon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: var(--radius-control);
+    background: var(--brand-subtle); color: var(--text-brand);
+    margin-inline-end: auto;
+  }
+  .ct-valicon + .ct-item__num { margin-inline-start: 0; }
+
+  /* ---------- FAQ read-only rows (question + answer, edit via modal) ---------- */
+  .ct-faqrow {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding: 16px 18px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+  .ct-faqrow__main { display: flex; align-items: flex-start; gap: 14px; min-width: 0; }
+  .ct-faqrow__main .ct-item__num { flex: none; line-height: 1.5; }
+  .ct-faqrow__qa { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .ct-faqrow__q { font-size: 14.5px; font-weight: 600; color: var(--text-primary); line-height: 1.45; }
+  .ct-faqrow__a { font-size: 13.5px; color: var(--text-secondary); line-height: 1.55; }
+  .ct-faqrow__ctl { display: inline-flex; gap: 4px; flex: none; }
+
+  /* ---------- FAQ add/edit modal ---------- */
+  .ct-modalfields { display: flex; flex-direction: column; gap: 18px; }
+  .ct-modalfields__langrow { display: flex; justify-content: flex-end; }
+
+  .ct-empty {
+    padding: 24px; text-align: center;
+    font-size: 14px; color: var(--text-tertiary);
+    background: var(--surface-sunken); border: 1px dashed var(--border-default);
+    border-radius: var(--radius-lg);
+  }
+
+  /* ---------- row controls (edit + delete) ---------- */
+  .ct-iconbtn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: var(--radius-control);
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    color: var(--text-secondary); cursor: pointer; transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .ct-iconbtn:hover:not(:disabled) { background: var(--surface-sunken); color: var(--text-primary); }
+  .ct-iconbtn:disabled { opacity: .4; cursor: not-allowed; }
+  .ct-iconbtn--danger:hover:not(:disabled) {
+    background: var(--error-50); color: var(--error-600); border-color: var(--error-200, var(--border-default));
+  }
+
+  /* ---------- legal privacy/terms sub-tabs ---------- */
+  .ct-subtabs {
+    display: inline-flex; gap: 4px; margin-bottom: 20px; padding: 3px;
+    background: var(--surface-sunken); border-radius: var(--radius-lg);
+  }
+  .ct-subtab {
+    padding: 8px 18px; border: none; background: transparent; cursor: pointer;
+    font-size: 13.5px; font-weight: 600; color: var(--text-secondary);
+    border-radius: var(--radius-control); transition: background-color .15s, color .15s;
+  }
+  .ct-subtab:hover { color: var(--text-primary); }
+  .ct-subtab.is-active { background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs); }

@@ -5,22 +5,23 @@ import { InteriorHeader } from "@/components/site/interior-header";
 import { Footer } from "@/components/layout";
 import { Accordion, type AccordionItem } from "@/components/data";
 import { useLang } from "@/lib/i18n";
+import { useSiteContent, pick } from "@/lib/site-content";
 import "./faq.css";
-
-/** Number of Q&A entries — keys live at faq.q.<i>.q / faq.q.<i>.a. */
-const COUNT = 8;
 
 /**
  * FaqApp — the public "Frequently asked questions" page. A design-system
- * Accordion over i18n-driven Q&A (en/ar), closing with a prompt to Contact.
+ * Accordion over the CMS-managed Q&A (edited at /admin/content, seeded from the
+ * original i18n copy), closing with a prompt to Contact.
  */
 export function FaqApp() {
-  const { t } = useLang();
-  const items: AccordionItem[] = Array.from({ length: COUNT }, (_, i) => ({
-    id: `q${i}`,
-    title: t(`faq.q.${i}.q`),
-    content: t(`faq.q.${i}.a`),
+  const { t, lang } = useLang();
+  const { content } = useSiteContent();
+  const items: AccordionItem[] = content.faq.map((e) => ({
+    id: e.id,
+    title: pick(e.q, lang),
+    content: pick(e.a, lang),
   }));
+  const firstId = content.faq[0]?.id;
 
   return (
     <>
@@ -28,15 +29,15 @@ export function FaqApp() {
       <main className="cxfaq">
         <section className="cxfaq-hero">
           <div className="cxfaq-container">
-            <span className="cxfaq-hero__eyebrow">{t("faq.hero.eyebrow")}</span>
-            <h1 className="cxfaq-hero__title">{t("faq.hero.title")}</h1>
-            <p className="cxfaq-hero__sub">{t("faq.hero.sub")}</p>
+            <span className="cxfaq-hero__eyebrow">{pick(content.faqHero.eyebrow, lang)}</span>
+            <h1 className="cxfaq-hero__title">{pick(content.faqHero.title, lang)}</h1>
+            <p className="cxfaq-hero__sub">{pick(content.faqHero.sub, lang)}</p>
           </div>
         </section>
 
         <section className="cxfaq-body">
           <div className="cxfaq-container cxfaq-body__inner">
-            <Accordion items={items} defaultOpen="q0" />
+            <Accordion items={items} defaultOpen={firstId} />
 
             <div className="cxfaq-cta">
               <h2 className="cxfaq-cta__title">{t("faq.cta.title")}</h2>

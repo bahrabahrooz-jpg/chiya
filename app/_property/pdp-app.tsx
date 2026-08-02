@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
-import { useFavorites, type SavedProperty } from "@/lib/favorites";
+import { useAuth } from "@/lib/auth";
+import { useSaveGate, type SavedProperty } from "@/lib/favorites";
 import type { PdpData } from "./data";
 import { PdpProvider, usePdp } from "./pdp-context";
 import { PdpGallery } from "./pdp-gallery";
@@ -27,15 +28,17 @@ export function PdpApp({ data }: { data: PdpData }) {
 function PdpAppInner() {
   const { t } = useLang();
   const { property, gallery, agent, similar } = usePdp();
-  const { properties: savedProps, isPropertySaved, toggleProperty } = useFavorites();
+  const { user } = useAuth();
+  const { properties: savedProps, isPropertySaved, saveProperty } = useSaveGate();
   const [bookOpen, setBookOpen] = useState(false);
 
   const favMain = isPropertySaved(property.id);
   const favorites = savedProps.map((p) => p.id);
 
   const toggleMainFav = () => {
-    const wasSaved = isPropertySaved(property.id);
-    toggleProperty({
+    // Signed out → the save gate opens the login modal (nothing is saved yet).
+    const willSave = !!user && !isPropertySaved(property.id);
+    saveProperty({
       id: property.id,
       image: gallery[0],
       price: "$" + property.price.toLocaleString("en-US"),
@@ -47,7 +50,7 @@ function PdpAppInner() {
       status: property.status,
       href: `/property/${property.id}`,
     });
-    if (!wasSaved) toast({ title: "Saved to your favourites", variant: "success" });
+    if (willSave) toast({ title: "Saved to your favourites", variant: "success" });
   };
   const toggleFav = (id: string) => {
     const s = similar.find((x) => x.id === id);
@@ -64,7 +67,7 @@ function PdpAppInner() {
       status: s.status,
       href: `/property/${s.id}`,
     };
-    toggleProperty(snap);
+    saveProperty(snap);
   };
   const onCall = () => toast({ title: `Calling ${agent.phone}…` });
   const onWhatsApp = () => toast({ title: `Opening WhatsApp with ${agent.name}…` });

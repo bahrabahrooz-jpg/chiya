@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input, Textarea } from "@/components/ui/input";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtCurrency, fmtNum, localizeDigits, valueKey } from "@/lib/fmt";
+import { useAdminSettings } from "@/lib/admin-settings";
 import {
   AMENITIES,
   AMENITY_GROUPS,
@@ -1291,7 +1292,16 @@ export function AddPropertyApp({
   const agentMode = mode === "agent";
   const assignableAgents = useAssignableAgents();
   const photos = usePhotoUploader(false);
-  const [f, setF] = useState<ApForm>(() => (lockedAgentId ? { ...EMPTY_FORM, agent: lockedAgentId } : EMPTY_FORM));
+  // A new listing starts in the org's default currency (Settings → General).
+  // The listing currency picker only offers USD/IQD, so anything else (EUR)
+  // falls back to USD rather than seeding a value the picker can't represent.
+  const { settings } = useAdminSettings();
+  const defaultCurrency = settings.org.currency === "IQD" ? "IQD" : "USD";
+  const [f, setF] = useState<ApForm>(() => ({
+    ...EMPTY_FORM,
+    currency: defaultCurrency,
+    ...(lockedAgentId ? { agent: lockedAgentId } : {}),
+  }));
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
   const [step, setStep] = useState(0);
   const [preview, setPreview] = useState<PublishPreview | null>(null);

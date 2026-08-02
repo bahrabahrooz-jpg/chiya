@@ -278,7 +278,6 @@ export function NotificationsApp() {
         title="Clear all notifications?"
         subtitle="This removes every notification from your inbox. This can’t be undone."
         size="sm"
-        footerSpread
         footer={
           <>
             <Button hierarchy="secondary" onClick={() => setConfirmClear(false)}>

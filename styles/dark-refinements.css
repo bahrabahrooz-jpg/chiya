@@ -89,6 +89,9 @@
 :root[data-theme="dark"] .ax-sb-logo::before,
 :root[data-theme="dark"] .al-brand__mark { background-image: url("/brand/chiya-symbol-white.svg"); }
 :root[data-theme="dark"] .cxa-brand img { filter: brightness(0) invert(1); }
+/* Whiten the sidebar wordmark to match the whitened symbol — brand-green next
+   to a white mark read as two colours. (Light mode keeps the green wordmark.) */
+:root[data-theme="dark"] .ax-sb-logo__name { color: #fff; }
 /* Match the whitened mark: the wordmark is brand-green by default, which read as
    a second colour next to the white symbol. Whiten it too (same as site header). */
 :root[data-theme="dark"] .cxa-brand b { color: #fff; }

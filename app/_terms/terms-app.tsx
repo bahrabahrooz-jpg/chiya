@@ -2,28 +2,29 @@
 
 import { LegalDocument, type LegalSection } from "../_legal/legal-document";
 import { useLang } from "@/lib/i18n";
-
-/** Number of clauses — keys live at terms.s<i>.title / terms.s<i>.body. */
-const COUNT = 8;
+import { useSiteContent, pick } from "@/lib/site-content";
 
 /**
- * TermsApp — the public "Terms and Conditions" page. i18n-driven clauses
- * rendered through the shared LegalDocument reading layout (en/ar).
+ * TermsApp — the public "Terms and Conditions" page. CMS-managed clauses
+ * (edited at /admin/content, seeded from the original i18n copy) rendered
+ * through the shared LegalDocument reading layout.
  */
 export function TermsApp() {
-  const { t } = useLang();
-  const sections: LegalSection[] = Array.from({ length: COUNT }, (_, i) => ({
-    id: `s${i + 1}`,
-    heading: t(`terms.s${i + 1}.title`),
-    body: t(`terms.s${i + 1}.body`),
+  const { lang } = useLang();
+  const { content } = useSiteContent();
+  const doc = content.legal.terms;
+  const sections: LegalSection[] = doc.sections.map((s) => ({
+    id: s.id,
+    heading: pick(s.heading, lang),
+    body: pick(s.body, lang),
   }));
 
   return (
     <LegalDocument
-      eyebrow={t("terms.eyebrow")}
-      title={t("terms.title")}
-      lastUpdated={t("terms.updated")}
-      intro={t("terms.intro")}
+      eyebrow={pick(doc.eyebrow, lang)}
+      title={pick(doc.title, lang)}
+      lastUpdated={doc.updated}
+      intro={pick(doc.intro, lang)}
       sections={sections}
     />
   );

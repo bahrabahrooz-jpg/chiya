@@ -120,6 +120,8 @@ export interface AgentRecord {
   rented: number;
   members: number;
   status: string;
+  /** Admin curation flag — featured agents lead the homepage "Featured agents". */
+  featured: boolean;
   img: string | null;
   experience?: string;
   languages?: string[];
@@ -329,6 +331,7 @@ interface AgentSpec {
   area: string;
   verification?: string; // default Verified
   status?: string; // default Active
+  featured?: boolean; // default false — admin curation flag
   img?: number | null;
   phone: string;
   experience: string; // years in the field, e.g. "9"
@@ -339,9 +342,9 @@ const AGENT_SPECS: AgentSpec[] = [
      surface signs in as pickTopAgent(), and its demo data (viewings, reviews)
      is scoped to this agent. Reducing Lana's listings below everyone else's
      breaks the agent console demo. */
-  { id: "A-2107", name: "Lana Aziz", area: "Empire World", img: 1, phone: "+964 750 118 2044", experience: "9", languages: ["Kurdish", "English", "Arabic"] },
-  { id: "A-2106", name: "Karwan Mahmoud", area: "Ankawa", img: 2, phone: "+964 770 236 7180", experience: "7", languages: ["Kurdish", "English"] },
-  { id: "A-2105", name: "Sara Hama", area: "Bakhtiari", img: 3, phone: "+964 751 342 9066", experience: "6", languages: ["Kurdish", "Arabic"] },
+  { id: "A-2107", name: "Lana Aziz", area: "Empire World", featured: true, img: 1, phone: "+964 750 118 2044", experience: "9", languages: ["Kurdish", "English", "Arabic"] },
+  { id: "A-2106", name: "Karwan Mahmoud", area: "Ankawa", featured: true, img: 2, phone: "+964 770 236 7180", experience: "7", languages: ["Kurdish", "English"] },
+  { id: "A-2105", name: "Sara Hama", area: "Bakhtiari", featured: true, img: 3, phone: "+964 751 342 9066", experience: "6", languages: ["Kurdish", "Arabic"] },
   { id: "A-2104", name: "Rawa Jamal", area: "Malta", img: 4, phone: "+964 773 458 1237", experience: "5", languages: ["Kurdish", "English"] },
   { id: "A-2103", name: "Diyar Salih", area: "Gulan", status: "Suspended", img: 0, phone: "+964 750 561 8829", experience: "8", languages: ["Kurdish", "Arabic"] },
   { id: "A-2102", name: "Bilal Noori", area: "Raparin", verification: "Pending", img: 5, phone: "+964 770 674 3315", experience: "3", languages: ["Kurdish"] },
@@ -362,6 +365,7 @@ export const AGENTS: AgentRecord[] = AGENT_SPECS.map((s) => {
     rented: 0,
     members: 0,
     status: s.status ?? "Active",
+    featured: s.featured ?? false,
     img: s.img === null ? null : PORTRAITS[s.img ?? 0],
     experience: s.experience,
     languages: s.languages,

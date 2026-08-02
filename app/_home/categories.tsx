@@ -4,7 +4,10 @@ import Link from "next/link";
 import { SectionHeader } from "@/components/layout";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { useLang } from "@/lib/i18n";
-import { categories } from "@/lib/home-data";
+import { homeCategories } from "@/lib/home-data";
+import { publicCountByType } from "@/lib/site-properties";
+import { usePublicCatalog } from "@/lib/public-catalog";
+import { useSiteContent, pick } from "@/lib/site-content";
 
 const TYPE_BY_CAT: Record<string, string> = {
   Villas: "villa",
@@ -14,15 +17,20 @@ const TYPE_BY_CAT: Record<string, string> = {
   Land: "land",
 };
 
-/** Property categories — photo-led type tiles. */
+/** Property categories — photo-led type tiles, live counts from the catalog;
+    the band header copy is CMS-managed (edited at /admin/content). */
 export function Categories() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { publicRecords } = usePublicCatalog();
+  const { content } = useSiteContent();
+  const head = content.home.sections.cats;
+  const categories = homeCategories(publicCountByType(publicRecords));
   return (
     <section className="cxk-section">
       <SectionHeader
-        eyebrow={t("sec.cats.eyebrow")}
-        title={t("sec.cats.title")}
-        subtitle={t("sec.cats.sub")}
+        eyebrow={pick(head.eyebrow, lang)}
+        title={pick(head.title, lang)}
+        subtitle={pick(head.sub, lang)}
       />
       <div className="cxk-cats">
         {categories.map((c) => (

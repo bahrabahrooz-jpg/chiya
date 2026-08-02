@@ -4,6 +4,7 @@
     Pending / Draft / Sold / Rented never appear here. */
 
 import { SITE_PROPERTIES, publicCountByCity, allPlacesByCity, PUBLIC_CITIES, type SiteProperty } from "@/lib/site-properties";
+import type { PropertyRecord } from "@/app/admin/_data/catalog";
 
 export interface SrpListing {
   id: string;
@@ -44,7 +45,9 @@ const toSrp = (p: SiteProperty): SrpListing => ({
   cover: p.cover,
 });
 
-export const listings: SrpListing[] = SITE_PROPERTIES.map(toSrp);
+/** Search listings from a live SiteProperty set (or the seed by default). */
+export const srpListings = (sites: SiteProperty[] = SITE_PROPERTIES): SrpListing[] => sites.map(toSrp);
+export const listings: SrpListing[] = srpListings();
 
 export interface Opt {
   value: string;
@@ -115,7 +118,10 @@ export const sortOptions: Opt[] = [
 
 /** Available-listing counts per city, from the live catalog (drives the SRP
     baseline "N results in {city}" figure). */
-export const BASE_COUNT: Record<string, number> = publicCountByCity();
+/** "N results in {city}" baseline. Pass live public records to reflect admin
+    edits; defaults to the seed. */
+export const srpBaseCount = (records?: PropertyRecord[]): Record<string, number> => publicCountByCity(records);
+export const BASE_COUNT: Record<string, number> = srpBaseCount();
 
 /* ── Location filter (City / Area / Project) — built from the admin catalog's
    Locations, so the filter mirrors the admin definitions exactly: every city,

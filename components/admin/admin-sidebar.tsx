@@ -94,15 +94,10 @@ export function AdminSidebar({
   groups?: NavGroupDef[];
   homeHref?: string;
 }) {
-  const { t, dir } = useLang();
-  const rtl = dir === "rtl";
+  const { t } = useLang();
   const cls = ["ax-sidebar", collapsed ? "is-collapsed" : "", drawerOpen ? "is-drawer-open" : ""]
     .filter(Boolean)
     .join(" ");
-  // The chevron points "outward" toward the collapse direction, which flips in RTL.
-  const collapseIcon = collapsed
-    ? rtl ? "chevron-left" : "chevron-right"
-    : rtl ? "chevron-right" : "chevron-left";
 
   return (
     <aside className={cls} aria-label={t("admin.sidebar.primaryNav")}>
@@ -114,17 +109,16 @@ export function AdminSidebar({
             </span>
           </span>
         </Link>
+        <button
+          type="button"
+          className="ax-collapse-btn"
+          aria-label={collapsed ? t("admin.sidebar.expand") : t("admin.sidebar.collapse")}
+          title={collapsed ? t("admin.sidebar.expand") : t("admin.sidebar.collapse")}
+          onClick={onToggleCollapse}
+        >
+          <Icon name="panel-left" size={19} strokeWidth={2} />
+        </button>
       </div>
-
-      <button
-        type="button"
-        className="ax-collapse-btn"
-        aria-label={collapsed ? t("admin.sidebar.expand") : t("admin.sidebar.collapse")}
-        title={collapsed ? t("admin.sidebar.expand") : t("admin.sidebar.collapse")}
-        onClick={onToggleCollapse}
-      >
-        <Icon name={collapseIcon} size={15} strokeWidth={2.25} />
-      </button>
 
       <nav className="ax-nav">
         {groups.map((g) => (

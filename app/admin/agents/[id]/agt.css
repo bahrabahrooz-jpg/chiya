@@ -809,7 +809,7 @@
   }
   .adr__barlbl svg { color: var(--rating-star); }
   .adr__bartrack { flex: 1; height: 6px; border-radius: var(--radius-pill); background: var(--gray-100); overflow: hidden; }
-  .adr__barfill { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--brand-accent); }
+  .adr__barfill { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--rating-star); }
   .adr__barpct { width: 32px; text-align: right; font-size: 11.5px; font-weight: 600; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 
   .adr__list { display: flex; flex-direction: column; gap: 14px; }
@@ -821,15 +821,101 @@
   .adr-card__stars { display: inline-flex; align-items: center; gap: 1px; flex: none; }
   .adr-card__stars svg { color: var(--rating-star); }
   .adr-card__when { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
-  .adr-card__text { font-family: var(--font-display); font-style: italic; font-size: 16px; line-height: 25px; color: var(--text-secondary); margin: 14px 0 0; text-wrap: pretty; }
+  /* Match the website home-page testimonial quote (.cxtest__quote): display face,
+     medium weight, no italic — just scaled down a touch for the admin density. */
+  .adr-card__text { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 27px; letter-spacing: -.01em; color: var(--text-primary); margin: 14px 0 0; text-wrap: pretty; }
   @media (max-width: 880px) {
+    /* The two-up review layout (.adr) collapses on narrow screens and hides its
+       bars, but the standalone aside summary (.adr__summary--solo) always keeps
+       its vertical bars — it renders full-width in the collapsed grid. */
     .adr { grid-template-columns: 1fr; }
-    .adr__bars { display: none; }
-    .adr__summary { flex-direction: row; gap: 18px; justify-content: center; padding: 20px; }
+    .adr .adr__bars { display: none; }
+    .adr .adr__summary { flex-direction: row; gap: 18px; justify-content: center; padding: 20px; }
   }
+
+  /* Aside summary card: fills the SectionCard body edge-to-edge (no nested
+     border/background — the card already provides the surface). */
+  .adr__summary--solo { border: none; background: transparent; padding: 4px 0 0; }
 
   /* Viewing status pills — consistent with the Viewings table */
   .cx-badge.vw-st--pending   { background: #FFFAEB; color: #B54708; border-color: #FEDF89; }
   .cx-badge.vw-st--confirmed { background: #ECFDF3; color: #067647; border-color: #ABEFC6; }
   .cx-badge.vw-st--completed { background: #F9FAFB; color: #344054; border-color: #EAECF0; }
   .cx-badge.vw-st--cancelled { background: #FEF3F2; color: #B42318; border-color: #FECDCA; }
+
+  /* ============================================================
+     UNIFIED DETAIL PANEL + SEGMENTED TABS  (vwd- namespace)
+     Ported from the Viewing Details page. Single-column here (no aside),
+     so the tab track spans the full width.
+     ============================================================ */
+  .vwd-panel {
+    position: relative; overflow: hidden;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+  }
+
+  /* White hero region at the top of the panel (holds the agent identity + actions). */
+  .vwd-hero { position: relative; padding: 22px 24px; }
+
+  .vwd-segwrap {
+    padding: 16px 24px; background: var(--gray-25);
+    border-top: 1px solid var(--border-subtle);
+  }
+  .vwd-seg {
+    display: flex; padding: 3px; gap: 2px;
+    background: var(--gray-100); border-radius: var(--radius-control);
+    /* Span only the main column, aligned with the first section's right edge —
+       the 366px reviews aside (+22px grid gap) is left clear. */
+    width: calc(100% - 366px - 22px);
+  }
+  @media (max-width: 1180px) { .vwd-seg { width: 100%; } }
+  .vwd-seg__btn {
+    flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 38px; padding: 0 16px; border: none; background: transparent; cursor: pointer;
+    border-radius: 6px; font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    color: var(--text-tertiary); transition: background-color .15s, color .15s, box-shadow .15s;
+  }
+  .vwd-seg__btn:hover { color: var(--text-secondary); }
+  .vwd-seg__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vwd-seg__btn.is-active {
+    background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs);
+  }
+  .vwd-seg__count {
+    display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+    border-radius: var(--radius-pill); background: var(--gray-200); color: var(--text-tertiary);
+    font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .vwd-seg__btn.is-active .vwd-seg__count { background: var(--brand-subtle); color: var(--text-brand); }
+
+  /* Padded region holding the tab content; sections stack full-width. */
+  .vwd-panel__body {
+    display: flex; flex-direction: column; gap: 22px;
+    padding: 22px 24px 24px; background: var(--gray-25);
+  }
+
+  /* Cards inside the panel become flush regions (no nested card chrome). */
+  .vwd-panel__body .pd-card {
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md); box-shadow: none;
+  }
+
+  /* Two-column grid for the Basic tab (main + rating-summary aside), mirroring
+     the viewing detail page. Only the Basic tab renders .pd-grid; the other tabs
+     stay full-width. The aside stretches to the main column's height so the
+     reviews card is flush with the first section top and bottom; the summary
+     content sits centered inside it. */
+  .vwd-panel__body .pd-grid {
+    display: grid; grid-template-columns: minmax(0, 1fr) 366px; gap: 22px; align-items: stretch;
+  }
+  .vwd-panel__body .pd-grid__main { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+  .vwd-panel__body .pd-grid__aside { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+  /* The lone reviews card fills the aside height; its body centers the summary. */
+  .vwd-panel__body .pd-grid__aside .pd-card { display: flex; flex-direction: column; }
+  .vwd-panel__body .pd-grid__aside .pd-card__body { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+  @media (max-width: 1180px) {
+    .vwd-panel__body .pd-grid { grid-template-columns: 1fr; align-items: start; }
+  }
+
+  @media (max-width: 640px) {
+    .vwd-seg { flex-wrap: wrap; }
+    .vwd-seg__btn { flex: 1 1 40%; }
+  }

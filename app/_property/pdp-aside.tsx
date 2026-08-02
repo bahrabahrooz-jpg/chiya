@@ -77,11 +77,6 @@ export function ActionPanel({ onBook, onCall, onWhatsApp, className }: ActionPan
             </button>
           </div>
         </div>
-
-        <div className="pdp-panel__safety">
-          <Icon name="shield-check" size={14} />
-          {t("pdp.safe")}
-        </div>
       </div>
     </div>
   );
@@ -140,7 +135,6 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
       icon={done ? "calendar-check" : "calendar"}
       title={done ? t("pdp.bookDone") : t("pdp.requestAViewing")}
       subtitle={done ? t("pdp.bookConfirm") : property.title + " · " + property.address}
-      footerSpread={!done}
       footer={
         done ? (
           <Button hierarchy="primary" size="md" type="button" onClick={onClose}>

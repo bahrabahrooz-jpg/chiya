@@ -94,6 +94,59 @@ function addMinutes(time: string, mins: number): string {
   const h12 = H % 12 === 0 ? 12 : H % 12;
   return `${h12}:${String(M).padStart(2, "0")} ${ap}`;
 }
+/* Minutes-of-day for a "10:00 AM" style clock string; null if unparseable. */
+function timeToMinutes(time: string): number | null {
+  const m = /^(\d+):(\d+)\s*(AM|PM)$/i.exec(time);
+  if (!m) return null;
+  let h = Number(m[1]) % 12;
+  if (/pm/i.test(m[3])) h += 12;
+  return h * 60 + Number(m[2]);
+}
+
+/* Duration of the appointment in minutes, derived from its start/end clock
+   strings so edited viewings stay correct (rather than assuming the demo 45). */
+export function durationMinutes(time: string, endTime: string): number {
+  const a = timeToMinutes(time);
+  const b = timeToMinutes(endTime);
+  if (a == null || b == null) return 0;
+  return (b - a + 1440) % 1440;
+}
+
+export type RelTone = "soon" | "upcoming" | "today" | "past";
+export interface RelViewing {
+  key: string;
+  params?: Record<string, string | number>;
+  tone: RelTone;
+}
+/* Human relative-time for the appointment start, as an i18n key + numeric
+   param (localized by the caller). Compared against `now` at render. */
+export function relativeViewing(date: string, time: string, now: Date): RelViewing {
+  const day = parseDetailDate(date);
+  if (!day) return { key: "admin.vd.rel.soon", tone: "upcoming" };
+  const mins = timeToMinutes(time) ?? 0;
+  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(mins / 60), mins % 60);
+  const diffMs = start.getTime() - now.getTime();
+  const future = diffMs >= 0;
+  const absMin = Math.round(Math.abs(diffMs) / 60000);
+  const absHr = Math.round(absMin / 60);
+  // Calendar-day delta (ignores clock time) so "tomorrow"/"yesterday" read right.
+  const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const d1 = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const dayDelta = Math.round((d1.getTime() - d0.getTime()) / 86400000);
+
+  if (dayDelta === 0) {
+    if (future && absMin <= 120) return { key: "admin.vd.rel.soon", tone: "soon" };
+    return { key: "admin.vd.rel.today", tone: "today" };
+  }
+  if (dayDelta === 1) return { key: "admin.vd.rel.tomorrow", tone: "upcoming" };
+  if (dayDelta === -1) return { key: "admin.vd.rel.yesterday", tone: "past" };
+  if (future) {
+    if (absHr < 24) return { key: "admin.vd.rel.inHours", params: { count: absHr }, tone: "upcoming" };
+    return { key: "admin.vd.rel.inDays", params: { count: dayDelta }, tone: "upcoming" };
+  }
+  if (absHr < 24) return { key: "admin.vd.rel.hoursAgo", params: { count: absHr }, tone: "past" };
+  return { key: "admin.vd.rel.daysAgo", params: { count: Math.abs(dayDelta) }, tone: "past" };
+}
 
 /* Enrich a bare agent name into the viewing's rich agent shape, pulling real
    contact details from the catalog roster and the rating from the agent's

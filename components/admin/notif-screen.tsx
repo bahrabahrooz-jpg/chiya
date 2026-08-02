@@ -266,7 +266,6 @@ export function NotifScreen({
         title={t("admin.notif.clearTitle")}
         subtitle={t("admin.notif.clearBody")}
         size="sm"
-        footerSpread
         footer={
           <>
             <Button hierarchy="secondary" onClick={() => setConfirmClear(false)}>

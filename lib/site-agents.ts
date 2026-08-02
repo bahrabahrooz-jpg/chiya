@@ -9,7 +9,7 @@
  * agent-detail page (approvedReviewsFor).
  */
 
-import { AGENTS, PROPERTIES, withAgentStats, slugify } from "@/app/admin/_data/catalog";
+import { AGENTS, PROPERTIES, withAgentStats, slugify, type AgentRecord, type PropertyRecord } from "@/app/admin/_data/catalog";
 import { approvedReviewsFor, buildAgentReviews } from "@/app/admin/_agent-detail/data";
 
 export interface SiteAgent {
@@ -20,6 +20,7 @@ export interface SiteAgent {
   photo: string; // base Unsplash URL without params; "" → initials avatar
   verified: boolean;
   active: boolean;
+  featured: boolean; // admin curation flag — leads the homepage "Featured agents"
   rating: number; // mean of approved review stars (0 when none)
   reviewCount: number;
   listings: number;
@@ -45,48 +46,66 @@ export const portraitUrl = (photo: string, w: number, h = w) =>
    Pending listings are admin-only and never shown publicly, so they don't count
    toward the agent's public "listings" figure either — keeping the directory,
    home cards, profile, and mobile all in agreement. */
-const publishedListingCount: Record<string, number> = {};
-for (const p of PROPERTIES) {
-  if (p.status === "Published" && p.agent) publishedListingCount[p.agent.name] = (publishedListingCount[p.agent.name] ?? 0) + 1;
+function publishedCountByAgent(properties: PropertyRecord[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const p of properties) {
+    if (p.status === "Published" && p.agent) counts[p.agent.name] = (counts[p.agent.name] ?? 0) + 1;
+  }
+  return counts;
 }
 
-/* Only Verified agents are public. Pending agents (still under review) are
+/* ----------------------------------------------------------------------------
+   Record-parameterized derivation — the SAME transform, taking live agent +
+   property records so the public site reflects admin edits without a reload
+   (lib/public-catalog.ts). The seed constants below apply it to the static
+   catalog, so the seed-based Server-Component pages keep working unchanged.
+
+   Only Verified agents are public. Pending agents (still under review) are
    admin-only — they never appear in the directory or get a public profile, so a
    Pending slug resolves to `undefined` here and its /agents/[id] route 404s. */
-export const SITE_AGENTS: SiteAgent[] = withAgentStats(AGENTS, PROPERTIES)
-  .filter((a) => a.verification === "Verified")
-  .map((a) => {
-  const reviews = approvedReviewsFor(a.name);
-  const rating = reviews.length ? Number((reviews.reduce((s, r) => s + r.stars, 0) / reviews.length).toFixed(1)) : 0;
-  const experience = Number(a.experience) || 1;
-  return {
-    id: slugify(a.name),
-    name: a.name,
-    city: a.city,
-    area: a.area,
-    photo: basePhoto(a.img),
-    verified: a.verification === "Verified",
-    active: a.status === "Active",
-    rating,
-    reviewCount: reviews.length,
-    listings: publishedListingCount[a.name] ?? 0,
-    sold: a.sold,
-    rented: a.rented,
-    experience,
-    since: THIS_YEAR - experience,
-    languages: a.languages ?? [],
-    phone: a.phone,
-    whatsapp: a.phone.replace(/\D/g, ""),
-    email: a.email,
-  };
-});
+export function deriveSiteAgents(agents: AgentRecord[], properties: PropertyRecord[]): SiteAgent[] {
+  const publishedListingCount = publishedCountByAgent(properties);
+  return withAgentStats(agents, properties)
+    .filter((a) => a.verification === "Verified")
+    .map((a) => {
+      const reviews = approvedReviewsFor(a.name);
+      const rating = reviews.length ? Number((reviews.reduce((s, r) => s + r.stars, 0) / reviews.length).toFixed(1)) : 0;
+      const experience = Number(a.experience) || 1;
+      return {
+        id: slugify(a.name),
+        name: a.name,
+        city: a.city,
+        area: a.area,
+        photo: basePhoto(a.img),
+        verified: a.verification === "Verified",
+        active: a.status === "Active",
+        featured: a.featured,
+        rating,
+        reviewCount: reviews.length,
+        listings: publishedListingCount[a.name] ?? 0,
+        sold: a.sold,
+        rented: a.rented,
+        experience,
+        since: THIS_YEAR - experience,
+        languages: a.languages ?? [],
+        phone: a.phone,
+        whatsapp: a.phone.replace(/\D/g, ""),
+        email: a.email,
+      };
+    });
+}
+
+/* Home-page "Featured agents" — verified, active agents the admin has curated
+   as featured (admin.agents Feature action). Pure curation: no auto-fill. */
+export const deriveFeaturedAgents = (agents: SiteAgent[]): SiteAgent[] => agents.filter((a) => a.verified && a.active && a.featured);
+
+export const SITE_AGENTS: SiteAgent[] = deriveSiteAgents(AGENTS, PROPERTIES);
 
 export function getSiteAgent(id: string): SiteAgent | undefined {
   return SITE_AGENTS.find((a) => a.id === id);
 }
 
-/* Home-page "Featured agents" — the verified agents in good standing. */
-export const FEATURED_SITE_AGENTS: SiteAgent[] = SITE_AGENTS.filter((a) => a.verified && a.active);
+export const FEATURED_SITE_AGENTS: SiteAgent[] = deriveFeaturedAgents(SITE_AGENTS);
 
 /* ----------------------------------------------------------------------------
    Review cards for a public agent profile — the agent's approved reviews with

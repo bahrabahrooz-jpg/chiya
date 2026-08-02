@@ -1,0 +1,220 @@
+  /* ============================================================
+     SETTINGS  (st- namespace)
+     Left section-nav + right detail pane. Reuses the pf-card /
+     pf-toast chrome from profile.css (imported alongside this file).
+     ============================================================ */
+
+  /* ---------- SPLIT LAYOUT ---------- */
+  .st-split {
+    display: grid;
+    grid-template-columns: 268px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+
+  /* ---------- LEFT SECTION NAV ---------- */
+  .st-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: sticky;
+    top: 16px;
+  }
+  .st-navitem {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    text-align: start;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: background-color .15s, border-color .15s;
+  }
+  .st-navitem:hover { background: var(--surface-sunken); }
+  .st-navitem.is-active {
+    background: var(--surface-card);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-xs);
+  }
+  .st-navitem__icon {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-control);
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+  }
+  .st-navitem.is-active .st-navitem__icon {
+    background: var(--brand-primary);
+    color: var(--text-on-brand);
+  }
+  .st-navitem__body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .st-navitem__label { font-size: 14.5px; font-weight: 600; color: var(--text-primary); }
+  .st-navitem__desc { font-size: 12px; line-height: 1.4; color: var(--text-tertiary); }
+
+  /* ---------- DETAIL PANE ---------- */
+  .st-detail { min-width: 0; }
+
+  /* field grid inside cards (2-col, collapses at 640px) */
+  .st-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 24px;
+  }
+  .st-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .st-field--full { grid-column: 1 / -1; }
+  .st-field__label {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  /* ---------- APPEARANCE — choice cards ---------- */
+  .st-choicegrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .st-choice {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 16px;
+    background: var(--surface-card);
+    border: 1.5px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+  }
+  .st-choice:hover { border-color: var(--border-focus); }
+  .st-choice.is-active {
+    border-color: var(--brand-primary);
+    background: var(--brand-subtle);
+  }
+  .st-choice__icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: var(--radius-control);
+    background: var(--surface-sunken); color: var(--text-secondary);
+  }
+  .st-choice.is-active .st-choice__icon { color: var(--text-brand); }
+  .st-choice__label { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .st-choice__sub { font-size: 12.5px; color: var(--text-tertiary); }
+  .st-choice__tick { position: absolute; inset-inline-end: 12px; top: 12px; color: var(--brand-primary); }
+
+  .st-livehint {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-tertiary);
+    margin: 2px 0 0;
+  }
+  .st-livehint svg { flex: none; color: var(--info-500); }
+
+  /* ---------- NOTIFICATIONS — switch rows ---------- */
+  .st-switchlist { display: flex; flex-direction: column; }
+  .st-switchrow {
+    display: flex; align-items: center; gap: 20px;
+    padding: 16px 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .st-switchrow:first-child { border-top: none; padding-top: 0; }
+  .st-switchrow--tight { padding-bottom: 0; }
+  .st-switchrow__text { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; }
+  .st-switchrow__label { font-size: 14.5px; font-weight: 600; color: var(--text-primary); }
+  .st-switchrow__desc { font-size: 12.5px; line-height: 1.45; color: var(--text-tertiary); }
+
+  /* ---------- INTEGRATIONS ---------- */
+  .st-demobanner {
+    display: flex; align-items: center; gap: 9px;
+    padding: 11px 15px; margin-bottom: 22px;
+    background: var(--warning-50); color: var(--warning-700);
+    border: 1px solid var(--warning-200, var(--border-subtle));
+    border-radius: var(--radius-lg);
+    font-size: 13px; font-weight: 500;
+  }
+  .st-demobanner svg { flex: none; }
+
+  .st-key {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px 6px 14px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-control);
+  }
+  .st-key__value {
+    flex: 1 1 auto; min-width: 0;
+    font-family: var(--font-mono); font-size: 13.5px; letter-spacing: .02em;
+    color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    direction: ltr; text-align: start;
+  }
+  .st-key__btn {
+    flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: var(--radius-control);
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    color: var(--text-secondary); cursor: pointer; transition: background-color .15s;
+  }
+  .st-key__btn:hover { background: var(--surface-sunken); color: var(--text-primary); }
+
+  .st-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+  .st-svclist { display: flex; flex-direction: column; }
+  .st-svc {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .st-svc:first-child { border-top: none; padding-top: 0; }
+  .st-svc__icon {
+    flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: var(--radius-control);
+    background: var(--surface-sunken); color: var(--text-secondary);
+  }
+  .st-svc__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .st-svc__name { font-size: 14.5px; font-weight: 600; color: var(--text-primary); }
+  .st-svc__desc { font-size: 12.5px; color: var(--text-tertiary); }
+  .st-svc__status {
+    flex: none; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .st-svc__status.is-on { color: var(--success-600); }
+
+  /* ---------- SAVE BAR ---------- */
+  .st-savebar {
+    position: sticky; bottom: 0; z-index: 4;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-top: 6px; padding: 14px 18px;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+  }
+  .st-savebar__note { font-size: 13px; color: var(--text-tertiary); }
+  .st-savebar.is-dirty .st-savebar__note { color: var(--warning-700); font-weight: 600; }
+  .st-savebar__actions { display: flex; gap: 12px; flex: none; }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 860px) {
+    .st-split { grid-template-columns: 1fr; gap: 20px; }
+    .st-nav {
+      position: static;
+      flex-direction: row;
+      overflow-x: auto;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+    .st-navitem { flex: 0 0 auto; }
+    .st-navitem__desc { display: none; }
+  }
+  @media (max-width: 640px) {
+    .st-grid { grid-template-columns: 1fr; }
+    .st-savebar { flex-direction: column; align-items: stretch; }
+    .st-savebar__actions .cx-btn { flex: 1 1 auto; justify-content: center; }
+    .st-svc { flex-wrap: wrap; }
+  }

@@ -42,6 +42,9 @@ interface AuditVerb {
   metaParams?: Record<string, string>;
 }
 function propertyAction(patch: Partial<PropertyRecord>): AuditVerb {
+  if (patch.featured !== undefined) {
+    return { actionKey: patch.featured ? "audit.action.featuredProperty" : "audit.action.unfeaturedProperty" };
+  }
   if (patch.status !== undefined) {
     const status = String(patch.status);
     if (status.toLowerCase() === "archived") return { actionKey: "audit.action.archivedProperty" };
@@ -61,6 +64,7 @@ function memberAction(patch: Partial<MemberRecord>): string {
   return "audit.action.updatedMember";
 }
 function agentAction(patch: Partial<AgentRecord>): string {
+  if (patch.featured !== undefined) return patch.featured ? "audit.action.featuredAgent" : "audit.action.unfeaturedAgent";
   if (patch.verification !== undefined) return String(patch.verification).toLowerCase() === "verified" ? "audit.action.verifiedAgent" : "audit.action.revokedVerification";
   if (patch.status !== undefined) return String(patch.status).toLowerCase() === "suspended" ? "audit.action.suspendedAgent" : "audit.action.activatedAgent";
   return "audit.action.updatedAgent";
@@ -106,7 +110,7 @@ const PropertiesContext = createContext<PropertiesContextValue | null>(null);
    violates it — stale cached data, or a record from an older schema — is pulled
    back to "Pending" until an agent is assigned. Runs on the seed and on every
    hydrate so the UI can trust that no live listing is ever unassigned. */
-function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
+export function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
   return list.map((p) => (!p.agent && statusRequiresAgent(p.status) ? { ...p, status: "Pending", published: false } : p));
 }
 
@@ -121,7 +125,12 @@ function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
    scenario (replaces the old 320/240/48 generated dataset).
    v6: transactional roles — Sold records carry a buyer, Rented may carry a
    tenant, and member roles are derived from those links instead of declared. */
-const STORAGE_KEY = "chiya:admin-store:v6";
+export const STORAGE_KEY = "chiya:admin-store:v6";
+
+/* Same-tab change signal. The browser `storage` event only fires in OTHER tabs,
+   so we dispatch this on every persist to let same-tab listeners (the public
+   site's live-catalog bridge, lib/public-catalog.ts) react without a reload. */
+export const STORE_EVENT = "chiya:admin-store-changed";
 
 /**
  * Single source of truth for the whole admin area. Properties, members, and
@@ -240,6 +249,9 @@ export function PropertiesProvider({ children }: { children: React.ReactNode }) 
     }
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ properties, members: memberRoster, agents: agentRoster, locations: locationDefs }));
+      // Notify same-tab listeners (public site live-catalog); `storage` only
+      // fires in other tabs, so a custom event covers the same-tab case.
+      window.dispatchEvent(new Event(STORE_EVENT));
     } catch {}
   }, [properties, memberRoster, agentRoster, locationDefs]);
 

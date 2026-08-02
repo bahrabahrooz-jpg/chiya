@@ -68,7 +68,7 @@ export function amenityTags(rec: PropertyRecord): string[] {
   return AMENITY_VOCAB.filter((a) => set.has(a));
 }
 
-function toSiteProperty(rec: PropertyRecord): SiteProperty {
+export function toSiteProperty(rec: PropertyRecord): SiteProperty {
   return {
     id: rec.id,
     title: rec.title,
@@ -92,14 +92,28 @@ function toSiteProperty(rec: PropertyRecord): SiteProperty {
   };
 }
 
-export const SITE_PROPERTIES: SiteProperty[] = PUBLIC_PROPERTIES.map(toSiteProperty);
+/* ----------------------------------------------------------------------------
+   Record-parameterized derivations — the SAME transforms below, but taking a
+   live PropertyRecord[] so the public site can render admin edits without a
+   reload (lib/public-catalog.ts). The seed constants that follow are just these
+   functions applied to the static catalog, so the seed-based Server-Component
+   pages keep working unchanged.
+   ------------------------------------------------------------------------- */
+/** The public subset (available / Published listings) from any record set. */
+export const publicRecords = (records: PropertyRecord[]): PropertyRecord[] => records.filter((p) => p.status === "Published");
+/** Public site listings from a live record set. */
+export const deriveSiteProperties = (records: PropertyRecord[]): SiteProperty[] => publicRecords(records).map(toSiteProperty);
+/** Featured available listings from a derived site-property set. */
+export const deriveFeatured = (sites: SiteProperty[]): SiteProperty[] => sites.filter((p) => p.featured);
+
+export const SITE_PROPERTIES: SiteProperty[] = deriveSiteProperties(PROPERTIES);
 
 export function getSiteProperty(id: string): SiteProperty | undefined {
   return SITE_PROPERTIES.find((p) => p.id === id);
 }
 
 /** Featured available listings (for the home "Featured properties" grid / hero). */
-export const FEATURED_SITE_PROPERTIES: SiteProperty[] = SITE_PROPERTIES.filter((p) => p.featured);
+export const FEATURED_SITE_PROPERTIES: SiteProperty[] = deriveFeatured(SITE_PROPERTIES);
 
 /** Similar available listings — same city first, then same type, excluding self. */
 export function similarProperties(id: string, limit = 3): SiteProperty[] {
@@ -114,18 +128,21 @@ export function similarProperties(id: string, limit = 3): SiteProperty[] {
 /* ----------------------------------------------------------------------------
    Location + category counts, rolled up from the public (Published) listings.
    ------------------------------------------------------------------------- */
-/** Live count of available listings per city (only cities with the catalog def). */
-export function publicCountByCity(): Record<string, number> {
+/** Live count of available listings per city (only cities with the catalog def).
+    Pass a live public-record set to reflect admin edits; defaults to the seed. */
+export function publicCountByCity(records: PropertyRecord[] = PUBLIC_PROPERTIES): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const c of LOCATION_DEF) counts[c.city] = 0;
-  for (const p of PUBLIC_PROPERTIES) counts[p.city] = (counts[p.city] ?? 0) + 1;
+  for (const p of records) counts[p.city] = (counts[p.city] ?? 0) + 1;
   return counts;
 }
 
-/** Live count of available listings per property type (Villa/Apartment/...). */
-export function publicCountByType(): Record<string, number> {
+/** Live count of available listings per property type. Keyed off the raw
+    PropertyRecord.type (e.g. "Apartment"); preserved as-is for seed parity.
+    Pass a live public-record set to reflect admin edits; defaults to the seed. */
+export function publicCountByType(records: PropertyRecord[] = PUBLIC_PROPERTIES): Record<string, number> {
   const counts: Record<string, number> = {};
-  for (const p of PUBLIC_PROPERTIES) counts[p.type] = (counts[p.type] ?? 0) + 1;
+  for (const p of records) counts[p.type] = (counts[p.type] ?? 0) + 1;
   return counts;
 }
 
@@ -134,12 +151,12 @@ export const PUBLIC_CITIES: string[] = LOCATION_DEF.map((c) => c.city);
 
 /** Districts / projects that actually carry an available listing, per city —
     used to build the search Location filter so options match the results. */
-export function publicPlacesByCity(): Record<string, { areas: string[]; projects: string[] }> {
+export function publicPlacesByCity(records: PropertyRecord[] = PUBLIC_PROPERTIES): Record<string, { areas: string[]; projects: string[] }> {
   const out: Record<string, { areas: string[]; projects: string[] }> = {};
   for (const c of LOCATION_DEF) {
     const areas = new Set<string>();
     const projects = new Set<string>();
-    for (const p of PUBLIC_PROPERTIES) {
+    for (const p of records) {
       if (p.city !== c.city) continue;
       // A listing's `area` is either a district name or a project within one.
       const district = c.districts.find((d) => d.name === p.area || d.projects.includes(p.area));

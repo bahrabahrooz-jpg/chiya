@@ -685,3 +685,65 @@
     .pp-toast.is-in, .pp-toast.is-out { transform: none; }
     .pp-toast.is-in .pp-toast__progress { animation: none; }
   }
+
+  /* ============================================================
+     UNIFIED DETAIL PANEL + SEGMENTED TABS  (vwd- namespace)
+     Ported from the Agent / Viewing Details pages so member detail
+     shares the same panel + tabbed chrome. Single-column here (no aside),
+     so the tab track and body span the full width.
+     ============================================================ */
+  .vwd-panel {
+    position: relative; overflow: hidden;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+  }
+
+  /* White hero region at the top of the panel (holds the member identity + actions). */
+  .vwd-hero { position: relative; padding: 22px 24px; }
+  /* The member hero keeps its avatar-led identity block; the ported header rules
+     (.pd-head__main / __identity / __actions) already lay it out — just clear the
+     bottom margin the standalone .pd-head carried so it sits flush in the panel. */
+  .vwd-hero .pd-head__main { margin-bottom: 0; }
+
+  .vwd-segwrap {
+    padding: 16px 24px; background: var(--gray-25);
+    border-top: 1px solid var(--border-subtle);
+  }
+  .vwd-seg {
+    display: flex; padding: 3px; gap: 2px; width: 100%;
+    background: var(--gray-100); border-radius: var(--radius-control);
+  }
+  .vwd-seg__btn {
+    flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 38px; padding: 0 16px; border: none; background: transparent; cursor: pointer;
+    border-radius: 6px; font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    color: var(--text-tertiary); transition: background-color .15s, color .15s, box-shadow .15s;
+  }
+  .vwd-seg__btn:hover { color: var(--text-secondary); }
+  .vwd-seg__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vwd-seg__btn.is-active {
+    background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs);
+  }
+  .vwd-seg__count {
+    display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+    border-radius: var(--radius-pill); background: var(--gray-200); color: var(--text-tertiary);
+    font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .vwd-seg__btn.is-active .vwd-seg__count { background: var(--brand-subtle); color: var(--text-brand); }
+
+  /* Padded region holding the tab content; sections stack full-width. */
+  .vwd-panel__body {
+    display: flex; flex-direction: column; gap: 22px;
+    padding: 22px 24px 24px; background: var(--gray-25);
+  }
+  .vwd-panel__body .pd-grid__main { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+  /* Cards inside the panel become flush regions (no nested card chrome). */
+  .vwd-panel__body .pd-card {
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md); box-shadow: none;
+  }
+
+  @media (max-width: 640px) {
+    .vwd-seg { flex-wrap: wrap; }
+    .vwd-seg__btn { flex: 1 1 40%; }
+  }

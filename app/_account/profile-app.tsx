@@ -257,7 +257,6 @@ export function ProfileApp() {
         title="Delete your account?"
         subtitle="This will sign you out and remove your profile from this device. This can’t be undone."
         size="sm"
-        footerSpread
         footer={
           <>
             <Button hierarchy="secondary" onClick={() => setConfirmDelete(false)}>

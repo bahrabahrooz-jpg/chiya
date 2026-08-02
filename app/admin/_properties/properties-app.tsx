@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtCurrency, fmtDate, fmtNum, localizeDigits, monthName, weekdayName, popupLeft } from "@/lib/fmt";
+import { adminMenuRoot } from "../_shared/menu-portal";
 import {
   AGENT_ASSIGNED,
   AGENT_FILTER_OPTIONS,
@@ -640,22 +641,26 @@ function DeleteConfirmModal({ property, onCancel, onConfirm }: { property: Prope
 /* ---------------- Row actions menu ---------------- */
 function RowActions({
   propId,
+  featured,
   hasAgent,
   open,
   onToggle,
   onDelete,
   onAssignAgent,
   onChangeStatus,
+  onFeature,
   basePath,
   hideAgent,
 }: {
   propId: string;
+  featured: boolean;
   hasAgent: boolean;
   open: boolean;
   onToggle: () => void;
   onDelete: () => void;
   onAssignAgent: () => void;
   onChangeStatus: () => void;
+  onFeature: () => void;
   basePath: string;
   hideAgent: boolean;
 }) {
@@ -714,6 +719,10 @@ function RowActions({
             <Icon name="refresh-cw" size={17} />
             {t("admin.props.changeStatus")}
           </button>
+          <button type="button" className="pp-aitem" role="menuitem" onClick={onFeature}>
+            <Icon name={featured ? "sparkles" : "sparkle"} size={17} />
+            {t(featured ? "admin.props.unfeature" : "admin.props.feature")}
+          </button>
         </div>
         <div className="pp-amenu__sect">
           <button type="button" className="pp-aitem pp-aitem--danger" role="menuitem" onClick={onDelete}>
@@ -722,7 +731,7 @@ function RowActions({
           </button>
         </div>
       </div>,
-      document.body,
+      adminMenuRoot(),
     );
 
   return (
@@ -743,6 +752,7 @@ function PropertyRow({
   onDeleteRequest,
   onAssignAgentRequest,
   onChangeStatusRequest,
+  onFeatureToggle,
   hideAgent,
   basePath,
 }: {
@@ -752,6 +762,7 @@ function PropertyRow({
   onDeleteRequest: (p: PropertyRecord) => void;
   onAssignAgentRequest: (p: PropertyRecord) => void;
   onChangeStatusRequest: (p: PropertyRecord) => void;
+  onFeatureToggle: (p: PropertyRecord) => void;
   hideAgent: boolean;
   basePath: string;
 }) {
@@ -782,7 +793,14 @@ function PropertyRow({
         <div className="pp-prop">
           <img className="pp-prop__thumb" src={p.img} alt="" loading="lazy" />
           <div className="pp-prop__body">
-            <span className="pp-prop__title">{p.title}</span>
+            <span className="pp-prop__title">
+              {p.title}
+              {p.featured && (
+                <span className="pp-featstar" title={t("admin.props.featured")} aria-label={t("admin.props.featured")}>
+                  <Icon name="sparkles" size={13} />
+                </span>
+              )}
+            </span>
             <span className="pp-prop__id">{p.id}</span>
           </div>
         </div>
@@ -846,6 +864,7 @@ function PropertyRow({
       <div className="pp-col--actions" onClick={(e) => e.stopPropagation()}>
         <RowActions
           propId={p.id}
+          featured={p.featured}
           basePath={basePath}
           hideAgent={hideAgent}
           hasAgent={!!p.agent}
@@ -862,6 +881,10 @@ function PropertyRow({
           onChangeStatus={() => {
             setOpenMenu(null);
             onChangeStatusRequest(p);
+          }}
+          onFeature={() => {
+            setOpenMenu(null);
+            onFeatureToggle(p);
           }}
         />
       </div>
@@ -944,6 +967,7 @@ function PropertiesTableCard(props: {
   onDeleteRequest: (p: PropertyRecord) => void;
   onAssignAgentRequest: (p: PropertyRecord) => void;
   onChangeStatusRequest: (p: PropertyRecord) => void;
+  onFeatureToggle: (p: PropertyRecord) => void;
   hideAgent: boolean;
   basePath: string;
 }) {
@@ -1070,6 +1094,7 @@ function PropertiesTableCard(props: {
               onDeleteRequest={props.onDeleteRequest}
               onAssignAgentRequest={props.onAssignAgentRequest}
               onChangeStatusRequest={props.onChangeStatusRequest}
+              onFeatureToggle={props.onFeatureToggle}
               hideAgent={props.hideAgent}
               basePath={props.basePath}
             />
@@ -1093,7 +1118,7 @@ function PropertiesTableCard(props: {
 export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { scopeAgent?: string; basePath?: string } = {}) {
   const { t, lang } = useLang();
   const searchParams = useSearchParams();
-  const { properties, setProperties, counts, locationTree } = useProperties();
+  const { properties, setProperties, updateProperty, counts, locationTree } = useProperties();
   const hideAgent = !!scopeAgent;
   // When scoped to an agent, every count/list reflects only that agent's listings.
   const baseList = useMemo(() => (scopeAgent ? properties.filter((p) => p.agent?.name === scopeAgent) : properties), [properties, scopeAgent]);
@@ -1130,13 +1155,6 @@ export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { 
     setCurrentPage(1);
   };
 
-  useEffect(() => {
-    if (!openMenu) return;
-    const close = () => setOpenMenu(null);
-    window.addEventListener("scroll", close, true);
-    return () => window.removeEventListener("scroll", close, true);
-  }, [openMenu]);
-
   const pushToast = (toast: Omit<ToastData, "id">) => {
     const id = Date.now() + Math.random();
     setToasts((ts) => [...ts, { ...toast, id }]);
@@ -1172,6 +1190,20 @@ export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { 
       icon: "refresh-cw",
       title: t("admin.props.toast.statusTitle"),
       msg: t("admin.props.toast.statusMsg", { title: prop.title, status: t(`status.${status.toLowerCase()}`) }),
+    });
+  };
+
+  // Featured is an instant toggle (no modal). Routed through the store's
+  // updateProperty so it is audited and persisted; the list reads the store's
+  // `properties`, so the row reflects the change immediately.
+  const handleFeatureToggle = (prop: PropertyRecord) => {
+    const next = !prop.featured;
+    updateProperty(prop.id, { featured: next });
+    pushToast({
+      tone: next ? "success" : "brand",
+      icon: next ? "sparkles" : "sparkle",
+      title: t(next ? "admin.props.toast.featuredTitle" : "admin.props.toast.unfeaturedTitle"),
+      msg: t(next ? "admin.props.toast.featuredMsg" : "admin.props.toast.unfeaturedMsg", { title: prop.title }),
     });
   };
 
@@ -1286,6 +1318,7 @@ export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { 
         onDeleteRequest={(p) => setDeleteTarget(p)}
         onAssignAgentRequest={(p) => setAgentTarget(p)}
         onChangeStatusRequest={(p) => setStatusTarget(p)}
+        onFeatureToggle={handleFeatureToggle}
       />
 
       {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}

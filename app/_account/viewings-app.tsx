@@ -78,7 +78,6 @@ export function ViewingsApp() {
         title="Cancel this viewing?"
         subtitle={pendingCancel ? `Your viewing request for ${pendingCancel.title} will be withdrawn.` : undefined}
         size="sm"
-        footerSpread
         footer={
           <>
             <Button hierarchy="secondary" onClick={() => setPendingCancel(null)}>

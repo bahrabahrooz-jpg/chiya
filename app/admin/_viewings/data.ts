@@ -312,3 +312,76 @@ export function viewingToReschedule(v: ViewingRecord): RescheduleForm {
   const base = viewingToForm(v);
   return { date: base.date, time: base.time, agent: base.agent, notify: true, reason: "" };
 }
+
+/* ---------------- demo reservation seed ----------------
+   There is no backend in this build, so the booking calendars show a small
+   seed of demo reservations expressed as day-offsets from "today" — so a few
+   always fall on upcoming, selectable dates. Offset 4 fills every slot to show
+   a fully-booked (red, disabled) day. Single source of truth shared by the
+   public "Request a viewing" picker and the admin/agent scheduler. */
+export interface ReservedSlot {
+  date: string; // ISO yyyy-mm-dd
+  time: string; // "HH:MM"
+}
+const RESERVED_SEED: { offset: number; time: string }[] = [
+  { offset: 0, time: "10:00" },
+  { offset: 0, time: "14:00" },
+  { offset: 2, time: "09:00" },
+  { offset: 2, time: "15:00" },
+  { offset: 3, time: "11:00" },
+  { offset: 3, time: "16:00" },
+  ...VIEWING_SLOTS.map((time) => ({ offset: 4, time })), // fully booked day
+  { offset: 6, time: "13:00" },
+  { offset: 9, time: "10:00" },
+  { offset: 9, time: "16:00" },
+];
+
+/** Demo reserved slots, anchored to today (computed client-side). */
+export function seedReservedSlots(): ReservedSlot[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return RESERVED_SEED.map(({ offset, time }) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + offset);
+    return { date: toISODate(d), time };
+  });
+}
+
+export interface ReservedIndex {
+  /** Reserved slot times per ISO date. */
+  byDate: Map<string, Set<string>>;
+  /** Whether a date is partially or fully booked. */
+  dayStatus: Map<string, DayStatus>;
+}
+
+/** Group reserved slots by date and flag fully-booked days. */
+export function buildReservedIndex(slots: ReservedSlot[]): ReservedIndex {
+  const byDate = new Map<string, Set<string>>();
+  for (const { date, time } of slots) {
+    if (!isViewingSlot(time)) continue;
+    let set = byDate.get(date);
+    if (!set) byDate.set(date, (set = new Set()));
+    set.add(time);
+  }
+  const dayStatus = new Map<string, DayStatus>();
+  for (const [date, set] of byDate) {
+    dayStatus.set(date, set.size >= VIEWING_SLOTS.length ? "full" : "partial");
+  }
+  return { byDate, dayStatus };
+}
+
+/** Union two reserved indexes (e.g. the demo seed + real per-property
+ *  conflicts). `ReservedIndex` and `PropertyReservedIndex` share the same
+ *  shape, so either can be passed. */
+export function mergeReservedIndex(a: ReservedIndex, b: ReservedIndex): ReservedIndex {
+  const byDate = new Map<string, Set<string>>();
+  for (const src of [a, b])
+    for (const [iso, set] of src.byDate) {
+      const dst = byDate.get(iso) ?? new Set<string>();
+      for (const s of set) dst.add(s);
+      byDate.set(iso, dst);
+    }
+  const dayStatus = new Map<string, DayStatus>();
+  for (const [iso, set] of byDate) dayStatus.set(iso, set.size >= VIEWING_SLOTS.length ? "full" : "partial");
+  return { byDate, dayStatus };
+}

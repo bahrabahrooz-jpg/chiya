@@ -7,11 +7,13 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import { PropertyCard } from "@/components/real-estate";
+import { IconButton } from "@/components/ui/icon-button";
+import { PropertyCard, FavoriteButton } from "@/components/real-estate";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
 import { openAuth, useAuth } from "@/lib/auth";
+import { useSaveGate, type SavedProperty } from "@/lib/favorites";
 import { useProfile } from "@/lib/profile";
 import * as D from "./data";
 import type { AgentProfile, ProfileAgent } from "./data";
@@ -93,14 +95,8 @@ function Hero({ agent, intro, saved, onSave, onShare, onCall, onWhatsApp, onEmai
             <h1 className="pro-hero__name">{agent.name}</h1>
           </div>
           <div className="pro-hero__nameactions">
-            <button type="button" onClick={onSave} className={"pro-secbtn" + (saved ? " pro-secbtn--saved" : "")}>
-              <Icon name="heart" size={17} fill={saved ? "currentColor" : "none"} />
-              {saved ? t("profile.saved") : t("profile.save")}
-            </button>
-            <button type="button" className="pro-secbtn" onClick={onShare}>
-              <Icon name="share-2" size={17} />
-              {t("profile.share")}
-            </button>
+            <IconButton icon="share-2" label={t("profile.share")} variant="glass" className="cx-fav" onClick={onShare} />
+            <FavoriteButton active={saved} onToggle={onSave} />
           </div>
         </div>
 
@@ -221,6 +217,7 @@ const PROFILE_SORT_KEYS: Record<string, string> = {
   newest: "sort.newest",
   "price-desc": "sort.price-desc",
   "price-asc": "sort.price-asc",
+  recommended: "sort.recommended",
 };
 function SortMenu({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useLang();
@@ -256,6 +253,7 @@ function sortListings(list: D.ProListing[], sort: string) {
   if (sort === "price-desc") return arr.sort((a, b) => b.price - a.price);
   if (sort === "price-asc") return arr.sort((a, b) => a.price - b.price);
   if (sort === "newest") return arr.sort((a, b) => a.since - b.since);
+  if (sort === "recommended") return arr.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
   return arr; // "default" → natural order
 }
 
@@ -368,7 +366,6 @@ interface RevItem {
   avatar?: string;
   stars: number;
   when: string;
-  deal?: string;
   text: string;
   own?: boolean;
   pending?: boolean;
@@ -461,7 +458,6 @@ function Reviews({ agent, reviews }: { agent: ProfileAgent; reviews: D.Review[] 
         avatar: r.avatar,
         stars: r.stars,
         when: rel(r.daysAgo),
-        deal: r.dealKey ? t(r.dealKey, { title: r.dealTitle ?? "" }) : undefined,
         text: r.text,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -477,7 +473,7 @@ function Reviews({ agent, reviews }: { agent: ProfileAgent; reviews: D.Review[] 
      and is not counted toward the public rating (mirrors the admin queue). */
   const addReview = (stars: number, text: string) =>
     setItems((rs) => [
-      { id: "own-" + Date.now(), name: authorName, avatar: profile.avatar || undefined, stars, when: t("profile.reviewJustNow"), deal: t("profile.reviewYou"), text, own: true, pending: true },
+      { id: "own-" + Date.now(), name: authorName, avatar: profile.avatar || undefined, stars, when: t("profile.reviewJustNow"), text, own: true, pending: true },
       ...rs,
     ]);
   const updateReview = (id: string, stars: number, text: string) =>
@@ -537,11 +533,10 @@ function Reviews({ agent, reviews }: { agent: ProfileAgent; reviews: D.Review[] 
                     {r.name}
                     {r.pending && <span className="pro-revcard__pending">{t("profile.pendingBadge")}</span>}
                   </div>
-                  {r.deal && <div className="pro-revcard__deal">{r.deal}</div>}
+                  <Stars n={r.stars} />
                 </div>
                 <span className="pro-revcard__when">{r.when}</span>
               </div>
-              <Stars n={r.stars} />
               <p className="pro-revcard__text">{`“${r.text}”`}</p>
               {r.pending && <p className="pro-revcard__pendingnote">{t("profile.pendingNote")}</p>}
               {r.own && user && (
@@ -570,7 +565,6 @@ function Reviews({ agent, reviews }: { agent: ProfileAgent; reviews: D.Review[] 
         title={t("profile.deleteReviewTitle")}
         subtitle={t("profile.deleteReviewSub")}
         size="sm"
-        footerSpread
         footer={
           <>
             <Button hierarchy="secondary" onClick={() => setPendingDelete(null)}>
@@ -598,13 +592,24 @@ function Reviews({ agent, reviews }: { agent: ProfileAgent; reviews: D.Review[] 
 }
 
 export function ProfileApp({ profile }: { profile: AgentProfile }) {
-  const { t } = useLang();
   const { agent } = profile;
-  const [saved, setSaved] = useState(false);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [authOpen, setAuthOpen] = useState(false);
+  const { properties: savedProps, isAgentSaved, saveAgent, saveProperty } = useSaveGate();
 
-  const onSave = () => setAuthOpen(true);
+  const saved = isAgentSaved(agent.id);
+  const favorites = useMemo(() => savedProps.map((p) => p.id), [savedProps]);
+
+  // Signed in → toggle the shared store; signed out → the save gate opens login.
+  const onSave = () =>
+    saveAgent({
+      id: agent.id,
+      name: agent.name,
+      photo: agent.photo,
+      city: agent.city,
+      verified: agent.verified,
+      rating: agent.rating,
+      listings: agent.listings,
+      href: `/agents/${agent.id}`,
+    });
   const onShare = () => {
     if (typeof navigator !== "undefined" && navigator.share) {
       navigator.share({ title: agent.name + " · Chiya Estate", url: location.href }).catch(() => {});
@@ -619,8 +624,24 @@ export function ProfileApp({ profile }: { profile: AgentProfile }) {
   const onEmail = () => {
     window.location.href = "mailto:" + agent.email;
   };
-  const onFavorite = (id: string) =>
-    setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
+  const onFavorite = (id: string) => {
+    const l = profile.listings.find((x) => x.id === id);
+    if (!l) return;
+    const snap: SavedProperty = {
+      id: l.id,
+      image: l.cover,
+      price: "$" + l.price.toLocaleString("en-US"),
+      period: l.deal === "rent" ? "mo" : undefined,
+      title: l.title,
+      address: l.address,
+      beds: l.beds,
+      baths: l.baths,
+      area: l.area,
+      status: l.status,
+      href: `/property/${l.id}`,
+    };
+    saveProperty(snap);
+  };
 
   return (
     <>
@@ -639,34 +660,6 @@ export function ProfileApp({ profile }: { profile: AgentProfile }) {
           </div>
         </div>
       </main>
-
-      <Modal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        size="sm"
-        icon="heart"
-        title={t("agents.save.title")}
-        subtitle={`${t("agents.save.sub")} ${agent.name} ${t("agents.save.subEnd")}`}
-        footer={
-          <>
-            <Button hierarchy="secondary" onClick={() => setAuthOpen(false)}>
-              {t("agents.login")}
-            </Button>
-            <Button hierarchy="primary" onClick={() => { setSaved(true); setAuthOpen(false); }}>
-              {t("agents.createAccount")}
-            </Button>
-          </>
-        }
-      >
-        <ul className="agt-authlist">
-          {[t("agents.save.li1"), t("agents.save.li2"), t("agents.save.li3")].map((x) => (
-            <li key={x}>
-              <Icon name="check" size={16} />
-              {x}
-            </li>
-          ))}
-        </ul>
-      </Modal>
     </>
   );
 }

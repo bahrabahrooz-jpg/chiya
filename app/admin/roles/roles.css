@@ -461,3 +461,56 @@
 
   /* icon chooser (reuses .rb-iconpick__opt tiles) */
   .rb-create__icons { display: flex; flex-wrap: wrap; gap: 6px; }
+/* ============================================================
+   ROLES & PERMISSIONS V2 — additions layered over roles.css
+   (rb2- namespace; the shared rb- layout comes from ../roles)
+   ============================================================ */
+
+/* "V2 preview" pill beside the page title */
+.rb2-badge {
+  display: inline-block; vertical-align: 4px;
+  padding: 3px 10px; margin-inline-start: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-subtle); color: var(--text-brand);
+  border: 1px solid var(--green-200);
+  font-family: var(--font-sans); font-size: 12px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+}
+
+/* per-section scope bar (top of the permission groups well) */
+.rb2-scopebar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+  background: var(--surface-card);
+}
+.rb2-scopebar__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rb2-scopebar__label {
+  font-family: var(--font-sans); font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary);
+}
+.rb2-scopebar__hint { font-family: var(--font-sans); font-size: 12.5px; line-height: 1.4; color: var(--text-tertiary); }
+
+/* static tag for org-only sections (no scope choice to make) */
+.rb2-orgtag {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  height: 32px; padding: 0 12px; border-radius: var(--radius-pill);
+  background: var(--gray-100); color: var(--text-secondary);
+  font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.rb2-orgtag svg { color: var(--text-tertiary); }
+
+/* matrix: scoped-access superscript inside the ✓ pill */
+.rb2-cellsup {
+  font-family: var(--font-sans); font-size: 9px; font-weight: 800;
+  line-height: 1; margin-inline-start: 1px; text-transform: uppercase;
+}
+
+/* matrix view: staff + member surface cards stacked */
+.rb2-matrixstack { display: flex; flex-direction: column; gap: 24px; }
+
+/* delete modal: reassignment picker */
+.rb2-reassign { display: flex; flex-direction: column; gap: 8px; margin: 0 0 20px; }
+.rb2-reassign__label { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.rb2-reassign__select select { width: 100%; }
+.rb2-reassign__select { display: flex; }

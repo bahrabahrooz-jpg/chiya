@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtNum, localizeDigits, monthName, valueKey, weekdayName, popupLeft } from "@/lib/fmt";
+import { adminMenuRoot } from "../_shared/menu-portal";
 import {
   AGENTS,
   AGENT_IMG,
@@ -27,7 +28,10 @@ import {
   VIEWING_SLOTS,
   VIEWING_STATUS,
   buildPropertyReservedIndex,
+  buildReservedIndex,
   computeViewingKpis,
+  mergeReservedIndex,
+  seedReservedSlots,
   fmtDateLabel,
   fmtDateShort,
   fmtTimeLabel,
@@ -607,7 +611,11 @@ function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedA
   // mirroring the public "request a viewing" flow.
   const reserved = useMemo(() => {
     const prop = PROPERTIES.find((p) => p.id === form.property);
-    return buildPropertyReservedIndex(viewings, prop?.title ?? null, editViewing?.id);
+    const propIndex = buildPropertyReservedIndex(viewings, prop?.title ?? null, editViewing?.id);
+    // Blend the shared demo seed (same source the public "Request a viewing"
+    // calendar uses) so the admin calendar always surfaces reserved times too,
+    // on top of any genuine per-property conflicts.
+    return mergeReservedIndex(buildReservedIndex(seedReservedSlots()), propIndex);
   }, [viewings, form.property, editViewing]);
   const reservedTimes = form.date ? reserved.byDate.get(form.date) : undefined;
   // Changing the date (or property) can make the chosen time unavailable — drop
@@ -892,6 +900,12 @@ function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelet
       setPos({ top: r.bottom + 6, left: popupLeft(r, 204, isRtl(lang)) });
     };
     update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
   }, [open, lang]);
 
   const menu =
@@ -919,7 +933,7 @@ function RowActionMenu({ open, onToggle, onEdit, onView, onChangeStatus, onDelet
           </button>
         </div>
       </div>,
-      document.body,
+      adminMenuRoot(),
     );
 
   return (
@@ -1425,12 +1439,6 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
     });
   };
 
-  useEffect(() => {
-    if (!openMenu) return;
-    const close = () => setOpenMenu(null);
-    window.addEventListener("scroll", close, true);
-    return () => window.removeEventListener("scroll", close, true);
-  }, [openMenu]);
 
   const rows = useMemo(() => {
     const q = filters.q.trim().toLowerCase();

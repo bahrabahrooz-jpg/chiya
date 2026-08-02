@@ -5,20 +5,29 @@ import { SectionHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { useFavorites } from "@/lib/favorites";
-import { listings } from "@/lib/home-data";
+import { useSaveGate } from "@/lib/favorites";
+import { homeListings } from "@/lib/home-data";
+import { usePublicCatalog } from "@/lib/public-catalog";
+import { useSiteContent, pick } from "@/lib/site-content";
 
-/** Featured properties — the featured grid. */
+/** Featured properties — the featured grid, live from the admin catalog; the
+    band header copy is CMS-managed (edited at /admin/content). */
 export function FeaturedSection() {
   const router = useRouter();
-  const { t } = useLang();
-  const { isPropertySaved, toggleProperty } = useFavorites();
+  const { t, lang } = useLang();
+  const { isPropertySaved, saveProperty } = useSaveGate();
+  const { featuredProperties } = usePublicCatalog();
+  const { content } = useSiteContent();
+  const head = content.home.sections.feat2;
+  const listings = homeListings(featuredProperties);
+  // Pure curation — hide the whole band when nothing is featured.
+  if (listings.length === 0) return null;
   return (
     <section className="cxk-section">
       <SectionHeader
-        eyebrow={t("sec.feat2.eyebrow")}
-        title={t("sec.feat2.title")}
-        subtitle={t("sec.feat2.sub")}
+        eyebrow={pick(head.eyebrow, lang)}
+        title={pick(head.title, lang)}
+        subtitle={pick(head.sub, lang)}
         action={
           <Button hierarchy="tertiary" iconTrailing="arrow-right" onClick={() => router.push("/search")}>
             {t("sec.feat2.action")}
@@ -42,7 +51,7 @@ export function FeaturedSection() {
             photoCount={l.photoCount}
             favorite={isPropertySaved(l.id)}
             onFavorite={() =>
-              toggleProperty({
+              saveProperty({
                 id: l.id,
                 image: l.cover,
                 price: l.price,

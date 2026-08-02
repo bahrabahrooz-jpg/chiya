@@ -394,6 +394,12 @@
   .pp-prop__title {
     font-size: 14.5px; font-weight: 700; letter-spacing: -.005em; color: var(--text-primary);
     line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: flex; align-items: center; gap: 6px;
+  }
+  /* Featured indicator beside a property title (and the amber accent). */
+  .pp-featstar {
+    flex: none; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--warning-500);
   }
   .pp-prop__loc {
     display: inline-flex; align-items: center; gap: 7px; min-width: 0;

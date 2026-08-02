@@ -4,17 +4,25 @@ import Link from "next/link";
 import { SectionHeader } from "@/components/layout";
 import { Icon } from "@/components/ui/icon";
 import { useLang } from "@/lib/i18n";
-import { locations } from "@/lib/home-data";
+import { homeLocations } from "@/lib/home-data";
+import { publicCountByCity } from "@/lib/site-properties";
+import { usePublicCatalog } from "@/lib/public-catalog";
+import { useSiteContent, pick } from "@/lib/site-content";
 
-/** Popular locations — city cards into the search. */
+/** Popular locations — city cards into the search, live counts from the catalog;
+    the band header copy is CMS-managed (edited at /admin/content). */
 export function Locations() {
   const { t, lang } = useLang();
+  const { publicRecords } = usePublicCatalog();
+  const { content } = useSiteContent();
+  const head = content.home.sections.locs;
+  const locations = homeLocations(publicCountByCity(publicRecords));
   return (
     <section className="cxk-section">
       <SectionHeader
-        eyebrow={t("sec.locs.eyebrow")}
-        title={t("sec.locs.title")}
-        subtitle={t("sec.locs.sub")}
+        eyebrow={pick(head.eyebrow, lang)}
+        title={pick(head.title, lang)}
+        subtitle={pick(head.sub, lang)}
       />
       <div className="cxk-grid3">
         {locations.map((l) => (

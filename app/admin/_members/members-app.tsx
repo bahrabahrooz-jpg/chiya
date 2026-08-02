@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtNum, fmtDate as fmtDateI18n, popupLeft } from "@/lib/fmt";
+import { adminMenuRoot } from "../_shared/menu-portal";
 import { AddMemberModal } from "./add-member-modal";
 import {
   EMPTY_FILTERS,
@@ -103,6 +104,12 @@ function RowActions({
       setPos({ top: r.bottom + 6, left: popupLeft(r, 188, isRtl(lang)) });
     };
     update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
   }, [open, lang]);
 
   const menu =
@@ -130,7 +137,7 @@ function RowActions({
           </button>
         </div>
       </div>,
-      document.body,
+      adminMenuRoot(),
     );
 
   return (
@@ -660,13 +667,6 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
         : { variant: "success", icon: "circle-check", title: t("admin.members.toast.activatedTitle"), message: t("admin.members.toast.activatedMsg") },
     );
   };
-
-  useEffect(() => {
-    if (!openMenu) return;
-    const close = () => setOpenMenu(null);
-    window.addEventListener("scroll", close, true);
-    return () => window.removeEventListener("scroll", close, true);
-  }, [openMenu]);
 
   const rows = useMemo(() => {
     const q = filters.q.trim().toLowerCase();

@@ -14,12 +14,14 @@
  *      member just booked immediately shows as reserved) — see BookModal.
  */
 
-import { VIEWING_SLOTS, isViewingSlot, toISODate, type DayStatus } from "@/app/admin/_viewings/data";
+import { VIEWING_SLOTS, isViewingSlot, buildReservedIndex, seedReservedSlots, type DayStatus, type ReservedSlot, type ReservedIndex } from "@/app/admin/_viewings/data";
 
-/** The hourly slots a viewing can be booked into, as 24h "HH:MM" values.
- *  Re-exported from the shared viewings data module (single source of truth). */
-export { VIEWING_SLOTS };
-export type { DayStatus };
+/** The hourly slots a viewing can be booked into, plus the reserved-index
+ *  helpers and demo seed. Re-exported from the shared viewings data module
+ *  (single source of truth) so the public picker and admin/agent scheduler
+ *  build reservations identically. */
+export { VIEWING_SLOTS, buildReservedIndex, seedReservedSlots };
+export type { DayStatus, ReservedSlot, ReservedIndex };
 
 /** True when a "HH:MM" value is one of the offered viewing slots. */
 export const isSlot = isViewingSlot;
@@ -30,59 +32,4 @@ export function slotLabel(time: string): string {
   const ap = h < 12 ? "AM" : "PM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${ap}`;
-}
-
-export interface ReservedSlot {
-  date: string; // ISO yyyy-mm-dd
-  time: string; // "HH:MM"
-}
-
-/* Demo reservations expressed as day-offsets from "today" so a few always
-   fall on upcoming, selectable dates. Offset 4 fills every slot to show a
-   fully-booked (red, disabled) day. */
-const SEED: { offset: number; time: string }[] = [
-  { offset: 0, time: "10:00" },
-  { offset: 0, time: "14:00" },
-  { offset: 2, time: "09:00" },
-  { offset: 2, time: "15:00" },
-  { offset: 3, time: "11:00" },
-  { offset: 3, time: "16:00" },
-  ...VIEWING_SLOTS.map((time) => ({ offset: 4, time })), // fully booked day
-  { offset: 6, time: "13:00" },
-  { offset: 9, time: "10:00" },
-  { offset: 9, time: "16:00" },
-];
-
-/** Demo reserved slots, anchored to today (computed client-side). */
-export function seedReservedSlots(): ReservedSlot[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return SEED.map(({ offset, time }) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + offset);
-    return { date: toISODate(d), time };
-  });
-}
-
-export interface ReservedIndex {
-  /** Reserved slot times per ISO date. */
-  byDate: Map<string, Set<string>>;
-  /** Whether a date is partially or fully booked. */
-  dayStatus: Map<string, DayStatus>;
-}
-
-/** Group reserved slots by date and flag fully-booked days. */
-export function buildReservedIndex(slots: ReservedSlot[]): ReservedIndex {
-  const byDate = new Map<string, Set<string>>();
-  for (const { date, time } of slots) {
-    if (!isSlot(time)) continue;
-    let set = byDate.get(date);
-    if (!set) byDate.set(date, (set = new Set()));
-    set.add(time);
-  }
-  const dayStatus = new Map<string, DayStatus>();
-  for (const [date, set] of byDate) {
-    dayStatus.set(date, set.size >= VIEWING_SLOTS.length ? "full" : "partial");
-  }
-  return { byDate, dayStatus };
 }

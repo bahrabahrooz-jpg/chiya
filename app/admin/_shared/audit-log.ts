@@ -16,7 +16,7 @@ import { ADMIN } from "@/components/admin/admin-data";
    decoupled from display without provider plumbing.
    ------------------------------------------------------------------------- */
 
-export type AuditCategory = "review" | "property" | "member" | "agent" | "location" | "role";
+export type AuditCategory = "review" | "property" | "member" | "agent" | "location" | "role" | "settings";
 
 /** The kind of change an action made — the audit table's "Action" column. */
 export type AuditVerb = "create" | "update" | "delete" | "approve" | "reject";

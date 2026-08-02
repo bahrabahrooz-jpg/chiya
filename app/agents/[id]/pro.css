@@ -25,11 +25,11 @@
 .pro-hero__eyebrow { font-family: var(--font-sans); font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand-accent); margin-bottom: 14px; }
 .pro-hero__namerow { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px 32px; flex-wrap: wrap; }
 .pro-hero__nameblock { flex: 1 1 auto; min-width: 0; }
-.pro-hero__nameactions { display: flex; flex-direction: column; align-items: stretch; gap: 10px; flex-shrink: 0; }
-.pro-secbtn { display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 20px; min-width: 158px; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-control); font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: border-color .15s, box-shadow .15s, background-color .15s; }
-.pro-secbtn:hover { border-color: var(--border-strong); background: var(--gray-50); }
-.pro-secbtn svg { color: var(--text-brand-muted); flex: none; }
-.pro-secbtn--saved svg { color: var(--error-500); fill: var(--error-500); }
+.pro-hero__nameactions { display: flex; flex-direction: row; align-items: center; gap: 10px; flex-shrink: 0; }
+/* The circular save/share buttons (matching the property gallery) sit on a light
+   surface here rather than over a photo — add a subtle ring so they read. */
+.pro-hero__nameactions .cx-iconbtn.cx-fav { box-shadow: 0 0 0 1px var(--border-default); }
+.pro-hero__nameactions .cx-iconbtn.cx-fav:hover { box-shadow: 0 0 0 1px var(--border-strong); }
 .pro-hero__name { font-family: var(--font-display); font-weight: 600; font-size: 52px; line-height: 1.05; letter-spacing: -0.02em; color: var(--text-primary); margin: 0; text-wrap: balance; }
 .pro-hero__meta { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-top: 18px; }
 .pro-hero__metaitem { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-sans); font-size: 16px; font-weight: 500; color: var(--text-secondary); }
@@ -138,7 +138,7 @@
 .pro-revcard__head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .pro-revcard__id { flex: 1; min-width: 0; }
 .pro-revcard__name { font-family: var(--font-sans); font-size: 15px; font-weight: 700; color: var(--text-primary); }
-.pro-revcard__deal { font-family: var(--font-sans); font-size: 12.5px; color: var(--text-tertiary); margin-top: 2px; }
+.pro-revcard__id .pro-stars { margin-top: 4px; }
 .pro-revcard__when { font-family: var(--font-sans); font-size: 12.5px; color: var(--text-tertiary); flex: none; }
 .pro-revcard__text { font-family: var(--font-display); font-style: italic; font-size: 17px; line-height: 26px; color: var(--text-secondary); margin: 14px 0 0; text-wrap: pretty; }
 .pro-stars { display: inline-flex; align-items: center; gap: 2px; }

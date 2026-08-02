@@ -88,6 +88,7 @@
 .au-cat--agent { background: var(--success-50); color: var(--success-600); }
 .au-cat--location { background: var(--warning-50); color: var(--warning-700); }
 .au-cat--role { background: var(--surface-sunken); color: var(--text-primary); }
+.au-cat--settings { background: var(--surface-sunken); color: var(--text-secondary); }
 
 /* ---------- DETAILS (record acted on + what changed) ---------- */
 .au-col--details { min-width: 0; display: flex; flex-direction: column; gap: 3px; }

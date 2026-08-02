@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeSize } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
-import { useLang } from "@/lib/i18n";
-import { fmtCurrency, fmtNum, valueKey } from "@/lib/fmt";
+import { isRtl, useLang } from "@/lib/i18n";
+import { fmtNum, valueKey } from "@/lib/fmt";
 import {
   ASSIGNABLE_AGENTS,
   INIT_NOTES,
@@ -22,12 +22,22 @@ import {
   getViewingDetail,
   noteRoleLabel,
   type NoteItem,
+  type TLItem,
   type ViewingDetail,
 } from "./data";
 import { ScheduleModal } from "../_viewings/viewings-app";
 import { AGENTS, VIEWINGS, type ViewingRecord } from "../_viewings/data";
 
 const NOTE_MAX = 500;
+
+const ABBR_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/* 12-hour clock like "2:10 PM" to match the seeded audit-log timestamps. */
+function nowClock(d: Date): string {
+  const h = d.getHours();
+  const ap = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
+}
 
 /* ---------------- toast ---------------- */
 interface ToastData { id: number; tone?: string; icon: IconName; title: string; msg: string; out?: boolean }
@@ -452,7 +462,7 @@ function Overview({ v, status }: { v: ViewingDetail; status: string }) {
           {v.meetingLocation}
         </Fact>
         <Fact icon="alarm-clock" label="Time">
-          {v.time} – {v.endTime}
+          {v.time}
         </Fact>
         <Fact icon="calendar-plus" label={t("admin.vd.created")}>
           {v.created}
@@ -466,11 +476,7 @@ function Overview({ v, status }: { v: ViewingDetail; status: string }) {
 }
 
 function PropertyInfo({ p, onView }: { p: ViewingDetail["property"]; onView: () => void }) {
-  const { t, lang } = useLang();
-  const tOr = (key: string, fallback: string) => {
-    const out = t(key);
-    return out === key ? fallback : out;
-  };
+  const { t } = useLang();
   return (
     <SectionCard
       title={t("admin.vd.propertyInfo")}
@@ -482,35 +488,20 @@ function PropertyInfo({ p, onView }: { p: ViewingDetail["property"]; onView: () 
       }
     >
       <div className="vwd-prop">
-        <img className="vwd-prop__media" src={p.img} alt={p.name} loading="lazy" />
+        <img className="vwd-prop__thumb" src={p.img} alt={p.name} loading="lazy" />
         <div className="vwd-prop__body">
           <div className="vwd-prop__titlerow">
             <span className="vwd-prop__name">{p.name}</span>
-            <Badge variant={p.listing === "sale" ? "brand" : "info"} size="sm" icon={p.listing === "sale" ? "tag" : "key"}>
-              {p.listing === "sale" ? t("admin.vd.forSale") : t("admin.vd.forRent")}
-            </Badge>
           </div>
-          <span className="vwd-prop__loc">
-            <Icon name="map-pin" size={14} />
-            {p.location}
-          </span>
-          <div className="vwd-prop__grid">
-            <div className="vwd-prop__cell">
-              <span className="vwd-prop__celllabel">{t("admin.vd.propertyId")}</span>
-              <span className="vwd-prop__cellvalue vwd-prop__cellvalue--mono">{p.id}</span>
-            </div>
-            <div className="vwd-prop__cell">
-              <span className="vwd-prop__celllabel">{t("admin.props.filter.type")}</span>
-              <span className="vwd-prop__cellvalue">{tOr(valueKey("type", p.type), p.type)}</span>
-            </div>
-            <div className="vwd-prop__cell">
-              <span className="vwd-prop__celllabel">{t("admin.vd.listingType")}</span>
-              <span className="vwd-prop__cellvalue">{t(p.listing === "rent" ? "admin.pd.forRent" : "admin.pd.forSale")}</span>
-            </div>
-            <div className="vwd-prop__cell">
-              <span className="vwd-prop__celllabel">{t("admin.props.th.price")}</span>
-              <span className="vwd-prop__cellvalue vwd-prop__price">{fmtCurrency(lang, p.price) + (p.per ? t("admin.mp.perMo") : "")}</span>
-            </div>
+          <div className="vwd-prop__subrow">
+            <span className="vwd-prop__sub vwd-prop__sub--mono">
+              <Icon name="hash" size={13} />
+              {p.id}
+            </span>
+            <span className="vwd-prop__sub">
+              <Icon name="map-pin" size={13} />
+              {p.location}
+            </span>
           </div>
         </div>
       </div>
@@ -613,11 +604,11 @@ function AgentCard({ a, href, onReassign, agentSurface }: { a: ViewingDetail["ag
 }
 
 const TL_TONE: Record<string, string> = { brand: "#7F56D9", success: "#15B79E", info: "#2E90FA", warning: "#EAB308", error: "#F04438", gold: "#EE46BC", neutral: "#6172F3" };
-function Timeline() {
+function Timeline({ items }: { items: TLItem[] }) {
   const { t } = useLang();
   return (
     <ul className="pd-timeline">
-      {TIMELINE.map((it, i) => (
+      {items.map((it, i) => (
         <li className="pd-tl" key={i}>
           <span className="pd-tl__dot" style={{ background: TL_TONE[it.tone], boxShadow: `0 0 0 4px color-mix(in srgb, ${TL_TONE[it.tone]} 16%, transparent)` }}>
             <Icon name={it.icon} size={13} strokeWidth={2.2} />
@@ -761,21 +752,24 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
 }
 
 export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = {}) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const router = useRouter();
   const params = useParams();
   const id = String((params?.id as string) ?? "");
   const base = useMemo(() => getViewingDetail(id), [id]);
   const [v, setV] = useState<ViewingDetail>(base);
   const [status, setStatus] = useState(base.status);
+  const [audit, setAudit] = useState<TLItem[]>(TIMELINE);
   // reset when navigating to a different viewing
   const [prevId, setPrevId] = useState(id);
   if (prevId !== id) {
     setPrevId(id);
     setV(base);
     setStatus(base.status);
+    setAudit(TIMELINE);
   }
   const [modal, setModal] = useState<"status" | "delete" | "edit" | "agent" | null>(null);
+  const [tab, setTab] = useState<"overview" | "audit">("overview");
   const [notes, setNotes] = useState<NoteItem[]>(INIT_NOTES);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -791,6 +785,14 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
     return () => document.removeEventListener("mousedown", onClick);
   }, [moreOpen]);
 
+  // Prepend a fresh entry to the live audit log so the actions taken on this
+  // page (status, reassign, notes, reminders, edits) show up immediately.
+  const logAudit = (entry: Omit<TLItem, "time" | "by">) => {
+    const now = new Date();
+    const time = `${ABBR_MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()} · ${nowClock(now)}`;
+    setAudit((a) => [{ ...entry, time, by: "Rêbîn Kawa" }, ...a]);
+  };
+
   const editViewing = () => {
     setMoreOpen(false);
     setModal("edit");
@@ -805,35 +807,43 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
     status,
   };
 
+
   return (
     <>
       <header className="pd-head">
         <nav className="pd-breadcrumb" aria-label="Breadcrumb">
           <Link href="/admin/viewings">{t("admin.nav.viewings")}</Link>
-          <Icon name="chevron-right" size={14} />
-          <span aria-current="page">{t("admin.vd.crumb")}</span>
+          <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={14} />
+          <span aria-current="page">{v.id}</span>
         </nav>
 
-        <div className="pd-head__main">
-          <div className="pd-head__intro">
-            <div className="pd-head__titlerow">
-              <h1 className="pd-head__title">{v.id}</h1>
-              <StatusBadge status={status} />
+        <div className="vwd-panel">
+        <div className="vwd-hero">
+          <div className="vwd-hero__top">
+            <div className="vwd-hero__intro">
+              <div className="vwd-hero__titlerow">
+                <h1 className="vwd-hero__title">{v.property.name}</h1>
+                <StatusBadge status={status} />
+              </div>
+              <div className="vwd-hero__when">
+                <span className="vwd-hero__whenitem vwd-hero__whenitem--id">
+                  <Icon name="hash" size={14} />
+                  {v.id}
+                </span>
+                <span className="pd-head__sep" />
+                <span className="vwd-hero__whenitem">
+                  <Icon name="calendar" size={15} />
+                  {v.dateLong}
+                </span>
+                <span className="pd-head__sep" />
+                <span className="vwd-hero__whenitem">
+                  <Icon name="clock" size={15} />
+                  {v.time}
+                </span>
+              </div>
             </div>
-            <div className="pd-head__meta">
-              <span className="pd-head__metaitem pd-head__metaitem--accent">
-                <Icon name="calendar" size={14} />
-                {v.dateLong}
-              </span>
-              <span className="pd-head__sep" />
-              <span className="pd-head__metaitem pd-head__metaitem--accent">
-                <Icon name="clock" size={14} />
-                {v.time} – {v.endTime}
-              </span>
-            </div>
-          </div>
 
-          <div className="pd-head__actions">
+            <div className="pd-head__actions">
             <Button
               hierarchy="secondary"
               size="md"
@@ -860,6 +870,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
                     role="menuitem"
                     onClick={() => {
                       setMoreOpen(false);
+                      logAudit({ icon: "bell", tone: "gold", titleKey: "admin.vd.tl.reminderSent.title", descKey: "admin.vd.tl.reminderSent.desc", params: { name: v.member.name } });
                       pushToast({ tone: "default", icon: "send", title: t("admin.vd.toast.reminderTitle"), msg: t("admin.vd.toast.reminderMsg", { name: v.member.name }) });
                     }}
                   >
@@ -883,25 +894,50 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
               )}
             </div>
           </div>
+          </div>
         </div>
-      </header>
+        {/* end .vwd-hero */}
 
-      <div className="pd-grid">
+        <div className="vwd-segwrap">
+          <div className="vwd-seg" role="tablist" aria-label={t("admin.vd.crumb")}>
+            <button type="button" role="tab" aria-selected={tab === "overview"} className={"vwd-seg__btn" + (tab === "overview" ? " is-active" : "")} onClick={() => setTab("overview")}>
+              {t("admin.vd.tab.overview")}
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "audit"} className={"vwd-seg__btn" + (tab === "audit" ? " is-active" : "")} onClick={() => setTab("audit")}>
+              {t("admin.vd.tab.audit")}
+              <span className="vwd-seg__count">{audit.length}</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="vwd-panel__body">
+      {tab === "overview" ? (
+        <div className="pd-grid">
+          <div className="pd-grid__main">
+            <Overview v={v} status={status} />
+            <PropertyInfo p={v.property} onView={() => router.push(`/admin/properties/${v.property.id}`)} />
+            <NotesSection
+              notes={notes}
+              onAdd={(text) => {
+                setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: t("admin.vd.justNow"), kind: "note", text }, ...ns]);
+                logAudit({ icon: "message-square", tone: "neutral", titleKey: "admin.vd.tl.note.title", descKey: "admin.vd.tl.note.desc" });
+                pushToast({ tone: "brand", icon: "check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.vd.toast.noteAddedMsg") });
+              }}
+              onEdit={(i, text) => {
+                setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: t("admin.vd.editedJustNow") } : n)));
+                pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
+              }}
+              onDelete={(i) => setNoteToDelete(i)}
+            />
+          </div>
+
+          <aside className="pd-grid__aside">
+            <AgentCard a={v.agent} href={`/admin/agents/${v.agent.id}`} onReassign={() => setModal("agent")} agentSurface={agentSurface} />
+            <MemberCard m={v.member} />
+          </aside>
+        </div>
+      ) : (
         <div className="pd-grid__main">
-          <PropertyInfo p={v.property} onView={() => router.push(`/admin/properties/${v.property.id}`)} />
-          <Overview v={v} status={status} />
-          <NotesSection
-            notes={notes}
-            onAdd={(text) => {
-              setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: t("admin.vd.justNow"), kind: "note", text }, ...ns]);
-              pushToast({ tone: "brand", icon: "check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.vd.toast.noteAddedMsg") });
-            }}
-            onEdit={(i, text) => {
-              setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: t("admin.vd.editedJustNow") } : n)));
-              pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
-            }}
-            onDelete={(i) => setNoteToDelete(i)}
-          />
           <SectionCard
             title={t("admin.vd.timeline")}
             desc={t("admin.vd.timelineDesc")}
@@ -917,15 +953,13 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
               </Button>
             }
           >
-            <Timeline />
+            <Timeline items={audit} />
           </SectionCard>
         </div>
-
-        <aside className="pd-grid__aside">
-          <MemberCard m={v.member} />
-          <AgentCard a={v.agent} href={`/admin/agents/${v.agent.id}`} onReassign={() => setModal("agent")} agentSurface={agentSurface} />
-        </aside>
-      </div>
+      )}
+        </div>{/* end .vwd-panel__body */}
+        </div>{/* end .vwd-panel */}
+      </header>
 
       <ScheduleModal
         open={modal === "edit"}
@@ -942,6 +976,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
             member: { ...prev.member, name: rec.member },
             agent: { ...prev.agent, name: rec.agent },
           }));
+          logAudit({ icon: "pencil", tone: "info", titleKey: "admin.vd.tl.updated.title", descKey: "admin.vd.tl.updated.desc" });
           pushToast({ tone: "brand", icon: "badge-check", title: t("admin.vd.toast.updatedTitle"), msg: t("admin.vd.toast.updatedMsg", { id: v.id }) });
         }}
       />
@@ -950,10 +985,18 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
           current={status}
           onCancel={() => setModal(null)}
           onConfirm={(next) => {
+            const prev = status;
             setStatus(next);
             setModal(null);
             const meta = VIEW_STATUS_META[next] || {};
             const danger = next === "Cancelled" || next === "No Show";
+            logAudit({
+              icon: meta.icon || "refresh-cw",
+              tone: danger ? "error" : "brand",
+              titleKey: "admin.vd.tl.status.title",
+              descKey: "admin.vd.tl.status.desc",
+              params: { from: t(valueKey("status", prev)), to: t(valueKey("status", next)) },
+            });
             pushToast({ tone: danger ? "danger" : "brand", icon: meta.icon || "refresh-cw", title: t("admin.viewings.toast.statusTitle"), msg: t("admin.vd.toast.statusMsg", { id: v.id, status: t(valueKey("status", next)) }) });
           }}
         />
@@ -965,6 +1008,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
           onConfirm={(name) => {
             setV((prev) => ({ ...prev, agent: buildViewingAgent(name) }));
             setModal(null);
+            logAudit({ icon: "user-cog", tone: "brand", titleKey: "admin.vd.tl.reassigned.title", descKey: "admin.vd.tl.reassigned.desc", params: { name } });
             pushToast({ tone: "brand", icon: "user-check", title: t("admin.vd.toast.agentTitle"), msg: t("admin.vd.toast.agentMsg", { name }) });
           }}
         />

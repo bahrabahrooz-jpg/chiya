@@ -5,15 +5,13 @@ import { Breadcrumb } from "@/components/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/badge";
-import { Modal } from "@/components/ui/modal";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { useLang } from "@/lib/i18n";
-import { useAuth } from "@/lib/auth";
-import { useFavorites } from "@/lib/favorites";
+import { useSaveGate } from "@/lib/favorites";
 import { AgentCard } from "@/components/real-estate";
 import { AgentFiltersPanel } from "./agent-filters";
 import {
-  agents,
+  deriveDirAgents,
   sortOptions,
   experienceMatch,
   countAgentFilters,
@@ -21,6 +19,7 @@ import {
   type DirAgent,
   type AgentFilters,
 } from "./data";
+import { usePublicCatalog } from "@/lib/public-catalog";
 
 const PER_PAGE = 12;
 
@@ -95,14 +94,14 @@ function SortMenu({ value, onChange }: { value: string; onChange: (v: string) =>
 
 export function AgentsApp() {
   const { t } = useLang();
+  // Live directory from the admin catalog (reflects verify/feature/status edits
+  // without a reload). Falls back to the seed when there's no stored data.
+  const { siteAgents } = usePublicCatalog();
+  const agents = useMemo(() => deriveDirAgents(siteAgents), [siteAgents]);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AgentFilters>(emptyAgentFilters);
   const [sort, setSort] = useState("default");
-  const { user } = useAuth();
-  const { isAgentSaved, toggleAgent } = useFavorites();
-  const [saved, setSaved] = useState<string[]>([]);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [pendingAgent, setPendingAgent] = useState<DirAgent | null>(null);
+  const { isAgentSaved, saveAgent } = useSaveGate();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [page, setPage] = useState(1);
   const asideScrollRef = useRef<HTMLDivElement>(null);
@@ -151,7 +150,7 @@ export function AgentsApp() {
     if (filters.experience) list = list.filter((a) => experienceMatch(a.experience, filters.experience));
     if (q) list = list.filter((a) => `${a.name} ${a.city}`.toLowerCase().includes(q));
     return sortAgents(list, sort);
-  }, [query, filters, sort]);
+  }, [agents, query, filters, sort]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PER_PAGE));
 
@@ -173,25 +172,19 @@ export function AgentsApp() {
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
 
-  const onSave = (agent: DirAgent) => {
-    // Signed in → save straight to the shared store (powers the Saved page).
-    // Signed out → keep the account-creation gate from the export.
-    if (user) {
-      toggleAgent({
-        id: agent.id,
-        name: agent.name,
-        photo: agent.photo,
-        city: agent.city,
-        verified: agent.verified,
-        rating: agent.rating,
-        listings: agent.listings,
-        href: `/agents/${agent.id}`,
-      });
-      return;
-    }
-    setPendingAgent(agent);
-    setAuthOpen(true);
-  };
+  // Signed in → save to the shared store (powers the Saved page).
+  // Signed out → the shared save gate opens the site-wide login modal.
+  const onSave = (agent: DirAgent) =>
+    saveAgent({
+      id: agent.id,
+      name: agent.name,
+      photo: agent.photo,
+      city: agent.city,
+      verified: agent.verified,
+      rating: agent.rating,
+      listings: agent.listings,
+      href: `/agents/${agent.id}`,
+    });
 
   // Active-filter chips (filters only — never the free-text search query).
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
@@ -285,7 +278,7 @@ export function AgentsApp() {
                       verified={a.verified}
                       rating={a.rating}
                       listings={a.listings}
-                      favorite={user ? isAgentSaved(a.id) : saved.includes(a.id)}
+                      favorite={isAgentSaved(a.id)}
                       onFavorite={() => onSave(a)}
                       href={`/agents/${a.id}`}
                     />
@@ -335,38 +328,6 @@ export function AgentsApp() {
           </div>
         </div>
       </main>
-
-      <Modal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        size="sm"
-        icon={pendingAgent ? "heart" : "user-round"}
-        title={pendingAgent ? t("agents.save.title") : t("agents.save.welcome")}
-        subtitle={
-          pendingAgent
-            ? `${t("agents.save.sub")} ${pendingAgent.name} ${t("agents.save.subEnd")}`
-            : t("agents.save.subGeneric")
-        }
-        footer={
-          <>
-            <Button hierarchy="secondary" onClick={() => setAuthOpen(false)}>
-              {t("agents.login")}
-            </Button>
-            <Button hierarchy="primary" onClick={() => { if (pendingAgent) setSaved((s) => (s.includes(pendingAgent.id) ? s : [...s, pendingAgent.id])); setAuthOpen(false); }}>
-              {t("agents.createAccount")}
-            </Button>
-          </>
-        }
-      >
-        <ul className="agt-authlist">
-          {[t("agents.save.li1"), t("agents.save.li2"), t("agents.save.li3")].map((li) => (
-            <li key={li}>
-              <Icon name="check" size={16} />
-              {li}
-            </li>
-          ))}
-        </ul>
-      </Modal>
 
       {/* mobile filter drawer */}
       <div className={"srp-drawer" + (drawerOpen ? " srp-drawer--open" : "")}>

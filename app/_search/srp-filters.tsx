@@ -199,12 +199,14 @@ export interface SrpFiltersProps {
   on: FilterHandlers;
   activeCount: number;
   onClearAll: () => void;
+  /** Live listings from the SRP (for the per-type counts). */
+  listings: D.SrpListing[];
 }
 
-export function SrpFilters({ deal, f, on, activeCount, onClearAll }: SrpFiltersProps) {
+export function SrpFilters({ deal, f, on, activeCount, onClearAll, listings }: SrpFiltersProps) {
   const { t } = useLang();
   const typeCounts: Record<string, number> = {};
-  D.listings.forEach((l) => {
+  listings.forEach((l) => {
     if (l.deal === deal) typeCounts[l.type] = (typeCounts[l.type] || 0) + 1;
   });
   const priceLabel = deal === "rent" ? t("srp.sec.monthlyRent") : t("srp.sec.priceRange");

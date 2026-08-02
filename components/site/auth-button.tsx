@@ -51,7 +51,7 @@ export function AuthButton({ size = "sm", fullWidth }: AuthButtonProps) {
     { icon: "heart", label: t("acct.savedProps"), onClick: go("/saved") },
     { icon: "calendar-check", label: t("acct.viewings"), onClick: go("/viewings") },
     { icon: "bell", label: t("acct.notifications"), onClick: go("/notifications") },
-    { icon: "settings", label: t("acct.settings"), onClick: soon("acct.toast.settings") },
+    { icon: "lock", label: t("acct.changePassword"), onClick: go("/account/change-password") },
   ];
 
   return (

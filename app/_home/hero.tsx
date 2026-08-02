@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { useLang } from "@/lib/i18n";
+import { useSiteContent, pick } from "@/lib/site-content";
 import "./home.css";
 
 type T = (key: string) => string;
@@ -211,7 +212,8 @@ function HeroSearch() {
 
 /** Hero — full-bleed villa photograph, headline, and the unified search bar. */
 export function Hero() {
-  const { t } = useLang();
+  const { lang } = useLang();
+  const { content } = useSiteContent();
   return (
     <section className="cxhero">
       <div className="cxhero__media">
@@ -219,8 +221,8 @@ export function Hero() {
         <div className="cxhero__grad" />
       </div>
       <div className="cxhero__inner">
-        <h1 className="cxhero__title">{t("hero.title")}</h1>
-        <p className="cxhero__sub">{t("hero.sub")}</p>
+        <h1 className="cxhero__title">{pick(content.home.heroTitle, lang)}</h1>
+        <p className="cxhero__sub">{pick(content.home.heroSub, lang)}</p>
         <HeroSearch />
       </div>
     </section>

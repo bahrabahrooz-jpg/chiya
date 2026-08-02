@@ -66,6 +66,7 @@
   align-items: center;
   text-align: center;
   gap: 8px;
+  margin-top: 24px;
   padding: 72px 24px;
   background: var(--surface-card);
   border: 1px dashed var(--border-default);
@@ -194,7 +195,7 @@
 /* ── My Viewings ──────────────────────────────────────────────────────────────
    Mirrors the mobile app's viewing cards: thumb + "Requested" pill + title/addr
    with a cancel ✕, a tinted date/time row, then the agent line.                 */
-.acc-viewlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+.acc-viewlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; margin-top: 24px; }
 .acc-view {
   display: flex;
   flex-direction: column;
@@ -381,6 +382,31 @@
 .acc-menu__item--danger svg { color: var(--text-error); }
 .acc-menu__item--danger:hover { background: var(--red-50, #fef2f2); }
 
+/* ── Change password ──────────────────────────────────────────────────────────
+   Reached from the header avatar dropdown. Reuses the exact login / forgot-flow
+   field pattern (auth-modal.css): masked inputs with a leading lock icon and a
+   trailing eye toggle, a live strength meter (.cxa-strength) and a requirements
+   checklist (.cxa-reqs). Only the reqs title wrapper and the footer are bespoke. */
+/* Card wrapper — matches the My Profile panel (.acc-prof3) so the fields read as
+   recessed inputs on a raised card rather than lying flat on the page. */
+.cxa-form {
+  margin-top: 24px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-2xl, 18px);
+  box-shadow: var(--shadow-xs);
+  padding: 24px;
+}
+.cxa-reqs-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.cxa-reqs-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+
+.acc-chpw__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+}
+
 @media (max-width: 640px) {
   .acc-prof3__head { padding: 18px; }
   .acc-prof3__actions { width: 100%; }
@@ -388,4 +414,7 @@
   .acc-prof3__grid { grid-template-columns: 1fr; padding: 18px; }
   .acc-seg { display: flex; width: 100%; }
   .acc-seg__btn { flex: 1; justify-content: center; }
+  .cxa-form { padding: 18px; }
+  .acc-chpw__foot { flex-direction: column-reverse; }
+  .acc-chpw__foot .cx-btn { width: 100%; }
 }

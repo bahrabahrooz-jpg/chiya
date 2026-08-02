@@ -534,6 +534,7 @@
   .pp-modal__icon--status, .pp-modal__icon--assign {
     background: var(--brand-subtle); border-color: var(--green-100); color: var(--text-brand);
   }
+  .pp-modal__icon--warn { background: var(--error-50); border-color: var(--error-100); color: var(--error-600); }
   .pp-modal__title {
     font-family: var(--font-display); font-weight: 600; font-size: 20px;
     letter-spacing: -.015em; line-height: 1.2; color: var(--text-primary); margin: 0 0 8px;
@@ -648,6 +649,8 @@
   .pp-modal__confirm:hover:not(:disabled) { background: var(--brand-primary-hover); }
   .pp-modal__confirm:disabled { opacity: .38; cursor: not-allowed; }
   .pp-modal__confirm:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .pp-modal__confirm--warn { background: var(--error-600); }
+  .pp-modal__confirm--warn:hover:not(:disabled) { background: var(--error-700); }
 
   /* toast */
   .pp-toaster {
@@ -709,4 +712,76 @@
     .pp-toast { transition: opacity .2s ease; transform: none; }
     .pp-toast.is-in, .pp-toast.is-out { transform: none; }
     .pp-toast.is-in .pp-toast__progress { animation: none; }
+  }
+
+  /* ============================================================
+     UNIFIED DETAIL PANEL + SEGMENTED TABS  (vwd- namespace)
+     Ported from the Viewing / Agent Details pages so property detail
+     shares the same panel + tabbed chrome.
+     ============================================================ */
+  .vwd-panel {
+    position: relative; overflow: hidden;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+  }
+
+  /* White hero region at the top of the panel (holds the identity + actions). */
+  .vwd-hero { position: relative; padding: 22px 24px; }
+
+  .vwd-segwrap {
+    padding: 16px 24px; background: var(--gray-25);
+    border-top: 1px solid var(--border-subtle);
+  }
+  .vwd-seg {
+    display: flex; padding: 3px; gap: 2px;
+    background: var(--gray-100); border-radius: var(--radius-control);
+    /* Span only the main column, aligned with the first section's right edge —
+       the 366px aside (+22px grid gap) is left clear on the Overview tab. */
+    width: calc(100% - 366px - 22px);
+  }
+  @media (max-width: 1180px) { .vwd-seg { width: 100%; } }
+  .vwd-seg__btn {
+    flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 38px; padding: 0 16px; border: none; background: transparent; cursor: pointer;
+    border-radius: 6px; font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    color: var(--text-tertiary); transition: background-color .15s, color .15s, box-shadow .15s;
+  }
+  .vwd-seg__btn:hover { color: var(--text-secondary); }
+  .vwd-seg__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .vwd-seg__btn.is-active {
+    background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs);
+  }
+  .vwd-seg__count {
+    display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+    border-radius: var(--radius-pill); background: var(--gray-200); color: var(--text-tertiary);
+    font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .vwd-seg__btn.is-active .vwd-seg__count { background: var(--brand-subtle); color: var(--text-brand); }
+
+  /* Padded region holding the tab content; sections stack full-width. */
+  .vwd-panel__body {
+    display: flex; flex-direction: column; gap: 22px;
+    padding: 22px 24px 24px; background: var(--gray-25);
+  }
+
+  /* Cards inside the panel become flush regions (no nested card chrome). */
+  .vwd-panel__body .pd-card {
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md); box-shadow: none;
+  }
+
+  /* Two-column grid for the Overview tab (main + owner/agent aside), mirroring
+     the other detail pages. Only Overview renders .pd-grid; the other tabs
+     stay full-width. */
+  .vwd-panel__body .pd-grid {
+    display: grid; grid-template-columns: minmax(0, 1fr) 366px; gap: 22px; align-items: start;
+  }
+  .vwd-panel__body .pd-grid__main { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+  .vwd-panel__body .pd-grid__aside { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+  @media (max-width: 1180px) {
+    .vwd-panel__body .pd-grid { grid-template-columns: 1fr; align-items: start; }
+  }
+
+  @media (max-width: 640px) {
+    .vwd-seg { flex-wrap: wrap; }
+    .vwd-seg__btn { flex: 1 1 40%; }
   }

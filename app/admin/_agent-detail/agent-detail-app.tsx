@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
@@ -34,7 +34,6 @@ import {
   type MemberRow,
   type NoteItem,
   type AvViewing,
-  type Review,
   type TLItem,
 } from "./data";
 import { EditAgentModal, type AgentEditSeed } from "../_shared/agent-edit-modal";
@@ -68,7 +67,15 @@ function ProfToast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => vo
     const raf = requestAnimationFrame(() => setVisible(true));
     return () => cancelAnimationFrame(raf);
   }, []);
-  const iconCls = "pp-toast__icon" + (toast.tone === "danger" ? " pp-toast__icon--danger" : toast.tone === "brand" ? " pp-toast__icon--brand" : "");
+  // Tone → icon treatment, mirroring the agents-table toaster: warn shares the
+  // red danger icon there, success is the base green, brand is the brand accent.
+  const toneCls =
+    toast.tone === "danger" || toast.tone === "warn"
+      ? " pp-toast__icon--danger"
+      : toast.tone === "brand"
+        ? " pp-toast__icon--brand"
+        : "";
+  const iconCls = "pp-toast__icon" + toneCls;
   return (
     <div className={`pp-toast${toast.tone === "danger" ? " pp-toast--danger" : ""}${visible && !toast.out ? " is-in" : ""}${toast.out ? " is-out" : ""}`}>
       <span className={iconCls}>
@@ -187,6 +194,78 @@ function DeleteAgentModal({ agent, onCancel, onConfirm }: { agent: AgentDetail; 
           <button type="button" className="pp-modal__delete" onClick={onConfirm}>
             <Icon name="trash-2" size={15} />
             {t("admin.ad.deleteConfirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VerifyAgentModal({ verified, onCancel, onConfirm }: { verified: boolean; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  // verified → the action revokes; otherwise it verifies.
+  const copy = verified
+    ? { icon: "shield-x" as IconName, iconCls: " pp-modal__icon--warn", title: t("admin.agents.revokeVerification"), body: t("admin.agents.revokeBody"), cta: t("admin.agents.revokeVerification"), ctaCls: " pp-modal__confirm--warn" }
+    : { icon: "badge-check" as IconName, iconCls: " pp-modal__icon--status", title: t("admin.agents.verifyAgent"), body: t("admin.agents.verifyBody"), cta: t("admin.agents.verifyAgent"), ctaCls: "" };
+  return (
+    <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="pp-modal" role="dialog" aria-modal="true" aria-labelledby="ad-verify-title">
+        <div className={"pp-modal__icon" + copy.iconCls}>
+          <Icon name={copy.icon} size={24} strokeWidth={1.8} />
+        </div>
+        <h2 className="pp-modal__title" id="ad-verify-title">
+          {copy.title}
+        </h2>
+        <p className="pp-modal__body">{copy.body}</p>
+        <div className="pp-modal__actions">
+          <button type="button" className="pp-modal__cancel" onClick={onCancel}>
+            {t("admin.common.cancel")}
+          </button>
+          <button type="button" className={"pp-modal__confirm" + copy.ctaCls} onClick={onConfirm}>
+            {copy.cta}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeatureAgentModal({ featured, onCancel, onConfirm }: { featured: boolean; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  // featured → the action removes it; otherwise it features.
+  const copy = featured
+    ? { icon: "sparkle" as IconName, iconCls: " pp-modal__icon--warn", title: t("admin.agents.unfeature"), body: t("admin.agents.unfeatureBody"), cta: t("admin.agents.unfeature"), ctaCls: " pp-modal__confirm--warn" }
+    : { icon: "sparkles" as IconName, iconCls: " pp-modal__icon--status", title: t("admin.agents.feature"), body: t("admin.agents.featureBody"), cta: t("admin.agents.feature"), ctaCls: "" };
+  return (
+    <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="pp-modal" role="dialog" aria-modal="true" aria-labelledby="ad-feature-title">
+        <div className={"pp-modal__icon" + copy.iconCls}>
+          <Icon name={copy.icon} size={24} strokeWidth={1.8} />
+        </div>
+        <h2 className="pp-modal__title" id="ad-feature-title">
+          {copy.title}
+        </h2>
+        <p className="pp-modal__body">{copy.body}</p>
+        <div className="pp-modal__actions">
+          <button type="button" className="pp-modal__cancel" onClick={onCancel}>
+            {t("admin.common.cancel")}
+          </button>
+          <button type="button" className={"pp-modal__confirm" + copy.ctaCls} onClick={onConfirm}>
+            {copy.cta}
           </button>
         </div>
       </div>
@@ -651,19 +730,12 @@ function ViewingsTable({ rows }: { rows: AvViewing[] }) {
   );
 }
 
-function Stars({ n, size }: { n: number; size?: number }) {
-  return (
-    <span className="adr-card__stars">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Icon key={i} name="star" size={size || 15} strokeWidth={1.6} style={{ color: i <= n ? "var(--brand-accent)" : "var(--gray-300)", fill: i <= n ? "var(--brand-accent)" : "transparent" }} />
-      ))}
-    </span>
-  );
-}
-
-function Reviews({ agent, reviews, bars }: { agent: AgentDetail; reviews: Review[]; bars: { star: number; pct: number }[] }) {
+/* Summary-only reviews block for the Basic-tab aside: average, star row, total
+   count and the 1–5★ distribution bars. Individual comments live on the
+   dedicated /admin/agents/[id]/reviews screen, not here. */
+function ReviewsSummary({ rating, reviewCount, bars }: { rating: number; reviewCount: number; bars: { star: number; pct: number }[] }) {
   const { t, lang } = useLang();
-  if (!reviews.length) {
+  if (!reviewCount) {
     return (
       <div className="pd-noagent">
         <span className="pd-noagent__art">
@@ -674,46 +746,26 @@ function Reviews({ agent, reviews, bars }: { agent: AgentDetail; reviews: Review
     );
   }
   return (
-    <div className="adr">
-      <div className="adr__summary">
-        <div className="adr__big">{localizeDigits(lang, String(agent.rating))}</div>
-        <span className="adr__stars">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Icon key={i} name="star" size={17} strokeWidth={1.6} className={i <= Math.round(agent.rating) ? "" : "is-off"} style={{ fill: i <= Math.round(agent.rating) ? "var(--brand-accent)" : "transparent" }} />
-          ))}
-        </span>
-        <div className="adr__count">{t("admin.ad.basedOn", { count: fmtNum(lang, agent.reviews) })}</div>
-        <div className="adr__bars">
-          {bars.map((b) => (
-            <div className="adr__barrow" key={b.star}>
-              <span className="adr__barlbl">
-                {b.star}
-                <Icon name="star" size={11} style={{ fill: "var(--brand-accent)" }} />
-              </span>
-              <span className="adr__bartrack">
-                <span className="adr__barfill" style={{ width: b.pct + "%" }} />
-              </span>
-              <span className="adr__barpct">{b.pct}%</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="adr__list">
-        {reviews.map((r, i) => (
-          <article className="adr-card" key={i}>
-            <div className="adr-card__head">
-              <Avatar src={r.img || undefined} name={r.name} size="md" />
-              <div className="adr-card__id">
-                <div className="adr-card__name">{r.name}</div>
-                {r.deal && <div className="adr-card__deal">{t(r.deal.key, { title: r.deal.title })}</div>}
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <Stars n={r.stars} size={14} />
-                <div className="adr-card__when">{fmtStamp(lang, r.when)}</div>
-              </div>
-            </div>
-            <p className="adr-card__text">“{r.text}”</p>
-          </article>
+    <div className="adr__summary adr__summary--solo">
+      <div className="adr__big">{localizeDigits(lang, String(rating))}</div>
+      <span className="adr__stars">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Icon key={i} name="star" size={17} strokeWidth={1.6} className={i <= Math.round(rating) ? "" : "is-off"} style={{ fill: i <= Math.round(rating) ? "var(--rating-star)" : "transparent" }} />
+        ))}
+      </span>
+      <div className="adr__count">{t("admin.ad.basedOn", { count: fmtNum(lang, reviewCount) })}</div>
+      <div className="adr__bars">
+        {bars.map((b) => (
+          <div className="adr__barrow" key={b.star}>
+            <span className="adr__barlbl">
+              {b.star}
+              <Icon name="star" size={11} style={{ fill: "var(--rating-star)" }} />
+            </span>
+            <span className="adr__bartrack">
+              <span className="adr__barfill" style={{ width: b.pct + "%" }} />
+            </span>
+            <span className="adr__barpct">{b.pct}%</span>
+          </div>
         ))}
       </div>
     </div>
@@ -874,7 +926,8 @@ function NotesSection({ notes, onAdd, onEdit, onDelete }: { notes: NoteItem[]; o
 
 export function AgentDetailApp() {
   const { t, lang } = useLang();
-  const { agents, members, properties } = useProperties();
+  const { agents, members, properties, updateAgent } = useProperties();
+  const router = useRouter();
   const params = useParams();
   const id = String((params?.id as string) ?? "");
   // Unknown ids fall back to the first agent on the roster so the page always
@@ -885,18 +938,22 @@ export function AgentDetailApp() {
   const listings = useMemo(() => buildListings(properties, catalogAgent.name), [catalogAgent, properties]);
   const agentMembers = useMemo(() => buildAgentMembers(properties, members, catalogAgent.name), [catalogAgent, properties, members]);
   const agentViewings = useMemo(() => buildAgentViewings(properties, catalogAgent.name), [catalogAgent, properties]);
-  const { reviews: agentReviews, bars: ratingBars } = useMemo(() => buildAgentReviews(properties, catalogAgent.name), [catalogAgent, properties]);
+  const { bars: ratingBars } = useMemo(() => buildAgentReviews(properties, catalogAgent.name), [catalogAgent, properties]);
   const timeline = useMemo(() => buildAgentTimeline(properties, catalogAgent.name), [catalogAgent, properties]);
 
   const [a, setA] = useState<AgentDetail>(resolved);
   const [status, setStatus] = useState(resolved.status);
-  const [modal, setModal] = useState<"status" | "delete" | "edit" | null>(null);
+  const [featured, setFeatured] = useState(!!catalogAgent.featured);
+  const [modal, setModal] = useState<"status" | "verify" | "feature" | "delete" | "edit" | null>(null);
+  const [tab, setTab] = useState<"basic" | "portfolio" | "viewings" | "audit">("basic");
   // reset editable state when navigating to a different agent
   const [prevId, setPrevId] = useState(id);
   if (prevId !== id) {
     setPrevId(id);
     setA(resolved);
     setStatus(resolved.status);
+    setFeatured(!!catalogAgent.featured);
+    setTab("basic");
   }
   const [moreOpen, setMoreOpen] = useState(false);
   const [notes, setNotes] = useState<NoteItem[]>(INIT_NOTES);
@@ -933,7 +990,10 @@ export function AgentDetailApp() {
           <Icon name="chevron-right" size={14} />
           <span aria-current="page">{a.name}</span>
         </nav>
+      </header>
 
+      <div className="vwd-panel">
+        <div className="vwd-hero">
         <div className="pd-head__main">
           <div className="pd-head__lead">
             <Avatar src={a.img} name={a.name} size="xl" verified />
@@ -987,11 +1047,23 @@ export function AgentDetailApp() {
                     role="menuitem"
                     onClick={() => {
                       setMoreOpen(false);
-                      pushToast({ tone: "brand", icon: "badge-check", title: t("admin.ad.toast.verifyTitle"), msg: t("admin.ad.toast.verifyMsg", { name: a.name }) });
+                      setModal("verify");
                     }}
                   >
-                    <Icon name="shield-check" size={17} />
+                    <Icon name={a.verification === "Verified" ? "shield-x" : "shield-check"} size={17} />
                     {t("admin.ad.manageVerification")}
+                  </button>
+                  <button
+                    type="button"
+                    className="pd-moreitem"
+                    role="menuitem"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      setModal("feature");
+                    }}
+                  >
+                    <Icon name={featured ? "sparkle" : "sparkles"} size={17} />
+                    {featured ? t("admin.agents.unfeature") : t("admin.agents.feature")}
                   </button>
                   <div className="pd-moremenu__sep" />
                   <button
@@ -1011,141 +1083,179 @@ export function AgentDetailApp() {
             </div>
           </div>
         </div>
-      </header>
-
-      <section className="pd-card" style={{ marginBottom: 22 }}>
-        <ProfileHero agent={a} pushToast={pushToast} />
-      </section>
-
-      <SectionCard title={t("admin.ad.perfSummary")} desc={t("admin.ad.perfSummaryDesc")}>
-        <div className="adk">
-          {kpis.map((k) => (
-            <StatCard key={k.key} label={t(k.labelKey)} value={k.percent ? fmtPercent(lang, k.value) : fmtNum(lang, k.value)} icon={k.icon} tone={k.tone} sub={t(k.subKey)} />
-          ))}
         </div>
-      </SectionCard>
+        {/* end .vwd-hero */}
 
-      <div style={{ height: 22 }} />
+        <div className="vwd-segwrap">
+          <div className="vwd-seg" role="tablist" aria-label={t("admin.nav.agents")}>
+            <button type="button" role="tab" aria-selected={tab === "basic"} className={"vwd-seg__btn" + (tab === "basic" ? " is-active" : "")} onClick={() => setTab("basic")}>
+              {t("admin.pd.basic")}
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "portfolio"} className={"vwd-seg__btn" + (tab === "portfolio" ? " is-active" : "")} onClick={() => setTab("portfolio")}>
+              {t("admin.ad.listings")}
+              <span className="vwd-seg__count">{fmtNum(lang, listings.length)}</span>
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "viewings"} className={"vwd-seg__btn" + (tab === "viewings" ? " is-active" : "")} onClick={() => setTab("viewings")}>
+              {t("admin.nav.viewings")}
+              <span className="vwd-seg__count">{fmtNum(lang, agentViewings.length)}</span>
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "audit"} className={"vwd-seg__btn" + (tab === "audit" ? " is-active" : "")} onClick={() => setTab("audit")}>
+              {t("admin.vd.tab.audit")}
+              <span className="vwd-seg__count">{fmtNum(lang, timeline.length)}</span>
+            </button>
+          </div>
+        </div>
 
-      <div className="pd-grid__main">
-        <SectionCard
-          title={t("admin.ad.listings")}
-          count={listings.length}
-          desc={t("admin.ad.listingsDesc")}
-          action={
-            <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/properties" className="agt-linkbtn">
-              {t("admin.common.viewAll")}
-            </Button>
-          }
-          flush
-        >
-          {listings.length > 0 ? (
-            <ListingsTable rows={listings} />
-          ) : (
-            <div className="pd-noagent">
-              <span className="pd-noagent__art">
-                <Icon name="building-2" size={24} strokeWidth={1.6} />
-              </span>
-              <p>{t("admin.ad.listingsEmpty")}</p>
+        <div className="vwd-panel__body">
+          {tab === "basic" && (
+            <div className="pd-grid">
+              <div className="pd-grid__main">
+                <section className="pd-card">
+                  <ProfileHero agent={a} pushToast={pushToast} />
+                </section>
+
+                <SectionCard title={t("admin.ad.perfSummary")} desc={t("admin.ad.perfSummaryDesc")}>
+                  <div className="adk">
+                    {kpis.map((k) => (
+                      <StatCard key={k.key} label={t(k.labelKey)} value={k.percent ? fmtPercent(lang, k.value) : fmtNum(lang, k.value)} icon={k.icon} tone={k.tone} sub={t(k.subKey)} />
+                    ))}
+                  </div>
+                </SectionCard>
+
+                <NotesSection
+                  notes={notes}
+                  onAdd={(text) => {
+                    setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: "@time.now", kind: "note", text }, ...ns]);
+                    pushToast({ tone: "brand", icon: "check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.ad.toast.noteAddedMsg") });
+                  }}
+                  onEdit={(i, text) => {
+                    setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: "@admin.vd.editedJustNow" } : n)));
+                    pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
+                  }}
+                  onDelete={(i) => setNoteToDelete(i)}
+                />
+              </div>
+
+              <aside className="pd-grid__aside">
+                <SectionCard
+                  title={t("admin.nav.reviews")}
+                  count={a.reviews}
+                  desc={t("admin.ad.reviewsDesc")}
+                  action={
+                    a.reviews > 0 ? (
+                      <Button
+                        hierarchy="link"
+                        size="sm"
+                        iconTrailing="arrow-right"
+                        className="agt-linkbtn"
+                        onClick={() => router.push(`/admin/agents/${a.id}/reviews`)}
+                      >
+                        {t("admin.common.viewAll")}
+                      </Button>
+                    ) : undefined
+                  }
+                >
+                  <ReviewsSummary rating={a.rating} reviewCount={a.reviews} bars={ratingBars} />
+                </SectionCard>
+              </aside>
             </div>
           )}
-        </SectionCard>
 
-        <SectionCard
-          title={t("admin.ad.members")}
-          count={agentMembers.length}
-          desc={t("admin.ad.membersDesc")}
-          action={
-            <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/members" className="agt-linkbtn">
-              {t("admin.common.viewAll")}
-            </Button>
-          }
-          flush
-        >
-          {agentMembers.length > 0 ? (
-            <MembersTable rows={agentMembers} />
-          ) : (
-            <div className="pd-noagent">
-              <span className="pd-noagent__art">
-                <Icon name="users" size={24} strokeWidth={1.6} />
-              </span>
-              <p>{t("admin.ad.membersEmpty")}</p>
-            </div>
+          {tab === "portfolio" && (
+            <>
+              <SectionCard
+                title={t("admin.ad.listings")}
+                count={listings.length}
+                desc={t("admin.ad.listingsDesc")}
+                action={
+                  <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/properties" className="agt-linkbtn">
+                    {t("admin.common.viewAll")}
+                  </Button>
+                }
+                flush
+              >
+                {listings.length > 0 ? (
+                  <ListingsTable rows={listings} />
+                ) : (
+                  <div className="pd-noagent">
+                    <span className="pd-noagent__art">
+                      <Icon name="building-2" size={24} strokeWidth={1.6} />
+                    </span>
+                    <p>{t("admin.ad.listingsEmpty")}</p>
+                  </div>
+                )}
+              </SectionCard>
+
+              <SectionCard
+                title={t("admin.ad.members")}
+                count={agentMembers.length}
+                desc={t("admin.ad.membersDesc")}
+                action={
+                  <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/members" className="agt-linkbtn">
+                    {t("admin.common.viewAll")}
+                  </Button>
+                }
+                flush
+              >
+                {agentMembers.length > 0 ? (
+                  <MembersTable rows={agentMembers} />
+                ) : (
+                  <div className="pd-noagent">
+                    <span className="pd-noagent__art">
+                      <Icon name="users" size={24} strokeWidth={1.6} />
+                    </span>
+                    <p>{t("admin.ad.membersEmpty")}</p>
+                  </div>
+                )}
+              </SectionCard>
+            </>
           )}
-        </SectionCard>
 
-        <SectionCard
-          title={t("admin.nav.viewings")}
-          count={agentViewings.length}
-          desc={t("admin.ad.viewingsDesc")}
-          action={
-            <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/viewings" className="agt-linkbtn">
-              {t("admin.common.viewAll")}
-            </Button>
-          }
-          flush
-        >
-          {agentViewings.length > 0 ? (
-            <ViewingsTable rows={agentViewings} />
-          ) : (
-            <div className="pd-noagent">
-              <span className="pd-noagent__art">
-                <Icon name="calendar" size={24} strokeWidth={1.6} />
-              </span>
-              <p>{t("admin.ad.viewingsEmpty")}</p>
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title={t("admin.nav.reviews")}
-          count={a.reviews}
-          desc={t("admin.ad.reviewsDesc")}
-          action={
-            <Button
-              hierarchy="link"
-              size="sm"
-              iconTrailing="arrow-right"
-              className="agt-linkbtn"
-              onClick={() => pushToast({ tone: "brand", icon: "star", title: t("admin.nav.reviews"), msg: t("admin.ad.toast.reviewsMsg", { name: a.name }) })}
+          {tab === "viewings" && (
+            <SectionCard
+              title={t("admin.nav.viewings")}
+              count={agentViewings.length}
+              desc={t("admin.ad.viewingsDesc")}
+              action={
+                <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href="/admin/viewings" className="agt-linkbtn">
+                  {t("admin.common.viewAll")}
+                </Button>
+              }
+              flush
             >
-              {t("admin.common.viewAll")}
-            </Button>
-          }
-        >
-          <Reviews agent={a} reviews={agentReviews} bars={ratingBars} />
-        </SectionCard>
+              {agentViewings.length > 0 ? (
+                <ViewingsTable rows={agentViewings} />
+              ) : (
+                <div className="pd-noagent">
+                  <span className="pd-noagent__art">
+                    <Icon name="calendar" size={24} strokeWidth={1.6} />
+                  </span>
+                  <p>{t("admin.ad.viewingsEmpty")}</p>
+                </div>
+              )}
+            </SectionCard>
+          )}
 
-        <NotesSection
-          notes={notes}
-          onAdd={(text) => {
-            setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: "@time.now", kind: "note", text }, ...ns]);
-            pushToast({ tone: "brand", icon: "check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.ad.toast.noteAddedMsg") });
-          }}
-          onEdit={(i, text) => {
-            setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: "@admin.vd.editedJustNow" } : n)));
-            pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
-          }}
-          onDelete={(i) => setNoteToDelete(i)}
-        />
-
-        <SectionCard
-          title={t("admin.pd.timeline")}
-          desc={t("admin.ad.timelineDesc")}
-          action={
-            <Button
-              hierarchy="link"
-              size="sm"
-              iconTrailing="arrow-right"
-              className="agt-linkbtn"
-              onClick={() => pushToast({ tone: "brand", icon: "history", title: t("admin.mp.toast.activityTitle"), msg: t("admin.mp.toast.activityMsg", { name: a.name }) })}
+          {tab === "audit" && (
+            <SectionCard
+              title={t("admin.pd.timeline")}
+              desc={t("admin.ad.timelineDesc")}
+              action={
+                <Button
+                  hierarchy="link"
+                  size="sm"
+                  iconTrailing="arrow-right"
+                  className="agt-linkbtn"
+                  onClick={() => pushToast({ tone: "brand", icon: "history", title: t("admin.mp.toast.activityTitle"), msg: t("admin.mp.toast.activityMsg", { name: a.name }) })}
+                >
+                  {t("admin.common.viewAll")}
+                </Button>
+              }
             >
-              {t("admin.common.viewAll")}
-            </Button>
-          }
-        >
-          <Timeline items={timeline} />
-        </SectionCard>
+              <Timeline items={timeline} />
+            </SectionCard>
+          )}
+        </div>
       </div>
 
       {modal === "status" && (
@@ -1156,6 +1266,53 @@ export function AgentDetailApp() {
             setStatus(s);
             setModal(null);
             pushToast({ tone: s === "Suspended" ? "danger" : "brand", icon: s === "Suspended" ? "circle-pause" : "circle-check", title: t("admin.props.toast.statusTitle"), msg: t("admin.mp.toast.statusMsg", { name: a.name, status: t(valueKey("status", s)) }) });
+          }}
+        />
+      )}
+      {modal === "verify" && (
+        <VerifyAgentModal
+          verified={a.verification === "Verified"}
+          onCancel={() => setModal(null)}
+          onConfirm={() => {
+            const verifying = a.verification !== "Verified";
+            const next = verifying ? "Verified" : "Pending";
+            setA((prev) => ({ ...prev, verification: next }));
+            setModal(null);
+            // Revoking verification also pulls the agent from any featured placement,
+            // since the homepage only surfaces verified featured agents.
+            if (!verifying && featured) {
+              setFeatured(false);
+              updateAgent(a.id, { verification: next, featured: false });
+            } else {
+              updateAgent(a.id, { verification: next });
+            }
+            pushToast(
+              verifying
+                ? { tone: "success", icon: "badge-check", title: t("admin.agents.toast.verifiedTitle"), msg: t("admin.agents.toast.verifiedMsg", { name: a.name }) }
+                : { tone: "warn", icon: "shield-x", title: t("admin.agents.toast.revokedTitle"), msg: t("admin.agents.toast.revokedMsg", { name: a.name }) },
+            );
+          }}
+        />
+      )}
+      {modal === "feature" && (
+        <FeatureAgentModal
+          featured={featured}
+          onCancel={() => setModal(null)}
+          onConfirm={() => {
+            const next = !featured;
+            setFeatured(next);
+            setModal(null);
+            updateAgent(a.id, { featured: next });
+            if (next && (a.verification !== "Verified" || status !== "Active")) {
+              // Flag it, but warn it won't surface publicly until the agent qualifies.
+              pushToast({ tone: "warn", icon: "sparkles", title: t("admin.agents.toast.featuredTitle"), msg: t("admin.agents.toast.featuredHiddenMsg", { name: a.name }) });
+            } else {
+              pushToast(
+                next
+                  ? { tone: "success", icon: "sparkles", title: t("admin.agents.toast.featuredTitle"), msg: t("admin.agents.toast.featuredMsg", { name: a.name }) }
+                  : { tone: "success", icon: "sparkle", title: t("admin.agents.toast.unfeaturedTitle"), msg: t("admin.agents.toast.unfeaturedMsg", { name: a.name }) },
+              );
+            }
           }}
         />
       )}

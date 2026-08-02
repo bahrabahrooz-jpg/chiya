@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Breadcrumb } from "@/components/navigation";
 import { Icon } from "@/components/ui/icon";
 import { useLang } from "@/lib/i18n";
-import { useFavorites, type SavedProperty } from "@/lib/favorites";
+import { useSaveGate, type SavedProperty } from "@/lib/favorites";
+import { usePublicCatalog } from "@/lib/public-catalog";
 import * as D from "./data";
 import { emptyFilters, type Filters, type RangeVal } from "./types";
 import { SrpFilters } from "./srp-filters";
@@ -70,6 +71,10 @@ function sortListings(list: D.SrpListing[], sort: string) {
 export function SrpApp() {
   const params = useSearchParams();
   const { t } = useLang();
+  // Live listings from the admin catalog (reflects featured/status edits without
+  // a reload). Falls back to the seed when there's no stored data.
+  const { siteProperties } = usePublicCatalog();
+  const listings = useMemo(() => D.srpListings(siteProperties), [siteProperties]);
 
   const init = useMemo(() => {
     const f: Filters = { ...emptyFilters };
@@ -92,7 +97,7 @@ export function SrpApp() {
   const [view, setView] = useState("grid");
   const [filters, setFilters] = useState<Filters>(init.filters);
   const [page, setPage] = useState(1);
-  const { properties: savedProps, toggleProperty } = useFavorites();
+  const { properties: savedProps, saveProperty } = useSaveGate();
   const favorites = useMemo(() => savedProps.map((p) => p.id), [savedProps]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -147,8 +152,8 @@ export function SrpApp() {
 
   const clearAll = () => setFilters(emptyFilters);
   const toggleFav = (id: string) => {
-    const l = D.listings.find((x) => x.id === id);
-    if (l) toggleProperty(toSavedProperty(l));
+    const l = listings.find((x) => x.id === id);
+    if (l) saveProperty(toSavedProperty(l));
   };
 
   const activeCount =
@@ -168,7 +173,7 @@ export function SrpApp() {
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = D.listings.filter((l) => l.deal === deal);
+    let list = listings.filter((l) => l.deal === deal);
     if (q) list = list.filter((l) => (l.city + " " + l.address + " " + l.title + " " + l.type).toLowerCase().includes(q));
     if (filters.cities.length) list = list.filter((l) => filters.cities.includes(l.city));
     if (filters.areas.length) list = list.filter((l) => filters.areas.some((a) => l.address.toLowerCase().includes(a.toLowerCase())));
@@ -180,7 +185,7 @@ export function SrpApp() {
     if (filters.baths !== "") list = list.filter((l) => (l.baths || 0) >= Number(filters.baths));
     if (filters.amenities.length) list = list.filter((l) => filters.amenities.every((a) => (l.amenities || []).includes(a)));
     return sortListings(list, sort);
-  }, [deal, query, filters, sort]);
+  }, [listings, deal, query, filters, sort]);
 
   // Honest count — the real number of available listings matching the current
   // deal + query + filters (no inflated placeholder totals).
@@ -234,7 +239,7 @@ export function SrpApp() {
   const dealLabel = deal === "rent" ? t("deal.rent") : t("deal.buy");
   const current = city ? t("city." + city) : (query && query.trim()) || t("srp.kurdistan");
 
-  const filterPanel = <SrpFilters deal={deal} f={filters} on={on} activeCount={activeCount} onClearAll={clearAll} />;
+  const filterPanel = <SrpFilters deal={deal} f={filters} on={on} activeCount={activeCount} onClearAll={clearAll} listings={listings} />;
 
   return (
     <>

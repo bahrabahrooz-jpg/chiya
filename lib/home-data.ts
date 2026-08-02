@@ -8,6 +8,7 @@
  * decorative tile imagery are authored here.
  */
 
+import type { IconName } from "@/components/ui/icon";
 import { SITE_PROPERTIES, publicCountByCity, publicCountByType, type SiteProperty } from "@/lib/site-properties";
 import { FEATURED_SITE_AGENTS, portraitUrl, type SiteAgent } from "@/lib/site-agents";
 
@@ -29,7 +30,7 @@ export interface Agent {
 
 /* Homepage agents = the admin catalog's verified agents in good standing,
    with rating / reviews / listings counted from live records (lib/site-agents). */
-const toHomeAgent = (a: SiteAgent): Agent => ({
+export const toHomeAgent = (a: SiteAgent): Agent => ({
   id: a.id,
   name: a.name,
   city: a.city,
@@ -41,7 +42,9 @@ const toHomeAgent = (a: SiteAgent): Agent => ({
   sales: a.sold + a.rented,
   experience: a.experience,
 });
-export const agents: Agent[] = FEATURED_SITE_AGENTS.map(toHomeAgent);
+/** Home "Featured agents" from a derived featured-agent set (live or seed). */
+export const homeAgents = (featured: SiteAgent[]): Agent[] => featured.map(toHomeAgent);
+export const agents: Agent[] = homeAgents(FEATURED_SITE_AGENTS);
 
 export interface Listing {
   id: string;
@@ -78,10 +81,11 @@ const toHomeListing = (p: SiteProperty): Listing => ({
   photoCount: p.photoCount,
   cover: p.cover,
 });
-export const listings: Listing[] = [...SITE_PROPERTIES]
-  .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-  .slice(0, 6)
-  .map(toHomeListing);
+/* Pure curation: only admin-featured Published listings appear, capped at six.
+   No auto-fill — an empty result hides the homepage "Featured" section. */
+/** Home "Featured properties" grid from a derived featured-listing set. */
+export const homeListings = (featured: SiteProperty[]): Listing[] => featured.slice(0, 6).map(toHomeListing);
+export const listings: Listing[] = homeListings(SITE_PROPERTIES.filter((p) => p.featured));
 
 export interface Category {
   name: string;
@@ -99,13 +103,15 @@ const CATEGORY_DEFS: { name: string; type: string; icon: string; image: string }
   { name: "Office", type: "office", icon: "briefcase", image: img("1497366754035-f200968a6e72", 700, 900) },
   { name: "Villas", type: "villa", icon: "home", image: img("1613490493576-7fde63acd811", 700, 900) },
 ];
-const typeCounts = publicCountByType();
-export const categories: Category[] = CATEGORY_DEFS.map((c) => ({
-  name: c.name,
-  count: typeCounts[c.type] ?? 0,
-  icon: c.icon,
-  image: c.image,
-}));
+/** Category tiles with counts from a per-type tally (live or seed). */
+export const homeCategories = (typeCounts: Record<string, number>): Category[] =>
+  CATEGORY_DEFS.map((c) => ({
+    name: c.name,
+    count: typeCounts[c.type] ?? 0,
+    icon: c.icon,
+    image: c.image,
+  }));
+export const categories: Category[] = homeCategories(publicCountByType());
 
 export interface Location {
   city: string;
@@ -120,36 +126,24 @@ const CITY_IMAGES: Record<string, string> = {
   Duhok: img("1570168007204-dfb528c6958f", 900, 700),
   Sulaymaniyah: img("1518684079-3c830dcef090", 900, 700),
 };
-const cityCounts = publicCountByCity();
-export const locations: Location[] = ["Erbil", "Sulaymaniyah", "Duhok"].map((city) => ({
-  city,
-  count: cityCounts[city] ?? 0,
-  image: CITY_IMAGES[city],
-}));
+const HOME_CITIES = ["Erbil", "Sulaymaniyah", "Duhok"];
+/** City tiles with counts from a per-city tally (live or seed). */
+export const homeLocations = (cityCounts: Record<string, number>): Location[] =>
+  HOME_CITIES.map((city) => ({
+    city,
+    count: cityCounts[city] ?? 0,
+    image: CITY_IMAGES[city],
+  }));
+export const locations: Location[] = homeLocations(publicCountByCity());
 
-export interface Pillar {
-  icon: string;
-  title: string;
-  desc: string;
-}
+/* The "Why Chiya" pillar copy is now CMS-managed (lib/site-content, edited at
+   /admin/content). Only the fixed pillar icons live here, in card order. */
+export const PILLAR_ICONS: IconName[] = ["badge-check", "shield-check", "sparkles", "lock"];
 
-export const pillars: Pillar[] = [
-  { icon: "badge-check", title: "Verified agents", desc: "Every agent is ID-checked and licence-verified before they can list with Chiya." },
-  { icon: "shield-check", title: "Admin-approved listings", desc: "Each property is reviewed and approved by our team — no duplicates, no ghost listings." },
-  { icon: "sparkles", title: "Luxury properties", desc: "A hand-curated collection of Kurdistan's most exceptional homes and estates." },
-  { icon: "lock", title: "Secure platform", desc: "Encrypted messaging, protected viewings, and no-obligation enquiries throughout." },
-];
-
-export interface Testimonial {
-  name: string;
-  location: string;
-  rating: number;
-  avatar: string;
-  quote: string;
-}
-
-export const testimonials: Testimonial[] = [
-  { name: "Hawar & Nyan", location: "Bought in Dream City, Erbil", rating: 5, avatar: "https://images.unsplash.com/photo-1521119989659-a83eee488004?w=160&h=160&fit=crop", quote: "Our Chiya agent understood exactly what we wanted. Every viewing was a home we genuinely loved — we signed within three weeks." },
-  { name: "Sara Aziz", location: "Rented in Italian Village, Erbil", rating: 5, avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=160&h=160&fit=crop", quote: "As someone relocating from abroad, the verified listings gave me real confidence. No surprises, no wasted trips." },
-  { name: "Karwan Jamal", location: "Sold a villa in Sarchnar, Sulaymaniyah", rating: 5, avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=160&h=160&fit=crop", quote: "Listing with Chiya brought serious, pre-qualified buyers only. The whole process felt premium from start to finish." },
+/* Testimonial name / detail / quote are CMS-managed (lib/site-content); only the
+   decorative avatar images stay here, in card order. */
+export const TESTIMONIAL_AVATARS: string[] = [
+  "https://images.unsplash.com/photo-1521119989659-a83eee488004?w=160&h=160&fit=crop",
+  "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=160&h=160&fit=crop",
+  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=160&h=160&fit=crop",
 ];

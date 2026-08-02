@@ -54,19 +54,36 @@
     color: var(--text-tertiary); margin-top: 3px; white-space: nowrap;
   }
   .ax-sidebar.is-collapsed .ax-sb-logo__txt { display: none; }
-  .ax-sidebar.is-collapsed .ax-sb-head { justify-content: center; padding: 0; }
 
-  /* collapse handle on sidebar edge — always visible, expanded & collapsed */
+  /* collapse handle — lives in the header row, inline-end of the logo */
   .ax-collapse-btn {
-    position: absolute; bottom: 24px; inset-inline-end: -13px;
-    width: 26px; height: 26px; border-radius: var(--radius-full);
+    flex: none; margin-inline-start: auto;
+    width: 32px; height: 32px; border-radius: var(--radius-md);
     display: flex; align-items: center; justify-content: center;
-    background: var(--surface-card); color: var(--gray-600);
-    border: 1px solid var(--border-default); box-shadow: var(--shadow-sm);
-    cursor: pointer; z-index: 70; transition: color .15s, background-color .15s;
+    background: transparent; color: var(--gray-500);
+    border: 1px solid transparent;
+    cursor: pointer; z-index: 70;
+    transition: color .15s, background-color .15s, border-color .15s, opacity .15s;
   }
-  .ax-collapse-btn:hover { color: var(--text-brand); background: var(--gray-25); border-color: var(--border-strong); }
+  .ax-collapse-btn:hover { color: var(--text-brand); background: var(--gray-25); border-color: var(--border-default); }
   .ax-collapse-btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* collapsed rail: only the logo symbol shows; the toggle overlays it and
+     reveals on hover over the header (or keyboard focus) so it can re-open. */
+  .ax-sidebar.is-collapsed .ax-sb-head { justify-content: center; padding: 0; }
+  .ax-sidebar.is-collapsed .ax-sb-logo { transition: opacity .15s ease; }
+  .ax-sidebar.is-collapsed .ax-collapse-btn {
+    position: absolute; inset: 0; margin: auto;
+    width: 32px; height: 32px; border-radius: var(--radius-md);
+    background: var(--surface-card); box-shadow: var(--shadow-sm);
+    border-color: var(--border-default);
+    opacity: 0; pointer-events: none;
+  }
+  .ax-sidebar.is-collapsed .ax-sb-head:hover .ax-sb-logo { opacity: 0; }
+  .ax-sidebar.is-collapsed .ax-sb-head:hover .ax-collapse-btn,
+  .ax-sidebar.is-collapsed .ax-collapse-btn:focus-visible {
+    opacity: 1; pointer-events: auto;
+  }
 
   /* super-admin badge under header */
   .ax-sb-role {
@@ -232,6 +249,10 @@
     padding: 0 24px;
     background: var(--surface-card);
     border-bottom: 1px solid var(--border-subtle);
+    /* position + z-index establish a stacking context above the portaled row
+       action menus (z-index 120) so a menu that scrolls up with its row tucks
+       behind the topbar instead of floating over the navigation. */
+    position: relative;
     z-index: 140;
   }
   .ax-tb-titlewrap { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; overflow: hidden; line-height: 1.1; }
@@ -417,7 +438,11 @@
       transform: translateX(-105%);
       box-shadow: var(--shadow-2xl);
       transition: transform .24s cubic-bezier(.2,.7,.2,1);
+      /* Above the topbar (z-index 140, now a stacking context) so the off-canvas
+         drawer and its backdrop still cover the header on mobile. */
+      z-index: 160;
     }
+    .ax-backdrop { z-index: 150; }
     [dir="rtl"] .ax-sidebar { transform: translateX(105%); }
     .ax-sidebar.is-collapsed { width: 280px; }       /* never icon-rail on mobile */
     .ax-sidebar.is-drawer-open,

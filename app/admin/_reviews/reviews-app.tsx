@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtDate, fmtNum, valueKey, popupLeft } from "@/lib/fmt";
+import { adminMenuRoot } from "../_shared/menu-portal";
 import {
   EMPTY_FILTERS,
   ITEMS_PER_PAGE,
@@ -81,8 +82,18 @@ function RowActions({ open, onToggle, status, onApprove, onReject, onDelete }: {
       setPos(null);
       return;
     }
-    const r = btnRef.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 6, left: popupLeft(r, 196, isRtl(lang)) });
+    const update = () => {
+      if (!btnRef.current) return;
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, left: popupLeft(r, 196, isRtl(lang)) });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
   }, [open, lang]);
 
   const menu =
@@ -110,7 +121,7 @@ function RowActions({ open, onToggle, status, onApprove, onReject, onDelete }: {
           </button>
         </div>
       </div>,
-      document.body,
+      adminMenuRoot(),
     );
 
   return (
@@ -390,12 +401,6 @@ export function ReviewsApp({ scopeAgent, readOnly = false }: { scopeAgent?: stri
     });
   };
 
-  useEffect(() => {
-    if (!openMenu) return;
-    const close = () => setOpenMenu(null);
-    window.addEventListener("scroll", close, true);
-    return () => window.removeEventListener("scroll", close, true);
-  }, [openMenu]);
 
   const rows = useMemo(() => {
     const q = filters.q.trim().toLowerCase();

@@ -13,21 +13,34 @@ import { useLang } from "@/lib/i18n";
 import { fmtNum, permKey } from "@/lib/fmt";
 import { logAudit } from "../_shared/audit-log";
 import {
-  MATRIX_ROWS,
-  ROLES_SEED,
-  buildRole,
-  catsFor,
-  cellLevel,
-  countGrant,
-  flatFor,
-  totalPermsFor,
-  type Cat,
-  type Group,
-  type RoleState,
-  type Surface,
+  ROLES_SEED_V2,
+  SCOPE_OPTS_V2,
+  buildRoleV2,
+  cellOf,
+  countGrantV2,
+  sectionPerms,
+  sectionsFor,
+  totalFor,
+  viewIdOf,
+  type FlatPermV2,
+  type GroupV2,
+  type RoleStateV2,
+  type ScopeVal,
+  type SectionV2,
+  type SurfaceV2,
 } from "./data";
 
-function RolesHeader({ view, onView }: { view: string; onView: (v: string) => void }) {
+/* ----------------------------------------------------------------------------
+   Roles & permissions V2 — the proposed redesign running beside the live
+   screen (/admin/roles) for comparison. Same layout language (rb- classes),
+   new mechanics: sidebar-mirrored sections, per-section scope, a view-root
+   dependency cascade, lock-out prevention, self-moderation warning, clone-on-
+   create and per-toggle audit events. Spec: docs/roles-permissions-design.md.
+   ------------------------------------------------------------------------- */
+
+const permSurface = (surface: SurfaceV2): "staff" | "member" => (surface === "member" ? "member" : "staff");
+
+function RolesV2Header({ view, onView }: { view: string; onView: (v: string) => void }) {
   const { t } = useLang();
   return (
     <div className="rb-head">
@@ -47,7 +60,7 @@ function RolesHeader({ view, onView }: { view: string; onView: (v: string) => vo
   );
 }
 
-function RoleList({ roles, selectedId, onSelect, onCreate }: { roles: RoleState[]; selectedId: string; onSelect: (id: string) => void; onCreate: () => void }) {
+function RoleList({ roles, selectedId, onSelect, onCreate }: { roles: RoleStateV2[]; selectedId: string; onSelect: (id: string) => void; onCreate: () => void }) {
   const { t, lang, dir } = useLang();
   return (
     <aside className="rb-list" aria-label={t("admin.roles.rolesAria")}>
@@ -80,19 +93,55 @@ function RoleList({ roles, selectedId, onSelect, onCreate }: { roles: RoleState[
   );
 }
 
-function PermissionGroup({ cat, group, role, locked, onToggle }: { cat: Cat; group: Group; role: RoleState; locked: boolean; onToggle: (id: string, v: boolean) => void }) {
+/** Own / Team / Organisational — one reach per scopeable section. */
+function ScopeSelect({ value, disabled, onChange }: { value: ScopeVal; disabled: boolean; onChange: (v: ScopeVal) => void }) {
+  const { t } = useLang();
+  return (
+    <span className="rb-scope">
+      <select value={value} disabled={disabled} aria-label={t("admin.rolesV2.scopeAria")} onChange={(e) => onChange(e.target.value as ScopeVal)}>
+        {SCOPE_OPTS_V2.map((o) => (
+          <option key={o.value} value={o.value}>
+            {t(o.labelKey)}
+          </option>
+        ))}
+      </select>
+      <span className="rb-scope__chev">
+        <Icon name="chevron-down" size={15} />
+      </span>
+    </span>
+  );
+}
+
+function PermissionGroupV2({
+  section,
+  group,
+  role,
+  locked,
+  guardedIds,
+  onToggle,
+  onMaster,
+}: {
+  section: SectionV2;
+  group: GroupV2;
+  role: RoleStateV2;
+  locked: boolean;
+  /** Permission ids whose switches are frozen by the lock-out guard. */
+  guardedIds: string[];
+  onToggle: (perm: FlatPermV2, v: boolean) => void;
+  onMaster: (section: SectionV2, group: GroupV2, v: boolean) => void;
+}) {
   const { t, lang } = useLang();
-  const surface = (role.surface ?? "admin") === "member" ? "member" : "staff";
+  const surface = permSurface(role.surface);
   const tOr = (key: string, fallback: string) => {
     const v = t(key);
     return v === key ? fallback : v;
   };
-  const perms = flatFor(role.surface ?? "admin")[cat.key].filter((p) => p.groupId === group.id);
-  const on = perms.filter((p) => role.grant[p.permId]).length;
+  const perms = sectionPerms(role.surface, section.key).filter((p) => p.groupId === group.id);
+  const on = perms.filter((p) => role.grant[p.id]).length;
   const total = perms.length;
   const allOn = on === total;
   const anyOn = on > 0;
-  const setMaster = (checked: boolean) => perms.forEach((p) => onToggle(p.permId, checked));
+  const masterGuarded = perms.some((p) => guardedIds.includes(p.id));
   const groupLabel = tOr(`perm.group.${group.id}`, group.label);
   return (
     <section className={"rb-group" + (anyOn ? "" : " is-off")}>
@@ -102,20 +151,21 @@ function PermissionGroup({ cat, group, role, locked, onToggle }: { cat: Cat; gro
           {fmtNum(lang, on)}/{fmtNum(lang, total)}
         </span>
         <span className="rb-group__ctrl">
-          <Switch checked={allOn} disabled={locked} aria-label={t("admin.roles.enableAll", { group: groupLabel })} onChange={(e) => setMaster(e.target.checked)} />
+          <Switch checked={allOn} disabled={locked || masterGuarded} aria-label={t("admin.roles.enableAll", { group: groupLabel })} onChange={(e) => onMaster(section, group, e.target.checked)} />
         </span>
       </header>
       <div className="rb-rows">
         {perms.map((p) => {
           const label = tOr(permKey(surface, p.label) + ".label", p.label);
+          const guarded = guardedIds.includes(p.id);
           return (
-            <div className="rb-row" key={p.permId}>
+            <div className="rb-row" key={p.id}>
               <span className="rb-row__text">
                 <span className="rb-row__label">{label}</span>
                 <span className="rb-row__desc">{tOr(permKey(surface, p.label) + ".desc", p.desc)}</span>
               </span>
               <span className="rb-row__sw">
-                <Switch checked={!!role.grant[p.permId]} disabled={locked} aria-label={label} onChange={(e) => onToggle(p.permId, e.target.checked)} />
+                <Switch checked={!!role.grant[p.id]} disabled={locked || guarded} aria-label={label} onChange={(e) => onToggle(p, e.target.checked)} />
               </span>
             </div>
           );
@@ -125,24 +175,92 @@ function PermissionGroup({ cat, group, role, locked, onToggle }: { cat: Cat; gro
   );
 }
 
-function PermissionsTab({ role, locked, activeCat, onCat, onToggle }: { role: RoleState; locked: boolean; activeCat: string; onCat: (k: string) => void; onToggle: (id: string, v: boolean) => void }) {
-  const surface = role.surface ?? "admin";
-  const cats = catsFor(surface);
-  const catFlat = flatFor(surface);
-  const cat = cats.find((c) => c.key === activeCat) || cats[0];
+function PermissionsTabV2({
+  role,
+  roles,
+  locked,
+  activeSection,
+  onSection,
+  onToggle,
+  onMaster,
+  onScope,
+}: {
+  role: RoleStateV2;
+  roles: RoleStateV2[];
+  locked: boolean;
+  activeSection: string;
+  onSection: (k: string) => void;
+  onToggle: (perm: FlatPermV2, v: boolean) => void;
+  onMaster: (section: SectionV2, group: GroupV2, v: boolean) => void;
+  onScope: (sectionKey: string, v: ScopeVal) => void;
+}) {
+  const { t, lang } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
+  const sections = sectionsFor(role.surface);
+  const section = sections.find((s) => s.key === activeSection) || sections[0];
+  const scope = role.scope[section.key] ?? "org";
+
+  /* Lock-out prevention: the last staff role able to manage permissions can
+     never toggle that reach away — otherwise nobody could reopen this screen. */
+  const lastEditor =
+    role.surface === "admin" &&
+    !!role.grant["roles.edit"] &&
+    !roles.some((r) => r.id !== role.id && r.surface === "admin" && r.grant["roles.edit"]);
+  const guardedIds = lastEditor ? ["roles.edit", "roles.view"] : [];
+
+  /* Self-moderation conflict: moderating reviews at "own" reach means a role
+     could approve reviews written about itself. */
+  const conflict = section.key === "reviews" && scope === "own" && (!!role.grant["reviews.approve"] || !!role.grant["reviews.reject"]);
+
   return (
     <div className="rb-permissions">
-      <nav className="rb-catnav" aria-label="Permission categories">
-        {cats.map((c) => (
-          <button key={c.key} type="button" className={"rb-cat" + (c.key === activeCat ? " is-active" : "")} onClick={() => onCat(c.key)} aria-pressed={c.key === activeCat}>
-            {c.label}
-            <span className="rb-cat__badge">{catFlat[c.key].length}</span>
-          </button>
-        ))}
+      <nav className="rb-catnav" aria-label={t("admin.rolesV2.sectionsAria")}>
+        {sections.map((s) => {
+          const perms = sectionPerms(role.surface, s.key);
+          const on = perms.filter((perm) => role.grant[perm.id]).length;
+          return (
+            <button key={s.key} type="button" className={"rb-cat" + (s.key === section.key ? " is-active" : "")} onClick={() => onSection(s.key)} aria-pressed={s.key === section.key}>
+              {tOr(s.labelKey, s.label)}
+              <span className="rb-cat__badge">
+                {fmtNum(lang, on)}/{fmtNum(lang, perms.length)}
+              </span>
+            </button>
+          );
+        })}
       </nav>
       <div className="rb-groups">
-        {cat.groups.map((g) => (
-          <PermissionGroup key={g.id} cat={cat} group={g} role={role} locked={locked} onToggle={onToggle} />
+        {role.surface === "admin" && (
+          <div className="rb2-scopebar">
+            <span className="rb2-scopebar__text">
+              <span className="rb2-scopebar__label">{t("admin.rolesV2.scopeAria")}</span>
+              <span className="rb2-scopebar__hint">{t("admin.rolesV2.scopeHint")}</span>
+            </span>
+            {section.scopeable ? (
+              <ScopeSelect value={scope} disabled={locked} onChange={(v) => onScope(section.key, v)} />
+            ) : (
+              <span className="rb2-orgtag">
+                <Icon name="globe" size={13} /> {t("admin.rolesV2.orgWide")}
+              </span>
+            )}
+          </div>
+        )}
+        {conflict && (
+          <div className="rb-locknote" role="alert">
+            <Icon name="triangle-alert" size={16} />
+            {t("admin.rolesV2.conflict")}
+          </div>
+        )}
+        {lastEditor && section.key === "roles" && (
+          <div className="rb-locknote">
+            <Icon name="lock" size={16} />
+            {t("admin.rolesV2.lockout")}
+          </div>
+        )}
+        {section.groups.map((g) => (
+          <PermissionGroupV2 key={g.id} section={section} group={g} role={role} locked={locked} guardedIds={guardedIds} onToggle={onToggle} onMaster={onMaster} />
         ))}
       </div>
     </div>
@@ -150,19 +268,21 @@ function PermissionsTab({ role, locked, activeCat, onCat, onToggle }: { role: Ro
 }
 
 const ROLE_ICONS: IconName[] = ["shield-check", "badge-check", "user", "users", "key", "star", "crown", "briefcase", "gauge", "settings"];
+const DESC_MAX = 240;
 
-function IconPicker({ role, onIcon }: { role: RoleState; onIcon: (v: IconName) => void }) {
+function IconPicker({ role, onIcon }: { role: RoleStateV2; onIcon: (v: IconName) => void }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   return (
     <div className="rb-iconpick">
-      <button type="button" className="rb-iconpick__btn" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} aria-label="Choose role icon">
+      <button type="button" className="rb-iconpick__btn" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} aria-label={t("admin.roles.roleIcon")}>
         <span className={"rb-roleicon rb-roleicon--" + role.dot}>
           <Icon name={role.icon} size={18} />
         </span>
       </button>
       {open && (
         <>
-          <button type="button" className="rb-iconpick__scrim" aria-label="Close icon picker" onClick={() => setOpen(false)} />
+          <button type="button" className="rb-iconpick__scrim" aria-label={t("admin.common.cancel")} onClick={() => setOpen(false)} />
           <div className="rb-iconpick__pop" role="menu">
             {ROLE_ICONS.map((name) => (
               <button
@@ -186,8 +306,6 @@ function IconPicker({ role, onIcon }: { role: RoleState; onIcon: (v: IconName) =
   );
 }
 
-const DESC_MAX = 240;
-
 function DescriptionField({ defaultValue, readOnly }: { defaultValue: string; readOnly?: boolean }) {
   const { t, lang } = useLang();
   const [val, setVal] = useState(defaultValue);
@@ -200,7 +318,9 @@ function DescriptionField({ defaultValue, readOnly }: { defaultValue: string; re
   );
 }
 
-function DeleteRoleModal({ role, onCancel, onConfirm }: { role: RoleState; onCancel: () => void; onConfirm: () => void }) {
+/** Confirm hiding a whole section — revoking `view` clears everything in it. */
+function HideSectionModal({ sectionLabel, onCancel, onConfirm }: { sectionLabel: string; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -210,22 +330,20 @@ function DeleteRoleModal({ role, onCancel, onConfirm }: { role: RoleState; onCan
   }, [onCancel]);
   return createPortal(
     <div className="rb-confirm-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="rb-confirm" role="alertdialog" aria-modal="true" aria-labelledby="rb-del-ttl">
+      <div className="rb-confirm" role="alertdialog" aria-modal="true" aria-labelledby="rb2-hide-ttl">
         <span className="rb-confirm__icon rb-confirm__icon--danger">
-          <Icon name="trash-2" size={22} strokeWidth={1.9} />
+          <Icon name="eye-off" size={22} strokeWidth={1.9} />
         </span>
-        <h3 id="rb-del-ttl" className="rb-confirm__title">
-          Delete role?
+        <h3 id="rb2-hide-ttl" className="rb-confirm__title">
+          {t("admin.rolesV2.hideTitle", { section: sectionLabel })}
         </h3>
-        <p className="rb-confirm__msg">
-          Are you sure you want to delete the <strong>{role.name}</strong> role? Members assigned to it will lose its permissions. This action cannot be undone.
-        </p>
+        <p className="rb-confirm__msg">{t("admin.rolesV2.hideMsg", { section: sectionLabel })}</p>
         <div className="rb-confirm__actions">
           <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
-            Cancel
+            {t("admin.common.cancel")}
           </Button>
-          <Button hierarchy="destructive" size="md" type="button" iconLeading="trash-2" onClick={onConfirm}>
-            Delete role
+          <Button hierarchy="destructive" size="md" type="button" iconLeading="eye-off" onClick={onConfirm}>
+            {t("admin.rolesV2.hideConfirm")}
           </Button>
         </div>
       </div>
@@ -234,9 +352,65 @@ function DeleteRoleModal({ role, onCancel, onConfirm }: { role: RoleState; onCan
   );
 }
 
-function RoleSettingsTab({ role, onIcon, onDelete }: { role: RoleState; onIcon: (v: IconName) => void; onDelete: () => void }) {
+/** Delete with a reassignment guard: assigned users must land on another role. */
+function DeleteRoleModalV2({ role, targets, onCancel, onConfirm }: { role: RoleStateV2; targets: RoleStateV2[]; onCancel: () => void; onConfirm: (reassignId: string | null) => void }) {
+  const { t, lang } = useLang();
+  const needsReassign = role.users > 0 && targets.length > 0;
+  const [reassignId, setReassignId] = useState("");
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return createPortal(
+    <div className="rb-confirm-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="rb-confirm" role="alertdialog" aria-modal="true" aria-labelledby="rb2-del-ttl">
+        <span className="rb-confirm__icon rb-confirm__icon--danger">
+          <Icon name="trash-2" size={22} strokeWidth={1.9} />
+        </span>
+        <h3 id="rb2-del-ttl" className="rb-confirm__title">
+          {t("admin.rolesV2.delTitle")}
+        </h3>
+        <p className="rb-confirm__msg">{t("admin.rolesV2.delMsg", { name: role.name, count: fmtNum(lang, role.users) })}</p>
+        {needsReassign && (
+          <div className="rb2-reassign">
+            <span className="rb2-reassign__label">{t("admin.rolesV2.reassignTo", { count: fmtNum(lang, role.users) })}</span>
+            <span className="rb-scope rb2-reassign__select">
+              <select value={reassignId} aria-label={t("admin.rolesV2.reassignTo", { count: fmtNum(lang, role.users) })} onChange={(e) => setReassignId(e.target.value)}>
+                <option value="" disabled>
+                  {t("admin.rolesV2.reassignPh")}
+                </option>
+                {targets.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              <span className="rb-scope__chev">
+                <Icon name="chevron-down" size={15} />
+              </span>
+            </span>
+          </div>
+        )}
+        <div className="rb-confirm__actions">
+          <Button hierarchy="secondary" size="md" type="button" onClick={onCancel}>
+            {t("admin.common.cancel")}
+          </Button>
+          <Button hierarchy="destructive" size="md" type="button" iconLeading="trash-2" disabled={needsReassign && !reassignId} onClick={() => onConfirm(needsReassign ? reassignId : null)}>
+            {t("admin.roles.deleteRole")}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function RoleSettingsTabV2({ role, targets, onIcon, onDelete }: { role: RoleStateV2; targets: RoleStateV2[]; onIcon: (v: IconName) => void; onDelete: (reassignId: string | null) => void }) {
   const { t } = useLang();
-  const canDelete = ADMIN.role === "Super Admin" && !role.locked;
+  const canDelete = ADMIN.role === "Super Admin" && !role.system && !role.locked;
   const [confirmOpen, setConfirmOpen] = useState(false);
   return (
     <div className="rb-settings">
@@ -247,7 +421,7 @@ function RoleSettingsTab({ role, onIcon, onDelete }: { role: RoleState; onIcon: 
         </header>
         <div className="rb-setrow">
           <div className="rb-setrow__field">
-            <Input label={t("admin.roles.roleName")} defaultValue={role.name} disabled={role.id === "super-admin"} />
+            <Input label={t("admin.roles.roleName")} defaultValue={role.name} disabled={role.system} />
           </div>
           <div className="rb-setfield">
             <span className="rb-setfield__label">{t("admin.roles.icon")}</span>
@@ -276,12 +450,13 @@ function RoleSettingsTab({ role, onIcon, onDelete }: { role: RoleState; onIcon: 
       )}
 
       {confirmOpen && (
-        <DeleteRoleModal
+        <DeleteRoleModalV2
           role={role}
+          targets={targets}
           onCancel={() => setConfirmOpen(false)}
-          onConfirm={() => {
+          onConfirm={(reassignId) => {
             setConfirmOpen(false);
-            onDelete();
+            onDelete(reassignId);
           }}
         />
       )}
@@ -289,36 +464,41 @@ function RoleSettingsTab({ role, onIcon, onDelete }: { role: RoleState; onIcon: 
   );
 }
 
-function RoleDetail({
+function RoleDetailV2({
   role,
+  roles,
   detailTab,
   onDetailTab,
-  activeCat,
-  onCat,
+  activeSection,
+  onSection,
   onToggle,
+  onMaster,
+  onScope,
   onIcon,
   onDelete,
 }: {
-  role: RoleState;
+  role: RoleStateV2;
+  roles: RoleStateV2[];
   detailTab: string;
   onDetailTab: (v: string) => void;
-  activeCat: string;
-  onCat: (k: string) => void;
-  onToggle: (id: string, v: boolean) => void;
+  activeSection: string;
+  onSection: (k: string) => void;
+  onToggle: (perm: FlatPermV2, v: boolean) => void;
+  onMaster: (section: SectionV2, group: GroupV2, v: boolean) => void;
+  onScope: (sectionKey: string, v: ScopeVal) => void;
   onIcon: (v: IconName) => void;
-  onDelete: () => void;
+  onDelete: (reassignId: string | null) => void;
 }) {
   const { t, lang } = useLang();
   const locked = !!role.locked;
-  const surface = role.surface ?? "admin";
-  const enabled = countGrant(role.grant, surface);
+  const enabled = countGrantV2(role.grant, role.surface);
   return (
     <section className="rb-detail" aria-label={t("admin.roles.detailsAria", { name: role.name })}>
       <header className="rb-detail__head">
         <h2 className="rb-detail__name">
           {t("admin.roles.rolePermissions", { name: role.name })}
           <span className="rb-grantbadge">
-            <Icon name="shield-check" size={13} /> {t("admin.roles.granted", { on: fmtNum(lang, enabled), total: fmtNum(lang, totalPermsFor(surface)) })}
+            <Icon name="shield-check" size={13} /> {t("admin.roles.granted", { on: fmtNum(lang, enabled), total: fmtNum(lang, totalFor(role.surface)) })}
           </span>
         </h2>
         <p className="rb-detail__desc">{role.desc}</p>
@@ -336,38 +516,63 @@ function RoleDetail({
       </div>
       <div className="rb-detail__body">
         {detailTab === "permissions" ? (
-          <PermissionsTab role={role} locked={locked} activeCat={activeCat} onCat={onCat} onToggle={onToggle} />
+          <PermissionsTabV2 role={role} roles={roles} locked={locked} activeSection={activeSection} onSection={onSection} onToggle={onToggle} onMaster={onMaster} onScope={onScope} />
         ) : (
-          <RoleSettingsTab role={role} onIcon={onIcon} onDelete={onDelete} />
+          <RoleSettingsTabV2 role={role} targets={roles.filter((r) => r.id !== role.id && r.surface === role.surface && !r.locked)} onIcon={onIcon} onDelete={onDelete} />
         )}
       </div>
     </section>
   );
 }
 
-function MatrixCell({ level }: { level: "full" | "none" }) {
-  const glyph = level === "full" ? "✓" : "✕";
+/* ---------------------------------- matrix --------------------------------- */
+
+function MatrixCellV2({ role, perm }: { role: RoleStateV2; perm: FlatPermV2 }) {
+  const { t } = useLang();
+  const cell = cellOf(role, perm);
+  if (cell === "none") {
+    return (
+      <span className="rb-cell rb-cell--none" title={t("admin.rolesV2.matrix.none")}>
+        ✕
+      </span>
+    );
+  }
+  const scoped = cell !== "org";
+  const scopeLabel = t(SCOPE_OPTS_V2.find((o) => o.value === cell)?.labelKey ?? "admin.rolesV2.scope.org");
   return (
-    <span className={"rb-cell rb-cell--" + level} title={level === "full" ? "Full access" : "No access"}>
-      {glyph}
+    <span className={"rb-cell " + (scoped ? "rb-cell--scoped" : "rb-cell--full")} title={scoped ? scopeLabel : t("admin.rolesV2.matrix.full")}>
+      ✓{scoped && <sup className="rb2-cellsup">{scopeLabel.charAt(0)}</sup>}
     </span>
   );
 }
 
-function RoleMatrix({ roles }: { roles: RoleState[] }) {
+/** One surface's roles × its full catalogue — staff and member never mix. */
+function MatrixCardV2({ surface, roles }: { surface: SurfaceV2; roles: RoleStateV2[] }) {
+  const { t } = useLang();
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
+  const cols = roles.filter((r) => r.surface === surface);
+  const sections = sectionsFor(surface);
+  const pSurface = permSurface(surface);
+  if (!cols.length) return null;
   return (
     <section className="rb-matrixcard">
       <header className="rb-matrixcard__head">
         <div>
-          <h2 className="rb-matrixcard__title">Role permission matrix</h2>
-          <p className="rb-matrixcard__desc">Overview of permissions across all roles.</p>
+          <h2 className="rb-matrixcard__title">{t(surface === "member" ? "admin.rolesV2.matrix.member" : "admin.rolesV2.matrix.staff")}</h2>
+          <p className="rb-matrixcard__desc">{t("admin.rolesV2.matrix.desc")}</p>
         </div>
         <div className="rb-legend">
           <span className="rb-legend__item">
-            <span className="rb-cell rb-cell--full">✓</span> Full access
+            <span className="rb-cell rb-cell--full">✓</span> {t("admin.rolesV2.matrix.full")}
           </span>
           <span className="rb-legend__item">
-            <span className="rb-cell rb-cell--none">✕</span> No access
+            <span className="rb-cell rb-cell--scoped">✓</span> {t("admin.rolesV2.matrix.scoped")}
+          </span>
+          <span className="rb-legend__item">
+            <span className="rb-cell rb-cell--none">✕</span> {t("admin.rolesV2.matrix.none")}
           </span>
         </div>
       </header>
@@ -375,8 +580,8 @@ function RoleMatrix({ roles }: { roles: RoleState[] }) {
         <table className="rb-matrix">
           <thead>
             <tr>
-              <th className="rb-matrix__th rb-matrix__th--perm">Permission</th>
-              {roles.map((r) => (
+              <th className="rb-matrix__th rb-matrix__th--perm">{t("admin.roles.matrixPermission")}</th>
+              {cols.map((r) => (
                 <th key={r.id} className="rb-matrix__th rb-matrix__th--role">
                   <span className={"rb-matrix__roledot rb-matrix__roledot--" + r.dot} />
                   {r.name}
@@ -385,26 +590,23 @@ function RoleMatrix({ roles }: { roles: RoleState[] }) {
             </tr>
           </thead>
           <tbody>
-            {MATRIX_ROWS.map((row, i) => {
-              const showGroup = MATRIX_ROWS.findIndex((x) => x.group === row.group) === i;
-              return (
-                <Fragment key={row.cat + row.idx + row.label}>
-                  {showGroup && (
-                    <tr className="rb-matrix__grouprow">
-                      <td colSpan={roles.length + 1}>{row.group}</td>
-                    </tr>
-                  )}
-                  <tr className="rb-matrix__tr">
-                    <td className="rb-matrix__td rb-matrix__td--perm">{row.label}</td>
-                    {roles.map((r) => (
+            {sections.map((section) => (
+              <Fragment key={section.key}>
+                <tr className="rb-matrix__grouprow">
+                  <td colSpan={cols.length + 1}>{tOr(section.labelKey, section.label)}</td>
+                </tr>
+                {sectionPerms(surface, section.key).map((perm) => (
+                  <tr key={perm.id} className="rb-matrix__tr">
+                    <td className="rb-matrix__td rb-matrix__td--perm">{tOr(permKey(pSurface, perm.label) + ".label", perm.label)}</td>
+                    {cols.map((r) => (
                       <td key={r.id} className="rb-matrix__td rb-matrix__td--cell">
-                        <MatrixCell level={cellLevel(r, row.cat, row.idx)} />
+                        <MatrixCellV2 role={r} perm={perm} />
                       </td>
                     ))}
                   </tr>
-                </Fragment>
-              );
-            })}
+                ))}
+              </Fragment>
+            ))}
           </tbody>
         </table>
       </div>
@@ -412,32 +614,39 @@ function RoleMatrix({ roles }: { roles: RoleState[] }) {
   );
 }
 
-const ROLE_TYPES: { value: Surface; labelKey: string; icon: IconName; hintKey: string }[] = [
-  { value: "admin", labelKey: "admin.roles.surface.staff", icon: "users", hintKey: "admin.roles.surface.staffHint" },
-  { value: "member", labelKey: "admin.roles.surface.member", icon: "user", hintKey: "admin.roles.surface.memberHint" },
-];
+/* -------------------------------- create role ------------------------------ */
 
-/** Gate on `open` so the form resets each time the modal is opened. */
-function CreateRoleModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (v: { name: string; desc: string; icon: IconName; surface: Surface }) => void }) {
-  if (!open) return null;
-  return <CreateRoleForm open={open} onClose={onClose} onCreate={onCreate} />;
+interface CreateRoleV2Input {
+  name: string;
+  desc: string;
+  icon: IconName;
+  surface: SurfaceV2;
+  cloneId: string | null;
 }
 
-function CreateRoleForm({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (v: { name: string; desc: string; icon: IconName; surface: Surface }) => void }) {
+/** Gate on `open` so the form resets each time the modal is opened. */
+function CreateRoleModalV2({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (v: CreateRoleV2Input) => void }) {
+  if (!open) return null;
+  return <CreateRoleFormV2 open={open} onClose={onClose} onCreate={onCreate} />;
+}
+
+function CreateRoleFormV2({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (v: CreateRoleV2Input) => void }) {
   const { t } = useLang();
-  const [surface, setSurface] = useState<Surface>("admin");
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<IconName>("shield-check");
   const [desc, setDesc] = useState("");
   const canSubmit = name.trim().length > 0;
+  // New roles are created as blank admin roles; permissions are set after creating.
+  const surface: SurfaceV2 = "admin";
+  const cloneId: string | null = null;
 
   const footer = (
     <>
       <Button hierarchy="secondary" size="lg" onClick={onClose}>
-        Cancel
+        {t("admin.common.cancel")}
       </Button>
-      <Button hierarchy="primary" size="lg" iconLeading="plus" disabled={!canSubmit} onClick={() => onCreate({ name, desc, icon, surface })}>
-        Create role
+      <Button hierarchy="primary" size="lg" iconLeading="plus" disabled={!canSubmit} onClick={() => onCreate({ name, desc, icon, surface, cloneId })}>
+        {t("admin.roles.createNew")}
       </Button>
     </>
   );
@@ -445,36 +654,14 @@ function CreateRoleForm({ open, onClose, onCreate }: { open: boolean; onClose: (
   return (
     <Modal open={open} onClose={onClose} size="lg" icon="shield-check" title={t("admin.roles.createNew")} subtitle={t("admin.roles.createSub")} footer={footer} className="rb-createmodal">
       <div className="rb-create">
-        <div className="rb-create__field">
-          <span className="rb-create__label">{t("admin.roles.roleType")}</span>
-          <div className="rb-typegrid" role="radiogroup" aria-label={t("admin.roles.roleType")}>
-            {ROLE_TYPES.map((rt) => (
-              <button key={rt.value} type="button" role="radio" aria-checked={surface === rt.value} className={"rb-typecard" + (surface === rt.value ? " is-active" : "")} onClick={() => setSurface(rt.value)}>
-                <span className="rb-typecard__icon">
-                  <Icon name={rt.icon} size={18} />
-                </span>
-                <span className="rb-typecard__body">
-                  <span className="rb-typecard__label">{t(rt.labelKey)}</span>
-                  <span className="rb-typecard__hint">{t(rt.hintKey)}</span>
-                </span>
-                {surface === rt.value && (
-                  <span className="rb-typecard__check">
-                    <Icon name="check" size={15} strokeWidth={2.6} />
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <Input label={t("admin.roles.roleName")} value={name} autoFocus iconLeading="shield" placeholder={t("admin.roles.roleNamePh")} onChange={(e) => setName(e.target.value)} />
 
         <div className="rb-create__field">
           <span className="rb-create__label">{t("admin.roles.icon")}</span>
           <div className="rb-create__icons" role="radiogroup" aria-label={t("admin.roles.roleIcon")}>
-            {ROLE_ICONS.map((name) => (
-              <button key={name} type="button" role="radio" aria-checked={name === icon} className={"rb-iconpick__opt" + (name === icon ? " is-active" : "")} onClick={() => setIcon(name)} aria-label={name}>
-                <Icon name={name} size={18} />
+            {ROLE_ICONS.map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={n === icon} className={"rb-iconpick__opt" + (n === icon ? " is-active" : "")} onClick={() => setIcon(n)} aria-label={n}>
+                <Icon name={n} size={18} />
               </button>
             ))}
           </div>
@@ -486,47 +673,132 @@ function CreateRoleForm({ open, onClose, onCreate }: { open: boolean; onClose: (
   );
 }
 
+/* ----------------------------------- app ----------------------------------- */
+
 export function RolesApp() {
-  const [roles, setRoles] = useState<RoleState[]>(() => ROLES_SEED.map((r) => ({ ...r, surface: r.surface ?? "admin", ...buildRole(r.spec, r.surface ?? "admin") })));
+  const { t } = useLang();
+  const [roles, setRoles] = useState<RoleStateV2[]>(() => ROLES_SEED_V2.map((r) => ({ ...r, ...buildRoleV2(r.spec, r.surface) })));
   const [view, setView] = useState("detail");
   const [selectedId, setSelectedId] = useState("super-admin");
   const [detailTab, setDetailTab] = useState("permissions");
-  const [activeCat, setActiveCat] = useState("dashboard");
+  const [activeSection, setActiveSection] = useState("dashboard");
   const [createOpen, setCreateOpen] = useState(false);
+  /** Section pending the "hide this whole page?" cascade confirm. */
+  const [hideAsk, setHideAsk] = useState<SectionV2 | null>(null);
+
+  const selected = roles.find((r) => r.id === selectedId) || roles[0];
+  const tOr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
 
   const selectRole = (id: string) => {
     const role = roles.find((r) => r.id === id);
     setSelectedId(id);
     setDetailTab("permissions");
-    setActiveCat(catsFor(role?.surface ?? "admin")[0].key);
+    setActiveSection(sectionsFor(role?.surface ?? "admin")[0].key);
   };
-  const toggle = (permId: string, val: boolean) => setRoles((rs) => rs.map((r) => (r.id === selectedId ? { ...r, grant: { ...r.grant, [permId]: val } } : r)));
-  const setIcon = (icon: IconName) => setRoles((rs) => rs.map((r) => (r.id === selectedId ? { ...r, icon } : r)));
-  const deleteRole = () => {
+
+  const mutateSelected = (fn: (r: RoleStateV2) => RoleStateV2) => setRoles((rs) => rs.map((r) => (r.id === selectedId ? fn(r) : r)));
+
+  const setGrants = (ids: string[], val: boolean) =>
+    mutateSelected((r) => ({ ...r, grant: { ...r.grant, ...Object.fromEntries(ids.map((id) => [id, val])) } }));
+
+  const auditToggle = (granted: boolean, metaKey: string) =>
+    logAudit({
+      category: "role",
+      actionKey: granted ? "audit.action.grantedPermission" : "audit.action.revokedPermission",
+      target: selected.name,
+      targetId: selected.id,
+      metaKey,
+    });
+
+  const toggle = (perm: FlatPermV2, val: boolean) => {
+    const surface = permSurface(selected.surface);
+    const viewId = viewIdOf(perm.sectionKey);
+    if (val) {
+      // Dependency cascade: any grant implies the section's view root.
+      setGrants(perm.id === viewId ? [perm.id] : [perm.id, viewId], true);
+      auditToggle(true, permKey(surface, perm.label) + ".label");
+      return;
+    }
+    if (perm.id === viewId) {
+      const section = sectionsFor(selected.surface).find((s) => s.key === perm.sectionKey);
+      const others = sectionPerms(selected.surface, perm.sectionKey).some((p2) => p2.id !== perm.id && selected.grant[p2.id]);
+      if (section && others) {
+        setHideAsk(section); // revoking view hides the page — confirm before clearing
+        return;
+      }
+    }
+    setGrants([perm.id], false);
+    auditToggle(false, permKey(surface, perm.label) + ".label");
+  };
+
+  const master = (section: SectionV2, group: GroupV2, val: boolean) => {
+    const groupPerms = sectionPerms(selected.surface, section.key).filter((p2) => p2.groupId === group.id);
+    const viewId = viewIdOf(section.key);
+    if (val) {
+      setGrants([...groupPerms.map((p2) => p2.id), viewId], true);
+      auditToggle(true, "perm.group." + group.id);
+      return;
+    }
+    if (groupPerms.some((p2) => p2.id === viewId)) {
+      setHideAsk(section); // the group holds the view root — same cascade as above
+      return;
+    }
+    setGrants(groupPerms.map((p2) => p2.id), false);
+    auditToggle(false, "perm.group." + group.id);
+  };
+
+  const confirmHide = () => {
+    if (!hideAsk) return;
+    setGrants(sectionPerms(selected.surface, hideAsk.key).map((p2) => p2.id), false);
+    auditToggle(false, hideAsk.labelKey);
+    setHideAsk(null);
+  };
+
+  const setScope = (sectionKey: string, val: ScopeVal) => {
+    mutateSelected((r) => ({ ...r, scope: { ...r.scope, [sectionKey]: val } }));
+    const section = sectionsFor(selected.surface).find((s) => s.key === sectionKey);
+    logAudit({
+      category: "role",
+      actionKey: "audit.action.updatedRoleScope",
+      actionParams: { scope: "@" + (SCOPE_OPTS_V2.find((o) => o.value === val)?.labelKey ?? "admin.rolesV2.scope.org") },
+      target: selected.name,
+      targetId: selected.id,
+      metaKey: section?.labelKey,
+    });
+  };
+
+  const setIcon = (icon: IconName) => mutateSelected((r) => ({ ...r, icon }));
+
+  const deleteRole = (reassignId: string | null) => {
     const removed = roles.find((r) => r.id === selectedId);
     const next = roles.find((r) => r.id !== selectedId);
     logAudit({ category: "role", actionKey: "audit.action.deletedRole", target: removed?.name ?? selectedId, targetId: selectedId });
-    setRoles((rs) => rs.filter((r) => r.id !== selectedId));
+    setRoles((rs) =>
+      rs
+        .filter((r) => r.id !== selectedId)
+        .map((r) => (reassignId && r.id === reassignId && removed ? { ...r, users: r.users + removed.users } : r)),
+    );
     if (next) selectRole(next.id);
   };
-  const createRole = (v: { name: string; desc: string; icon: IconName; surface: Surface }) => {
+
+  const createRole = (v: CreateRoleV2Input) => {
     const id = "role-" + Date.now().toString(36);
-    const created = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const tone = v.surface === "member" ? "info" : "brand";
-    const newRole: RoleState = {
+    const base = v.cloneId ? roles.find((r) => r.id === v.cloneId) : null;
+    const built = base ? { grant: { ...base.grant }, scope: { ...base.scope } } : buildRoleV2({}, v.surface);
+    const newRole: RoleStateV2 = {
       id,
       name: v.name.trim(),
-      tone,
-      dot: tone,
+      dot: v.surface === "member" ? "info" : "brand",
       icon: v.icon,
       system: false,
       surface: v.surface,
-      status: "Active",
       users: 0,
-      created,
       desc: v.desc.trim(),
       spec: {},
-      ...buildRole({}, v.surface),
+      ...built,
     };
     logAudit({
       category: "role",
@@ -540,23 +812,37 @@ export function RolesApp() {
     setView("detail");
     setSelectedId(id);
     setDetailTab("permissions");
-    setActiveCat(catsFor(v.surface)[0].key);
+    setActiveSection(sectionsFor(v.surface)[0].key);
   };
-
-  const selectedRole = roles.find((r) => r.id === selectedId) || roles[0];
 
   return (
     <>
-      <RolesHeader view={view} onView={setView} />
+      <RolesV2Header view={view} onView={setView} />
       {view === "detail" ? (
         <div className="rb-split">
           <RoleList roles={roles} selectedId={selectedId} onSelect={selectRole} onCreate={() => setCreateOpen(true)} />
-          <RoleDetail role={selectedRole} detailTab={detailTab} onDetailTab={setDetailTab} activeCat={activeCat} onCat={setActiveCat} onToggle={toggle} onIcon={setIcon} onDelete={deleteRole} />
+          <RoleDetailV2
+            role={selected}
+            roles={roles}
+            detailTab={detailTab}
+            onDetailTab={setDetailTab}
+            activeSection={activeSection}
+            onSection={setActiveSection}
+            onToggle={toggle}
+            onMaster={master}
+            onScope={setScope}
+            onIcon={setIcon}
+            onDelete={deleteRole}
+          />
         </div>
       ) : (
-        <RoleMatrix roles={roles} />
+        <div className="rb2-matrixstack">
+          <MatrixCardV2 surface="admin" roles={roles} />
+          <MatrixCardV2 surface="member" roles={roles} />
+        </div>
       )}
-      <CreateRoleModal open={createOpen} onClose={() => setCreateOpen(false)} onCreate={createRole} />
+      {hideAsk && <HideSectionModal sectionLabel={tOr(hideAsk.labelKey, hideAsk.label)} onCancel={() => setHideAsk(null)} onConfirm={confirmHide} />}
+      <CreateRoleModalV2 open={createOpen} onClose={() => setCreateOpen(false)} onCreate={createRole} />
     </>
   );
 }

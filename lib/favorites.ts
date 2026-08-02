@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { openAuth, useAuth } from "@/lib/auth";
+import { useLang } from "@/lib/i18n";
 
 /**
  * Chiya Estate — saved (favorited) properties & agents store.
@@ -130,5 +132,41 @@ export function useFavorites() {
     isAgentSaved: useCallback((id: string) => favorites.agents.some((x) => x.id === id), [favorites.agents]),
     toggleProperty: useCallback((p: SavedProperty) => toggleSavedProperty(p), []),
     toggleAgent: useCallback((a: SavedAgent) => toggleSavedAgent(a), []),
+  };
+}
+
+/**
+ * Auth-gated saving for the heart toggles across the site.
+ *
+ * Signed in → toggle the shared favorites store directly. Signed out → open the
+ * site-wide login modal (with a contextual note) instead of saving, so a guest
+ * is prompted to sign in before their shortlist is built. Membership tests still
+ * reflect the real store; a signed-out visitor simply never has saved items.
+ */
+export function useSaveGate() {
+  const { user } = useAuth();
+  const { properties, agents, isPropertySaved, isAgentSaved } = useFavorites();
+  const { t } = useLang();
+  return {
+    properties,
+    agents,
+    isPropertySaved,
+    isAgentSaved,
+    /** Toggle a property when signed in, else prompt to sign in. */
+    saveProperty: useCallback(
+      (p: SavedProperty) => {
+        if (!user) return openAuth("login", { note: t("auth.gate.saveProperty") });
+        toggleSavedProperty(p);
+      },
+      [user, t],
+    ),
+    /** Toggle an agent when signed in, else prompt to sign in. */
+    saveAgent: useCallback(
+      (a: SavedAgent) => {
+        if (!user) return openAuth("login", { note: t("auth.gate.saveAgent") });
+        toggleSavedAgent(a);
+      },
+      [user, t],
+    ),
   };
 }

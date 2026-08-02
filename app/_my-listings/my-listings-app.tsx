@@ -146,7 +146,6 @@ export function MyListingsApp() {
         title="Delete this listing?"
         subtitle={deleteTarget ? `“${deleteTarget.title}” will be permanently removed. This can’t be undone.` : undefined}
         size="sm"
-        footerSpread
         footer={
           <>
             <Button hierarchy="secondary" onClick={() => setDeleteTarget(null)}>

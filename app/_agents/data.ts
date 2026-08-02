@@ -3,7 +3,7 @@
     reviews / listings counted from live records (approved reviews, assigned
     properties) instead of invented aggregates. */
 
-import { SITE_AGENTS, portraitUrl } from "@/lib/site-agents";
+import { SITE_AGENTS, portraitUrl, type SiteAgent } from "@/lib/site-agents";
 
 export interface DirAgent {
   id: string;
@@ -22,22 +22,25 @@ export interface DirAgent {
   whatsapp: string;
 }
 
-export const agents: DirAgent[] = SITE_AGENTS.map((a) => ({
-  id: a.id,
-  name: a.name,
-  city: a.city,
-  photo: portraitUrl(a.photo, 240),
-  verified: a.verified,
-  rating: a.rating,
-  reviews: a.reviewCount,
-  listings: a.listings,
-  sold: a.sold + a.rented,
-  experience: a.experience,
-  since: a.since,
-  languages: a.languages,
-  phone: a.phone,
-  whatsapp: a.whatsapp,
-}));
+/** Directory agents from a live SiteAgent set (or the seed by default). */
+export const deriveDirAgents = (siteAgents: SiteAgent[] = SITE_AGENTS): DirAgent[] =>
+  siteAgents.map((a) => ({
+    id: a.id,
+    name: a.name,
+    city: a.city,
+    photo: portraitUrl(a.photo, 240),
+    verified: a.verified,
+    rating: a.rating,
+    reviews: a.reviewCount,
+    listings: a.listings,
+    sold: a.sold + a.rented,
+    experience: a.experience,
+    since: a.since,
+    languages: a.languages,
+    phone: a.phone,
+    whatsapp: a.whatsapp,
+  }));
+export const agents: DirAgent[] = deriveDirAgents();
 
 export const cities = ["Erbil", "Sulaymaniyah", "Duhok"];
 

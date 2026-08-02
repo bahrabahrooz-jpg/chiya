@@ -18,11 +18,9 @@ type MenuId = "notif" | "profile" | "lang" | null;
 
 function ProfileMenu({ name, avatar, onNavigate, onLogout }: { name: string; avatar: string; onNavigate: (path: string) => void; onLogout: () => void }) {
   const { t } = useLang();
-  // Keyed by id, not path — Change password and Account settings share a route
-  // until the settings module is built out.
   const items: { id: string; icon: "user" | "lock" | "settings"; label: string; path: string }[] = [
     { id: "profile", icon: "user", label: t("admin.topbar.myProfile"), path: "/admin/profile" },
-    { id: "password", icon: "lock", label: t("admin.profile.changePassword"), path: "/admin/settings" },
+    { id: "password", icon: "lock", label: t("admin.profile.changePassword"), path: "/admin/change-password" },
     { id: "settings", icon: "settings", label: t("admin.topbar.accountSettings"), path: "/admin/settings" },
   ];
   return (

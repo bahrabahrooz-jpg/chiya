@@ -63,8 +63,8 @@ export interface Sold {
   cover: string;
 }
 
-/** A review card. The deal line is an i18n key + property title resolved from
-    live records; the component translates it (and the relative "when"). */
+/** A review card. The component renders the star rating under the name and the
+    relative "when"; the deal that prompted the review is no longer shown. */
 export interface Review {
   id: string;
   name: string;
@@ -72,8 +72,6 @@ export interface Review {
   stars: number;
   daysAgo: number;
   when: string; // formatted date fallback
-  dealKey?: string;
-  dealTitle?: string;
   text: string;
 }
 
@@ -87,6 +85,7 @@ export const sortOptions: SortOpt[] = [
   { value: "newest", label: "Newest", icon: "sparkles" },
   { value: "price-asc", label: "Price: low to high", icon: "arrow-up-wide-narrow" },
   { value: "price-desc", label: "Price: high to low", icon: "arrow-down-wide-narrow" },
+  { value: "recommended", label: "Featured", icon: "sparkles" },
 ];
 
 export interface AgentProfile {
@@ -140,7 +139,9 @@ function buildProfile(a: SiteAgent): AgentProfile {
     address: `${p.area}, ${p.city}`,
     deal: p.listing === "rent" ? "rent" : "buy",
     price: p.price,
-    status: p.featured ? "Featured" : p.listing === "rent" ? "For Rent" : "For Sale",
+    // Card pill only ever shows the deal (For Sale / For Rent) — the featured
+    // flag drives the sort, not the badge.
+    status: p.listing === "rent" ? "For Rent" : "For Sale",
     featured: p.featured,
     beds: p.beds,
     baths: p.baths,
@@ -169,8 +170,6 @@ function buildProfile(a: SiteAgent): AgentProfile {
     stars: r.stars,
     daysAgo: r.daysAgo,
     when: r.when,
-    dealKey: r.dealKey,
-    dealTitle: r.dealTitle,
     text: r.text,
   }));
 

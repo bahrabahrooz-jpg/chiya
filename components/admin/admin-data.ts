@@ -49,6 +49,7 @@ export const NAV_GROUPS: NavGroupDef[] = [
       { id: "reports", label: "Reports", labelKey: "admin.nav.reports", icon: "chart-column", href: "/admin/reports" },
       { id: "roles", label: "Roles & permissions", labelKey: "admin.nav.roles", icon: "key-round", href: "/admin/roles" },
       { id: "audit", label: "Audit log", labelKey: "admin.nav.audit", icon: "scroll-text", href: "/admin/audit" },
+      { id: "content", label: "Content", labelKey: "admin.nav.content", icon: "file-text", href: "/admin/content" },
       { id: "settings", label: "Settings", labelKey: "admin.nav.settings", icon: "settings", href: "/admin/settings" },
     ],
   },

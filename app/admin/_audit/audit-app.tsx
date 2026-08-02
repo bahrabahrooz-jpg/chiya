@@ -17,6 +17,7 @@ const CAT_META: Record<AuditCategory, { icon: IconName; labelKey: string }> = {
   agent: { icon: "badge-check", labelKey: "admin.nav.agents" },
   location: { icon: "map-pin", labelKey: "admin.nav.locations" },
   role: { icon: "key-round", labelKey: "admin.nav.roles" },
+  settings: { icon: "settings", labelKey: "admin.nav.settings" },
 };
 const CATEGORIES = Object.keys(CAT_META) as AuditCategory[];
 

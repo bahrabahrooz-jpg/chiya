@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/choice";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl, interleave } from "@/lib/i18n";
 import { fmtNum, popupLeft } from "@/lib/fmt";
+import { adminMenuRoot } from "../_shared/menu-portal";
 import {
   AGENTS_PER_PAGE,
   AGENT_STATUS,
@@ -37,8 +38,10 @@ function ActionMenu({
   ariaLabel,
   status,
   verification,
+  featured,
   onStatus,
   onVerify,
+  onFeature,
   onDelete,
   onEdit,
   onView,
@@ -50,8 +53,10 @@ function ActionMenu({
   ariaLabel?: string;
   status: string;
   verification: string;
+  featured: boolean;
   onStatus: () => void;
   onVerify: () => void;
+  onFeature: () => void;
   onDelete: () => void;
   onEdit?: () => void;
   onView?: () => void;
@@ -72,6 +77,12 @@ function ActionMenu({
       setPos({ top: r.bottom + 6, left: popupLeft(r, 196, isRtl(lang)) });
     };
     update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
   }, [open, lang]);
   const menu =
     pos &&
@@ -94,6 +105,10 @@ function ActionMenu({
             <Icon name={verified ? "shield-x" : "badge-check"} size={17} />
             {verified ? t("admin.agents.revokeVerification") : t("admin.agents.verifyAgent")}
           </button>
+          <button type="button" className="ag-aitem" role="menuitem" onClick={onFeature}>
+            <Icon name={featured ? "sparkles" : "sparkle"} size={17} />
+            {featured ? t("admin.agents.unfeature") : t("admin.agents.feature")}
+          </button>
         </div>
         <div className="ag-amenu__sect">
           <button type="button" className="ag-aitem mp-aitem--danger ag-aitem--danger" role="menuitem" onClick={onDelete}>
@@ -102,7 +117,7 @@ function ActionMenu({
           </button>
         </div>
       </div>,
-      document.body,
+      adminMenuRoot(),
     );
   return (
     <>
@@ -121,118 +136,8 @@ interface CardHandlers {
   onEditRequest: (a: AgentRecord) => void;
   onStatusRequest: (a: AgentRecord) => void;
   onVerifyRequest: (a: AgentRecord) => void;
+  onFeatureRequest: (a: AgentRecord) => void;
   onDeleteRequest: (a: AgentRecord) => void;
-}
-
-function AgentCard({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRequest, onVerifyRequest, onDeleteRequest }: { a: AgentRecord } & CardHandlers) {
-  const { t, lang } = useLang();
-  const tOr = (key: string, fallback: string) => {
-    const v = t(key);
-    return v === key ? fallback : v;
-  };
-  const ver = VERIFICATION[a.verification] || VERIFICATION.Pending;
-  const st = AGENT_STATUS[a.status] || { variant: "neutral" as const, dot: false };
-  const verified = a.verification === "Verified";
-  return (
-    <article className="ag-card">
-      <div className="ag-card__status">
-        <Badge variant={st.variant} size="sm" dot={st.dot} className="ag-statusbadge">
-          {tOr(`status.${a.status.toLowerCase()}`, a.status)}
-        </Badge>
-      </div>
-      <div className="ag-actions">
-        <ActionMenu
-          open={openMenu === a.id}
-          onToggle={() => setOpenMenu(openMenu === a.id ? null : a.id)}
-          onClose={() => setOpenMenu(null)}
-          onView={() => {
-            setOpenMenu(null);
-            onView(a);
-          }}
-          onEdit={() => {
-            setOpenMenu(null);
-            onEditRequest(a);
-          }}
-          onStatus={() => {
-            setOpenMenu(null);
-            onStatusRequest(a);
-          }}
-          onVerify={() => {
-            setOpenMenu(null);
-            onVerifyRequest(a);
-          }}
-          onDelete={() => {
-            setOpenMenu(null);
-            onDeleteRequest(a);
-          }}
-          btnClass="ag-card__kebab"
-          ariaLabel={t("admin.agents.actionsFor", { name: a.name })}
-          status={a.status}
-          verification={a.verification}
-        />
-      </div>
-
-      <div className="ag-card__top">
-        <Avatar src={a.img || undefined} name={a.name} size="xl" verified={verified} ring={!verified} />
-        <div className="ag-card__name">{a.name}</div>
-        <div className="ag-card__agency">
-          <Icon name="map-pin" size={13} />
-          {a.city}
-        </div>
-        <div className="ag-card__id">{a.id}</div>
-        <div className="ag-card__verify">
-          <Badge variant={ver.variant} size="sm" icon={ver.icon}>
-            {tOr(`status.${a.verification.toLowerCase()}`, ver.label)}
-          </Badge>
-        </div>
-      </div>
-
-      <div className="ag-card__contact">
-        <div className="ag-card__row ag-card__row--phone">
-          <Icon name="phone" size={15} />
-          <span>{a.phone}</span>
-        </div>
-        <div className="ag-card__row">
-          <Icon name="mail" size={15} />
-          <span>{a.email}</span>
-        </div>
-        <div className="ag-card__row">
-          <Icon name="map-pin" size={15} />
-          <span>
-            {a.city} · {a.area}
-          </span>
-        </div>
-      </div>
-
-      <div className="ag-card__stats">
-        <div className="ag-stat ag-stat--listings">
-          <b>{fmtNum(lang, a.listings)}</b>
-          <span>{t("admin.agents.stat.listings")}</span>
-        </div>
-        <div className="ag-stat">
-          <b>{fmtNum(lang, a.sold)}</b>
-          <span>{t("admin.agents.stat.sold")}</span>
-        </div>
-        <div className="ag-stat">
-          <b>{fmtNum(lang, a.rented)}</b>
-          <span>{t("admin.agents.stat.rented")}</span>
-        </div>
-        <div className="ag-stat">
-          <b>{fmtNum(lang, a.members)}</b>
-          <span>{t("admin.agents.stat.members")}</span>
-        </div>
-      </div>
-
-      <div className="ag-card__foot">
-        <Button hierarchy="primary" size="md" iconLeading="id-card" onClick={() => onView(a)}>
-          {t("admin.props.viewDetails")}
-        </Button>
-        <Button hierarchy="secondary" size="md" iconLeading="pencil" onClick={() => onEditRequest(a)}>
-          {t("admin.props.edit")}
-        </Button>
-      </div>
-    </article>
-  );
 }
 
 function NoResults({ inset }: { inset?: boolean }) {
@@ -248,18 +153,7 @@ function NoResults({ inset }: { inset?: boolean }) {
   );
 }
 
-function AgentGrid({ rows, ...h }: { rows: AgentRecord[] } & CardHandlers) {
-  if (rows.length === 0) return <NoResults />;
-  return (
-    <div className="ag-grid">
-      {rows.map((a) => (
-        <AgentCard key={a.id} a={a} {...h} />
-      ))}
-    </div>
-  );
-}
-
-function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRequest, onVerifyRequest, onDeleteRequest }: { a: AgentRecord } & CardHandlers) {
+function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusRequest, onVerifyRequest, onFeatureRequest, onDeleteRequest }: { a: AgentRecord } & CardHandlers) {
   const ver = VERIFICATION[a.verification] || VERIFICATION.Pending;
   const st = AGENT_STATUS[a.status] || { variant: "neutral" as const, dot: false };
   const verified = a.verification === "Verified";
@@ -347,6 +241,10 @@ function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusReq
               setOpenMenu(null);
               onVerifyRequest(a);
             }}
+            onFeature={() => {
+              setOpenMenu(null);
+              onFeatureRequest(a);
+            }}
             onDelete={() => {
               setOpenMenu(null);
               onDeleteRequest(a);
@@ -355,6 +253,7 @@ function AgentRow({ a, openMenu, setOpenMenu, onView, onEditRequest, onStatusReq
             ariaLabel={"Actions for " + a.name}
             status={a.status}
             verification={a.verification}
+            featured={a.featured}
           />
         </div>
       </div>
@@ -443,8 +342,6 @@ function AgentsPanel({
   setFilter,
   onClear,
   hasActive,
-  view,
-  setView,
   rows,
   totalCount,
   cityOptions,
@@ -455,8 +352,6 @@ function AgentsPanel({
   setFilter: (k: keyof AgentFilters, v: string) => void;
   onClear: () => void;
   hasActive: boolean;
-  view: string;
-  setView: (v: string) => void;
   rows: AgentRecord[];
   totalCount: number;
   cityOptions: string[];
@@ -471,7 +366,7 @@ function AgentsPanel({
   const shown = hasActive ? rows.length : totalCount;
   const activeAdvCount = (["city", "listings", "status"] as const).filter((k) => filters[k]).length;
   return (
-    <section className={"ap-panel" + (view === "table" ? " ap-panel--joined" : "")}>
+    <section className="ap-panel ap-panel--joined">
       <header className="ap-panel__head">
         <div className="ap-panel__titlerow">
           <div className="ap-panel__heading">
@@ -517,14 +412,6 @@ function AgentsPanel({
               {t("admin.props.filters")}
               {activeAdvCount > 0 && <span className="ap-filterbtn__badge">{fmtNum(lang, activeAdvCount)}</span>}
             </button>
-            <div className="ap-viewswitch" role="tablist" aria-label={t("admin.agents.viewMode")}>
-              <button type="button" role="tab" aria-label={t("admin.agents.viewCards")} aria-selected={view === "cards"} className={view === "cards" ? "is-active" : ""} onClick={() => setView("cards")}>
-                <Icon name="layout-grid" size={16} />
-              </button>
-              <button type="button" role="tab" aria-selected={view === "table"} className={view === "table" ? "is-active" : ""} onClick={() => setView("table")} aria-label={t("admin.agents.viewTable")}>
-                <Icon name="list" size={16} />
-              </button>
-            </div>
           </div>
         </div>
 
@@ -582,6 +469,90 @@ function StatusAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; 
           <Icon name={copy.icon} size={24} strokeWidth={1.8} />
         </div>
         <h2 className="mp-modal__title" id="ag-status-title">
+          {copy.title}
+        </h2>
+        <p className="mp-modal__body">{copy.body}</p>
+        <div className="mp-modal__actions">
+          <button type="button" className="mp-modal__cancel" onClick={onCancel}>
+            {t("admin.topbar.cancel")}
+          </button>
+          <button type="button" className={"mp-modal__confirm " + copy.ctaCls} onClick={onConfirm}>
+            {copy.cta}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function VerifyAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  const verifying = agent.verification !== "Verified";
+  const copy = verifying
+    ? { icon: "badge-check" as IconName, iconCls: "mp-modal__icon--brand", title: t("admin.agents.verifyAgent"), body: t("admin.agents.verifyBody"), cta: t("admin.agents.verifyAgent"), ctaCls: "mp-modal__confirm--brand" }
+    : { icon: "shield-x" as IconName, iconCls: "mp-modal__icon--warn", title: t("admin.agents.revokeVerification"), body: t("admin.agents.revokeBody"), cta: t("admin.agents.revokeVerification"), ctaCls: "mp-modal__confirm--warn" };
+  return createPortal(
+    <div
+      className="mp-modal-backdrop"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="mp-modal" role="dialog" aria-modal="true" aria-labelledby="ag-verify-title">
+        <div className={"mp-modal__icon " + copy.iconCls}>
+          <Icon name={copy.icon} size={24} strokeWidth={1.8} />
+        </div>
+        <h2 className="mp-modal__title" id="ag-verify-title">
+          {copy.title}
+        </h2>
+        <p className="mp-modal__body">{copy.body}</p>
+        <div className="mp-modal__actions">
+          <button type="button" className="mp-modal__cancel" onClick={onCancel}>
+            {t("admin.topbar.cancel")}
+          </button>
+          <button type="button" className={"mp-modal__confirm " + copy.ctaCls} onClick={onConfirm}>
+            {copy.cta}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function FeatureAgentModal({ agent, onCancel, onConfirm }: { agent: AgentRecord; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useLang();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  const featuring = !agent.featured;
+  const copy = featuring
+    ? { icon: "sparkles" as IconName, iconCls: "mp-modal__icon--brand", title: t("admin.agents.feature"), body: t("admin.agents.featureBody"), cta: t("admin.agents.feature"), ctaCls: "mp-modal__confirm--brand" }
+    : { icon: "sparkle" as IconName, iconCls: "mp-modal__icon--warn", title: t("admin.agents.unfeature"), body: t("admin.agents.unfeatureBody"), cta: t("admin.agents.unfeature"), ctaCls: "mp-modal__confirm--warn" };
+  return createPortal(
+    <div
+      className="mp-modal-backdrop"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="mp-modal" role="dialog" aria-modal="true" aria-labelledby="ag-feature-title">
+        <div className={"mp-modal__icon " + copy.iconCls}>
+          <Icon name={copy.icon} size={24} strokeWidth={1.8} />
+        </div>
+        <h2 className="mp-modal__title" id="ag-feature-title">
           {copy.title}
         </h2>
         <p className="mp-modal__body">{copy.body}</p>
@@ -834,11 +805,12 @@ export function AgentsApp() {
     const v = searchParams.get("verification");
     return v && VERIFICATION_TABS.some((t) => t.id === v) ? { ...EMPTY_FILTERS, verification: v } : EMPTY_FILTERS;
   });
-  const [view, setView] = useState("table");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [toast, setToast] = useState<AgToast | null>(null);
   const [statusTarget, setStatusTarget] = useState<AgentRecord | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<AgentRecord | null>(null);
+  const [featureTarget, setFeatureTarget] = useState<AgentRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AgentRecord | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AgentRecord | null>(null);
@@ -847,10 +819,6 @@ export function AgentsApp() {
   const setFilter = (k: keyof AgentFilters, v: string) => setFilters((f) => ({ ...f, [k]: v }));
   const clear = () => setFilters(EMPTY_FILTERS);
   const hasActive = Object.values(filters).some(Boolean);
-
-  useEffect(() => {
-    window.localStorage.setItem("chiya.agents.view", view);
-  }, [view]);
 
   const viewProfile = (a?: AgentRecord) => router.push(a ? `/admin/agents/${encodeURIComponent(a.id)}` : "/admin/agents");
 
@@ -869,6 +837,7 @@ export function AgentsApp() {
       rented: 0,
       members: 0,
       status: values.status || "Active",
+      featured: false,
       img: values.img ?? null,
     });
     setToast({ variant: "success", icon: "badge-check", title: t("admin.agents.toast.createdTitle"), message: t("admin.agents.toast.createdMsg") });
@@ -903,14 +872,35 @@ export function AgentsApp() {
         : { variant: "success", icon: "circle-check", title: t("admin.agents.toast.activatedTitle"), message: t("admin.agents.toast.activatedMsg") },
     );
   };
-  const handleVerifyToggle = (target: AgentRecord) => {
+  const handleVerifyConfirm = () => {
+    const target = verifyTarget!;
     const verifying = target.verification !== "Verified";
     const next = verifying ? "Verified" : "Pending";
-    updateAgent(target.id, { verification: next });
+    // Revoking verification also pulls the agent from any featured placement,
+    // since the homepage only surfaces verified featured agents.
+    updateAgent(target.id, verifying ? { verification: next } : { verification: next, featured: false });
+    setVerifyTarget(null);
     setToast(
       verifying
         ? { variant: "success", icon: "badge-check", title: t("admin.agents.toast.verifiedTitle"), message: t("admin.agents.toast.verifiedMsg", { name: target.name }) }
         : { variant: "warn", icon: "shield-x", title: t("admin.agents.toast.revokedTitle"), message: t("admin.agents.toast.revokedMsg", { name: target.name }) },
+    );
+  };
+  const handleFeatureConfirm = () => {
+    const target = featureTarget!;
+    const next = !target.featured;
+    updateAgent(target.id, { featured: next });
+    setFeatureTarget(null);
+    if (next && (target.verification !== "Verified" || target.status !== "Active")) {
+      // The homepage only surfaces verified + active featured agents, so flag it
+      // but warn that it won't appear publicly until the agent qualifies.
+      setToast({ variant: "warn", icon: "sparkles", title: t("admin.agents.toast.featuredTitle"), message: t("admin.agents.toast.featuredHiddenMsg", { name: target.name }) });
+      return;
+    }
+    setToast(
+      next
+        ? { variant: "success", icon: "sparkles", title: t("admin.agents.toast.featuredTitle"), message: t("admin.agents.toast.featuredMsg", { name: target.name }) }
+        : { variant: "success", icon: "sparkle", title: t("admin.agents.toast.unfeaturedTitle"), message: t("admin.agents.toast.unfeaturedMsg", { name: target.name }) },
     );
   };
   const handleDeleteConfirm = () => {
@@ -935,13 +925,6 @@ export function AgentsApp() {
     });
   };
 
-  useEffect(() => {
-    if (!openMenu) return;
-    const close = () => setOpenMenu(null);
-    window.addEventListener("scroll", close, true);
-    return () => window.removeEventListener("scroll", close, true);
-  }, [openMenu]);
-
   const rows = useMemo(() => {
     const q = filters.q.trim().toLowerCase();
     return agents.filter((a) => {
@@ -959,11 +942,10 @@ export function AgentsApp() {
     });
   }, [filters, agents]);
 
-  // reset to first page whenever the filtered result set or view changes (render-phase guard)
-  const resetKey = `${rows.length}|${view}`;
-  const [prevResetKey, setPrevResetKey] = useState(resetKey);
-  if (resetKey !== prevResetKey) {
-    setPrevResetKey(resetKey);
+  // reset to first page whenever the filtered result set changes (render-phase guard)
+  const [prevRowCount, setPrevRowCount] = useState(rows.length);
+  if (rows.length !== prevRowCount) {
+    setPrevRowCount(rows.length);
     setCurrentPage(1);
   }
 
@@ -977,7 +959,8 @@ export function AgentsApp() {
     onView: viewProfile,
     onEditRequest: setEditTarget,
     onStatusRequest: setStatusTarget,
-    onVerifyRequest: handleVerifyToggle,
+    onVerifyRequest: setVerifyTarget,
+    onFeatureRequest: setFeatureTarget,
     onDeleteRequest: setDeleteTarget,
   };
 
@@ -1008,9 +991,9 @@ export function AgentsApp() {
         ))}
       </div>
 
-      <AgentsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} view={view} setView={setView} rows={rows} totalCount={agents.length} cityOptions={cityOptions} filtersOpen={filtersOpen} onToggleFilters={() => setFiltersOpen((o) => !o)} />
+      <AgentsPanel filters={filters} setFilter={setFilter} onClear={clear} hasActive={hasActive} rows={rows} totalCount={agents.length} cityOptions={cityOptions} filtersOpen={filtersOpen} onToggleFilters={() => setFiltersOpen((o) => !o)} />
 
-      {view === "cards" ? <AgentGrid rows={rows} {...handlers} /> : <AgentTable rows={pagedRows} currentPage={page} totalItems={rows.length} onPageChange={setCurrentPage} {...handlers} />}
+      <AgentTable rows={pagedRows} currentPage={page} totalItems={rows.length} onPageChange={setCurrentPage} {...handlers} />
 
       {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}
       {addOpen && <AddAgentModal onCancel={() => setAddOpen(false)} onCreate={handleCreate} />}
@@ -1031,6 +1014,8 @@ export function AgentsApp() {
         />
       )}
       {statusTarget && <StatusAgentModal agent={statusTarget} onCancel={() => setStatusTarget(null)} onConfirm={handleStatusConfirm} />}
+      {verifyTarget && <VerifyAgentModal agent={verifyTarget} onCancel={() => setVerifyTarget(null)} onConfirm={handleVerifyConfirm} />}
+      {featureTarget && <FeatureAgentModal agent={featureTarget} onCancel={() => setFeatureTarget(null)} onConfirm={handleFeatureConfirm} />}
       {deleteTarget && <DeleteAgentModal agent={deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
       {toast && <Toast toast={toast} onDismiss={() => setToast(null)} onView={() => viewProfile()} onUndo={handleUndo} />}
     </>

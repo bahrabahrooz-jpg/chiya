@@ -860,6 +860,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
   const [m, setM] = useState<MemberRecord>(resolved);
   const [status, setStatus] = useState(resolved.status);
   const [, setAgent] = useState<MemberAgent | null>(resolved.agent);
+  const [tab, setTab] = useState<"basic" | "portfolio" | "viewings" | "activity">("basic");
   // reset editable state when navigating to a different member
   const [prevId, setPrevId] = useState(id);
   if (prevId !== id) {
@@ -867,6 +868,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
     setM(resolved);
     setStatus(resolved.status);
     setAgent(resolved.agent);
+    setTab("basic");
   }
   const [notes, setNotes] = useState<NoteItem[]>(INIT_NOTES);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
@@ -893,6 +895,8 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
           <span aria-current="page">{m.name}</span>
         </nav>
 
+        <div className="vwd-panel">
+          <div className="vwd-hero">
         <div className="pd-head__main">
           <div className="pd-head__identity">
             <Avatar src={m.img} name={m.name} size="xl" className="pd-head__avatar" />
@@ -965,92 +969,130 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
             )}
           </div>
         </div>
-      </header>
+          </div>
+          {/* end .vwd-hero */}
 
-      <div className="pd-grid pd-grid--full">
-        <div className="pd-grid__main">
-          <SectionCard title={t("admin.pd.basic")} desc={t("admin.mp.basicDesc")}>
-            <BasicInfo member={m} pushToast={pushToast} />
-          </SectionCard>
+          <div className="vwd-segwrap">
+            <div className="vwd-seg" role="tablist" aria-label={t("admin.nav.members")}>
+              <button type="button" role="tab" aria-selected={tab === "basic"} className={"vwd-seg__btn" + (tab === "basic" ? " is-active" : "")} onClick={() => setTab("basic")}>
+                {t("admin.pd.basic")}
+              </button>
+              <button type="button" role="tab" aria-selected={tab === "portfolio"} className={"vwd-seg__btn" + (tab === "portfolio" ? " is-active" : "")} onClick={() => setTab("portfolio")}>
+                {t("admin.mp.portfolioTab")}
+                <span className="vwd-seg__count">{fmtNum(lang, shownPortfolio.length)}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={tab === "viewings"} className={"vwd-seg__btn" + (tab === "viewings" ? " is-active" : "")} onClick={() => setTab("viewings")}>
+                {t("admin.nav.viewings")}
+                <span className="vwd-seg__count">{fmtNum(lang, shownViewings.length)}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={tab === "activity"} className={"vwd-seg__btn" + (tab === "activity" ? " is-active" : "")} onClick={() => setTab("activity")}>
+                {t("admin.vd.tab.audit")}
+                <span className="vwd-seg__count">{fmtNum(lang, timeline.length)}</span>
+              </button>
+            </div>
+          </div>
 
-          <SectionCard
-            title={t("admin.mp.portfolio")}
-            count={shownPortfolio.length}
-            desc={t("admin.mp.portfolioDesc")}
-            action={
-              <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href={`${surfaceBase}/properties`} style={{ color: "var(--text-secondary)" }}>
-                {t("admin.common.viewAll")}
-              </Button>
-            }
-            flush
-          >
-            {shownPortfolio.length > 0 ? (
-              <PortfolioTable rows={shownPortfolio} hideAgent={!!scopeAgent} />
-            ) : (
-              <div className="pd-noagent">
-                <span className="pd-noagent__art">
-                  <Icon name="building-2" size={24} strokeWidth={1.6} />
-                </span>
-                <p>{t("admin.mp.portfolioEmpty")}</p>
+          <div className="vwd-panel__body">
+            {tab === "basic" && (
+              <div className="pd-grid__main">
+                <SectionCard title={t("admin.pd.basic")} desc={t("admin.mp.basicDesc")}>
+                  <BasicInfo member={m} pushToast={pushToast} />
+                </SectionCard>
+
+                <NotesSection
+                  notes={notes}
+                  onAdd={(text) => {
+                    setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: "@time.now", kind: "note", text }, ...ns]);
+                    pushToast({ tone: "brand", icon: "check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.mp.toast.noteAddedMsg") });
+                  }}
+                  onEdit={(i, text) => {
+                    setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: "@admin.vd.editedJustNow" } : n)));
+                    pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
+                  }}
+                  onDelete={(i) => setNoteToDelete(i)}
+                />
               </div>
             )}
-          </SectionCard>
 
-          <SectionCard
-            title={t("admin.pd.viewingRequests")}
-            count={shownViewings.length}
-            desc={t("admin.mp.viewingsDesc")}
-            action={
-              <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href={`${surfaceBase}/viewings`} style={{ color: "var(--text-secondary)" }}>
-                {t("admin.common.viewAll")}
-              </Button>
-            }
-            flush
-          >
-            {shownViewings.length > 0 ? (
-              <ViewingsTable rows={shownViewings} hideAgent={!!scopeAgent} />
-            ) : (
-              <div className="pd-noagent">
-                <span className="pd-noagent__art">
-                  <Icon name="calendar" size={24} strokeWidth={1.6} />
-                </span>
-                <p>{t("admin.mp.viewingsEmpty")}</p>
+            {tab === "portfolio" && (
+              <div className="pd-grid__main">
+                <SectionCard
+                  title={t("admin.mp.portfolio")}
+                  count={shownPortfolio.length}
+                  desc={t("admin.mp.portfolioDesc")}
+                  action={
+                    <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href={`${surfaceBase}/properties`} style={{ color: "var(--text-secondary)" }}>
+                      {t("admin.common.viewAll")}
+                    </Button>
+                  }
+                  flush
+                >
+                  {shownPortfolio.length > 0 ? (
+                    <PortfolioTable rows={shownPortfolio} hideAgent={!!scopeAgent} />
+                  ) : (
+                    <div className="pd-noagent">
+                      <span className="pd-noagent__art">
+                        <Icon name="building-2" size={24} strokeWidth={1.6} />
+                      </span>
+                      <p>{t("admin.mp.portfolioEmpty")}</p>
+                    </div>
+                  )}
+                </SectionCard>
               </div>
             )}
-          </SectionCard>
 
-          <NotesSection
-            notes={notes}
-            onAdd={(text) => {
-              setNotes((ns) => [{ author: "Rêbîn Kawa", role: "Super Admin", time: "@time.now", kind: "note", text }, ...ns]);
-              pushToast({ tone: "brand", icon: "check", title: t("admin.vd.toast.noteAddedTitle"), msg: t("admin.mp.toast.noteAddedMsg") });
-            }}
-            onEdit={(i, text) => {
-              setNotes((ns) => ns.map((n, idx) => (idx === i ? { ...n, text, time: "@admin.vd.editedJustNow" } : n)));
-              pushToast({ tone: "brand", icon: "pencil", title: t("admin.vd.toast.noteUpdatedTitle"), msg: t("admin.vd.toast.noteUpdatedMsg") });
-            }}
-            onDelete={(i) => setNoteToDelete(i)}
-          />
+            {tab === "viewings" && (
+              <div className="pd-grid__main">
+                <SectionCard
+                  title={t("admin.pd.viewingRequests")}
+                  count={shownViewings.length}
+                  desc={t("admin.mp.viewingsDesc")}
+                  action={
+                    <Button hierarchy="link" size="sm" iconTrailing="arrow-right" href={`${surfaceBase}/viewings`} style={{ color: "var(--text-secondary)" }}>
+                      {t("admin.common.viewAll")}
+                    </Button>
+                  }
+                  flush
+                >
+                  {shownViewings.length > 0 ? (
+                    <ViewingsTable rows={shownViewings} hideAgent={!!scopeAgent} />
+                  ) : (
+                    <div className="pd-noagent">
+                      <span className="pd-noagent__art">
+                        <Icon name="calendar" size={24} strokeWidth={1.6} />
+                      </span>
+                      <p>{t("admin.mp.viewingsEmpty")}</p>
+                    </div>
+                  )}
+                </SectionCard>
+              </div>
+            )}
 
-          <SectionCard
-            title={t("admin.pd.timeline")}
-            desc={t("admin.mp.timelineDesc")}
-            action={
-              <Button
-                hierarchy="link"
-                size="sm"
-                iconTrailing="arrow-right"
-                style={{ color: "var(--text-secondary)" }}
-                onClick={() => pushToast({ tone: "brand", icon: "history", title: t("admin.mp.toast.activityTitle"), msg: t("admin.mp.toast.activityMsg", { name: m.name }) })}
-              >
-                {t("admin.common.viewAll")}
-              </Button>
-            }
-          >
-            <Timeline items={timeline} />
-          </SectionCard>
+            {tab === "activity" && (
+              <div className="pd-grid__main">
+                <SectionCard
+                  title={t("admin.pd.timeline")}
+                  desc={t("admin.mp.timelineDesc")}
+                  action={
+                    <Button
+                      hierarchy="link"
+                      size="sm"
+                      iconTrailing="arrow-right"
+                      style={{ color: "var(--text-secondary)" }}
+                      onClick={() => pushToast({ tone: "brand", icon: "history", title: t("admin.mp.toast.activityTitle"), msg: t("admin.mp.toast.activityMsg", { name: m.name }) })}
+                    >
+                      {t("admin.common.viewAll")}
+                    </Button>
+                  }
+                >
+                  <Timeline items={timeline} />
+                </SectionCard>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+        {/* end .vwd-panel */}
+      </header>
 
       {modal === "status" && (
         <ChangeStatusModal
