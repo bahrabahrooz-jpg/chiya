@@ -218,3 +218,229 @@
     .st-savebar__actions .cx-btn { flex: 1 1 auto; justify-content: center; }
     .st-svc { flex-wrap: wrap; }
   }
+
+  /* ============================================================
+     PLATFORM SETTINGS EXTRAS  (sx- namespace)
+     The 13-section Settings screen adds patterns the base st-/pf-
+     namespaces don't cover: grouped nav, chip inputs, toggle grids,
+     the notification delivery matrix, the staff table, the danger
+     card. Layout still rides on .st-split / .st-nav above.
+     ============================================================ */
+
+  /* ---------- GROUPED LEFT NAV ---------- */
+  .sx-nav { gap: 2px; }
+  .sx-navgroup { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+  .sx-navgroup__label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 6px 14px 4px;
+  }
+  .sx-navitem { align-items: center; padding: 9px 12px; }
+  .sx-navitem .st-navitem__icon { width: 30px; height: 30px; }
+  .sx-navitem .st-navitem__label { font-size: 14px; font-weight: 500; }
+  .sx-navitem.is-active .st-navitem__label { font-weight: 600; }
+  .sx-navitem--external { position: relative; text-decoration: none; }
+  .sx-navitem__ext { color: var(--text-tertiary); margin-inline-start: auto; }
+  .sx-navitem--external:hover .sx-navitem__ext { color: var(--text-secondary); }
+
+  /* ---------- SECTION HEADER (icon badge + title + sub) ---------- */
+  .sx-sectionhead { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+  .sx-sectionhead__icon {
+    flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: var(--radius-lg);
+    background: var(--brand-subtle); color: var(--text-brand);
+  }
+  .sx-sectionhead__title {
+    font-family: var(--font-display, inherit);
+    font-size: 22px; font-weight: 600; color: var(--text-primary); margin: 0;
+  }
+  .sx-sectionhead__sub { font-size: 13.5px; color: var(--text-secondary); margin: 2px 0 0; }
+
+  /* ---------- SHARED BITS ---------- */
+  .sx-hint { font-size: 12px; color: var(--text-tertiary); line-height: 1.45; }
+  .sx-mt { margin-top: 18px; }
+  .sx-stack { display: flex; flex-direction: column; gap: 18px; }
+  .sx-link { color: var(--text-brand); font-weight: 600; text-decoration: none; }
+  .sx-link:hover { text-decoration: underline; }
+
+  .sx-note {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 12px 15px; margin: 20px 0 0;
+    background: var(--brand-subtle); color: var(--text-brand);
+    border-radius: var(--radius-lg);
+    font-size: 13px; line-height: 1.5;
+  }
+  .sx-note svg { flex: none; margin-top: 1px; }
+
+  .sx-cardaction { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 16px; }
+  .sx-cardaction--top { justify-content: flex-end; margin-top: 0; margin-bottom: 18px; }
+
+  .sx-linkbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: none; border: none; cursor: pointer;
+    font-size: 13.5px; font-weight: 600; color: var(--text-secondary);
+    padding: 4px 2px;
+  }
+  .sx-linkbtn:hover { color: var(--text-primary); }
+  .sx-iconbtn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: var(--radius-control);
+    background: transparent; border: none; cursor: pointer; color: var(--text-tertiary);
+    transition: background-color .15s, color .15s;
+  }
+  .sx-iconbtn:hover { background: var(--error-50); color: var(--error-600); }
+
+  /* ---------- CHIP / TAG VOCABULARY EDITORS ---------- */
+  .sx-vocablist { display: flex; flex-direction: column; gap: 22px; }
+  .sx-vocab { display: flex; flex-direction: column; gap: 9px; }
+  .sx-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sx-chips:empty { display: none; }
+  .sx-chipadd { display: flex; gap: 10px; }
+  .sx-chipadd .cx-inputwrap { flex: 1 1 auto; }
+  .sx-chipadd .cx-btn { flex: none; }
+
+  /* ---------- TOGGLE CHIP GRID (amenities / currencies / days) ---------- */
+  .sx-togglegrid { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }
+  .sx-togglegrid--days { margin-top: 12px; }
+  .sx-togglegrid__count { font-size: 12.5px; color: var(--text-tertiary); margin: 4px 0 0; }
+  .sx-togglechip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 15px;
+    background: var(--surface-card);
+    border: 1.5px solid var(--border-default);
+    border-radius: 999px;
+    font-size: 13.5px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; transition: border-color .15s, background-color .15s, color .15s;
+  }
+  .sx-togglechip:hover { border-color: var(--border-focus); }
+  .sx-togglechip.is-on {
+    border-color: var(--brand-primary);
+    background: var(--brand-subtle);
+    color: var(--text-brand);
+    font-weight: 600;
+  }
+  .sx-togglechip svg { color: var(--text-brand); }
+
+  /* ---------- VIEWINGS — computed bookable times ---------- */
+  .sx-timechips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .sx-timechip {
+    padding: 6px 13px;
+    background: var(--surface-sunken);
+    border-radius: 999px;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- NOTIFICATION DELIVERY MATRIX ---------- */
+  .sx-matrix-wrap { overflow-x: auto; }
+  .sx-matrix { width: 100%; border-collapse: collapse; min-width: 460px; }
+  .sx-matrix th {
+    text-align: start;
+    font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 0 0 12px;
+  }
+  .sx-matrix th.sx-matrix__ch { text-align: center; width: 74px; }
+  .sx-matrix__row td { border-top: 1px solid var(--border-subtle); padding: 14px 0; }
+  .sx-matrix__event { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+  .sx-matrix__cell { text-align: center; }
+  .sx-matrix__cell .cx-choice { display: inline-flex; }
+  .sx-matrix__cell .cx-choice__text { display: none; }
+
+  /* ---------- LOCALIZATION LANGUAGE ROWS ---------- */
+  .sx-langrow {
+    display: flex; align-items: center; gap: 20px;
+    padding: 16px 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .sx-langrow:first-child { border-top: none; padding-top: 0; }
+  .sx-langrow__pct { font-size: 12.5px; color: var(--text-tertiary); }
+
+  /* ---------- BRANDING COLOUR PICKER ---------- */
+  .sx-color { display: flex; align-items: center; gap: 10px; }
+  .sx-color__swatch {
+    flex: none;
+    inline-size: 42px; block-size: 42px;
+    padding: 0; border: 1px solid var(--border-default);
+    border-radius: var(--radius-control);
+    background: none; cursor: pointer;
+  }
+  .sx-color__swatch::-webkit-color-swatch-wrapper { padding: 4px; }
+  .sx-color__swatch::-webkit-color-swatch { border: none; border-radius: 7px; }
+  .sx-color__hex { flex: 1 1 auto; font-family: var(--font-mono); text-transform: uppercase; }
+
+  /* ---------- PASSWORD STRENGTH CHECKLIST ---------- */
+  .sx-rules {
+    display: flex; flex-wrap: wrap; gap: 8px 20px;
+    list-style: none; margin: 4px 0 0; padding: 0;
+  }
+  .sx-rule {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12.5px; color: var(--text-tertiary);
+  }
+  .sx-rule__icon { color: var(--border-default); }
+  .sx-rule.is-met { color: var(--success-600); }
+  .sx-rule.is-met .sx-rule__icon { color: var(--success-500); }
+
+  /* ---------- SECURITY SESSIONS ---------- */
+  .sx-session {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .sx-session:first-child { border-top: none; padding-top: 0; }
+  .sx-session .st-switchrow__text { flex: 1 1 auto; }
+
+  /* ---------- STAFF TABLE ---------- */
+  .sx-table-wrap { overflow-x: auto; }
+  .sx-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  .sx-table thead th {
+    text-align: start;
+    font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 0 12px 12px 0;
+  }
+  .sx-table tbody td {
+    border-top: 1px solid var(--border-subtle);
+    padding: 14px 12px 14px 0;
+    vertical-align: middle;
+  }
+  .sx-table__muted { color: var(--text-tertiary); font-size: 13px; white-space: nowrap; }
+
+  .sx-person { display: flex; align-items: center; gap: 12px; }
+  .sx-person__text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .sx-person__name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .sx-person__email { font-size: 12.5px; color: var(--text-tertiary); }
+
+  .sx-rowactions { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+
+  /* ---------- DANGER / RESET CARD ---------- */
+  .sx-danger {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    padding: 16px 18px;
+    background: var(--error-50);
+    border: 1px solid var(--error-500);
+    border-radius: var(--radius-lg);
+  }
+  .sx-danger__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .sx-danger__title {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 700; color: var(--error-700);
+  }
+  .sx-danger__desc { font-size: 12.5px; color: var(--error-600); }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 860px) {
+    /* the base rule turns .st-nav into a horizontal scroller; keep the group
+       labels hidden and lay the groups out in a row. */
+    .sx-nav { flex-direction: row; }
+    .sx-navgroup { flex-direction: row; align-items: center; margin-bottom: 0; }
+    .sx-navgroup__label { display: none; }
+  }
+  @media (max-width: 640px) {
+    .sx-danger { flex-direction: column; align-items: stretch; }
+    .sx-danger .cx-btn { justify-content: center; }
+    .sx-cardaction { flex-wrap: wrap; }
+    .sx-chipadd { flex-direction: column; }
+    .sx-sectionhead__title { font-size: 19px; }
+  }
