@@ -5,8 +5,10 @@ import { StatCard } from "@/components/data/stat-card";
 import { useLang } from "@/lib/i18n";
 import { fmtNum, localizeDigits } from "@/lib/fmt";
 import { KPI_CARDS, KPI_PERIODS } from "./data";
-import { countSoldRentedInPeriod, type CountPeriod } from "../_data/catalog";
+import { type CountPeriod } from "../_data/catalog";
+import { closedContractsInPeriod } from "../_data/property-state";
 import { useProperties } from "../_shared/properties-store";
+import { useContracts } from "../_shared/contracts-store";
 
 function SegmentedPeriod({ period, onChange }: { period: string; onChange: (id: string) => void }) {
   const { t } = useLang();
@@ -32,10 +34,13 @@ function SegmentedPeriod({ period, onChange }: { period: string; onChange: (id: 
 export function KpiSection() {
   const { t, lang } = useLang();
   const [period, setPeriod] = useState("month");
-  const { counts, properties } = useProperties();
-  // Sold / rented are period-scoped flows counted from the live records; total
-  // and available stay as live inventory snapshots.
-  const flow = useMemo(() => countSoldRentedInPeriod(properties, period as CountPeriod), [properties, period]);
+  const { counts } = useProperties();
+  const { contracts } = useContracts();
+  /* Sold / rented are period-scoped FLOWS — how many transactions closed in the
+     window — so they are counted from deals and dated by the deal's own
+     `closedOn`. A property's "last updated" moves when someone swaps a photo,
+     and a sale's date must not. Total and available stay inventory snapshots. */
+  const flow = useMemo(() => closedContractsInPeriod(contracts, period as CountPeriod), [contracts, period]);
   return (
     <section className="ax-section" aria-label={t("admin.dash.kpiAria")}>
       <div className="ax-section__head">

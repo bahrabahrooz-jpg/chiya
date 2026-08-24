@@ -1,4 +1,5 @@
 import type { BadgeVariant } from "@/components/ui/badge";
+import { ANCHOR_DATE } from "@/lib/dates";
 import { MEMBERS, AGENTS, TOP_AGENT, PROPERTIES, daysAgoFrom } from "../_data/catalog";
 import { VIEWINGS } from "../_viewings/data";
 
@@ -39,7 +40,7 @@ export const STATUS_TABS: { id: string; label: string }[] = [
 ];
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-export const TODAY = new Date(2026, 5, 30); // matches the catalog anchor (Jun 30, 2026)
+export const TODAY = ANCHOR_DATE; // the shared seed anchor (Jun 30, 2026)
 const dateFromDaysAgo = (d: number) => {
   const dt = new Date(TODAY);
   dt.setDate(dt.getDate() - d);

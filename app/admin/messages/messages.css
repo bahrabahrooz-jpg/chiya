@@ -1,0 +1,126 @@
+  /* ============================================================
+     MESSAGES PAGE — reuses the Members table chrome (mp- namespace)
+     and adds inbox-specific columns/cells (msg- namespace).
+     ============================================================ */
+
+  /* Reviews-style spacing: no filter bar, so the tab row needs the gap itself. */
+  .mp-tablecard__head > .mp-tabrow:last-child { padding-bottom: 16px; }
+
+  /* ---------- COLUMN TEMPLATE (overrides the members grid) ----------
+     A row and its expanded detail are wrapped in .msg-group, so the group is
+     what carries the table's scroll width; the row fills it and lays its grid
+     out inside. */
+  .mp-table--messages .mp-thead,
+  .mp-table--messages .msg-group { min-width: 1150px; }
+
+  .mp-table--messages .mp-thead,
+  .mp-table--messages .mp-row {
+    grid-template-columns:
+      minmax(190px, 1.7fr)   /* sender */
+      minmax(260px, 3fr)     /* subject */
+      124px                  /* source */
+      132px                  /* received */
+      112px                  /* status */
+      132px;                 /* actions */
+    gap: 24px;
+  }
+  /* members.css drops the border on `.mp-row:last-child`. Wrapping each row in
+     a .msg-group makes every *collapsed* row the last child of its own group,
+     which would silently remove every separator in the table — so re-assert it
+     here and drop it only on the genuinely final row. */
+  .mp-table--messages .msg-group .mp-row { border-bottom: 1px solid var(--border-subtle); }
+  .mp-table--messages .msg-group:last-child .mp-row:last-child { border-bottom: none; }
+  .mp-table--messages .msg-group:last-child .msg-detail { border-bottom: none; }
+
+  /* ---------- UNREAD EMPHASIS ----------
+     A New message reads heavier and carries an accent rail, so the queue's
+     "still needs a human" rows are obvious without reading the status column. */
+  .msg-row.is-unread { background: var(--brand-subtle, var(--gray-25)); }
+  .msg-row.is-unread:hover { background: var(--green-100, var(--gray-50)); }
+  .msg-row.is-unread .msg-subject { font-weight: 700; color: var(--text-primary); }
+  .msg-row.is-expanded { background: var(--gray-25); }
+
+  /* ---------- SUBJECT (expand trigger) ---------- */
+  .msg-col--subject { min-width: 0; display: flex; align-items: center; }
+  .msg-subjectbtn {
+    display: flex; align-items: flex-start; gap: 8px; min-width: 0; width: 100%;
+    padding: 0; border: 0; background: none; cursor: pointer; text-align: start;
+    font-family: inherit; color: inherit; border-radius: var(--radius-control);
+  }
+  .msg-subjectbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .msg-chevron { color: var(--text-tertiary); margin-top: 2px; transition: color .15s; }
+  .msg-subjectbtn:hover .msg-chevron { color: var(--text-brand); }
+  .msg-subjecttext { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .msg-subject {
+    font-size: 14px; font-weight: 600; letter-spacing: -.005em; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .msg-subjectbtn:hover .msg-subject { color: var(--text-brand); }
+  /* One-line preview of the body, same clamp recipe as the review text. */
+  .msg-preview {
+    font-size: 13px; line-height: 1.45; color: var(--text-secondary);
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    overflow: hidden; text-wrap: pretty;
+  }
+
+  /* ---------- SOURCE ----------
+     Metadata, not a state: neutral tone so it never competes with the status
+     badge sitting two columns over. */
+  .msg-col--source { min-width: 0; }
+  .msg-sourcebadge { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* ---------- RECEIVED ---------- */
+  .msg-rel { display: block; margin-top: 2px; font-size: 12px; color: var(--text-tertiary); }
+
+  /* ---------- UNREAD PILL (card header) ---------- */
+  .msg-unreadpill {
+    display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
+    border-radius: 999px; background: var(--info-50, var(--brand-subtle));
+    color: var(--info-700, var(--text-brand));
+    font-size: 12px; font-weight: 700; letter-spacing: -.005em; white-space: nowrap;
+  }
+
+  /* ---------- ACTIONS ---------- */
+  .msg-col--actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .msg-quickactions { display: inline-flex; align-items: center; gap: 6px; }
+  .msg-reply {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+    border: 1px solid var(--green-200); background: var(--brand-subtle); color: var(--text-brand);
+    border-radius: var(--radius-control); cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600; white-space: nowrap;
+    transition: background-color .15s, border-color .15s, color .15s;
+  }
+  .msg-reply:hover { background: var(--green-100); border-color: var(--brand-primary); }
+  .msg-reply:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ---------- EXPANDED DETAIL ----------
+     Sits directly under its row inside .msg-group. Full-width block, not a grid
+     cell, so the message can use the whole table width. */
+  .msg-detail {
+    /* 24px matches .mp-row's inline padding so the panel lines up with the row
+       above it. The table scrolls rather than reflowing, so this holds at every
+       width — no mobile override. */
+    padding: 4px 24px 22px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--gray-25);
+  }
+  .msg-detail__meta {
+    display: flex; flex-wrap: wrap; gap: 10px 32px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-subtle); margin-bottom: 14px;
+  }
+  .msg-detail__field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .msg-detail__label {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .msg-detail__value { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+  .msg-detail__link {
+    font-size: 13.5px; font-weight: 600; color: var(--text-brand); text-decoration: none;
+  }
+  .msg-detail__link:hover { text-decoration: underline; }
+  .msg-detail__body { display: flex; flex-direction: column; gap: 6px; }
+  .msg-detail__text {
+    margin: 0; font-size: 14px; line-height: 1.65; color: var(--text-secondary);
+    max-width: 76ch; text-wrap: pretty; white-space: pre-line;
+  }
+

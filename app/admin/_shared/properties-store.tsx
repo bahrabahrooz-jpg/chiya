@@ -15,7 +15,8 @@ import {
   countLocations,
   countMembers,
   countProperties,
-  statusRequiresAgent,
+  legacyStatus,
+  requiresAgent,
   withAgentStats,
   withMemberCounts,
   withMemberRoles,
@@ -41,9 +42,30 @@ interface AuditVerb {
   metaKey?: string;
   metaParams?: Record<string, string>;
 }
+/* Availability is derived from contracts, so each transition gets its own verb.
+   "Changed status to Sold" would read as though a person chose it. */
+const AVAILABILITY_ACTION: Record<string, string> = {
+  reserved: "audit.action.reservedProperty",
+  sold: "audit.action.markedSold",
+  rented: "audit.action.markedRented",
+  available: "audit.action.releasedProperty",
+};
+
 function propertyAction(patch: Partial<PropertyRecord>): AuditVerb {
   if (patch.featured !== undefined) {
     return { actionKey: patch.featured ? "audit.action.featuredProperty" : "audit.action.unfeaturedProperty" };
+  }
+  /* Availability first: a patch that moves both fields at once (a deal closing
+     unpublishes AND marks sold) is logged as the transaction, and the shared
+     transition hook emits the visibility event separately. Collapsing them into
+     one "changed status" line is exactly what this split exists to prevent. */
+  if (patch.availability !== undefined) {
+    return { actionKey: AVAILABILITY_ACTION[patch.availability] ?? "audit.action.updatedProperty" };
+  }
+  if (patch.publication !== undefined) {
+    if (patch.publication === "archived") return { actionKey: "audit.action.archivedProperty" };
+    // "@" marks a value that is itself a catalog key, resolved when rendered.
+    return { actionKey: "audit.action.changedVisibility", actionParams: { status: "@" + valueKey("status", patch.publication) } };
   }
   if (patch.status !== undefined) {
     const status = String(patch.status);
@@ -105,13 +127,24 @@ interface PropertiesContextValue {
 
 const PropertiesContext = createContext<PropertiesContextValue | null>(null);
 
-/* Enforce the core invariant on any property set we load: a live listing
-   (Published / Sold / Rented) must have an assigned agent. Anything that
-   violates it — stale cached data, or a record from an older schema — is pulled
-   back to "Pending" until an agent is assigned. Runs on the seed and on every
-   hydrate so the UI can trust that no live listing is ever unassigned. */
+/**
+ * Enforce the core invariant on any property set we load: a live listing must
+ * have an assigned agent. Anything that violates it — stale cached data, or a
+ * record from an older schema — is pulled back to "pending" until an agent is
+ * assigned. Runs on the seed and on every hydrate so the UI can trust that no
+ * live listing is ever unassigned.
+ *
+ * It downgrades PUBLICATION ONLY, never availability. An agent-less sold record
+ * is a data problem, but resetting its availability would erase a transaction —
+ * far worse than the problem it fixes. It cannot arise from the UI either: a
+ * deal names its agent, so anything sold or rented has one.
+ */
 export function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
-  return list.map((p) => (!p.agent && statusRequiresAgent(p.status) ? { ...p, status: "Pending", published: false } : p));
+  return list.map((p) => {
+    if (p.agent || !requiresAgent(p)) return p;
+    const next = { ...p, publication: "pending" as const };
+    return { ...next, status: legacyStatus(next), published: false };
+  });
 }
 
 /* The admin store lives in memory, but several actions (e.g. the "Add property"
@@ -124,8 +157,17 @@ export function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
    v5: hand-curated seed — 24 properties / 14 members / 7 agents, one record per
    scenario (replaces the old 320/240/48 generated dataset).
    v6: transactional roles — Sold records carry a buyer, Rented may carry a
-   tenant, and member roles are derived from those links instead of declared. */
-export const STORAGE_KEY = "chiya:admin-store:v6";
+   tenant, and member roles are derived from those links instead of declared.
+   v7: agents carry authored profile copy (headline + bio) shown on their public
+   profile; a v6 cache would pin every agent to the generated summary.
+   v8: `status` split into `publication` + `availability`, and every property
+   carries a listing mandate. A v7 record has neither field, so it would read as
+   undefined everywhere and quietly vanish from every filter.
+   v9: `price` is a `Money` ({ amount, currency }) instead of a bare number. A v8
+   record's price is `850000`, so `price.currency` is undefined and every
+   formatter throws on it — this is not a field that degrades quietly, it takes
+   the homepage down. */
+export const STORAGE_KEY = "chiya:admin-store:v9";
 
 /* Same-tab change signal. The browser `storage` event only fires in OTHER tabs,
    so we dispatch this on every persist to let same-tab listeners (the public

@@ -2,7 +2,8 @@
 
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { useLang, type Lang } from "@/lib/i18n";
-import { fmtCurrency, valueKey } from "@/lib/fmt";
+import { valueKey } from "@/lib/fmt";
+import { formatPrice, type Money } from "@/lib/money";
 
 const PROP_VARIANT: Record<string, BadgeVariant> = {
   Published: "success",
@@ -37,9 +38,15 @@ export function ViewStatus({ status }: { status: string }) {
 }
 
 /**
+ * A listing's price plus its "/mo" suffix, in the listing's OWN currency.
+ *
  * Not a component, so `lang` and the "/mo" label come from the caller — every
  * call site is already inside a component holding `useLang()`.
+ *
+ * Was called `money`, which now reads as the constructor in lib/money; renamed
+ * so a call site can't look like it is building an amount when it is rendering
+ * one.
  */
-export function money(lang: Lang, p: { price: number; per?: string }, perLabel = "") {
-  return fmtCurrency(lang, p.price) + (p.per ? perLabel : "");
+export function priceLabel(lang: Lang, p: { price: Money; per?: string }, perLabel = "") {
+  return formatPrice(lang, p.price) + (p.per ? perLabel : "");
 }

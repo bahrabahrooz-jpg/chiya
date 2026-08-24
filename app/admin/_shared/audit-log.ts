@@ -16,7 +16,7 @@ import { ADMIN } from "@/components/admin/admin-data";
    decoupled from display without provider plumbing.
    ------------------------------------------------------------------------- */
 
-export type AuditCategory = "review" | "property" | "member" | "agent" | "location" | "role" | "settings";
+export type AuditCategory = "review" | "message" | "property" | "member" | "agent" | "location" | "role" | "settings";
 
 /** The kind of change an action made — the audit table's "Action" column. */
 export type AuditVerb = "create" | "update" | "delete" | "approve" | "reject";
@@ -76,14 +76,24 @@ const ACTION_VERB: Record<string, AuditVerb> = {
   "audit.action.addedMember": "create",
   "audit.action.onboardedAgent": "create",
   "audit.action.createdRole": "create",
+  "audit.action.createdDeal": "create",
+  "audit.action.addedContract": "create",
+  "audit.action.issuedInvoice": "create",
+  "audit.action.recordedPayment": "create",
   "audit.action.addedCity": "create",
   "audit.action.addedDistrict": "create",
   "audit.action.addedProject": "create",
   "audit.action.deletedReview": "delete",
+  "audit.action.deletedMessage": "delete",
   "audit.action.deletedProperty": "delete",
   "audit.action.removedMember": "delete",
   "audit.action.removedAgent": "delete",
   "audit.action.deletedRole": "delete",
+  /* A void is not a deletion — the invoice stays on the record — but it is the
+     destructive end of the range, and the log's red tone is the honest signal
+     that money was withdrawn. Same for a cancelled deal. */
+  "audit.action.voidedInvoice": "delete",
+  "audit.action.cancelledDeal": "delete",
   "audit.action.removedCity": "delete",
   "audit.action.removedDistrict": "delete",
   "audit.action.removedProject": "delete",
@@ -156,6 +166,7 @@ const SEED_SPECS: SeedSpec[] = [
   { h: 2, actor: LANA, category: "property", actionKey: "audit.action.changedStatus", actionParams: { status: "@status.sold" }, target: "Olive Grove Estate" },
   { h: 3, actor: ADMIN_ACTOR, category: "agent", actionKey: "audit.action.verifiedAgent", target: "Lana Aziz" },
   { h: 5, actor: LANA, category: "property", actionKey: "audit.action.createdProperty", target: "Italian Village Rose Flat", meta: "Italian Village, Erbil" },
+  { h: 6, actor: ADMIN_ACTOR, category: "message", actionKey: "audit.action.repliedMessage", target: "Chiman Rasul", meta: "Price adjustment on English Village Court" },
   { h: 7, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.rejectedReview", target: "Sara Amin → Karwan Mahmoud", metaKey: "audit.meta.flaggedSpam" },
   { h: 9, actor: ADMIN_ACTOR, category: "member", actionKey: "audit.action.suspendedMember", target: "Hersh Qadir" },
   { h: 26, actor: ADMIN_ACTOR, category: "role", actionKey: "audit.action.createdRole", target: "Senior Agent" },
@@ -164,6 +175,7 @@ const SEED_SPECS: SeedSpec[] = [
   { h: 49, actor: ADMIN_ACTOR, category: "location", actionKey: "audit.action.addedDistrict", target: "Ankawa · Erbil" },
   { h: 52, actor: SARA, category: "property", actionKey: "audit.action.updatedProperty", target: "Sarchnar Hillside Villa" },
   { h: 54, actor: ADMIN_ACTOR, category: "member", actionKey: "audit.action.activatedMember", target: "Nma Rashid" },
+  { h: 72, actor: ADMIN_ACTOR, category: "message", actionKey: "audit.action.archivedMessage", target: "Dijla Deals Team", metaKey: "audit.meta.flaggedSpam" },
   { h: 73, actor: ADMIN_ACTOR, category: "review", actionKey: "audit.action.deletedReview", target: "Rebwar Tofiq → Rawa Jamal" },
   { h: 78, actor: ADMIN_ACTOR, category: "property", actionKey: "audit.action.archivedProperty", target: "Nizarke Sunset Terrace" },
 ];

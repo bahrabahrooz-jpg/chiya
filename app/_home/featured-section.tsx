@@ -7,6 +7,8 @@ import { PropertyCard } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
 import { useSaveGate } from "@/lib/favorites";
 import { homeListings } from "@/lib/home-data";
+import { formatPrice } from "@/lib/money";
+import { useApproxPrice } from "@/lib/use-approx-price";
 import { usePublicCatalog } from "@/lib/public-catalog";
 import { useSiteContent, pick } from "@/lib/site-content";
 
@@ -18,10 +20,15 @@ export function FeaturedSection() {
   const { isPropertySaved, saveProperty } = useSaveGate();
   const { featuredProperties } = usePublicCatalog();
   const { content } = useSiteContent();
+  /* Above the early return: hooks must run in the same order every render. */
+  const approxOf = useApproxPrice();
   const head = content.home.sections.feat2;
   const listings = homeListings(featuredProperties);
   // Pure curation — hide the whole band when nothing is featured.
   if (listings.length === 0) return null;
+  /* Each card shows its listing's OWN currency — the grid mixes dollar and
+     dinar prices, which is what the market actually looks like. */
+  const priceOf = (l: (typeof listings)[number]) => formatPrice(lang, l.price);
   return (
     <section className="cxk-section">
       <SectionHeader
@@ -39,7 +46,8 @@ export function FeaturedSection() {
           <PropertyCard
             key={l.id}
             image={l.cover}
-            price={l.price}
+            price={priceOf(l)}
+            approxPrice={approxOf(l.price)}
             period={l.period}
             title={l.title}
             address={l.address}
@@ -54,7 +62,7 @@ export function FeaturedSection() {
               saveProperty({
                 id: l.id,
                 image: l.cover,
-                price: l.price,
+                price: priceOf(l),
                 period: l.period,
                 title: l.title,
                 address: l.address,

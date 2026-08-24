@@ -7,11 +7,12 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useLang } from "@/lib/i18n";
 import { fmtDate } from "@/lib/fmt";
-import { PROP_STATUS, RECENT_AGENTS, RECENT_PROPERTIES, type RecentAgent, type RecentProperty } from "./data";
+import { RECENT_AGENTS, RECENT_PROPERTIES, type RecentAgent, type RecentProperty } from "./data";
+import { labelKeyFor, toneFor } from "../_properties/data";
 
 function PropertyRow({ item }: { item: RecentProperty }) {
   const { t } = useLang();
-  const st = PROP_STATUS[item.status] || { variant: "neutral" as const, dot: false };
+  const st = toneFor(item);
   return (
     <Link className="ax-row ax-row--link" href={`/admin/properties/${item.id}`}>
       <img className="ax-row__thumb" src={item.img} alt="" loading="lazy" />
@@ -30,8 +31,8 @@ function PropertyRow({ item }: { item: RecentProperty }) {
         </div>
       </div>
       <div className="ax-row__end">
-        <Badge variant={st.variant} size="sm" dot={st.dot}>
-          {t(`status.${item.status.toLowerCase()}`)}
+        <Badge variant={st.variant} size="sm" dot={st.dot} icon={st.icon}>
+          {t(labelKeyFor(item))}
         </Badge>
       </div>
     </Link>
@@ -82,7 +83,7 @@ export function RecentSection() {
           </Link>
         </div>
         <div className="ax-listcard">
-          {RECENT_PROPERTIES.filter((p) => p.status === "Published").slice(0, 3).map((p) => (
+          {RECENT_PROPERTIES.filter((p) => p.publication === "published").slice(0, 3).map((p) => (
             <PropertyRow key={p.id} item={p} />
           ))}
         </div>

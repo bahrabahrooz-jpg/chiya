@@ -679,6 +679,14 @@
   .adh__copy:hover { background: var(--gray-100); color: var(--text-brand); }
   .adh__copy:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .adh__detailchips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* Public profile copy — read-only echo of what /agents/[id] renders. */
+  .adh__bio {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 4px; padding-top: 18px; border-top: 1px solid var(--border-subtle);
+  }
+  .adh__bio__headline { font-size: 14.5px; font-weight: 600; color: var(--text-primary); line-height: 1.45; margin: 2px 0 0; }
+  .adh__bio__para { font-size: 14px; color: var(--text-secondary); line-height: 1.65; margin: 0; }
   @media (max-width: 720px) {
     .adh__details { grid-template-columns: 1fr; }
   }

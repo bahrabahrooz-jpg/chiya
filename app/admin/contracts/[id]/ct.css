@@ -1,0 +1,153 @@
+  /* ============================================================
+     CONTRACT DETAIL  (ctd- namespace)
+
+     The header, section cards and field grid come from the property detail
+     stylesheet (../../properties/[id]/pd.css), imported alongside this one, so
+     the two detail screens are the same object with different contents. Only
+     what is specific to a contract lives here: the cancelled banner, the
+     renewal chain, and the invoice list.
+     ============================================================ */
+
+  /* Every figure on this screen is authoritative money or a date, so every one
+     of them is tabular: a column that does not line up is a column someone has
+     to read twice. */
+  .ctd-num, .ctd-inv__amount, .ctd-inv__due, .ctd-inv__number {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ctd-stack { display: flex; flex-direction: column; gap: 22px; }
+
+  .ctd-link { color: var(--text-brand); font-weight: 600; text-decoration: none; }
+  .ctd-link:hover { text-decoration: underline; }
+  .ctd-link--mono { font-family: var(--font-mono); font-size: 13px; }
+
+  /* The commission rate, beside the amount it produced. */
+  /* `unicode-bidi: isolate` is load-bearing in RTL: the amount before this
+     ends in a Latin currency code and the rate starts with Western digits, so
+     without an isolate the two merge into one bidi run and render touching. */
+  .ctd-rate {
+    display: inline-block; unicode-bidi: isolate;
+    margin-inline-start: 8px; font-size: 12.5px; font-weight: 600;
+    color: var(--text-tertiary); white-space: nowrap;
+  }
+
+  /* ---------- CANCELLED BANNER ----------
+     Above everything, with the reason and the date. A cancelled contract is
+     still a record — nothing below is hidden, so the banner is what tells you
+     how to read the rest of the page. */
+  .ctd-banner {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin-bottom: 22px; padding: 16px 18px;
+    border: 1px solid var(--error-100);
+    border-radius: var(--radius-card);
+    background: var(--error-50);
+  }
+  .ctd-banner__icon {
+    flex: none; width: 38px; height: 38px; border-radius: var(--radius-lg);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-card); color: var(--error-600);
+    box-shadow: inset 0 0 0 1px var(--error-100);
+  }
+  .ctd-banner__body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .ctd-banner__title {
+    margin: 0; font-size: 15px; font-weight: 700; color: var(--error-700);
+    font-variant-numeric: tabular-nums;
+  }
+  .ctd-banner__reason { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
+  .ctd-banner__note { margin: 2px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-tertiary); text-wrap: pretty; }
+
+  /* ---------- RENEWAL CHAIN / EXTERNAL PAPERWORK ---------- */
+  .ctd-chain { display: flex; flex-direction: column; gap: 10px; }
+  .ctd-chain__line {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin: 0; font-size: 13.5px; color: var(--text-secondary);
+  }
+  .ctd-chain__line > svg { color: var(--text-tertiary); flex: none; }
+  .ctd-chain__line--note { color: var(--text-tertiary); }
+
+  /* ---------- INVOICES ----------
+     One grid template shared by every row, so the amounts form a single column
+     down the page. The amount column is 148px — enough for "943,200,000 IQD"
+     without wrapping — and the whole list scrolls sideways rather than letting
+     a dinar figure break onto two lines. */
+  .ctd-invs {
+    display: flex; flex-direction: column;
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+    overflow-x: auto;
+  }
+  .ctd-invs::-webkit-scrollbar { height: 8px; }
+  .ctd-invs::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+
+  .ctd-inv {
+    display: grid;
+    grid-template-columns:
+      28px                  /* category icon */
+      104px                 /* invoice number */
+      minmax(180px, 1fr)    /* description */
+      132px                 /* due date */
+      132px                 /* status badge */
+      148px;                /* amount */
+    align-items: center; gap: 12px;
+    padding: 12px 14px;
+    min-width: 760px;
+    background: var(--surface-card);
+  }
+  .ctd-inv + .ctd-inv { border-top: 1px solid var(--border-subtle); }
+  .ctd-inv__icon { color: var(--text-tertiary); display: flex; }
+  .ctd-inv__number { font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+  .ctd-inv__desc {
+    font-size: 13.5px; color: var(--text-secondary); min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ctd-inv__due { font-size: 12.5px; color: var(--text-tertiary); white-space: nowrap; }
+  .ctd-inv__amount {
+    font-size: 14px; font-weight: 700; color: var(--text-primary);
+    white-space: nowrap; text-align: end;
+  }
+
+  /* A void invoice is struck through and muted — still listed, plainly no
+     longer collectable. Nothing is removed from the page. */
+  .ctd-inv.is-void .ctd-inv__number,
+  .ctd-inv.is-void .ctd-inv__desc,
+  .ctd-inv.is-void .ctd-inv__amount { text-decoration: line-through; color: var(--text-tertiary); }
+  .ctd-inv.is-void { background: var(--gray-25); }
+
+  .ctd-showall {
+    display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+    margin-top: 12px; padding: 7px 12px;
+    border: 1px solid var(--border-default); background: var(--surface-card);
+    border-radius: var(--radius-control); cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  }
+  .ctd-showall:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .ctd-showall:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ---------- EMPTY / NOT FOUND ---------- */
+  .ctd-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 32px 20px; gap: 10px;
+  }
+  .ctd-empty__art {
+    width: 54px; height: 54px; border-radius: var(--radius-2xl);
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--green-50), var(--gray-50));
+    border: 1px solid var(--border-subtle); color: var(--text-brand);
+  }
+  .ctd-empty p { margin: 0; font-size: 14px; color: var(--text-secondary); max-width: 380px; }
+
+  .ctd-missing {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; gap: 12px; padding: 72px 24px;
+  }
+  .ctd-missing h1 { font-family: var(--font-display); font-weight: 600; font-size: 26px; color: var(--text-primary); margin: 0; }
+  .ctd-missing p { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 420px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ctd-showall { transition: none; }
+  }
+
+  /* ---------- MOBILE ---------- */
+  @media (max-width: 767px) {
+    .ctd-banner { flex-direction: column; gap: 10px; }
+    .ctd-showall { align-self: stretch; justify-content: center; }
+  }

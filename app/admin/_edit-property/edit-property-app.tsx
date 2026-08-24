@@ -11,7 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useLang } from "@/lib/i18n";
-import { fmtCurrency, fmtNum, localizeDigits, valueKey } from "@/lib/fmt";
+import { fmtNum, localizeDigits, valueKey } from "@/lib/fmt";
+import { formatPrice, money, type CurrencyCode } from "@/lib/money";
+import { enabledCurrencies, usePlatformSettings } from "@/lib/platform-settings";
+import { useContracts } from "../_shared/contracts-store";
 import {
   AMENITIES,
   CONDITIONS,
@@ -59,6 +62,14 @@ export function EditPropertyApp({ id, lockedAgentId }: { id: string; lockedAgent
   const photos = usePhotoUploader(true);
   const { locationTree } = useProperties();
   const assignableAgents = useAssignableAgents();
+  const { settings } = usePlatformSettings();
+  const currencyOptions = enabledCurrencies(settings);
+  /* A contract on this property is denominated in the listing's currency, and
+     its invoices inherit that. Once one exists the currency is a term of an
+     agreement, not a form field — so it is read-only from here on. */
+  const { contractsByProperty } = useContracts();
+  const contractCount = contractsByProperty(id).length;
+  const currencyLocked = contractCount > 0;
   const cityOptions = locationTree.map((c) => c.name);
   const cityNode = locationTree.find((c) => c.name === f.city);
   const districtSource = cityNode ? cityNode.children : locationTree.flatMap((c) => c.children);
@@ -100,7 +111,7 @@ export function EditPropertyApp({ id, lockedAgentId }: { id: string; lockedAgent
     router.push(dest);
   };
 
-  const priceStr = fmtCurrency(lang, Number(f.price) || 450000, f.currency);
+  const priceStr = formatPrice(lang, money(Number(f.price) || 450000, f.currency));
   const areaStr = fmtNum(lang, Number(f.area) || 420) + " " + (f.areaUnit === "sqm" ? t("unit.sqm") : f.areaUnit);
   const rev = {
     listing: t(f.listing === "rent" ? "admin.pd.forRent" : "admin.pd.forSale"),
@@ -198,9 +209,25 @@ export function EditPropertyApp({ id, lockedAgentId }: { id: string; lockedAgent
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-price">{t("admin.props.th.price")}</FieldLabel>
                 <div className="ap-combo">
-                  <ComboSelect side="left" value={f.currency} onChange={(v) => set("currency", v)} options={["USD", "IQD"]} />
+                  {/* Locked once a contract exists on this property. The
+                      contract and its invoices are all denominated in this
+                      currency; changing it here would restate an agreed figure
+                      without touching any of the records that depend on it. */}
+                  <ComboSelect
+                    side="left"
+                    value={f.currency}
+                    onChange={(v) => set("currency", v as CurrencyCode)}
+                    options={currencyLocked ? [f.currency] : currencyOptions}
+                    disabled={currencyLocked}
+                  />
                   <input id="ap-price" className="ap-combo__input" inputMode="numeric" placeholder={t("admin.ap.pricePh")} value={f.price} onChange={(e) => set("price", e.target.value.replace(/[^\d]/g, ""))} />
                 </div>
+                {currencyLocked && (
+                  <p className="ap-field__note">
+                    <Icon name="lock" size={13} />
+                    {t("admin.ep.currencyLocked", { count: String(contractCount) })}
+                  </p>
+                )}
               </div>
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-area">{t("admin.ap.f.areaSize")}</FieldLabel>

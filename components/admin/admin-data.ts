@@ -23,7 +23,12 @@ export interface NavGroupDef {
   items: NavItemDef[];
 }
 
-/** Canonical nav (dashboard.jsx NAV_GROUPS): no "Admins", Reports enabled. */
+/**
+ * Canonical nav (dashboard.jsx NAV_GROUPS): no "Admins", Reports enabled.
+ * The export's catch-all "Platform" group is split by concern here — Insights
+ * (analysis), Website (public-facing copy) and System (access, evidence,
+ * configuration) — so each header predicts what it contains.
+ */
 export const NAV_GROUPS: NavGroupDef[] = [
   {
     label: "Overview",
@@ -35,21 +40,38 @@ export const NAV_GROUPS: NavGroupDef[] = [
     labelKey: "admin.nav.management",
     items: [
       { id: "properties", label: "Properties", labelKey: "admin.nav.properties", icon: "building-2", href: "/admin/properties" },
+      /* Contracts sits in Management, not a Finance group. Writing a contract is
+         operational work an agent does daily — the same shelf as the property it
+         is written on — not accounting someone visits at month end. */
+      { id: "contracts", label: "Contracts", labelKey: "admin.nav.contracts", icon: "file-signature", href: "/admin/contracts" },
       { id: "members", label: "Members", labelKey: "admin.nav.members", icon: "users", href: "/admin/members" },
       { id: "agents", label: "Agents", labelKey: "admin.nav.agents", icon: "badge-check", href: "/admin/agents" },
       { id: "viewings", label: "Viewings", labelKey: "admin.nav.viewings", icon: "calendar-check", href: "/admin/viewings" },
       { id: "reviews", label: "Reviews", labelKey: "admin.nav.reviews", icon: "star", href: "/admin/reviews" },
+      { id: "messages", label: "Messages", labelKey: "admin.nav.messages", icon: "mail", href: "/admin/messages" },
       { id: "locations", label: "Locations", labelKey: "admin.nav.locations", icon: "map-pin", href: "/admin/locations" },
     ],
   },
   {
-    label: "Platform",
-    labelKey: "admin.nav.platform",
+    label: "Insights",
+    labelKey: "admin.nav.insights",
     items: [
       { id: "reports", label: "Reports", labelKey: "admin.nav.reports", icon: "chart-column", href: "/admin/reports" },
+    ],
+  },
+  {
+    label: "Website",
+    labelKey: "admin.nav.website",
+    items: [
+      { id: "content", label: "Content", labelKey: "admin.nav.content", icon: "file-text", href: "/admin/content" },
+    ],
+  },
+  {
+    label: "System",
+    labelKey: "admin.nav.system",
+    items: [
       { id: "roles", label: "Roles & permissions", labelKey: "admin.nav.roles", icon: "key-round", href: "/admin/roles" },
       { id: "audit", label: "Audit log", labelKey: "admin.nav.audit", icon: "scroll-text", href: "/admin/audit" },
-      { id: "content", label: "Content", labelKey: "admin.nav.content", icon: "file-text", href: "/admin/content" },
       { id: "settings", label: "Settings", labelKey: "admin.nav.settings", icon: "settings", href: "/admin/settings" },
     ],
   },

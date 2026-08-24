@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { PropertyCard } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
+import { formatPrice, type Money } from "@/lib/money";
 import { usePdp } from "./pdp-context";
 
 export function PdpSimilar({ favorites, onFavorite }: { favorites: string[]; onFavorite: (id: string) => void }) {
   const router = useRouter();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { similar } = usePdp();
-  const fmt = (n: number) => "$" + n.toLocaleString("en-US");
+  /* Similar listings each keep their own currency. */
+  const fmt = (m: Money) => formatPrice(lang, m);
   return (
     <section className="pdp-similar">
       <div className="pdp-similar__head">

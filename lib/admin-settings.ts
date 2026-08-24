@@ -3,22 +3,25 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * Admin platform-settings store — the platform-level configuration that has no
- * other home in the app (organisation identity, notification preferences, and
- * demo integrations). Profile, password, roles and audit each own their own
- * screen and are deliberately NOT duplicated here.
+ * Legacy admin settings store — organisation identity and notification
+ * preferences. The /admin/settings screen has since moved to
+ * lib/platform-settings.ts; what survives here is the one slice still read by a
+ * feature screen: `org.currency`, used by _add-property to pick a default.
+ *
+ * Do not add to this file. New settings belong in lib/platform-settings.ts.
  *
  * Modelled on lib/admin-profile.ts: an external store read via
  * useSyncExternalStore, persisted to localStorage, seeded from a deterministic
  * default so the server render and the first client render agree (no hydration
  * mismatch), then the stored values fill in after mount. There is no backend.
- *
- * Appearance (theme + language) is handled by its own live engines — lib/theme
- * and lib/i18n. The Appearance section binds to those directly; this store does
- * not shadow them.
  */
 
-export type CurrencyCode = "USD" | "EUR" | "IQD";
+/* Currency has ONE definition, in lib/platform-settings. This module used to
+   carry its own three-code copy; `org.currency` meant exactly the same thing
+   (the default currency for a new listing), so the two were merged rather than
+   reconciled. Re-exported because existing importers read it from here. */
+export type { CurrencyCode } from "@/lib/platform-settings";
+import type { CurrencyCode } from "@/lib/platform-settings";
 
 export interface OrgSettings {
   name: string;
@@ -39,18 +42,9 @@ export interface NotificationSettings {
   propertySubmitted: boolean;
 }
 
-export interface IntegrationSettings {
-  apiKey: string;
-  webhookUrl: string;
-  webhookEnabled: boolean;
-  whatsappConnected: boolean;
-  emailConnected: boolean;
-}
-
 export interface AdminSettings {
   org: OrgSettings;
   notifications: NotificationSettings;
-  integrations: IntegrationSettings;
 }
 
 // Bump when the default schema/seed changes so stale caches are dropped.
@@ -74,14 +68,6 @@ export const DEFAULT_SETTINGS: AdminSettings = {
     memberRegistered: false,
     propertySubmitted: true,
   },
-  integrations: {
-    // A believable-looking but obviously fake demo key.
-    apiKey: "chiya_sk_live_9f2c4b7a1e6d8043",
-    webhookUrl: "",
-    webhookEnabled: false,
-    whatsappConnected: true,
-    emailConnected: false,
-  },
 };
 
 let current: AdminSettings = DEFAULT_SETTINGS;
@@ -101,7 +87,6 @@ function parse(raw: string | null): AdminSettings {
     return {
       org: { ...DEFAULT_SETTINGS.org, ...p.org },
       notifications: { ...DEFAULT_SETTINGS.notifications, ...p.notifications },
-      integrations: { ...DEFAULT_SETTINGS.integrations, ...p.integrations },
     };
   } catch {
     return DEFAULT_SETTINGS;

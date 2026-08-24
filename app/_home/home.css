@@ -14,7 +14,9 @@
 /* ============ HERO ============ */
 .cxhero { position: relative; min-height: 720px; display: flex; align-items: center; }
 .cxhero__media { position: absolute; inset: 0; overflow: hidden; z-index: 0; }
-.cxhero__bg { position: absolute; inset: -2%; background-image: url("/images/hero-chiya-cover.png"); background-size: cover; background-position: 50% 42%; transform: scale(1.04); transform-origin: 50% 50%; will-change: transform; }
+/* background-image is set inline from the CMS (see hero.tsx) — the seed value
+   is DEFAULT_HERO_IMAGE in lib/site-content.ts, not this rule. */
+.cxhero__bg { position: absolute; inset: -2%; background-size: cover; background-position: 50% 42%; transform: scale(1.04); transform-origin: 50% 50%; will-change: transform; }
 .cxhero__grad { position: absolute; inset: 0; background:
     linear-gradient(to bottom, rgba(247,245,241,.26) 0%, rgba(247,245,241,.05) 12%, rgba(247,245,241,0) 30%, rgba(247,245,241,.10) 62%, rgba(247,245,241,.72) 100%); }
 .cxhero__grad::before { content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -165,7 +167,9 @@ body.cx-pop-open .cxhero { z-index: 1000; }
 /* Full-width band matching the "Why Chiya" section background. */
 .cxk-reviewband { background: var(--surface-sunken); }
 .cxtest { display: flex; flex-direction: column; gap: 18px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: 30px 28px; box-shadow: var(--shadow-card); margin: 0; }
-.cxtest__stars { display: flex; gap: 3px; color: var(--rating-star); }
+/* Real rating, so unearned stars have to read as empty (matches admin .rv-star). */
+.cxtest__stars { display: flex; gap: 3px; color: var(--gray-300); }
+.cxtest__star.is-on { color: var(--rating-star); }
 .cxtest__quote { font-family: var(--font-display); font-weight: 500; font-size: 21px; line-height: 30px; letter-spacing: -0.01em; color: var(--text-primary); margin: 0; flex: 1; text-wrap: pretty; }
 .cxtest__by { display: flex; align-items: center; gap: 12px; padding-top: 18px; border-top: 1px solid var(--border-subtle); }
 .cxtest__name { font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--text-primary); }

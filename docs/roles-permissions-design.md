@@ -18,7 +18,7 @@ Surface ─► Section ─► Group ─► Permission        + Scope (own / team
 | Concept | Definition | Rule |
 |---|---|---|
 | **Surface** | Which product a role belongs to: `staff` (admin web + agent console) or `member` (public website + mobile app). | A role binds to exactly **one** surface. Matches the existing `Surface` type in `data.ts`. |
-| **Section** | One per page/module, mirroring the admin sidebar **1:1**. If a page appears in the nav, it is a section; if a role has no `view` grant in a section, that page disappears from its nav. | 11 staff sections, 6 member sections (below). |
+| **Section** | One per page/module, mirroring the admin sidebar **1:1**. If a page appears in the nav, it is a section; if a role has no `view` grant in a section, that page disappears from its nav. | 12 staff sections, 6 member sections (below). |
 | **Group** | A logical cluster of related actions inside a section (e.g. *Records*, *Publishing*, *Moderation*). Groups exist for UI legibility and master-toggle behaviour — they carry no identity of their own. | Every permission belongs to exactly one group. |
 | **Permission** | One atomic action a user can perform, granted as a boolean. | Named with a **stable string ID** (`properties.create`), never a positional index. |
 | **Scope** | *Staff surface only.* How far a granted permission reaches: `own` (records assigned to me) / `team` (my team's records) / `org` (everything). Set per scopeable section, orthogonal to the boolean grants. | Matches today's `SCOPE_OPTS`. Member permissions are implicitly self-scoped and carry no scope selector. |
@@ -45,7 +45,7 @@ Surface ─► Section ─► Group ─► Permission        + Scope (own / team
 
 ---
 
-## 2. Staff catalogue — 11 sections, 51 permissions
+## 2. Staff catalogue — 12 sections, 55 permissions
 
 Sections mirror `NAV_GROUPS` in [components/admin/admin-data.ts](../components/admin/admin-data.ts) exactly. *Evidence* points at the code that implements each action today, so this catalogue stays verifiable against the product.
 
@@ -127,7 +127,18 @@ Sections mirror `NAV_GROUPS` in [components/admin/admin-data.ts](../components/a
 
 > Agents never moderate reviews about themselves — that's a structural conflict of interest, not a per-role choice. Even a custom staff role scoped `own` should not combine `reviews.approve` with own-scope; the screen should warn on this combination (§5, guardrails).
 
-### 2.7 Locations (`locations`) — scopeable *(new section)*
+### 2.7 Messages (`messages`) — org-only *(new section)*
+
+| Group | Permission ID | Label | Evidence | SA | AG |
+|---|---|---|---|---|---|
+| Inbox | `messages.view` | View messages | `MessagesApp` | ✓ | ✕ |
+| Inbox | `messages.reply` | Reply to messages | `reply()` + `logAudit(repliedMessage)` | ✓ | ✕ |
+| Inbox | `messages.archive` | Archive messages | `archive()` + `logAudit(archivedMessage)` | ✓ | ✕ |
+| Inbox | `messages.delete` | Delete messages | `confirmDelete()` + `logAudit(deletedMessage)` | ✓ | ✕ |
+
+> Org-only, unlike the record sections: contact enquiries are addressed to the platform, and a message from a stranger belongs to no agent — there is no "own" subset for a scope selector to pick out.
+
+### 2.8 Locations (`locations`) — scopeable *(new section)*
 
 | Group | Permission ID | Label | Evidence | SA | AG |
 |---|---|---|---|---|---|
@@ -138,14 +149,14 @@ Sections mirror `NAV_GROUPS` in [components/admin/admin-data.ts](../components/a
 
 > Scopeable: the section carries an own/team/org reach selector like the other record sections. Note that *reading* the tree inside the Add-property form is **not** gated by `locations.view` — that gate covers the management page only.
 
-### 2.8 Reports (`reports`) — scopeable
+### 2.9 Reports (`reports`) — scopeable
 
 | Group | Permission ID | Label | Evidence | SA | AG |
 |---|---|---|---|---|---|
 | Analytics | `reports.view` | View reports | `ReportsApp` (KPIs, charts, period switch) | ✓ | ✓ |
 | Analytics | `reports.export` | Export data | `onExport("data")` | ✓ | ✕ |
 
-### 2.9 Roles & permissions (`roles`) — org-only *(new section; was `settings:1`)*
+### 2.10 Roles & permissions (`roles`) — org-only *(new section; was `settings:1`)*
 
 | Group | Permission ID | Label | Evidence | SA | AG |
 |---|---|---|---|---|---|
@@ -154,13 +165,13 @@ Sections mirror `NAV_GROUPS` in [components/admin/admin-data.ts](../components/a
 | Governance | `roles.edit` | Edit role permissions | `toggle(permId)` / scope selectors | ✓ | ✕ |
 | Governance | `roles.delete` | Delete roles | `deleteRole` + `logAudit(deletedRole)` | ✓ | ✕ |
 
-### 2.10 Audit log (`audit`) — org-only *(new section; was `settings:2`)*
+### 2.11 Audit log (`audit`) — org-only *(new section; was `settings:2`)*
 
 | Group | Permission ID | Label | Evidence | SA | AG |
 |---|---|---|---|---|---|
 | Oversight | `audit.view` | View audit log | `AuditApp` / `useAuditLog()` | ✓ | ✕ |
 
-### 2.11 Settings (`settings`) — org-only
+### 2.12 Settings (`settings`) — org-only
 
 | Group | Permission ID | Label | Evidence | SA | AG |
 |---|---|---|---|---|---|
@@ -233,8 +244,8 @@ Applies to the public website and the mobile app identically (the mobile app is 
 
 | Role | Surface | Type | Grants | Scope |
 |---|---|---|---|---|
-| **Super admin** | staff | locked system | **51 / 51** — everything | `org` |
-| **Agent** | staff | system | **16 / 51** (below) | `own` on every scopeable section |
+| **Super admin** | staff | locked system | **55 / 55** — everything | `org` |
+| **Agent** | staff | system | **16 / 55** (below) | `own` on every scopeable section |
 | **Member** | member | system | **14 / 14** — everything | self (implicit) |
 
 **Agent — the 16 grants** (preserves today's `ROLES_SEED` spec; ✓* = new perms with proposed defaults):
@@ -248,7 +259,7 @@ Applies to the public website and the mobile app identically (the mobile app is 
 | Viewings | view, schedule, edit, status✓*, notes✓* | reassign, cancel |
 | Reviews | view | approve, reject, delete |
 | Reports | view | export |
-| Locations / Roles / Audit / Settings | — | all (sections hidden from nav) |
+| Messages / Locations / Roles / Audit / Settings | — | all (sections hidden from nav) |
 
 The shape of the Agent role: *full pipeline control over their own book of business, read-only visibility into adjacent records, zero reach into governance.* An agent can create and work a listing but can't make it public (`publish`), can't remove records (`delete`, `cancel`), can't move work between agents (`assign`, `reassign`), and never sees platform administration.
 
@@ -266,7 +277,7 @@ Most of this is already built in `roles-app.tsx`; items marked **(new)** are add
 ┌────────────────────────────────────────────────────────────────────┐
 │  Roles & permissions                        [ Detail | Matrix ]    │
 ├──────────────┬─────────────────────────────────────────────────────┤
-│ ROLE LIST    │  ⛨ Agent          system · 35 users    16/51 granted│
+│ ROLE LIST    │  ⛨ Agent          system · 35 users    16/55 granted│
 │ ⛨ Super admin│  [ Permissions | Settings ]                         │
 │ ⛨ Agent    ● │ ┌───────────┐ ┌────────────────────────────────────┐│
 │ ⛨ Member     │ │ SECTIONS  │ │ Properties            Scope: [Own ▾]││

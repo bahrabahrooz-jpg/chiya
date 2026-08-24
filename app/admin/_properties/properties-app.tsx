@@ -10,7 +10,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
-import { fmtCurrency, fmtDate, fmtNum, localizeDigits, monthName, weekdayName, popupLeft } from "@/lib/fmt";
+import { fmtDate, fmtNum, localizeDigits, monthName, weekdayName, popupLeft } from "@/lib/fmt";
+import { formatPrice } from "@/lib/money";
 import { adminMenuRoot } from "../_shared/menu-portal";
 import {
   AGENT_ASSIGNED,
@@ -20,18 +21,23 @@ import {
   ITEMS_PER_PAGE,
   KPI_CARDS,
   PRICE_RANGES,
+  PUBLICATION_META,
   STATUS_DOT_COLOR,
-  STATUS_META,
-  STATUS_OPTIONS,
   STATUS_TABS,
   TYPE_OPTIONS,
-  statusRequiresAgent,
+  VISIBILITY_OPTIONS,
+  labelKeyFor,
+  matchesTab,
+  toneFor,
   type AdvFilters,
   type AgentRef,
   type PropertyRecord,
+  type Publication,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
-import { countProperties } from "../_data/catalog";
+import { useContracts } from "../_shared/contracts-store";
+import { countProperties, legacyStatus } from "../_data/catalog";
+import { canPublish, closedContractCounts } from "../_data/property-state";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_ABBR = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -287,9 +293,12 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
   );
 }
 
-/* ---------------- Change status modal ---------------- */
-function ChangeStatusModal({ property, onCancel, onConfirm }: { property: PropertyRecord; onCancel: () => void; onConfirm: (s: string) => void }) {
-  const [selected, setSelected] = useState<string | null>(null);
+/* ---------------- Change visibility modal ----------------
+   Visibility ONLY. Sold and Rented are gone from here on purpose: they are what
+   a deal did, not something a person picks, and leaving them in a dropdown was
+   the whole problem this split solves. */
+function ChangeVisibilityModal({ property, onCancel, onConfirm }: { property: PropertyRecord; onCancel: () => void; onConfirm: (p: Publication) => void }) {
+  const [selected, setSelected] = useState<Publication | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -337,7 +346,7 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Proper
     };
   }, [dropOpen]);
 
-  const canConfirm = selected && selected !== property.status;
+  const canConfirm = selected && selected !== property.publication;
 
   return createPortal(
     <div
@@ -348,22 +357,22 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Proper
     >
       <div className="pp-modal pp-modal--agent" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
         <div className="pp-modal__icon pp-modal__icon--status">
-          <Icon name="refresh-cw" size={24} strokeWidth={1.8} />
+          <Icon name="eye" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="status-modal-title">
-          {t("admin.props.changeStatus")}
+          {t("admin.props.changeVisibility")}
         </h2>
-        <p className="pp-modal__sublabel">{t("admin.props.selectNewStatus")}</p>
+        <p className="pp-modal__sublabel">{t("admin.props.selectNewVisibility")}</p>
         <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} onClick={toggleDrop}>
           {selected ? (
             <>
-              <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[STATUS_META[selected].variant] }} />
-              <span className="pp-smodal__label">{tOr(`status.${selected.toLowerCase()}`, selected)}</span>
+              <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[PUBLICATION_META[selected].variant] }} />
+              <span className="pp-smodal__label">{tOr(`status.${selected}`, selected)}</span>
             </>
           ) : (
             <span className="pp-amodal__trigger-placeholder">
-              <Icon name="tag" size={16} />
-              {t("admin.props.chooseStatus")}
+              <Icon name="eye" size={16} />
+              {t("admin.props.chooseVisibility")}
             </span>
           )}
           <Icon name="chevron-down" size={15} className="pp-amodal__trigger-chev" />
@@ -372,28 +381,32 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Proper
           dropPos &&
           createPortal(
             <div className="pp-smodal__drop pp-amodal__drop" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
-              {STATUS_OPTIONS.map((status) => {
-                const meta = STATUS_META[status];
-                const isCurrent = property.status === status;
-                const isSelected = selected === status;
-                // A property with no agent can't move to a live status.
-                const blocked = !property.agent && statusRequiresAgent(status);
+              {VISIBILITY_OPTIONS.map((pub) => {
+                const meta = PUBLICATION_META[pub];
+                const isCurrent = property.publication === pub;
+                const isSelected = selected === pub;
+                /* Two independent reasons a publication can be out of reach:
+                   nobody is on the listing, or something has already closed on
+                   it. Both are explained rather than silently disabled. */
+                const guard = pub === "published" ? canPublish(property) : { ok: true as const };
+                const needsAgent = pub === "published" && !property.agent;
+                const blocked = needsAgent || !guard.ok;
                 return (
                   <button
-                    key={status}
+                    key={pub}
                     type="button"
                     disabled={blocked}
                     className={"pp-smodal__item" + (isSelected ? " is-selected" : "") + (blocked ? " is-disabled" : "")}
                     onClick={() => {
-                      setSelected(status);
+                      setSelected(pub);
                       setDropOpen(false);
                     }}
                   >
                     <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[meta.variant] }} />
-                    <span className="pp-smodal__label">{tOr(`status.${status.toLowerCase()}`, status)}</span>
+                    <span className="pp-smodal__label">{tOr(`status.${pub}`, pub)}</span>
                     <span className="pp-smodal__spacer" />
                     {blocked ? (
-                      <span className="pp-smodal__req">{t("admin.props.needsAgent")}</span>
+                      <span className="pp-smodal__req">{needsAgent ? t("admin.props.needsAgent") : t(guard.ok ? "" : guard.reasonKey)}</span>
                     ) : (
                       <>
                         {isCurrent && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
@@ -415,8 +428,8 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Proper
             {t("admin.topbar.cancel")}
           </button>
           <button type="button" className="pp-modal__confirm" disabled={!canConfirm} onClick={() => selected && onConfirm(selected)}>
-            <Icon name="refresh-cw" size={15} />
-            {t("admin.props.changeStatus")}
+            <Icon name="eye" size={15} />
+            {t("admin.props.changeVisibility")}
           </button>
         </div>
       </div>
@@ -766,7 +779,9 @@ function PropertyRow({
   hideAgent: boolean;
   basePath: string;
 }) {
-  const st = STATUS_META[p.status] || { variant: "neutral" as const };
+  // One badge, two fields behind it — availability wins when something has
+  // happened to the property (see toneFor in ./data).
+  const st = toneFor(p);
   const router = useRouter();
   const { t, lang } = useLang();
   /** Translate a data-driven value, falling back to the raw value if unmapped. */
@@ -845,14 +860,14 @@ function PropertyRow({
       </div>
       <div className="pp-col--status">
         <Badge variant={st.variant} size="sm" dot={st.dot} icon={st.icon} style={{ height: "19px", flexDirection: "row" }}>
-          {tOr(`status.${p.status.toLowerCase()}`, p.status)}
+          {tOr(labelKeyFor(p), legacyStatus(p))}
         </Badge>
       </div>
       <div className="pp-col--price">
         <span className="pp-celllabel">{t("admin.props.th.price")}</span>
         <div className="pp-price">
           <span className="pp-price__val">
-            {fmtCurrency(lang, p.price)}
+            {formatPrice(lang, p.price)}
             {p.per && <span className="pp-price__per">{p.per}</span>}
           </span>
         </div>
@@ -1123,6 +1138,14 @@ export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { 
   // When scoped to an agent, every count/list reflects only that agent's listings.
   const baseList = useMemo(() => (scopeAgent ? properties.filter((p) => p.agent?.name === scopeAgent) : properties), [properties, scopeAgent]);
   const effCounts = useMemo(() => (scopeAgent ? countProperties(baseList) : counts), [scopeAgent, baseList, counts]);
+  /* Sold and Rented are transactions, so they are counted from closed DEALS,
+     not from a word on the property. The two differ once a property has been
+     let twice — one property, two closed tenancies — and the card says "closed
+     sales all-time", which is the deal count. Scoped to the visible list so an
+     agent's page only counts their own. */
+  const { contracts } = useContracts();
+  const contractCounts = useMemo(() => closedContractCounts(contracts, new Set(baseList.map((p) => p.id))), [contracts, baseList]);
+  const kpiCounts = useMemo(() => ({ ...effCounts, ...contractCounts }), [effCounts, contractCounts]);
   const cityOptions = useMemo(() => locationTree.map((c) => c.name).sort((a, b) => a.localeCompare(b)), [locationTree]);
   const [activeTab, setActiveTab] = useState(() => {
     const s = searchParams.get("status");
@@ -1181,15 +1204,19 @@ export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { 
     // `toastShown` guards against re-firing, so re-running on a language change is safe.
   }, [searchParams, t]);
 
-  const handleStatusConfirm = (status: string) => {
+  /* Visibility only — availability is never set from a screen. Routed through
+     the store (rather than setProperties) so the change is audited as a
+     visibility event and the deprecated `status` is re-derived with it. */
+  const handleVisibilityConfirm = (publication: Publication) => {
     const prop = statusTarget!;
-    setProperties((prev) => prev.map((p) => (p.id === prop.id ? { ...p, status } : p)));
+    const next = { publication, availability: prop.availability };
+    updateProperty(prop.id, { publication, status: legacyStatus(next), published: publication === "published" });
     setStatusTarget(null);
     pushToast({
       tone: "brand",
-      icon: "refresh-cw",
-      title: t("admin.props.toast.statusTitle"),
-      msg: t("admin.props.toast.statusMsg", { title: prop.title, status: t(`status.${status.toLowerCase()}`) }),
+      icon: "eye",
+      title: t("admin.props.toast.visibilityTitle"),
+      msg: t("admin.props.toast.visibilityMsg", { title: prop.title, status: t(`status.${publication}`) }),
     });
   };
 
@@ -1247,11 +1274,9 @@ export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { 
   const rows = useMemo(() => {
     const sq = q.trim().toLowerCase();
     return baseList.filter((p) => {
-      if (activeTab === "published" && p.status !== "Published") return false;
-      if (activeTab === "sold" && p.status !== "Sold") return false;
-      if (activeTab === "rented" && p.status !== "Rented") return false;
-      if (activeTab === "pending" && p.status !== "Pending") return false;
-      if (activeTab === "draft" && p.status !== "Draft") return false;
+      // Each chip matches on one field — a reserved property is still
+      // Published, a sold one is Unpublished. See matchesTab in ./data.
+      if (!matchesTab(p, activeTab)) return false;
       if (advFilters.type && p.type !== advFilters.type) return false;
       if (advFilters.city && p.city !== advFilters.city) return false;
       if (advFilters.agent === AGENT_ASSIGNED && !p.agent) return false;
@@ -1287,7 +1312,7 @@ export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { 
           <StatCard
             key={c.key}
             label={t(`admin.props.kpi.${c.key}`)}
-            value={fmtNum(lang, effCounts[c.field])}
+            value={fmtNum(lang, kpiCounts[c.field])}
             icon={c.icon}
             tone={c.tone}
             sub={t(`admin.props.kpiSub.${c.key}`)}
@@ -1322,7 +1347,7 @@ export function PropertiesApp({ scopeAgent, basePath = "/admin/properties" }: { 
       />
 
       {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}
-      {statusTarget && <ChangeStatusModal property={statusTarget} onCancel={() => setStatusTarget(null)} onConfirm={handleStatusConfirm} />}
+      {statusTarget && <ChangeVisibilityModal property={statusTarget} onCancel={() => setStatusTarget(null)} onConfirm={handleVisibilityConfirm} />}
       {deleteTarget && <DeleteConfirmModal property={deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
       {agentTarget && <AssignAgentModal property={agentTarget} onCancel={() => setAgentTarget(null)} onConfirm={handleAssignConfirm} />}
 

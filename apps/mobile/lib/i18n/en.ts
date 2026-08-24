@@ -360,6 +360,7 @@ export const en = {
     maxArea: "Max area",
     usd: "USD",
     iqd: "IQD",
+    fxNote: "Listings priced in the other currency are matched at the current rate, so one near the edge of your range may move in or out.",
   },
   sort: {
     title: "Sort By",

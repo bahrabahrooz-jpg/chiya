@@ -24,7 +24,6 @@ export type SettingsSectionId =
   | "members"
   | "notifications"
   | "localization"
-  | "legal"
   | "integrations"
   | "maintenance"
   | "team"
@@ -56,7 +55,6 @@ export const SETTINGS_GROUPS: SettingsNavGroup[] = [
       { id: "members", labelKey: "admin.psettings.nav.members", icon: "users" },
       { id: "notifications", labelKey: "admin.psettings.nav.notifications", icon: "bell" },
       { id: "localization", labelKey: "admin.psettings.nav.localization", icon: "languages" },
-      { id: "legal", labelKey: "admin.psettings.nav.legal", icon: "scale" },
       { id: "integrations", labelKey: "admin.psettings.nav.integrations", icon: "plug" },
       { id: "maintenance", labelKey: "admin.psettings.nav.maintenance", icon: "database" },
     ],
@@ -75,32 +73,14 @@ export const SETTINGS_GROUPS: SettingsNavGroup[] = [
   },
 ];
 
-/** Section header (icon badge + title + subtitle) shown above each pane. */
-export const SECTION_HEADS: Record<SettingsSectionId, { icon: IconName; titleKey: string; subKey: string }> = {
-  general: { icon: "sliders-horizontal", titleKey: "admin.psettings.nav.general", subKey: "admin.psettings.general.sub" },
-  branding: { icon: "palette", titleKey: "admin.psettings.nav.branding", subKey: "admin.psettings.branding.sub" },
-  listings: { icon: "building-2", titleKey: "admin.psettings.nav.listings", subKey: "admin.psettings.listings.sub" },
-  viewings: { icon: "calendar-check", titleKey: "admin.psettings.nav.viewings", subKey: "admin.psettings.viewings.sub" },
-  members: { icon: "users", titleKey: "admin.psettings.nav.members", subKey: "admin.psettings.members.sub" },
-  notifications: { icon: "bell", titleKey: "admin.psettings.nav.notifications", subKey: "admin.psettings.notif.sub" },
-  localization: { icon: "languages", titleKey: "admin.psettings.nav.localization", subKey: "admin.psettings.localization.sub" },
-  legal: { icon: "scale", titleKey: "admin.psettings.nav.legal", subKey: "admin.psettings.legal.sub" },
-  integrations: { icon: "plug", titleKey: "admin.psettings.nav.integrations", subKey: "admin.psettings.integrations.sub" },
-  maintenance: { icon: "database", titleKey: "admin.psettings.nav.maintenance", subKey: "admin.psettings.maintenance.sub" },
-  team: { icon: "users-round", titleKey: "admin.psettings.nav.team", subKey: "admin.psettings.team.sub" },
-  security: { icon: "shield", titleKey: "admin.psettings.nav.security", subKey: "admin.psettings.security.sub" },
-  preferences: { icon: "settings-2", titleKey: "admin.psettings.nav.preferences", subKey: "admin.psettings.preferences.sub" },
-};
-
 /* --------------------------------- Options -------------------------------- */
 
+/* The platform supports USD and IQD and nothing else — see CurrencyCode in
+   lib/platform-settings. This list is the display metadata for those two, not a
+   second definition of which currencies exist. */
 export const CURRENCY_OPTIONS: { value: CurrencyCode; nameKey: string; symbol: string }[] = [
   { value: "USD", nameKey: "admin.psettings.cur.usd", symbol: "$" },
   { value: "IQD", nameKey: "admin.psettings.cur.iqd", symbol: "IQD" },
-  { value: "EUR", nameKey: "admin.psettings.cur.eur", symbol: "€" },
-  { value: "GBP", nameKey: "admin.psettings.cur.gbp", symbol: "£" },
-  { value: "TRY", nameKey: "admin.psettings.cur.try", symbol: "₺" },
-  { value: "AED", nameKey: "admin.psettings.cur.aed", symbol: "AED" },
 ];
 
 export const AREA_UNIT_OPTIONS: { value: "sqm" | "sqft"; labelKey: string }[] = [

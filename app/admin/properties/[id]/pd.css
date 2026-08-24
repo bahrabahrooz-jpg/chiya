@@ -30,6 +30,20 @@
     font-family: var(--font-display); font-weight: 600;
     font-size: clamp(28px, 3.2vw, 38px); line-height: 1.05; letter-spacing: -.018em;
     color: var(--text-primary); margin: 0;
+    /* Without this a long title refuses to shrink and pushes the badges off the
+       row. Kurdish and Arabic status words run noticeably longer than English,
+       so the badges need the title to give way rather than the reverse. */
+    min-width: 0; overflow-wrap: anywhere;
+  }
+  /* The two badges wrap as ONE unit. Left to themselves they split across lines
+     — publication on one, availability on the next — which reads as two
+     unrelated facts instead of one state. */
+  .pd-head__badges { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; }
+  @media (max-width: 600px) {
+    /* Narrow: the badge group takes its own full-width line under the title,
+       so a long title and two long status words never fight for the same row. */
+    .pd-head__titlerow { gap: 10px; }
+    .pd-head__badges { flex-basis: 100%; }
   }
   .pd-head__meta {
     display: flex; align-items: center; gap: 11px; flex-wrap: wrap;
@@ -785,3 +799,66 @@
     .vwd-seg { flex-wrap: wrap; }
     .vwd-seg__btn { flex: 1 1 40%; }
   }
+
+  /* ============================================================
+     DEALS TAB  +  RECORD-A-DEAL MODAL  +  MANDATE
+     ============================================================ */
+
+  /* ---------- deals list ---------- */
+  .pd-deals { display: flex; flex-direction: column; gap: 14px; }
+  .pd-deal {
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+    background: var(--surface-card); overflow: hidden;
+  }
+  .pd-deal__head {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 13px 15px; border-bottom: 1px solid var(--border-subtle); background: var(--gray-25);
+  }
+  .pd-deal__id {
+    font-family: var(--font-mono); font-size: 12.5px; font-weight: 700;
+    color: var(--text-primary); white-space: nowrap;
+  }
+  .pd-deal__party { font-size: 13.5px; color: var(--text-secondary); min-width: 0; display: inline-flex; align-items: center; gap: 7px; }
+  .pd-deal__party a { color: var(--text-brand); font-weight: 600; text-decoration: none; }
+  .pd-deal__party a:hover { text-decoration: underline; }
+  /* Marks a counterparty with no account. Most buyers and tenants never
+     register, so this has to read as normal, not as missing data. */
+  .pd-deal__ext {
+    font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+    padding: 1px 6px; border-radius: var(--radius-pill); background: var(--gray-100);
+  }
+  .pd-deal__spacer { flex: 1 1 auto; }
+  .pd-deal__value {
+    font-size: 14px; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .pd-deal__line {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    padding: 11px 15px; font-size: 13px;
+  }
+  .pd-deal__line + .pd-deal__line { border-top: 1px dashed var(--border-subtle); }
+  .pd-deal__line > svg { color: var(--text-tertiary); flex: none; }
+  .pd-deal__linelabel { color: var(--text-tertiary); font-weight: 600; min-width: 68px; }
+  .pd-deal__linevalue { color: var(--text-secondary); min-width: 0; }
+  .pd-deal__action {
+    display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+    font-size: 12.5px; font-weight: 600; color: var(--text-brand); text-decoration: none;
+  }
+  .pd-deal__action:hover { text-decoration: underline; }
+  .pd-deals__foot { display: flex; justify-content: center; padding-top: 14px; }
+  .pd-deals__all {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
+  }
+  .pd-deals__all:hover { color: var(--text-brand); }
+
+  /* The record-a-deal modal that used to be styled here is gone with the
+     DealRecord it built. Its chrome (.pp-modal--deal, .pd-dealform,
+     .pd-field2, .pd-seg2, .pd-party, .pd-ownerchip, .pd-commission,
+     .pd-consequence) went with it rather than being left behind for a form
+     that no longer exists.
+     TODO(NewContractModal task): the create modal will bring its own. */
+
+  /* The contract id in a row heading links to the contract. */
+  .pd-deal__id { text-decoration: none; }
+  a.pd-deal__id:hover { color: var(--text-brand); text-decoration: underline; }

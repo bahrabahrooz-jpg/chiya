@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AdminSidebar, AdminTopbar, activeNavId, type MenuId } from "@/components/admin";
 import { PropertiesProvider } from "./_shared/properties-store";
+import { ContractsProvider } from "./_shared/contracts-store";
 import { useAdminAuth } from "@/lib/admin-auth";
 import "@/components/admin/admin-shell.css";
 
@@ -89,8 +90,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   // Signed out → render nothing while the effect above redirects to the login.
   if (!authed) return null;
 
+  /* Contracts sit inside properties: a contract's consequences are applied
+     to a property, so the transitions hook needs both and the property store
+     has to be the outer one. */
   return (
     <PropertiesProvider>
+      <ContractsProvider>
       <div className="ax-app" data-layout="B">
         <AdminSidebar
           collapsed={collapsed}
@@ -109,6 +114,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
         {openMenu && <div className="ax-menu-backdrop" onClick={() => setOpenMenu(null)} />}
       </div>
+      </ContractsProvider>
     </PropertiesProvider>
   );
 }

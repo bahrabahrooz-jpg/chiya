@@ -5,12 +5,17 @@ import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/icon";
 import { useLang } from "@/lib/i18n";
 import { fmtNum, monthName, weekdayName, fmtDate, localizeDigits } from "@/lib/fmt";
+import "./filter-controls.css";
 
 /* ----------------------------------------------------------------------------
    Shared admin filter controls — the dropdown and the day picker behind the
-   `mp-datebtn` / `mp-custdrop` / `mp-cal` chrome in members.css. Lifted out of
-   the Members page when the Audit log needed the same three filters; both pages
-   render one implementation rather than two that drift.
+   `mp-datebtn` / `mp-custdrop` / `mp-cal` chrome. Lifted out of the Members
+   page when the Audit log needed the same three filters; both pages render one
+   implementation rather than two that drift.
+
+   The chrome is imported above rather than left to the host page: it used to
+   live in members.css, so a page that used these components without importing
+   that stylesheet (Settings) rendered them completely unstyled.
 
    `today` is a prop rather than a module constant because each page seeds its
    own demo "now" (Members sits in June, the audit log in July) and reading the

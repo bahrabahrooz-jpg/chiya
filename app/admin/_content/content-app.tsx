@@ -1,30 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useLang, LANGS, type Lang } from "@/lib/i18n";
+import { fmtNum } from "@/lib/fmt";
 import { logAudit } from "../_shared/audit-log";
+import { useAutoSave } from "../_shared/use-auto-save";
+import { BannerUpload } from "../_shared/banner-upload";
 import {
   useSiteContent,
   pick,
   HOME_SECTION_IDS,
+  DEFAULT_HERO_IMAGE,
   type SiteContent,
   type Loc,
   type FaqEntry,
   type LegalSectionContent,
   type HomeSectionId,
-  type HomeTestimonial,
 } from "@/lib/site-content";
+import { APPROVED_REVIEW_POOL, HOME_FEATURED_COUNT, homeFeaturedReviews, type FeaturedReview } from "@/lib/site-reviews";
 import { CONTENT_SECTIONS, ABOUT_VALUE_ICONS, HOME_PILLAR_ICONS, HOME_SECTION_LABEL_KEYS, type ContentSectionId } from "./data";
 
 /* ----------------------------------------------------------------------------
    Content (CMS) hub — the super admin's editor for public marketing content:
    FAQ, footer social + contact, legal pages, and About copy. Same shell as the
-   Settings screen (st-split section-nav + pf-card detail); the ct-namespace
-   adds the CMS-specific pieces (the per-language LocField, list rows, and
+   Settings screen — st-split + the sx- grouped nav card, and a title-only
+   sx-sectionhead above each pf-card detail pane. The ct- namespace adds the
+   CMS-specific pieces (the per-language LocField, list rows, and
    add/reorder/delete controls).
 
    Every editable string is a Loc { en, ar, ku }. Each section edits a local
@@ -148,35 +154,6 @@ function Card({ title, desc, children, action }: { title: string; desc?: string;
       {children}
     </section>
   );
-}
-
-/** Auto-save hook: keeps a local editing `draft` for smooth typing and pushes
-    it to the store shortly after edits stop. Replaces the old manual Save bar —
-    every change persists on its own, so there is no dirty/Cancel/Save state.
-
-    `initial` seeds the draft once (each section remounts when the nav switches,
-    so it re-seeds naturally). `persist` fires debounced, only after the draft
-    diverges from what was first loaded. */
-function useAutoSave<T>(initial: T, persist: (next: T) => void): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [draft, setDraft] = useState<T>(initial);
-  const persistRef = useRef(persist);
-  const baselineRef = useRef<string>(JSON.stringify(initial));
-
-  useEffect(() => {
-    persistRef.current = persist;
-  });
-
-  useEffect(() => {
-    const serialized = JSON.stringify(draft);
-    if (serialized === baselineRef.current) return;
-    const id = setTimeout(() => {
-      baselineRef.current = serialized;
-      persistRef.current(draft);
-    }, 600);
-    return () => clearTimeout(id);
-  }, [draft]);
-
-  return [draft, setDraft];
 }
 
 const EMPTY_LOC: Loc = { en: "", ar: "", ku: "" };
@@ -356,6 +333,8 @@ function FooterSection({ content, onSave }: { content: SiteContent; onSave: (pat
 
 /* --------------------------------- Legal ---------------------------------- */
 
+type LegalPage = "privacy" | "terms";
+
 /** The legal-section add/edit modal: one clause's heading + body, sharing a
     single EN/AR/KU switcher so both fields move to the same language together.
     Mirrors FaqEntryModal — edits a local copy and hands it back on Save. */
@@ -404,10 +383,24 @@ function LegalSectionModal({
   );
 }
 
-function LegalSectionEditor({ content, onSave }: { content: SiteContent; onSave: (patch: Partial<SiteContent>, section: string) => void }) {
+/** The privacy/terms segmented control. Lives in the section header row rather
+    than inside the editor, so `page` is owned by ContentApp and passed to both. */
+function LegalSubtabs({ page, onPage }: { page: LegalPage; onPage: (p: LegalPage) => void }) {
+  const { t } = useLang();
+  return (
+    <div className="ct-subtabs" role="tablist" aria-label={t("admin.content.legal.title")}>
+      {(["privacy", "terms"] as const).map((p) => (
+        <button key={p} type="button" role="tab" aria-selected={page === p} className={"ct-subtab" + (page === p ? " is-active" : "")} onClick={() => onPage(p)}>
+          {t(p === "privacy" ? "admin.content.legal.privacy" : "admin.content.legal.terms")}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LegalSectionEditor({ content, page, onSave }: { content: SiteContent; page: LegalPage; onSave: (patch: Partial<SiteContent>, section: string) => void }) {
   const { t, lang } = useLang();
   const section = t("admin.content.nav.legal");
-  const [page, setPage] = useState<"privacy" | "terms">("privacy");
   const [draft, setDraft] = useAutoSave(content.legal, (legal) => onSave({ legal }, section));
   const [confirmDel, setConfirmDel] = useState<number | null>(null);
   // `editing` holds the index being edited; -1 means the add flow.
@@ -426,14 +419,6 @@ function LegalSectionEditor({ content, onSave }: { content: SiteContent; onSave:
 
   return (
     <>
-      <div className="ct-subtabs" role="tablist" aria-label={t("admin.content.legal.title")}>
-        {(["privacy", "terms"] as const).map((p) => (
-          <button key={p} type="button" role="tab" aria-selected={page === p} className={"ct-subtab" + (page === p ? " is-active" : "")} onClick={() => setPage(p)}>
-            {t(p === "privacy" ? "admin.content.legal.privacy" : "admin.content.legal.terms")}
-          </button>
-        ))}
-      </div>
-
       <Card title={t("admin.content.legal.metaTitle")}>
         <div className="ct-fields">
           <LocField label={t("admin.content.home.eyebrow")} value={doc.eyebrow} onChange={(eyebrow) => setDoc({ eyebrow })} />
@@ -510,50 +495,84 @@ function LegalSectionEditor({ content, onSave }: { content: SiteContent; onSave:
 
 /* ---------------------------------- Home ---------------------------------- */
 
-/** Testimonial add/edit modal: name + detail + quote sharing one EN/AR/KU
-    switcher. Mirrors FaqEntryModal. */
-function TestimonialModal({
-  entry,
-  isNew,
-  onClose,
-  onApply,
-}: {
-  entry: HomeTestimonial;
-  isNew: boolean;
-  onClose: () => void;
-  onApply: (next: HomeTestimonial) => void;
-}) {
+/** A reviewer's rating, read-only — it is theirs, so there is nothing to edit.
+    Mirrors the admin Reviews table's Stars (app/admin/_reviews/reviews-app). */
+function ReviewStars({ value }: { value: number }) {
+  const { t, lang } = useLang();
+  return (
+    <span className="ct-stars" aria-label={t("admin.reviews.starsAria", { value: fmtNum(lang, value) })}>
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Icon key={s} name="star" size={14} className={"ct-star" + (s <= value ? " is-on" : "")} fill={s <= value ? "currentColor" : "none"} />
+      ))}
+    </span>
+  );
+}
+
+/** The reviewer + agent + date line under a quote, in both the featured list and
+    the picker, so a row is always traceable back to /admin/reviews. */
+function ReviewMeta({ r }: { r: FeaturedReview }) {
   const { t } = useLang();
-  const [sub, setSub] = useState<Lang>("en");
-  const [name, setName] = useState<Loc>(entry.name);
-  const [loc, setLoc] = useState<Loc>(entry.loc);
-  const [quote, setQuote] = useState<Loc>(entry.quote);
-  const canSave = name.en.trim().length > 0 && quote.en.trim().length > 0;
+  const parts = [t("admin.content.home.aboutAgent", { agent: r.agentName })];
+  if (r.dealKey) parts.push(t(r.dealKey, { title: r.dealTitle ?? "" }));
+  parts.push(r.when);
+  return <p className="ct-faqrow__meta">{parts.join(" · ")}</p>;
+}
+
+/** Feature-a-review picker: approved reviews not already on the homepage, one
+    pick at a time. Deliberately has no text input beyond the search box — the
+    words, the name and the rating belong to the reviewer, not to the admin. */
+function FeatureReviewModal({ taken, onClose, onPick }: { taken: string[]; onClose: () => void; onPick: (id: string) => void }) {
+  const { t } = useLang();
+  const [q, setQ] = useState("");
+  const [sel, setSel] = useState<string | null>(null);
+
+  const rows = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return APPROVED_REVIEW_POOL.filter(
+      (r) => !taken.includes(r.id) && (!needle || [r.name, r.agentName, r.text].join(" ").toLowerCase().includes(needle)),
+    );
+  }, [q, taken]);
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={t(isNew ? "admin.content.home.tAddTitle" : "admin.content.home.tEditTitle")}
+      title={t("admin.content.home.pickTitle")}
+      subtitle={t("admin.content.home.pickSub")}
       size="lg"
       footer={
         <>
           <Button hierarchy="secondary" onClick={onClose}>
             {t("admin.topbar.cancel")}
           </Button>
-          <Button hierarchy="primary" disabled={!canSave} onClick={() => onApply({ name, loc, quote })}>
-            {t(isNew ? "admin.content.home.addTestimonial" : "admin.content.legal.saveChanges")}
+          <Button hierarchy="primary" disabled={!sel} onClick={() => sel && onPick(sel)}>
+            {t("admin.content.home.pickConfirm")}
           </Button>
         </>
       }
     >
-      <div className="ct-modalfields">
-        <div className="ct-modalfields__langrow">
-          <LangSwitch label={t("admin.content.home.tName")} sub={sub} onSub={setSub} flag={(l) => !name[l]?.trim() || !quote[l]?.trim()} />
+      <div className="ct-pick">
+        <Input value={q} iconLeading="search" placeholder={t("admin.content.home.pickSearchPh")} onChange={(e) => setQ(e.target.value)} />
+        <div className="ct-pick__list" role="radiogroup" aria-label={t("admin.content.home.pickTitle")}>
+          {rows.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              role="radio"
+              aria-checked={sel === r.id}
+              className={"ct-pickrow" + (sel === r.id ? " is-sel" : "")}
+              onClick={() => setSel(r.id)}
+            >
+              <span className="ct-pickrow__top">
+                <ReviewStars value={r.stars} />
+                <span className="ct-pickrow__name">{r.name}</span>
+              </span>
+              <p className="ct-faqrow__a">{r.text}</p>
+              <ReviewMeta r={r} />
+            </button>
+          ))}
+          {rows.length === 0 && <p className="ct-empty">{t("admin.content.home.pickEmpty")}</p>}
         </div>
-        <LocField label={t("admin.content.home.tName")} value={name} onChange={setName} sub={sub} onSub={setSub} hideSwitch />
-        <LocField label={t("admin.content.home.tLoc")} value={loc} onChange={setLoc} sub={sub} onSub={setSub} hideSwitch />
-        <LocField label={t("admin.content.home.tQuote")} value={quote} onChange={setQuote} sub={sub} onSub={setSub} hideSwitch textarea rows={4} />
       </div>
     </Modal>
   );
@@ -563,9 +582,8 @@ function HomeSection({ content, onSave }: { content: SiteContent; onSave: (patch
   const { t, lang } = useLang();
   const section = t("admin.content.nav.home");
   const [draft, setDraft] = useAutoSave(content.home, (home) => onSave({ home }, section));
-  const [confirmDel, setConfirmDel] = useState<number | null>(null);
-  // `editing` holds the testimonial index; -1 means the add flow.
-  const [editing, setEditing] = useState<number | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
 
   const setHead = (id: HomeSectionId, next: Partial<{ eyebrow: Loc; title: Loc; sub: Loc }>) =>
     setDraft((d) => ({ ...d, sections: { ...d.sections, [id]: { ...d.sections[id], ...next } } }));
@@ -574,17 +592,32 @@ function HomeSection({ content, onSave }: { content: SiteContent; onSave: (patch
   const setCta = (k: "find" | "agent" | "list", cta: Loc) =>
     setDraft((d) => ({ ...d, ctaCards: { ...d.ctaCards, [k]: { cta } } }));
 
-  const applyTestimonial = (next: HomeTestimonial) => {
-    setDraft((d) => ({ ...d, testimonials: editing === -1 ? [...d.testimonials, next] : d.testimonials.map((tm, idx) => (idx === editing ? next : tm)) }));
-    setEditing(null);
-  };
-  const editingEntry =
-    editing === -1 ? { name: { ...EMPTY_LOC }, loc: { ...EMPTY_LOC }, quote: { ...EMPTY_LOC } } : editing !== null ? draft.testimonials[editing] : null;
+  /* The band's cards. An uncurated draft (null) resolves to the default pick, so
+     the list always shows what the homepage shows; the first edit writes that
+     selection out explicitly. Resolving also drops any pick that has since lost
+     its approval, which is why this reads through featured rather than the ids. */
+  const featured = homeFeaturedReviews(draft.featuredReviews);
+  const featuredIds = featured.map((r) => r.id);
+  const atCap = featuredIds.length >= HOME_FEATURED_COUNT;
+  const setFeatured = (ids: string[]) => setDraft((d) => ({ ...d, featuredReviews: ids }));
 
   return (
     <>
       <Card title={t("admin.content.home.heroTitle")} desc={t("admin.content.home.heroDesc")}>
         <div className="ct-fields">
+          {/* Photo first, then the copy that sits on it — same order as the page.
+              The live headline is drawn over the preview so a photo too dark or
+              too busy to read against is caught here, not in production. */}
+          <BannerUpload
+            label={t("admin.content.home.heroPhoto")}
+            value={draft.heroImage}
+            onChange={(heroImage) => setDraft((d) => ({ ...d, heroImage }))}
+            hint={t("admin.content.home.heroPhotoHint")}
+            defaultValue={DEFAULT_HERO_IMAGE}
+          >
+            <span className="ct-heroprev__title">{pick(draft.heroTitle, lang)}</span>
+            <span className="ct-heroprev__sub">{pick(draft.heroSub, lang)}</span>
+          </BannerUpload>
           <LocField label={t("admin.content.home.headline")} value={draft.heroTitle} onChange={(heroTitle) => setDraft((d) => ({ ...d, heroTitle }))} textarea rows={2} />
           <LocField label={t("admin.content.home.subhead")} value={draft.heroSub} onChange={(heroSub) => setDraft((d) => ({ ...d, heroSub }))} textarea rows={2} />
         </div>
@@ -623,36 +656,52 @@ function HomeSection({ content, onSave }: { content: SiteContent; onSave: (patch
       </Card>
 
       <Card
-        title={t("admin.content.home.testimonialsTitle")}
-        desc={t("admin.content.home.testimonialsDesc")}
+        title={t("admin.content.home.featuredTitle")}
+        desc={t("admin.content.home.featuredDesc")}
         action={
-          <Button hierarchy="secondary" size="sm" iconLeading="plus" onClick={() => setEditing(-1)}>
-            {t("admin.content.home.addTestimonial")}
+          <Button hierarchy="secondary" size="sm" iconLeading="plus" disabled={atCap} onClick={() => setPicking(true)}>
+            {t("admin.content.home.featureBtn")}
           </Button>
         }
       >
         <div className="ct-list">
-          {draft.testimonials.map((tm, i) => (
-            <div key={i} className="ct-faqrow">
+          {featured.map((r, i) => (
+            <div key={r.id} className="ct-faqrow">
               <div className="ct-faqrow__main">
                 <span className="ct-item__num">{i + 1}</span>
                 <div className="ct-faqrow__qa">
-                  <p className="ct-faqrow__q">{pick(tm.name, lang)}</p>
-                  <p className="ct-faqrow__a">{pick(tm.quote, lang)}</p>
+                  <span className="ct-pickrow__top">
+                    <ReviewStars value={r.stars} />
+                    <span className="ct-faqrow__q">{r.name}</span>
+                  </span>
+                  <p className="ct-faqrow__a">{r.text}</p>
+                  <ReviewMeta r={r} />
                 </div>
               </div>
               <div className="ct-faqrow__ctl">
-                <button type="button" className="ct-iconbtn" onClick={() => setEditing(i)} aria-label={t("admin.content.faq.edit")}>
-                  <Icon name="pencil" size={16} />
-                </button>
-                <button type="button" className="ct-iconbtn ct-iconbtn--danger" onClick={() => setConfirmDel(i)} aria-label={t("admin.content.delete")}>
-                  <Icon name="trash-2" size={16} />
+                <button
+                  type="button"
+                  className="ct-iconbtn ct-iconbtn--danger"
+                  onClick={() => setConfirmRemove(r.id)}
+                  aria-label={t("admin.content.home.remove")}
+                >
+                  <Icon name="x" size={16} />
                 </button>
               </div>
             </div>
           ))}
-          {draft.testimonials.length === 0 && <p className="ct-empty">{t("admin.content.home.tEmpty")}</p>}
+          {featured.length === 0 && <p className="ct-empty">{t("admin.content.home.featuredEmpty")}</p>}
         </div>
+        <p className="ct-note">
+          <Icon name="info" size={15} />
+          <span>
+            {t("admin.content.home.featuredNote")}
+            {atCap ? " " + t("admin.content.home.featuredCap", { n: fmtNum(lang, HOME_FEATURED_COUNT) }) : ""}{" "}
+            <Link href="/admin/reviews" className="ct-note__link">
+              {t("admin.content.home.moderateLink")}
+            </Link>
+          </span>
+        </p>
       </Card>
 
       <Card title={t("admin.content.home.ctaTitle")} desc={t("admin.content.home.ctaDesc")}>
@@ -665,29 +714,40 @@ function HomeSection({ content, onSave }: { content: SiteContent; onSave: (patch
         </div>
       </Card>
 
-      {editingEntry && <TestimonialModal entry={editingEntry} isNew={editing === -1} onClose={() => setEditing(null)} onApply={applyTestimonial} />}
+      {picking && (
+        <FeatureReviewModal
+          taken={featuredIds}
+          onClose={() => setPicking(false)}
+          onPick={(id) => {
+            setFeatured([...featuredIds, id]);
+            setPicking(false);
+          }}
+        />
+      )}
 
-      {confirmDel !== null && (
+      {/* Removing takes the review off the homepage — the review itself is
+          untouched and stays approved on the agent's profile. */}
+      {confirmRemove !== null && (
         <Modal
           open
-          onClose={() => setConfirmDel(null)}
-          icon="trash-2"
-          title={t("admin.content.home.tDelTitle")}
-          subtitle={t("admin.content.home.tDelBody")}
+          onClose={() => setConfirmRemove(null)}
+          icon="eye-off"
+          title={t("admin.content.home.removeTitle")}
+          subtitle={t("admin.content.home.removeBody")}
           footer={
             <>
-              <Button hierarchy="secondary" onClick={() => setConfirmDel(null)}>
+              <Button hierarchy="secondary" onClick={() => setConfirmRemove(null)}>
                 {t("admin.topbar.cancel")}
               </Button>
               <Button
-                hierarchy="destructive"
-                iconLeading="trash-2"
+                hierarchy="primary"
+                iconLeading="eye-off"
                 onClick={() => {
-                  setDraft((d) => ({ ...d, testimonials: d.testimonials.filter((_, idx) => idx !== confirmDel) }));
-                  setConfirmDel(null);
+                  setFeatured(featuredIds.filter((id) => id !== confirmRemove));
+                  setConfirmRemove(null);
                 }}
               >
-                {t("admin.content.delete")}
+                {t("admin.content.home.remove")}
               </Button>
             </>
           }
@@ -751,6 +811,7 @@ export function ContentApp() {
   const { t } = useLang();
   const { content, save } = useSiteContent();
   const [active, setActive] = useState<ContentSectionId>("faq");
+  const [legalPage, setLegalPage] = useState<LegalPage>("privacy");
   const [toast, setToast] = useState(false);
 
   const commit = (patch: Partial<SiteContent>, section: string) => {
@@ -759,6 +820,8 @@ export function ContentApp() {
     setToast(true);
     setTimeout(() => setToast(false), 2200);
   };
+
+  const head = CONTENT_SECTIONS.find((s) => s.id === active) ?? CONTENT_SECTIONS[0];
 
   return (
     <>
@@ -770,31 +833,41 @@ export function ContentApp() {
       </div>
 
       <div className="st-split">
-        <nav className="st-nav" aria-label={t("admin.content.pageTitle")}>
-          {CONTENT_SECTIONS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={"st-navitem" + (active === s.id ? " is-active" : "")}
-              onClick={() => setActive(s.id)}
-              aria-current={active === s.id}
-            >
-              <span className="st-navitem__icon">
-                <Icon name={s.icon} size={18} />
-              </span>
-              <span className="st-navitem__body">
-                <span className="st-navitem__label">{t(s.labelKey)}</span>
-                <span className="st-navitem__desc">{t(s.descKey)}</span>
-              </span>
-            </button>
-          ))}
+        <nav className="st-nav sx-nav" aria-label={t("admin.content.pageTitle")}>
+          <div className="sx-navgroup">
+            {CONTENT_SECTIONS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={"st-navitem sx-navitem" + (active === s.id ? " is-active" : "")}
+                onClick={() => setActive(s.id)}
+                aria-current={active === s.id}
+              >
+                <span className="st-navitem__icon">
+                  <Icon name={s.icon} size={18} />
+                </span>
+                <span className="st-navitem__body">
+                  <span className="st-navitem__label">{t(s.labelKey)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         </nav>
 
         <div className="st-detail">
+          <div className="sx-sectionhead">
+            <h2 className="sx-sectionhead__title">{t(head.labelKey)}</h2>
+            {active === "legal" && (
+              <div className="sx-sectionhead__aside">
+                <LegalSubtabs page={legalPage} onPage={setLegalPage} />
+              </div>
+            )}
+          </div>
+
           {active === "home" && <HomeSection content={content} onSave={commit} />}
           {active === "faq" && <FaqSection content={content} onSave={commit} />}
           {active === "footer" && <FooterSection content={content} onSave={commit} />}
-          {active === "legal" && <LegalSectionEditor content={content} onSave={commit} />}
+          {active === "legal" && <LegalSectionEditor content={content} page={legalPage} onSave={commit} />}
           {active === "about" && <AboutSection content={content} onSave={commit} />}
         </div>
       </div>

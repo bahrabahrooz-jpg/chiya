@@ -12,16 +12,15 @@ export type ContentSectionId = "home" | "faq" | "footer" | "legal" | "about";
 export interface ContentSection {
   id: ContentSectionId;
   labelKey: string;
-  descKey: string;
   icon: IconName;
 }
 
 export const CONTENT_SECTIONS: ContentSection[] = [
-  { id: "home", labelKey: "admin.content.nav.home", descKey: "admin.content.nav.homeDesc", icon: "house" },
-  { id: "faq", labelKey: "admin.content.nav.faq", descKey: "admin.content.nav.faqDesc", icon: "circle-help" },
-  { id: "footer", labelKey: "admin.content.nav.footer", descKey: "admin.content.nav.footerDesc", icon: "panel-bottom" },
-  { id: "legal", labelKey: "admin.content.nav.legal", descKey: "admin.content.nav.legalDesc", icon: "scale" },
-  { id: "about", labelKey: "admin.content.nav.about", descKey: "admin.content.nav.aboutDesc", icon: "info" },
+  { id: "home", labelKey: "admin.content.nav.home", icon: "house" },
+  { id: "faq", labelKey: "admin.content.nav.faq", icon: "circle-help" },
+  { id: "footer", labelKey: "admin.content.nav.footer", icon: "panel-bottom" },
+  { id: "legal", labelKey: "admin.content.nav.legal", icon: "scale" },
+  { id: "about", labelKey: "admin.content.nav.about", icon: "info" },
 ];
 
 /* The About "values" cards keep fixed icons (about-app.tsx owns the layout);

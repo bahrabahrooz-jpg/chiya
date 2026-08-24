@@ -8,6 +8,10 @@ import "./property-card.css";
 export interface PropertyCardProps {
   image: string;
   price: string;
+  /** Optional muted "≈ …" line under the price, in the other currency with the
+      rate date. Supplied by the caller via useApproxPrice — the card never
+      converts anything itself. */
+  approxPrice?: string | null;
   period?: string;
   title: string;
   address: string;
@@ -36,6 +40,7 @@ export interface PropertyCardProps {
 export function PropertyCard({
   image,
   price,
+  approxPrice,
   period,
   title,
   address,
@@ -85,6 +90,9 @@ export function PropertyCard({
             {period && <small> /{period}</small>}
           </div>
         </div>
+        {/* Optional approximate second figure (Settings → Listings). Muted and
+            below the real price, never in place of it. */}
+        {approxPrice && <div className="cx-prop__approx">{approxPrice}</div>}
         <div className="cx-prop__addr">
           <Icon name="map-pin" size={14} />
           <span>{address}</span>

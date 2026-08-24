@@ -5,6 +5,7 @@
 
 import { SITE_PROPERTIES, publicCountByCity, allPlacesByCity, PUBLIC_CITIES, type SiteProperty } from "@/lib/site-properties";
 import type { PropertyRecord } from "@/app/admin/_data/catalog";
+import type { CurrencyCode, Money } from "@/lib/money";
 
 export interface SrpListing {
   id: string;
@@ -12,7 +13,9 @@ export interface SrpListing {
   address: string;
   city: string;
   deal: "buy" | "rent";
-  price: number;
+  /** The listing's real price in its own currency. Cards render THIS. Sorting
+      and range filtering normalise it via normaliseFor() and never show that. */
+  price: Money;
   status: string;
   featured?: boolean;
   type: string;
@@ -62,26 +65,56 @@ export const propertyTypes: Opt[] = [
   { value: "office", label: "Office", icon: "briefcase" },
   { value: "villa", label: "Villa", icon: "home" },
 ];
-export const buyPresets: Opt[] = [
-  { value: "0-150000", label: "Up to $150K" },
-  { value: "150000-400000", label: "$150K – $400K" },
-  { value: "300000-600000", label: "$300K – $600K" },
-  { value: "600000-1000000", label: "$600K – $1M" },
-  { value: "1000000-", label: "$1M and above" },
+/* ----------------------------------------------------------------------------
+   Price buckets — per currency, and NOT converted between them.
+
+   These used to be nine translated strings per language with "$150K" written
+   into them, Kurdish Arabic-Indic digits included. That made the dollar a fact
+   of the translation: a member browsing in dinars saw dollar buckets in Kurdish
+   with no way to correct it. The labels are now GENERATED at render time from
+   these boundaries via formatMoney, so the dictionaries hold sentence shapes
+   ("Up to {max}") and no figures at all.
+
+   The dinar ladders are chosen, not converted. $150,000 at 1,310 is
+   196,500,000 — a number no seller would ever quote and no buyer would pick off
+   a list. Each currency gets boundaries that are round IN THAT CURRENCY, landing
+   near enough to their dollar counterparts that the two ladders describe the
+   same market while each reads as deliberate.
+
+   Boundaries are WHOLE units; the filter converts them to Money for both the
+   label and the comparison.
+   ------------------------------------------------------------------------- */
+export interface Bucket {
+  /** Range key, also the URL value: "150000-400000", "1000000-" (open top). */
+  value: string;
+  lo: number | null;
+  hi: number | null;
+}
+
+const bucketsFrom = (edges: number[]): Bucket[] => [
+  { value: `0-${edges[0]}`, lo: 0, hi: edges[0] },
+  ...edges.slice(0, -1).map((lo, i) => ({ value: `${lo}-${edges[i + 1]}`, lo, hi: edges[i + 1] })),
+  { value: `${edges[edges.length - 1]}-`, lo: edges[edges.length - 1], hi: null },
 ];
-export const rentPresets: Opt[] = [
-  { value: "0-1000", label: "Up to $1,000/mo" },
-  { value: "1000-2500", label: "$1,000 – $2,500/mo" },
-  { value: "2500-5000", label: "$2,500 – $5,000/mo" },
-  { value: "5000-", label: "$5,000/mo and above" },
-];
-export const sizePresets: Opt[] = [
-  { value: "0-100", label: "Up to 100 m²" },
-  { value: "100-200", label: "100 – 200 m²" },
-  { value: "200-300", label: "200 – 300 m²" },
-  { value: "300-500", label: "300 – 500 m²" },
-  { value: "500-", label: "500 m² and above" },
-];
+
+/** Sale buckets. USD: 150K/400K/600K/1M. IQD: 200M/500M/800M/1.3B. */
+export const buyPresets: Record<CurrencyCode, Bucket[]> = {
+  USD: bucketsFrom([150_000, 400_000, 600_000, 1_000_000]),
+  IQD: bucketsFrom([200_000_000, 500_000_000, 800_000_000, 1_300_000_000]),
+};
+
+/** Monthly-rent buckets. USD: 1K/2.5K/5K. IQD: 1.5M/3.5M/7M. */
+export const rentPresets: Record<CurrencyCode, Bucket[]> = {
+  USD: bucketsFrom([1_000, 2_500, 5_000]),
+  IQD: bucketsFrom([1_500_000, 3_500_000, 7_000_000]),
+};
+
+/** The bucket ladder for a deal type in a currency — the one lookup callers use. */
+export const presetsFor = (deal: "buy" | "rent", cur: CurrencyCode): Bucket[] =>
+  (deal === "rent" ? rentPresets : buyPresets)[cur];
+/* Size keeps ONE ladder and its own translated labels (preset.size.*): m² is
+   not a currency, and 100 m² is 100 m² in every language and every market. */
+export const sizePresets: Bucket[] = bucketsFrom([100, 200, 300, 500]);
 export const beds: Opt[] = [
   { value: "1", label: "1+" },
   { value: "2", label: "2+" },

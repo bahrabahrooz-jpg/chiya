@@ -7,7 +7,7 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/choice";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl, interleave } from "@/lib/i18n";
@@ -26,6 +26,7 @@ import {
   deriveAreas,
   type AgentFilters,
   type AgentRecord,
+  type LocationNode,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
 import { AvatarUpload, CustomSelect, EditAgentModal, Field, MultiSelect, type AgentEditSeed } from "../_shared/agent-edit-modal";
@@ -693,7 +694,8 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
   const [experience, setExperience] = useState("");
   const [languages, setLanguages] = useState<string[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
-  const [status, setStatus] = useState("Active");
+  const [headline, setHeadline] = useState("");
+  const [bio, setBio] = useState("");
   const [invite, setInvite] = useState(true);
 
   useEffect(() => {
@@ -708,7 +710,21 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canCreate) return;
-    onCreate({ name: fullName.trim(), email: email.trim(), img: photo, status });
+    /* Pass through everything the form collected — the professional details and
+       profile copy below are as much a part of the new agent as the name. */
+    onCreate({
+      name: fullName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      img: photo,
+      // New agents always start Active; suspending happens from the row menu.
+      status: "Active",
+      experience,
+      languages,
+      areas,
+      headline: headline.trim(),
+      bio: bio.trim(),
+    });
   };
 
   return createPortal(
@@ -748,18 +764,10 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
           </section>
 
           <section className="aa-sect">
-            <div className="aa-stack">
+            <div className="aa-grid2">
               <Field label={t("admin.agents.form.languages")}>
                 <MultiSelect values={languages} onChange={setLanguages} options={LANGUAGE_OPTIONS} placeholder={t("admin.agents.form.selectLangs")} />
               </Field>
-              <Field label={t("admin.agents.form.serviceAreas")}>
-                <MultiSelect values={areas} onChange={setAreas} options={SERVICE_AREA_OPTIONS} placeholder={t("admin.agents.form.selectAreas")} />
-              </Field>
-            </div>
-          </section>
-
-          <section className="aa-sect">
-            <div className="aa-grid2">
               <Field label={t("admin.agents.form.experience")} htmlFor="aa-exp">
                 <CustomSelect
                   value={experience}
@@ -767,14 +775,40 @@ function AddAgentModal({ onCancel, onCreate }: { onCancel: () => void; onCreate:
                   options={[{ value: "", label: t("admin.agents.form.select") }, ...EXPERIENCE_OPTIONS.map((o) => ({ value: o.value, label: t(`admin.agents.exp.${o.value === "<1" ? "lt1" : o.value}`) }))]}
                 />
               </Field>
-              <Field label={t("admin.agents.filter.status")} htmlFor="aa-status">
-                <CustomSelect
-                  value={status}
-                  onChange={(v) => setStatus(v || "Active")}
-                  options={[{ value: "", label: t("admin.agents.form.selectStatus") }, { value: "Active", label: t("status.active") }, { value: "Suspended", label: t("status.suspended") }]}
-                />
+            </div>
+          </section>
+
+          <section className="aa-sect">
+            <div className="aa-stack">
+              <Field label={t("admin.agents.form.serviceAreas")}>
+                <MultiSelect values={areas} onChange={setAreas} options={SERVICE_AREA_OPTIONS} placeholder={t("admin.agents.form.selectAreas")} />
               </Field>
             </div>
+          </section>
+
+          <section className="aa-sect">
+            <div className="aa-stack">
+              <Input
+                label={t("admin.agents.form.headline")}
+                id="aa-headline"
+                placeholder={t("admin.agents.form.headlinePh")}
+                hint={t("admin.agents.form.headlineHint")}
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+              />
+              <Textarea
+                label={t("admin.agents.form.bio")}
+                id="aa-bio"
+                rows={6}
+                placeholder={t("admin.agents.form.bioPh")}
+                hint={t("admin.agents.form.bioHint")}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+              />
+            </div>
+          </section>
+
+          <section className="aa-sect">
             <div className="aa-invitebox">
               <Checkbox id="aa-invite" checked={invite} onChange={(e) => setInvite(e.target.checked)} label={t("admin.agents.form.invite")} description={t("admin.agents.form.inviteDesc")} />
             </div>
@@ -822,6 +856,16 @@ export function AgentsApp() {
 
   const viewProfile = (a?: AgentRecord) => router.push(a ? `/admin/agents/${encodeURIComponent(a.id)}` : "/admin/agents");
 
+  /* Service-area name → the city it sits in. The picker mixes cities ("Erbil")
+     with districts and projects ("Ankawa", "Empire World"), so match a city by
+     name first, then look for a descendant with that name. Lenient by design:
+     an unrecognised area just yields undefined and the caller falls back. */
+  const cityForArea = (area?: string): string | undefined => {
+    if (!area) return undefined;
+    const contains = (node: LocationNode): boolean => node.name === area || node.children.some(contains);
+    return locationTree.find(contains)?.name;
+  };
+
   const handleCreate = (values: Partial<AgentRecord>) => {
     setAddOpen(false);
     addAgent({
@@ -829,8 +873,10 @@ export function AgentsApp() {
       name: values.name || "New agent",
       phone: values.phone || "",
       email: values.email || "",
-      city: values.city || "Erbil",
-      area: values.area || "Ankawa",
+      /* The form collects service areas, not a city — so the first area picked
+         decides the city, and only a agent with no areas at all falls back. */
+      city: values.city || cityForArea(values.areas?.[0]) || "Erbil",
+      area: values.area || values.areas?.[0] || "Ankawa",
       verification: "Pending",
       listings: 0,
       sold: 0,
@@ -839,6 +885,11 @@ export function AgentsApp() {
       status: values.status || "Active",
       featured: false,
       img: values.img ?? null,
+      experience: values.experience || "",
+      languages: values.languages || [],
+      areas: values.areas?.length ? values.areas : undefined,
+      headline: values.headline || "",
+      bio: values.bio || "",
     });
     setToast({ variant: "success", icon: "badge-check", title: t("admin.agents.toast.createdTitle"), message: t("admin.agents.toast.createdMsg") });
   };
@@ -854,6 +905,8 @@ export function AgentsApp() {
         experience: values.experience,
         languages: values.languages,
         areas: values.areas,
+        headline: values.headline,
+        bio: values.bio,
       });
     }
     setEditTarget(null);
@@ -1008,6 +1061,8 @@ export function AgentsApp() {
             languages: editTarget.languages || ["English", "Kurdish"],
             areas: editTarget.areas || deriveAreas(editTarget),
             status: editTarget.status || "Active",
+            headline: editTarget.headline || "",
+            bio: editTarget.bio || "",
           }}
           onCancel={() => setEditTarget(null)}
           onSave={handleSaveEdit}

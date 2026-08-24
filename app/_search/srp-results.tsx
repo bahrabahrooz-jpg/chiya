@@ -7,6 +7,8 @@ import { Tag } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
+import { formatPrice } from "@/lib/money";
+import { useApproxPrice } from "@/lib/use-approx-price";
 import { sortOptions, PAGE_SIZE, type SrpListing } from "./data";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { RealMap, buildMarkers } from "./real-map";
@@ -178,17 +180,22 @@ export function SrpResults({
   deal,
 }: SrpResultsProps) {
   const router = useRouter();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const cityName = city ? t("city." + city) : null;
   const place = cityName || (query && query.trim()) || t("srp.kurdistan");
   const titleText = deal === "rent" ? t("srp.titleRent") : t("srp.titleSale");
-  const fmtPrice = (l: SrpListing) => "$" + l.price.toLocaleString("en-US");
+  /* Each card shows its listing's OWN price in its OWN currency. Sorting may
+     have compared them at a rate; nothing on screen is ever the converted
+     figure. */
+  const fmtPrice = (l: SrpListing) => formatPrice(lang, l.price);
+  const approxOf = useApproxPrice();
 
   const renderCard = (l: SrpListing) => (
     <PropertyCard
       key={l.id}
       image={l.cover}
       price={fmtPrice(l)}
+      approxPrice={approxOf(l.price)}
       period={l.deal === "rent" ? "mo" : undefined}
       title={l.title}
       address={l.address}
@@ -214,7 +221,7 @@ export function SrpResults({
   const mapCards = results.map(renderCard);
   const goTo = (p: number) => setPage(Math.min(Math.max(p, 1), pageCount));
 
-  const pins = buildMarkers(results);
+  const pins = buildMarkers(lang, results);
   const mapArea = (cityName || t("srp.kurdistanRegion")) + " · " + total.toLocaleString("en-US") + " " + t("srp.homes");
 
   return (

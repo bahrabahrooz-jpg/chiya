@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
-import { fmtCurrency, fmtDate, fmtNum, fmtPercent, fmtStamp, localizeDigits, resolveParams, roleKey, valueKey, popupLeft } from "@/lib/fmt";
+import { fmtDate, fmtNum, fmtPercent, fmtStamp, localizeDigits, resolveParams, roleKey, valueKey, popupLeft } from "@/lib/fmt";
+import { formatPrice } from "@/lib/money";
 import {
   INIT_NOTES,
   LISTING_STATUS_META,
@@ -464,6 +465,24 @@ function ProfileHero({ agent, pushToast }: { agent: AgentDetail; pushToast: (t: 
             </div>
           </div>
         </div>
+        {/* Public profile copy — read-only here; edited in the Edit agent modal.
+            Hidden entirely when unwritten, since the public page then generates
+            its own summary and there's nothing authored to show. */}
+        {(agent.headline || agent.bio) && (
+          <div className="adh__bio">
+            <span className="adh__detail__label">{t("admin.ad.publicProfile")}</span>
+            {agent.headline && <p className="adh__bio__headline">{agent.headline}</p>}
+            {agent.bio
+              .split(/\n{2,}/)
+              .map((p) => p.trim())
+              .filter(Boolean)
+              .map((p, i) => (
+                <p className="adh__bio__para" key={i}>
+                  {p}
+                </p>
+              ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -523,7 +542,7 @@ function ListingsTable({ rows }: { rows: ListingRow[] }) {
               <div className="mpf-cell">
                 <span className="mpf-cell__label">{t("admin.props.th.price")}</span>
                 <span className="mpf-price">
-                  {fmtCurrency(lang, row.price)}
+                  {formatPrice(lang, row.price)}
                   {row.per && <span className="mpf-price__per">{t("admin.mp.perMo")}</span>}
                 </span>
               </div>
@@ -790,7 +809,7 @@ function Timeline({ items }: { items: TLItem[] }) {
             <p className="pd-tl__desc">
               {t(it.descKey, {
                 ...resolveParams(it.params, t),
-                ...(it.price !== undefined ? { price: fmtCurrency(lang, it.price) + (it.per ? t("admin.mp.perMo") : "") } : {}),
+                ...(it.price !== undefined ? { price: formatPrice(lang, it.price) + (it.per ? t("admin.mp.perMo") : "") } : {}),
               })}
             </p>
           </div>
@@ -975,7 +994,32 @@ export function AgentDetailApp() {
     setModal("edit");
   };
   const handleSaveEdit = (values: AgentEditSeed) => {
-    setA((prev) => ({ ...prev, name: values.name, email: values.email, phone: values.phone || prev.phone, img: values.img ?? prev.img, languages: values.languages, areas: values.areas, status: values.status }));
+    /* Write through to the store as well as local state — local state alone
+       reverts on reload, and the public site reads the stored record. */
+    updateAgent(catalogAgent.id, {
+      name: values.name,
+      email: values.email,
+      phone: values.phone || catalogAgent.phone,
+      img: values.img,
+      status: values.status,
+      experience: values.experience,
+      languages: values.languages,
+      areas: values.areas,
+      headline: values.headline,
+      bio: values.bio,
+    });
+    setA((prev) => ({
+      ...prev,
+      name: values.name,
+      email: values.email,
+      phone: values.phone || prev.phone,
+      img: values.img ?? prev.img,
+      languages: values.languages,
+      areas: values.areas,
+      status: values.status,
+      headline: values.headline,
+      bio: values.bio,
+    }));
     setStatus(values.status);
     setModal(null);
     pushToast({ tone: "brand", icon: "badge-check", title: t("admin.ad.toast.updatedTitle"), msg: t("admin.ad.toast.updatedMsg", { name: values.name }) });
@@ -1327,6 +1371,8 @@ export function AgentDetailApp() {
             languages: a.languages,
             areas: a.areas,
             status,
+            headline: a.headline,
+            bio: a.bio,
           }}
           onCancel={() => setModal(null)}
           onSave={handleSaveEdit}

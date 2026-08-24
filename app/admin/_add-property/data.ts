@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/ui/icon";
+import type { CurrencyCode } from "@/lib/money";
 
 export const STEP_KEYS = [
   "admin.ap.step.details",
@@ -93,7 +94,8 @@ export interface ApForm {
   title: string;
   description: string;
   price: string;
-  currency: string;
+  /** The listing currency. Chosen ONCE, on the Details step. */
+  currency: CurrencyCode;
   area: string;
   areaUnit: string;
   beds: number;

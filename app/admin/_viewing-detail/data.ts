@@ -1,5 +1,6 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
+import { money, type Money } from "@/lib/money";
 import { VIEWINGS, PROPERTIES as VW_PROPS } from "../_viewings/data";
 import { AGENTS as CAT_AGENTS, MEMBERS as CAT_MEMBERS, PROPERTIES as CAT_PROPS, deriveMemberRoles, getAgentByName, getPropertyById } from "../_data/catalog";
 import { REVIEWS } from "../_reviews/data";
@@ -40,7 +41,7 @@ export interface ViewingDetail {
   notes: string;
   reminderSent: boolean;
   reminderWhen: string;
-  property: { id: string; name: string; location: string; listing: "sale" | "rent"; type: string; price: number; per?: string; img: string };
+  property: { id: string; name: string; location: string; listing: "sale" | "rent"; type: string; price: Money; per?: string; img: string };
   member: { id: string; name: string; role: string; phone: string; email: string };
   agent: { id: string; name: string; phone: string; email: string; experience: number; img: string; rating: number; reviews: number; verified: boolean };
 }
@@ -60,7 +61,7 @@ export const VIEWING: ViewingDetail = {
   notes: "Member is relocating from Dubai and wants to see the master suite, the garden, and the rooftop terrace. Prefers a morning appointment and asked whether the price is negotiable.",
   reminderSent: true,
   reminderWhen: "Jun 15, 2026 · 9:00 AM",
-  property: { id: "CH-1042", name: "Marble Hill Villa", location: "Ankawa, Erbil", listing: "sale", type: "Villa", price: 1450000, img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=520&q=75" },
+  property: { id: "CH-1042", name: "Marble Hill Villa", location: "Ankawa, Erbil", listing: "sale", type: "Villa", price: money(1450000, "USD"), img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=520&q=75" },
   member: { id: "MEM-1087", name: "Sara Hassan", role: "Buyer", phone: "+964 750 112 4408", email: "sara.hassan@gmail.com" },
   agent: { id: "A-2041", name: "Lana Aziz", phone: "+964 770 552 1190", email: "lana.aziz@chiya.estate", experience: 8, img: "", rating: 4.9, reviews: 87, verified: true },
 };

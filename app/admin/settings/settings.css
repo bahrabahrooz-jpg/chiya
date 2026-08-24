@@ -4,6 +4,12 @@
      pf-toast chrome from profile.css (imported alongside this file).
      ============================================================ */
 
+  /* ---------- PAGE HEADER ----------
+     pf-head caps its blurb at 560px, which breaks the settings one over two
+     lines in all three languages. Widen it enough to sit on a single line; it
+     still wraps once the viewport runs out of room. */
+  .st-head .pf-head__sub { max-width: 820px; }
+
   /* ---------- SPLIT LAYOUT ---------- */
   .st-split {
     display: grid;
@@ -139,66 +145,6 @@
   }
   .st-demobanner svg { flex: none; }
 
-  .st-key {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 8px 6px 14px;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-control);
-  }
-  .st-key__value {
-    flex: 1 1 auto; min-width: 0;
-    font-family: var(--font-mono); font-size: 13.5px; letter-spacing: .02em;
-    color: var(--text-primary);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    direction: ltr; text-align: start;
-  }
-  .st-key__btn {
-    flex: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 32px; height: 32px; border-radius: var(--radius-control);
-    background: var(--surface-card); border: 1px solid var(--border-default);
-    color: var(--text-secondary); cursor: pointer; transition: background-color .15s;
-  }
-  .st-key__btn:hover { background: var(--surface-sunken); color: var(--text-primary); }
-
-  .st-actions { display: flex; gap: 10px; margin-top: 16px; }
-
-  .st-svclist { display: flex; flex-direction: column; }
-  .st-svc {
-    display: flex; align-items: center; gap: 14px;
-    padding: 16px 0;
-    border-top: 1px solid var(--border-subtle);
-  }
-  .st-svc:first-child { border-top: none; padding-top: 0; }
-  .st-svc__icon {
-    flex: none; display: inline-flex; align-items: center; justify-content: center;
-    width: 40px; height: 40px; border-radius: var(--radius-control);
-    background: var(--surface-sunken); color: var(--text-secondary);
-  }
-  .st-svc__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .st-svc__name { font-size: 14.5px; font-weight: 600; color: var(--text-primary); }
-  .st-svc__desc { font-size: 12.5px; color: var(--text-tertiary); }
-  .st-svc__status {
-    flex: none; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-    color: var(--text-tertiary);
-  }
-  .st-svc__status.is-on { color: var(--success-600); }
-
-  /* ---------- SAVE BAR ---------- */
-  .st-savebar {
-    position: sticky; bottom: 0; z-index: 4;
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    margin-top: 6px; padding: 14px 18px;
-    background: var(--surface-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-sm);
-  }
-  .st-savebar__note { font-size: 13px; color: var(--text-tertiary); }
-  .st-savebar.is-dirty .st-savebar__note { color: var(--warning-700); font-weight: 600; }
-  .st-savebar__actions { display: flex; gap: 12px; flex: none; }
-
   /* ---------- RESPONSIVE ---------- */
   @media (max-width: 860px) {
     .st-split { grid-template-columns: 1fr; gap: 20px; }
@@ -214,9 +160,6 @@
   }
   @media (max-width: 640px) {
     .st-grid { grid-template-columns: 1fr; }
-    .st-savebar { flex-direction: column; align-items: stretch; }
-    .st-savebar__actions .cx-btn { flex: 1 1 auto; justify-content: center; }
-    .st-svc { flex-wrap: wrap; }
   }
 
   /* ============================================================
@@ -227,34 +170,55 @@
      card. Layout still rides on .st-split / .st-nav above.
      ============================================================ */
 
-  /* ---------- GROUPED LEFT NAV ---------- */
-  .sx-nav { gap: 2px; }
-  .sx-navgroup { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+  /* ---------- GROUPED LEFT NAV ----------
+     One enclosing card holding every group; each item is a flat pill that
+     tints green when active. Icons sit inline (no chip behind them). */
+  .sx-nav {
+    gap: 0;
+    padding: 10px;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xs);
+  }
+  .sx-navgroup { display: flex; flex-direction: column; gap: 2px; margin-bottom: 18px; }
+  .sx-navgroup:last-child { margin-bottom: 0; }
   .sx-navgroup__label {
     font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
     color: var(--text-tertiary);
-    padding: 6px 14px 4px;
+    padding: 8px 12px 6px;
   }
-  .sx-navitem { align-items: center; padding: 9px 12px; }
-  .sx-navitem .st-navitem__icon { width: 30px; height: 30px; }
+  .sx-navitem { align-items: center; gap: 11px; padding: 9px 12px; }
+  .sx-navitem:hover { background: var(--surface-sunken); }
+  .sx-navitem.is-active {
+    background: var(--brand-subtle);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .sx-navitem .st-navitem__icon {
+    width: auto; height: auto;
+    background: none;
+    border-radius: 0;
+    color: var(--text-secondary);
+  }
+  .sx-navitem.is-active .st-navitem__icon {
+    background: none;
+    color: var(--text-brand);
+  }
   .sx-navitem .st-navitem__label { font-size: 14px; font-weight: 500; }
-  .sx-navitem.is-active .st-navitem__label { font-weight: 600; }
+  .sx-navitem.is-active .st-navitem__label { font-weight: 600; color: var(--text-brand); }
   .sx-navitem--external { position: relative; text-decoration: none; }
   .sx-navitem__ext { color: var(--text-tertiary); margin-inline-start: auto; }
   .sx-navitem--external:hover .sx-navitem__ext { color: var(--text-secondary); }
 
-  /* ---------- SECTION HEADER (icon badge + title + sub) ---------- */
+  /* ---------- SECTION HEADER (title only) ---------- */
   .sx-sectionhead { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
-  .sx-sectionhead__icon {
-    flex: none; display: inline-flex; align-items: center; justify-content: center;
-    width: 44px; height: 44px; border-radius: var(--radius-lg);
-    background: var(--brand-subtle); color: var(--text-brand);
-  }
   .sx-sectionhead__title {
     font-family: var(--font-display, inherit);
     font-size: 22px; font-weight: 600; color: var(--text-primary); margin: 0;
   }
-  .sx-sectionhead__sub { font-size: 13.5px; color: var(--text-secondary); margin: 2px 0 0; }
+  /* Trailing slot in the header row (e.g. the legal privacy/terms tabs). */
+  .sx-sectionhead__aside { margin-inline-start: auto; }
 
   /* ---------- SHARED BITS ---------- */
   .sx-hint { font-size: 12px; color: var(--text-tertiary); line-height: 1.45; }
@@ -320,6 +284,30 @@
     font-weight: 600;
   }
   .sx-togglechip svg { color: var(--text-brand); }
+  /* Two chips in a grid laid out for sixteen amenities read as leftovers. Give
+     the currency pair a real minimum width so the row looks deliberate. */
+  .sx-togglegrid--few .sx-togglechip { min-width: 104px; justify-content: center; }
+
+  /* ---------- LISTINGS — exchange rates ---------- */
+  .sx-rates { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-subtle); }
+  .sx-rates__rows { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  .sx-rate { display: flex; align-items: center; gap: 10px; }
+  /* Disabled currencies stay visible but greyed: seeing that IQD exists and is
+     switched off is more useful than it silently vanishing from the table. */
+  .sx-rate.is-off { opacity: .5; }
+  .sx-rate__code { min-width: 46px; font-size: 13.5px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .sx-rate__eq { flex: 1; font-size: 12.5px; color: var(--text-tertiary); }
+  .sx-rate .cx-field, .sx-rate .cx-inputwrap { width: 150px; flex: none; }
+  .sx-rate__locked {
+    display: inline-flex; align-items: center; gap: 7px; justify-content: flex-end;
+    width: 150px; flex: none; padding: 0 13px; height: 40px;
+    background: var(--surface-sunken); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    font-size: 14px; font-weight: 600; color: var(--text-tertiary);
+  }
+  .sx-rate__locked svg { color: var(--text-tertiary); }
+  .sx-rates__meta { margin: 12px 0 0; font-size: 12px; color: var(--text-tertiary); }
+
 
   /* ---------- VIEWINGS — computed bookable times ---------- */
   .sx-timechips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -433,7 +421,7 @@
   @media (max-width: 860px) {
     /* the base rule turns .st-nav into a horizontal scroller; keep the group
        labels hidden and lay the groups out in a row. */
-    .sx-nav { flex-direction: row; }
+    .sx-nav { flex-direction: row; padding: 8px; }
     .sx-navgroup { flex-direction: row; align-items: center; margin-bottom: 0; }
     .sx-navgroup__label { display: none; }
   }
@@ -443,4 +431,7 @@
     .sx-cardaction { flex-wrap: wrap; }
     .sx-chipadd { flex-direction: column; }
     .sx-sectionhead__title { font-size: 19px; }
+    /* too narrow for title + tabs side by side — let the slot drop to its own row. */
+    .sx-sectionhead { flex-wrap: wrap; row-gap: 12px; }
+    .sx-sectionhead__aside { margin-inline-start: 0; }
   }

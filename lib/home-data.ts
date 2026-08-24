@@ -11,6 +11,7 @@
 import type { IconName } from "@/components/ui/icon";
 import { SITE_PROPERTIES, publicCountByCity, publicCountByType, type SiteProperty } from "@/lib/site-properties";
 import { FEATURED_SITE_AGENTS, portraitUrl, type SiteAgent } from "@/lib/site-agents";
+import type { Money } from "@/lib/money";
 
 const img = (id: string, w = 1000, h = 750) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop`;
@@ -50,7 +51,10 @@ export interface Listing {
   id: string;
   title: string;
   address: string;
-  price: string;
+  /** The listing's own price. A `Money`, not a pre-rendered string: this module
+      is evaluated once at import time, with no language in scope, so a string
+      built here could never localise its digits or place the right marker. */
+  price: Money;
   period?: string;
   status: string;
   featured?: boolean;
@@ -62,15 +66,13 @@ export interface Listing {
   cover: string;
 }
 
-const commas = (n: number) => "$" + n.toLocaleString("en-US");
-
 /* Featured grid = the available (Published) catalog listings, featured first,
    capped at six. Same records the admin manages and the search page shows. */
 const toHomeListing = (p: SiteProperty): Listing => ({
   id: p.id,
   title: p.title,
   address: p.address,
-  price: commas(p.price),
+  price: p.price,
   period: p.deal === "rent" ? "mo" : undefined,
   status: p.status,
   featured: p.featured,
@@ -140,10 +142,7 @@ export const locations: Location[] = homeLocations(publicCountByCity());
    /admin/content). Only the fixed pillar icons live here, in card order. */
 export const PILLAR_ICONS: IconName[] = ["badge-check", "shield-check", "sparkles", "lock"];
 
-/* Testimonial name / detail / quote are CMS-managed (lib/site-content); only the
-   decorative avatar images stay here, in card order. */
-export const TESTIMONIAL_AVATARS: string[] = [
-  "https://images.unsplash.com/photo-1521119989659-a83eee488004?w=160&h=160&fit=crop",
-  "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=160&h=160&fit=crop",
-  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=160&h=160&fit=crop",
-];
+/* The testimonial band carries no data here any more: it shows real approved
+   reviews the admin featured (lib/site-reviews), and its reviewers are members,
+   who deliberately carry no photo — the stock portraits that used to sit here
+   were dressing on invented quotes. */

@@ -9,7 +9,7 @@ import type { PropertyRecord } from "@/app/admin/_data/catalog";
 import { useLang } from "@/lib/i18n";
 import { fmtDate, fmtNum, localizeDigits, valueKey } from "@/lib/fmt";
 import { useAgentData } from "./_shared/agent-data";
-import { PropStatus, ViewStatus, money } from "./_shared/ui";
+import { PropStatus, ViewStatus, priceLabel } from "./_shared/ui";
 import "./_shared/agent.css";
 
 export default function AgentDashboardPage() {
@@ -43,7 +43,7 @@ export default function AgentDashboardPage() {
     },
     { key: "type", header: t("admin.props.th.type"), render: (_v, p) => tOr(valueKey("type", p.type), p.type) },
     { key: "status", header: t("admin.props.th.status"), render: (_v, p) => <PropStatus status={p.status} /> },
-    { key: "price", header: t("admin.props.th.price"), align: "right", render: (_v, p) => money(lang, p, t("admin.mp.perMo")) },
+    { key: "price", header: t("admin.props.th.price"), align: "right", render: (_v, p) => priceLabel(lang, p, t("admin.mp.perMo")) },
   ];
 
   return (

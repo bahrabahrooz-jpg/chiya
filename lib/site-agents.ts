@@ -32,6 +32,11 @@ export interface SiteAgent {
   phone: string;
   whatsapp: string; // digits only, for wa.me links
   email: string;
+  /* Profile copy authored in the admin. Both are "" when unwritten, and the
+     profile page then falls back to its generated summary — so an agent never
+     shows an empty About section. */
+  headline: string;
+  bio: string;
 }
 
 const THIS_YEAR = 2026; // catalog anchor year (TODAY = Jun 30, 2026)
@@ -91,6 +96,8 @@ export function deriveSiteAgents(agents: AgentRecord[], properties: PropertyReco
         phone: a.phone,
         whatsapp: a.phone.replace(/\D/g, ""),
         email: a.email,
+        headline: a.headline ?? "",
+        bio: a.bio ?? "",
       };
     });
 }

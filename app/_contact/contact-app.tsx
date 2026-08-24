@@ -9,13 +9,19 @@ import { Icon } from "@/components/ui/icon";
 import { Card } from "@/components/data";
 import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
+import { submitMessage } from "@/app/admin/_messages/messages-store";
 import "./contact.css";
 
 /**
  * ContactApp — the public "Contact Chiya" page: a message form paired with the
- * company's contact channels. The form is a client-side demo (no backend yet):
- * on submit it validates required fields and surfaces a success toast. Copy is
- * i18n-driven (en/ar).
+ * company's contact channels. Copy is i18n-driven (en/ar/ku).
+ *
+ * There is no backend, but the submission is NOT thrown away: it is recorded in
+ * the contact message store, so it lands in the admin's inbox at
+ * /admin/messages. That's what makes the "message sent" toast true.
+ *
+ * The fields stay uncontrolled — every input already carries a `name`, so
+ * FormData reads them straight off the form and `reset()` keeps working.
  */
 export function ContactApp() {
   const { t } = useLang();
@@ -23,11 +29,21 @@ export function ContactApp() {
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // Capture the form before the async gap — `e.target` is not reliable later.
+    const form = e.currentTarget;
+    const data = new FormData(form);
     setSending(true);
-    // No contact backend yet — simulate the round-trip and confirm receipt.
+    // Brief pause so the button's loading state reads as a real round-trip.
     setTimeout(() => {
+      submitMessage({
+        name: String(data.get("name") ?? "").trim(),
+        email: String(data.get("email") ?? "").trim(),
+        subject: String(data.get("subject") ?? "").trim(),
+        body: String(data.get("message") ?? "").trim(),
+        source: "Website",
+      });
       setSending(false);
-      (e.target as HTMLFormElement).reset();
+      form.reset();
       toast({ title: t("contact.toast.sent"), variant: "success" });
     }, 700);
   }

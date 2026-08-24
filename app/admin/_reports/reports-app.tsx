@@ -7,6 +7,7 @@ import { StatCard } from "@/components/data/stat-card";
 import { useLang } from "@/lib/i18n";
 import { fmtNum, localizeDigits } from "@/lib/fmt";
 import { useProperties } from "../_shared/properties-store";
+import { useContracts } from "../_shared/contracts-store";
 import { VIEWINGS } from "../_viewings/data";
 import {
   C,
@@ -527,17 +528,20 @@ export function ReportsApp() {
   const [periodId, setPeriodId] = useState("Month");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const { properties, members, agents } = useProperties();
+  // Sold / rented figures are transactions, so they come from the contracts
+  // store.
+  const { contracts } = useContracts();
 
   const period = PERIODS.find((p) => p.short === periodId) ?? PERIODS[1];
   /** The period as a noun ("week") for the "vs previous …" sub-labels. */
   const periodWord = t(`admin.reports.periodWord.${period.short}`);
   const days = period.days;
-  const kpis = useMemo(() => buildPeriodKpis(properties, members, VIEWINGS, days, period.label), [properties, members, days, period.label]);
+  const kpis = useMemo(() => buildPeriodKpis(properties, members, VIEWINGS, contracts, days, period.label), [properties, members, contracts, days, period.label]);
   const perf = useMemo(() => buildListingsTrend(properties, days), [properties, days]);
   const status = useMemo(() => buildStatusSlices(properties, days), [properties, days]);
-  const sr = useMemo(() => buildSalesRentals(properties, days), [properties, days]);
+  const sr = useMemo(() => buildSalesRentals(contracts, days), [contracts, days]);
   const locations = useMemo(() => buildTopLocations(properties, days), [properties, days]);
-  const agentRows = useMemo(() => buildAgentRows(agents, properties, VIEWINGS, days), [agents, properties, days]);
+  const agentRows = useMemo(() => buildAgentRows(agents, properties, VIEWINGS, contracts, days), [agents, properties, contracts, days]);
   const memberTrends = useMemo(() => buildMemberTrends(members, VIEWINGS, days), [members, days]);
 
   const onExport = (kind: string) => {

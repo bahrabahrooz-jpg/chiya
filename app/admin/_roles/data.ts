@@ -46,7 +46,7 @@ export type ScopeVal = "own" | "team" | "org";
 const p = (id: string, label: string, desc: string): PermV2 => ({ id, label, desc });
 
 /* ------------------------------- staff surface -----------------------------
-   11 sections, one per sidebar page — if a role can't `view` a section, that
+   12 sections, one per sidebar page — if a role can't `view` a section, that
    page simply isn't part of its console. */
 export const SECTIONS_V2: SectionV2[] = [
   { key: "dashboard", labelKey: "admin.nav.dashboard", label: "Dashboard", scopeable: true, groups: [
@@ -131,6 +131,16 @@ export const SECTIONS_V2: SectionV2[] = [
       p("reviews.approve", "Approve reviews", "Publish a pending review to the agent's profile."),
       p("reviews.reject", "Reject reviews", "Keep a pending review off the platform."),
       p("reviews.delete", "Delete reviews", "Permanently remove a review."),
+    ] },
+  ] },
+  /* Contact enquiries from the website and app. Not scopeable: an enquiry from
+     a stranger belongs to no agent, so "own" has nothing to select. */
+  { key: "messages", labelKey: "admin.nav.messages", label: "Messages", scopeable: false, groups: [
+    { id: "inbox", label: "Inbox", perms: [
+      p("messages.view", "View messages", "Read contact enquiries sent from the website and the app."),
+      p("messages.reply", "Reply to messages", "Answer an enquiry and mark it replied."),
+      p("messages.archive", "Archive messages", "Move a handled or unwanted enquiry out of the active inbox."),
+      p("messages.delete", "Delete messages", "Permanently remove an enquiry."),
     ] },
   ] },
   { key: "locations", labelKey: "admin.nav.locations", label: "Locations", scopeable: true, groups: [
@@ -294,7 +304,7 @@ export function countGrantV2(grant: Record<string, boolean>, surface: SurfaceV2)
    one super admin (the single admin account), one row per agent and member. */
 const SUPER_ADMIN_COUNT = 1;
 
-/* Seeds mirror docs/roles-permissions-design.md §4: Super admin holds all 51,
+/* Seeds mirror docs/roles-permissions-design.md §4: Super admin holds all 55,
    the Agent keeps full pipeline control over their own book of business and
    read-only reach elsewhere (16 grants, scope "own"), the Member holds the
    whole member catalogue. */
@@ -303,7 +313,7 @@ export const ROLES_SEED_V2: RoleSeedV2[] = [
     id: "super-admin", name: "Super admin", dot: "brand", icon: "shield-check", system: true, locked: true, surface: "admin",
     users: SUPER_ADMIN_COUNT,
     desc: "Unrestricted access to every module, setting and permission across the Chiya Estate platform.",
-    spec: { dashboard: "all", properties: "all", members: "all", agents: "all", viewings: "all", reviews: "all", locations: "all", reports: "all", roles: "all", audit: "all", settings: "all" },
+    spec: { dashboard: "all", properties: "all", members: "all", agents: "all", viewings: "all", reviews: "all", messages: "all", locations: "all", reports: "all", roles: "all", audit: "all", settings: "all" },
   },
   {
     id: "agent", name: "Agent", dot: "brand", icon: "badge-check", system: true, surface: "admin",
@@ -318,6 +328,9 @@ export const ROLES_SEED_V2: RoleSeedV2[] = [
       // Read-only: agents see reviews written about them but never moderate them.
       reviews: { perms: ["view"], scope: "own" },
       reports: { perms: ["view"], scope: "own" },
+      // Contact enquiries are addressed to the platform, not to an agent —
+      // there is no "own" subset of them, so agents don't see the inbox.
+      messages: "none",
       locations: "none",
       roles: "none",
       audit: "none",

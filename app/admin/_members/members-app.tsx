@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtNum, fmtDate as fmtDateI18n, popupLeft } from "@/lib/fmt";
+import { toIso } from "@/lib/dates";
 import { adminMenuRoot } from "../_shared/menu-portal";
 import { AddMemberModal } from "./add-member-modal";
 import {
@@ -632,6 +633,7 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
       properties: 0,
       joined,
       daysAgo: 0,
+      joinedOn: toIso(now),
       status: "Active",
       img: null,
     });

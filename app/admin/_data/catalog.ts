@@ -17,6 +17,8 @@
    ========================================================================== */
 
 import type { IconName } from "@/components/ui/icon";
+import { ANCHOR_DATE, ANCHOR_ISO, addDays, fromIso, toIso } from "@/lib/dates";
+import { money, type CurrencyCode, type Money } from "@/lib/money";
 
 /* ----------------------------------------------------------------------------
    Shared types
@@ -31,6 +33,23 @@ export interface OwnerRef {
   phone: string;
   type: string;
 }
+
+/* ----------------------------------------------------------------------------
+   Reference vs snapshot — the rule that governs every party link downstream.
+
+   A LIVE record *references* a party by id: a property points at `ownerId`, a
+   contract at `buyerId`. The name is resolved through memberById() at render time,
+   so when a member edits their profile every live record follows.
+
+   An ISSUED document *snapshots* the party instead: an invoice carries the
+   `buyerId` AND a frozen `billTo` block copied at issue time, so reprinting it
+   years later shows exactly what it showed on the day it was issued. A document
+   that silently changed when someone renamed themselves would not be a record.
+
+   The name fields on PropertyRecord (`owner.name`, `buyer`, `tenant`) predate
+   the ids and are kept for the screens that still read them; new code resolves
+   through the id.
+   ------------------------------------------------------------------------- */
 /** Amenity captured from the Add-property form (label + its icon). */
 export interface PropertyAmenity {
   icon: IconName;
@@ -42,7 +61,9 @@ export interface PropertyAmenity {
     form fills it in so the detail page shows exactly what was entered. */
 export interface PropertyDetails {
   description?: string;
-  currency?: string; // "USD" | "IQD" | "EUR"
+  /* NO `currency` here. The listing's currency lives on `price`, which is a
+     Money — one field, one place. This block used to carry a second copy that
+     the form wrote and nothing ever read, which is exactly how the two drift. */
   areaUnit?: string; // "sqm" | "sq ft"
   ownerEmail?: string;
   ownerType?: string;
@@ -63,6 +84,48 @@ export interface PropertyDetails {
   gallery?: string[];
   tourUrl?: string;
 }
+/* ----------------------------------------------------------------------------
+   Publication vs availability — the split that replaced `status`.
+
+   `status` used to answer two unrelated questions with one string. "Published"
+   is a decision a person makes about the website; "Sold" is something that
+   happened between two parties. Merging them meant a sale could be faked by
+   picking a word from a dropdown, and un-selling was a dropdown away too.
+
+   They are two fields now, with two different owners:
+
+     publication   who may see the listing. Set by staff, freely, both ways.
+     availability  what has happened to the property. DERIVED FROM CONTRACTS — no
+                   screen sets it by hand, and ChangeVisibilityModal cannot
+                   reach it. The transitions live in ./property-state.ts.
+
+   `status` survives as a derived string (legacyStatus) for the consumers not
+   yet migrated. It is deprecated and a later task removes it.
+   ------------------------------------------------------------------------- */
+
+/** Website visibility. Set by staff. */
+export type Publication = "draft" | "pending" | "published" | "unpublished" | "archived";
+
+/** Transaction state. DERIVED from contracts — never set by hand. */
+export type Availability = "available" | "reserved" | "sold" | "rented";
+
+/**
+ * The agency's agreement with the OWNER — not a transaction.
+ *
+ * It is the reason the agency may market the property at all, and its
+ * `commissionRate` is the default every deal struck on this property inherits.
+ * A deal may be agreed at a different rate, but only with a stated reason
+ * (ContractRecord.commissionOverrideReason), so a quiet discount leaves a trail.
+ */
+export interface ListingMandate {
+  /** Sole agency. A non-exclusive mandate means rival agencies hold it too. */
+  exclusive: boolean;
+  /** Percentage — 2.5 means 2.5%, matching ContractRecord.commissionRate. */
+  commissionRate: number;
+  signedOn: string; // ISO
+  expiresOn: string; // ISO
+}
+
 export interface PropertyRecord {
   id: string;
   title: string;
@@ -72,17 +135,50 @@ export interface PropertyRecord {
   type: string;
   img: string;
   owner: OwnerRef;
+  /** MemberRecord id of the owner — the id a contract's owner resolves to. */
+  ownerId?: string;
   agent: AgentRef | null;
   /** Member who bought this property — present on every Sold record. */
   buyer?: string;
+  /** MemberRecord id of the buyer. Set wherever `buyer` is. */
+  buyerId?: string;
   /** Member renting this property — optional on Rented (tenant may be off-platform). */
   tenant?: string;
+  /** MemberRecord id of the tenant. Set wherever `tenant` is. */
+  tenantId?: string;
   listing: "sale" | "rent";
+  /** Website visibility. Set by staff. */
+  publication: Publication;
+  /** Transaction state. DERIVED from contracts — never set by hand. */
+  availability: Availability;
+  /**
+   * @deprecated One string doing two jobs — read `publication` / `availability`
+   * instead. Kept in sync by `withDerivedStatus()` so unmigrated consumers keep
+   * working; removed once they are all migrated.
+   */
   status: string;
-  price: number;
+  /** The agency's agreement with the owner. Absent on records that predate it. */
+  mandate?: ListingMandate;
+  /**
+   * The asking price, in the currency the property was actually LISTED in.
+   *
+   * A `Money`, never a bare number: property here is quoted in dollars and in
+   * dinars, and a figure with no currency on it is one someone has to guess at.
+   * This is the ONLY place a listing's currency is decided — the contract struck
+   * on it inherits this, and its invoices inherit that.
+   *
+   * For a rental this is the amount per `per` (i.e. monthly), not a total.
+   */
+  price: Money;
   per?: string;
   date: string;
   daysAgo: number;
+  /** The listing date as a stored ISO day (`yyyy-mm-dd`) — the comparable form
+      of `date`/`daysAgo`. Always a real date, even while unpublished (where the
+      display field `listingDate` shows "—"). */
+  listedOn: string;
+  /** Last activity as a stored ISO day — the comparable form of `updated`. */
+  updatedOn: string;
   beds: number;
   baths: number;
   size: number;
@@ -103,6 +199,8 @@ export interface MemberRecord {
   properties: number;
   joined: string;
   daysAgo: number;
+  /** The join date as a stored ISO day — the comparable form of `joined`. */
+  joinedOn: string;
   status: string;
   img: string | null;
 }
@@ -126,11 +224,71 @@ export interface AgentRecord {
   experience?: string;
   languages?: string[];
   areas?: string[];
+  /** Public-facing copy, authored in the admin. Both are optional: the curated
+      seed records mostly omit them and the public profile falls back to its
+      generated summary (app/_profile/data.ts), while an agent edited through the
+      admin shows exactly what was written. */
+  headline?: string; // one line, sits under the name on /agents/[id]
+  bio?: string; // the "About" body; a blank line starts a new paragraph
+}
+
+/* ----------------------------------------------------------------------------
+   Derivations over the two fields. Every one of them is a named function rather
+   than a condition written out at each call site: these rules decide what the
+   public sees and whether a transaction can be undone, and they must read the
+   same everywhere.
+   ------------------------------------------------------------------------- */
+
+/** The publication values `legacyStatus` reports, in the old vocabulary. */
+const LEGACY_PUBLICATION: Record<Publication, string> = {
+  draft: "Draft",
+  pending: "Pending",
+  published: "Published",
+  unpublished: "Unpublished",
+  archived: "Archived",
+};
+
+/**
+ * The old single-string status, rebuilt from the two fields.
+ *
+ * @deprecated Read `publication` / `availability`. Removed in a later task.
+ *
+ * Precedence, and why:
+ *   1. archived   — a visibility end-state a person chose deliberately; it is
+ *                   what someone looking for the record needs to see first.
+ *   2. sold/rented — the transaction outranks the remaining visibility words,
+ *                   because that is what "Sold" meant in the old vocabulary.
+ *   3. the publication word.
+ *
+ * "Unpublished" is a value the old vocabulary never had. Consumers that look a
+ * status up in a tone map all fall back to a neutral tone on an unknown key, so
+ * it degrades rather than breaking — but it is a reason to migrate them.
+ */
+export function legacyStatus(p: Pick<PropertyRecord, "publication" | "availability">): string {
+  if (p.publication === "archived") return "Archived";
+  if (p.availability === "sold") return "Sold";
+  if (p.availability === "rented") return "Rented";
+  return LEGACY_PUBLICATION[p.publication];
+}
+
+/** Re-derive the deprecated `status` (and `published`) after a state change.
+    Every mutation touching publication or availability goes through this, so the
+    compatibility field can never disagree with the fields it mirrors. */
+export function withDerivedStatus<T extends Pick<PropertyRecord, "publication" | "availability">>(p: T): T & { status: string; published: boolean } {
+  return { ...p, status: legacyStatus(p), published: p.publication === "published" };
 }
 
 /* A live listing must have an assigned agent — you can't publish, sell, or rent a
    property with nobody on it. Only Draft / Pending listings may be unassigned. */
+/** Does this state require an assigned agent? The canonical rule. */
+export const requiresAgent = (p: Pick<PropertyRecord, "publication" | "availability">) => p.publication === "published" || p.availability !== "available";
+
+/** Publication values that can only be reached with an agent assigned. */
+export const AGENT_REQUIRED_PUBLICATIONS: Publication[] = ["published"];
+
+/** @deprecated String form of `requiresAgent`, for callers still on `status`. */
 export const AGENT_REQUIRED_STATUSES = ["Published", "Sold", "Rented"];
+/** @deprecated Use `requiresAgent(property)`. */
 export const statusRequiresAgent = (status: string) => AGENT_REQUIRED_STATUSES.includes(status);
 
 export interface LocationNode {
@@ -150,11 +308,26 @@ export interface LocationNode {
    Date helpers (all record dates anchor to a fixed "today")
    ------------------------------------------------------------------------- */
 const MONTHS_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const TODAY = new Date(2026, 5, 30); // Jun 30, 2026
+/* The anchor lives in lib/dates.ts now — every seed file imports the same one so
+   they cannot drift apart (they were five separate literals). */
+const TODAY = ANCHOR_DATE; // Jun 30, 2026
 function dateFromDaysAgo(days: number): string {
   const d = new Date(TODAY);
   d.setDate(d.getDate() - days);
   return `${MONTHS_ABBR[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+/* The same day as a stored ISO date. Display strings ("Jun 30, 2026") are for
+   rendering; anything that has to be compared, sorted or counted against uses
+   the ISO form. */
+const isoFromDaysAgo = (days: number): string => addDays(ANCHOR_ISO, -days);
+
+/* Calendar-month arithmetic, for mandate terms. Not in lib/dates because a
+   mandate is the only thing in the system measured in months rather than days —
+   everything else counts days from the anchor. */
+function addMonths(iso: string, n: number): string {
+  const d = fromIso(iso);
+  d.setMonth(d.getMonth() + n);
+  return toIso(d);
 }
 
 /* ----------------------------------------------------------------------------
@@ -315,6 +488,7 @@ export const MEMBERS: MemberRecord[] = MEMBER_SPECS.map((s) => ({
   properties: 0, // filled in by withMemberCounts
   joined: dateFromDaysAgo(s.daysAgo),
   daysAgo: s.daysAgo,
+  joinedOn: isoFromDaysAgo(s.daysAgo),
   status: s.status ?? "Active",
   img: null, // members never carry a photo — initials avatars everywhere
 }));
@@ -336,13 +510,29 @@ interface AgentSpec {
   phone: string;
   experience: string; // years in the field, e.g. "9"
   languages: string[];
+  /* Authored profile copy. Left off most specs on purpose so the public profile
+     exercises both branches — written copy for Lana, generated summaries for
+     everyone else. */
+  headline?: string;
+  bio?: string;
 }
 const AGENT_SPECS: AgentSpec[] = [
   /* TOP_AGENT — must keep strictly the most assigned listings: the agent
      surface signs in as pickTopAgent(), and its demo data (viewings, reviews)
      is scoped to this agent. Reducing Lana's listings below everyone else's
      breaks the agent console demo. */
-  { id: "A-2107", name: "Lana Aziz", area: "Empire World", featured: true, img: 1, phone: "+964 750 118 2044", experience: "9", languages: ["Kurdish", "English", "Arabic"] },
+  {
+    id: "A-2107",
+    name: "Lana Aziz",
+    area: "Empire World",
+    featured: true,
+    img: 1,
+    phone: "+964 750 118 2044",
+    experience: "9",
+    languages: ["Kurdish", "English", "Arabic"],
+    headline: "Villa and investment-land specialist working Erbil's Empire World, Italian Village and Dream City addresses.",
+    bio: "Lana has spent nine years in Erbil real estate and knows the north-side compounds street by street — which blocks hold their value, which builders finish on time, and what a fair number looks like before the negotiation starts.\n\nShe works a deliberately small book of listings so every client gets the same thing: honest pricing advice, viewings arranged around your schedule, and one point of contact from first visit through to handover of keys. Kurdish, English and Arabic throughout.",
+  },
   { id: "A-2106", name: "Karwan Mahmoud", area: "Ankawa", featured: true, img: 2, phone: "+964 770 236 7180", experience: "7", languages: ["Kurdish", "English"] },
   { id: "A-2105", name: "Sara Hama", area: "Bakhtiari", featured: true, img: 3, phone: "+964 751 342 9066", experience: "6", languages: ["Kurdish", "Arabic"] },
   { id: "A-2104", name: "Rawa Jamal", area: "Malta", img: 4, phone: "+964 773 458 1237", experience: "5", languages: ["Kurdish", "English"] },
@@ -370,6 +560,8 @@ export const AGENTS: AgentRecord[] = AGENT_SPECS.map((s) => {
     experience: s.experience,
     languages: s.languages,
     areas: [s.area],
+    headline: s.headline ?? "",
+    bio: s.bio ?? "",
   };
 });
 
@@ -386,6 +578,28 @@ export const AGENTS: AgentRecord[] = AGENT_SPECS.map((s) => {
 
 const MEMBER_BY_NAME = new Map(MEMBERS.map((m) => [m.name, m]));
 const AGENT_BY_NAME = new Map(AGENTS.map((a) => [a.name, a]));
+
+/* Member names must be unique. The seed links parties by name and resolves them
+   to ids in buildProperty; two members sharing a name would make that resolution
+   silently pick one of them. Fail at module load instead. */
+if (MEMBER_BY_NAME.size !== MEMBERS.length) throw new Error("catalog: two members share a name — party links cannot resolve to one id");
+
+/** Members and agents keyed by id — the lookup new code should reach for. */
+export const MEMBER_BY_ID = new Map(MEMBERS.map((m) => [m.id, m]));
+const AGENT_BY_ID = new Map(AGENTS.map((a) => [a.id, a]));
+
+/** Resolve a member from the id a record stores. Undefined if they are gone. */
+export function memberById(id: string | undefined): MemberRecord | undefined {
+  return id ? MEMBER_BY_ID.get(id) : undefined;
+}
+/** Resolve a member by display name — for the seed links written by name. */
+export function memberByName(name: string | undefined): MemberRecord | undefined {
+  return name ? MEMBER_BY_NAME.get(name) : undefined;
+}
+/** Resolve an agent from the id a record stores. */
+export function agentById(id: string | undefined): AgentRecord | undefined {
+  return id ? AGENT_BY_ID.get(id) : undefined;
+}
 
 /* ----------------------------------------------------------------------------
    Curated properties (24) — every scenario exactly once.
@@ -408,7 +622,13 @@ interface PropSpec {
   buyer?: string; // member name — required on Sold, makes them a Buyer
   tenant?: string; // member name — optional on Rented (may be off-platform), makes them a Tenant
   companyOwner?: boolean;
+  /* Whole units as a human would quote them — 850000, or 900000000 for a dinar
+     listing — converted to minor units by buildProperty. Writing the seed in
+     minor units would make every row unreadable and every edit a trap.
+     For a rental this is the MONTHLY figure. */
   price: number;
+  /** Omitted means USD. Set on the rows quoted in dinars. */
+  currency?: CurrencyCode;
   beds: number;
   baths: number;
   size: number;
@@ -416,29 +636,38 @@ interface PropSpec {
   daysAgo: number; // listed
   updatedDaysAgo: number; // last activity (status change / edit)
   img?: number; // index into PROP_IMG[type]
+  /* ---- listing mandate ---- */
+  /** Sole agency. Exclusive mandates run a shorter term (see buildMandate). */
+  exclusive?: boolean;
+  /** Commission the mandate sets, when it differs from the per-listing default
+      (sale 2.5%, rent 5%). Every property carrying a SALE contract in
+      _data/contracts.ts states the rate that contract was struck at — the two
+      must agree, and contracts.ts asserts it at module load. A tenancy states
+      its fee against one cycle of rent instead, so it is not cross-checked. */
+  mandateRate?: number;
 }
 const PROP_SPECS: PropSpec[] = [
   /* -------- Published (6 sale + 4 rent) -------- */
-  { id: "CH-3200", title: "Marble Hill Villa", area: "Empire World", type: "Villa", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Shilan Aziz", price: 850000, beds: 5, baths: 4, size: 480, featured: true, daysAgo: 34, updatedDaysAgo: 10 },
-  { id: "CH-3199", title: "Dream City Garden Flat", area: "Dream City", type: "Apartment", listing: "rent", status: "Published", agent: "Lana Aziz", owner: "Nma Rashid", price: 1400, beds: 2, baths: 2, size: 130, featured: true, daysAgo: 18, updatedDaysAgo: 5, img: 1 },
-  { id: "CH-3198", title: "Naz City Sky Suite", area: "Naz City", type: "Apartment", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Berivan Salar", price: 690000, beds: 3, baths: 3, size: 300, daysAgo: 60, updatedDaysAgo: 12 },
+  { id: "CH-3200", title: "Marble Hill Villa", area: "Empire World", type: "Villa", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Shilan Aziz", price: 850000, beds: 5, baths: 4, size: 480, featured: true, daysAgo: 34, updatedDaysAgo: 10, exclusive: true },
+  { id: "CH-3199", title: "Dream City Garden Flat", area: "Dream City", type: "Apartment", listing: "rent", status: "Published", agent: "Lana Aziz", owner: "Nma Rashid", price: 1400, beds: 2, baths: 2, size: 130, featured: true, daysAgo: 18, updatedDaysAgo: 5, img: 1, exclusive: true },
+  { id: "CH-3198", title: "Naz City Sky Suite", area: "Naz City", type: "Apartment", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Berivan Salar", price: 900000000, currency: "IQD", beds: 3, baths: 3, size: 300, daysAgo: 60, updatedDaysAgo: 12 },
   { id: "CH-3197", title: "English Village Court", area: "English Village", type: "House", listing: "sale", status: "Published", agent: "Karwan Mahmoud", owner: "Chiman Rasul", price: 420000, beds: 4, baths: 3, size: 260, daysAgo: 90, updatedDaysAgo: 15, img: 1 },
-  { id: "CH-3196", title: "Gulan Business Suite", area: "Gulan", type: "Office", listing: "rent", status: "Published", agent: "Karwan Mahmoud", owner: "Awat Faraj", companyOwner: true, price: 2800, beds: 0, baths: 1, size: 210, daysAgo: 45, updatedDaysAgo: 8 },
+  { id: "CH-3196", title: "Gulan Business Suite", area: "Gulan", type: "Office", listing: "rent", status: "Published", agent: "Karwan Mahmoud", owner: "Awat Faraj", companyOwner: true, price: 2800, beds: 0, baths: 1, size: 210, daysAgo: 45, updatedDaysAgo: 8, mandateRate: 4 },
   { id: "CH-3195", title: "Ankawa Olive Grove Land", area: "Ankawa", type: "Land", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Hersh Qadir", price: 320000, beds: 0, baths: 0, size: 1200, daysAgo: 120, updatedDaysAgo: 20 },
-  { id: "CH-3194", title: "Cedar Court Apartments", area: "Salim Street", type: "Apartment", listing: "sale", status: "Published", agent: "Sara Hama", owner: "Shilan Aziz", price: 210000, beds: 3, baths: 2, size: 150, featured: true, daysAgo: 25, updatedDaysAgo: 18, img: 2 },
+  { id: "CH-3194", title: "Cedar Court Apartments", area: "Salim Street", type: "Apartment", listing: "sale", status: "Published", agent: "Sara Hama", owner: "Shilan Aziz", price: 275000000, currency: "IQD", beds: 3, baths: 2, size: 150, featured: true, daysAgo: 25, updatedDaysAgo: 18, img: 2, exclusive: true },
   { id: "CH-3193", title: "Sarchnar Hillside Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Published", agent: "Sara Hama", owner: "Kani Omar", price: 2200, beds: 4, baths: 3, size: 380, daysAgo: 30, updatedDaysAgo: 6, img: 2 },
   { id: "CH-3192", title: "Masike Highland Villa", area: "Masike", type: "Villa", listing: "sale", status: "Published", agent: "Rawa Jamal", owner: "Chiman Rasul", price: 380000, beds: 4, baths: 3, size: 340, daysAgo: 150, updatedDaysAgo: 22, img: 3 },
   { id: "CH-3191", title: "Malta Riverside Loft", area: "Malta", type: "Apartment", listing: "rent", status: "Published", agent: "Rawa Jamal", owner: "Tara Botan", price: 900, beds: 1, baths: 1, size: 95, daysAgo: 12, updatedDaysAgo: 4, img: 3 },
   /* -------- Pending (3: sale+agent, rent+no agent, land sale) -------- */
   { id: "CH-3190", title: "Italian Village Rose Flat", area: "Italian Village", type: "Apartment", listing: "sale", status: "Pending", agent: "Lana Aziz", owner: "Berivan Salar", price: 260000, beds: 2, baths: 2, size: 140, daysAgo: 3, updatedDaysAgo: 3 },
   { id: "CH-3189", title: "Raparin Terrace House", area: "Raparin", type: "House", listing: "rent", status: "Pending", agent: null, owner: "Nma Rashid", price: 1100, beds: 3, baths: 2, size: 220, daysAgo: 2, updatedDaysAgo: 2, img: 2 },
-  { id: "CH-3188", title: "Nizarke Vineyard Plot", area: "Nizarke", type: "Land", listing: "sale", status: "Pending", agent: "Rawa Jamal", owner: "Awat Faraj", companyOwner: true, price: 180000, beds: 0, baths: 0, size: 800, daysAgo: 7, updatedDaysAgo: 7, img: 1 },
+  { id: "CH-3188", title: "Nizarke Vineyard Plot", area: "Nizarke", type: "Land", listing: "sale", status: "Pending", agent: "Rawa Jamal", owner: "Awat Faraj", companyOwner: true, price: 235000000, currency: "IQD", beds: 0, baths: 0, size: 800, daysAgo: 7, updatedDaysAgo: 7, img: 1 },
   /* -------- Sold (4, sale only) — updated: today / week / month / year --------
      Every Sold record links its buyer; buyers must have joined before the sale
      closed (buyer joined-daysAgo ≥ updatedDaysAgo, validated in buildProperty). */
-  { id: "CH-3187", title: "Olive Grove Estate", area: "Italian Village", type: "Villa", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Shilan Aziz", buyer: "Berivan Salar", price: 720000, beds: 5, baths: 4, size: 520, daysAgo: 200, updatedDaysAgo: 0 },
-  { id: "CH-3186", title: "Bakhtiari Pearl Flat", area: "Bakhtiari", type: "Apartment", listing: "sale", status: "Sold", agent: "Sara Hama", owner: "Chiman Rasul", buyer: "Avan Mustafa", price: 195000, beds: 2, baths: 1, size: 120, daysAgo: 160, updatedDaysAgo: 4 },
-  { id: "CH-3185", title: "Gulan Tower Office", area: "Gulan", type: "Office", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Awat Faraj", buyer: "Zana Ibrahim", companyOwner: true, price: 540000, beds: 0, baths: 2, size: 320, daysAgo: 240, updatedDaysAgo: 18, img: 1 },
+  { id: "CH-3187", title: "Olive Grove Estate", area: "Italian Village", type: "Villa", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Shilan Aziz", buyer: "Berivan Salar", price: 720000, beds: 5, baths: 4, size: 520, daysAgo: 200, updatedDaysAgo: 0, exclusive: true },
+  { id: "CH-3186", title: "Bakhtiari Pearl Flat", area: "Bakhtiari", type: "Apartment", listing: "sale", status: "Sold", agent: "Sara Hama", owner: "Chiman Rasul", buyer: "Avan Mustafa", price: 255000000, currency: "IQD", beds: 2, baths: 1, size: 120, daysAgo: 160, updatedDaysAgo: 4, mandateRate: 3 },
+  { id: "CH-3185", title: "Gulan Tower Office", area: "Gulan", type: "Office", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Awat Faraj", buyer: "Zana Ibrahim", companyOwner: true, price: 540000, beds: 0, baths: 2, size: 320, daysAgo: 240, updatedDaysAgo: 18, img: 1, exclusive: true },
   { id: "CH-3184", title: "Malta Summit Grounds", area: "Malta", type: "Land", listing: "sale", status: "Sold", agent: "Rawa Jamal", owner: "Zana Ibrahim", buyer: "Rebwar Tofiq", price: 260000, beds: 0, baths: 0, size: 1600, daysAgo: 400, updatedDaysAgo: 140 },
   /* -------- Rented (4, rent only) — updated: today / week / month / year --------
      Tenants link like buyers but are optional: CH-3183 is deliberately rented to
@@ -446,7 +675,7 @@ const PROP_SPECS: PropSpec[] = [
      (Dara, Sara) stay prospective. */
   { id: "CH-3183", title: "Empire World Loft", area: "Empire World", type: "Apartment", listing: "rent", status: "Rented", agent: "Lana Aziz", owner: "Nma Rashid", price: 1600, beds: 2, baths: 2, size: 125, daysAgo: 80, updatedDaysAgo: 0 },
   { id: "CH-3182", title: "Sarchnar Cypress Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Rented", agent: "Sara Hama", owner: "Kani Omar", tenant: "Aland Tariq", price: 2600, beds: 4, baths: 4, size: 420, daysAgo: 110, updatedDaysAgo: 5, img: 1 },
-  { id: "CH-3181", title: "Ankawa Tower Suite", area: "Ankawa", type: "Apartment", listing: "rent", status: "Rented", agent: "Karwan Mahmoud", owner: "Awat Faraj", tenant: "Kani Omar", price: 3400, beds: 3, baths: 3, size: 280, daysAgo: 140, updatedDaysAgo: 25, img: 1 },
+  { id: "CH-3181", title: "Ankawa Tower Suite", area: "Ankawa", type: "Apartment", listing: "rent", status: "Rented", agent: "Karwan Mahmoud", owner: "Awat Faraj", tenant: "Kani Omar", price: 4500000, currency: "IQD", beds: 3, baths: 3, size: 280, daysAgo: 140, updatedDaysAgo: 25, img: 1, mandateRate: 4 },
   { id: "CH-3180", title: "Nizarke Sunset Terrace", area: "Nizarke", type: "House", listing: "rent", status: "Rented", agent: "Rawa Jamal", owner: "Tara Botan", tenant: "Zana Ibrahim", price: 850, beds: 3, baths: 2, size: 230, daysAgo: 380, updatedDaysAgo: 258 },
   /* -------- Draft (3: sale+agent, rent+no agent, sale+no agent) -------- */
   { id: "CH-3179", title: "Gulan Emerald Suite", area: "Gulan", type: "Apartment", listing: "sale", status: "Draft", agent: "Karwan Mahmoud", owner: "Zana Ibrahim", price: 610000, beds: 3, baths: 3, size: 340, daysAgo: 1, updatedDaysAgo: 1, img: 2 },
@@ -454,33 +683,85 @@ const PROP_SPECS: PropSpec[] = [
   { id: "CH-3177", title: "Masike Zagros Villa", area: "Masike", type: "Villa", listing: "sale", status: "Draft", agent: null, owner: "Hersh Qadir", price: 450000, beds: 5, baths: 3, size: 400, daysAgo: 13, updatedDaysAgo: 13 },
 ];
 
+/* The seed's `status` string, split into the two fields that replaced it.
+   Sold and Rented records become `unpublished`: they are history, and a closed
+   transaction must not stay live on the website. */
+const STATUS_SPLIT: Record<string, { publication: Publication; availability: Availability }> = {
+  Draft: { publication: "draft", availability: "available" },
+  Pending: { publication: "pending", availability: "available" },
+  Published: { publication: "published", availability: "available" },
+  Sold: { publication: "unpublished", availability: "sold" },
+  Rented: { publication: "unpublished", availability: "rented" },
+  Archived: { publication: "archived", availability: "available" },
+};
+
+/** The agency's standard commission by listing type. What a mandate charges
+    unless someone negotiated otherwise. */
+export const DEFAULT_MANDATE_RATE: Record<"sale" | "rent", number> = { sale: 2.5, rent: 5 };
+
+/**
+ * Build a mandate on the agency's standard terms.
+ *
+ * Signed the day the property was listed, which is when the agency's authority
+ * to market it actually starts. Exclusive mandates run 6 months, non-exclusive
+ * 12: sole agency is the stronger commitment, so it is granted for less time.
+ *
+ * Exported because a listing created through the Add-property wizard needs the
+ * same default — hand-rolling one there would let the two drift.
+ */
+export function buildMandate(
+  listing: "sale" | "rent",
+  signedOn: string,
+  opts: { exclusive?: boolean; commissionRate?: number } = {},
+): ListingMandate {
+  const exclusive = opts.exclusive ?? false;
+  return {
+    exclusive,
+    commissionRate: opts.commissionRate ?? DEFAULT_MANDATE_RATE[listing],
+    signedOn,
+    expiresOn: addMonths(signedOn, exclusive ? 6 : 12),
+  };
+}
+
 function buildProperty(s: PropSpec): PropertyRecord {
   const place = resolvePlace(s.area);
   const owner = MEMBER_BY_NAME.get(s.owner);
   if (!owner) throw new Error(`catalog: property ${s.id} has unknown owner "${s.owner}"`);
   /* Buyer / tenant counterparty links. Every Sold record must name its buyer;
      Rented may omit the tenant (off-platform). Either link must be a real
-     member, not the owner, and must have joined before the deal closed. */
+     member, not the owner, and must have joined before the contract closed. */
   if (s.status === "Sold" && !s.buyer) throw new Error(`catalog: property ${s.id} is Sold but has no buyer`);
   if (s.buyer && s.status !== "Sold") throw new Error(`catalog: property ${s.id} has a buyer but is not Sold`);
   if (s.tenant && s.status !== "Rented") throw new Error(`catalog: property ${s.id} has a tenant but is not Rented`);
+  /* Ids are resolved HERE, from the same lookup that validates the name — so the
+     id and the name can never point at two different people. Member names are
+     unique (asserted below), which is what makes the name → id backfill exact. */
+  let buyerId: string | undefined;
+  let tenantId: string | undefined;
   for (const [kind, name] of [["buyer", s.buyer], ["tenant", s.tenant]] as const) {
     if (!name) continue;
     const m = MEMBER_BY_NAME.get(name);
     if (!m) throw new Error(`catalog: property ${s.id} has unknown ${kind} "${name}"`);
     if (name === s.owner) throw new Error(`catalog: property ${s.id} ${kind} "${name}" is also the owner`);
-    if (m.daysAgo < s.updatedDaysAgo) throw new Error(`catalog: property ${s.id} ${kind} "${name}" joined after the deal closed`);
+    if (m.daysAgo < s.updatedDaysAgo) throw new Error(`catalog: property ${s.id} ${kind} "${name}" joined after the contract closed`);
+    if (kind === "buyer") buyerId = m.id;
+    else tenantId = m.id;
   }
+  const split = STATUS_SPLIT[s.status];
+  if (!split) throw new Error(`catalog: property ${s.id} has unknown status "${s.status}"`);
   let agent: AgentRef | null = null;
   if (s.agent) {
     const rec = AGENT_BY_NAME.get(s.agent);
     if (!rec) throw new Error(`catalog: property ${s.id} has unknown agent "${s.agent}"`);
     if (rec.verification !== "Verified") throw new Error(`catalog: property ${s.id} agent "${s.agent}" is not verified`);
     agent = { name: rec.name, verified: true, img: rec.img || "" };
-  } else if (statusRequiresAgent(s.status)) {
+  } else if (requiresAgent(split)) {
     throw new Error(`catalog: property ${s.id} is ${s.status} but has no agent`);
   }
-  const published = s.status === "Published" || s.status === "Sold" || s.status === "Rented";
+  /* Sold / Rented records are unpublished but were live once, so they keep a
+     real listing date — `published` says whether they are live NOW. */
+  const wasLive = s.status === "Published" || s.status === "Sold" || s.status === "Rented";
+  const listedOn = isoFromDaysAgo(s.daysAgo);
   return {
     id: s.id,
     title: s.title,
@@ -490,21 +771,29 @@ function buildProperty(s: PropSpec): PropertyRecord {
     type: s.type,
     img: PROP_IMG[s.type][(s.img ?? 0) % PROP_IMG[s.type].length],
     owner: { name: owner.name, phone: owner.phone, type: s.companyOwner ? "Company owner" : "Individual owner" },
+    ownerId: owner.id,
     agent,
     buyer: s.buyer,
+    buyerId,
     tenant: s.tenant,
+    tenantId,
     listing: s.listing,
-    status: s.status,
-    price: s.price,
+    publication: split.publication,
+    availability: split.availability,
+    status: legacyStatus(split),
+    mandate: buildMandate(s.listing, listedOn, { exclusive: s.exclusive, commissionRate: s.mandateRate }),
+    price: money(s.price, s.currency ?? "USD"),
     per: s.listing === "rent" ? "/mo" : undefined,
     date: dateFromDaysAgo(s.daysAgo),
     daysAgo: s.daysAgo,
+    listedOn,
+    updatedOn: isoFromDaysAgo(s.updatedDaysAgo),
     beds: s.beds,
     baths: s.baths,
     size: s.size,
     featured: s.featured ?? false,
-    published,
-    listingDate: published ? dateFromDaysAgo(s.daysAgo) : "—",
+    published: split.publication === "published",
+    listingDate: wasLive ? dateFromDaysAgo(s.daysAgo) : "—",
     updated: dateFromDaysAgo(s.updatedDaysAgo),
   };
 }
@@ -563,13 +852,22 @@ export interface PropertyCounts {
   sold: number;
   rented: number;
 }
+/**
+ * How many properties sit in each state RIGHT NOW.
+ *
+ * Note the difference from the contract-sourced figures in ./property-state.ts:
+ * this counts properties currently sold or rented, while `closedContractCounts`
+ * counts transactions closed. They differ once a property has been let more
+ * than once — one property, two closed tenancies — which is why the KPI cards
+ * that say "closed sales all-time" read the contract count, not this one.
+ */
 export function countProperties(list: PropertyRecord[]): PropertyCounts {
   const counts: PropertyCounts = { total: list.length, available: 0, pending: 0, sold: 0, rented: 0 };
   for (const p of list) {
-    if (p.status === "Published") counts.available++;
-    else if (p.status === "Pending") counts.pending++;
-    else if (p.status === "Sold") counts.sold++;
-    else if (p.status === "Rented") counts.rented++;
+    if (p.availability === "sold") counts.sold++;
+    else if (p.availability === "rented") counts.rented++;
+    else if (p.publication === "published") counts.available++;
+    else if (p.publication === "pending") counts.pending++;
   }
   return counts;
 }
@@ -589,18 +887,28 @@ export type CountPeriod = "today" | "week" | "month" | "year";
 /* Inclusive rolling window, in days ago, for each dashboard period. */
 const PERIOD_MAX_DAYS: Record<CountPeriod, number> = { today: 0, week: 6, month: 29, year: 364 };
 
-/* Count Sold / Rented listings whose last status change (p.updated) falls inside
-   the selected rolling window — i.e. how many properties actually sold or rented
-   in that period. Drawn from the same live records as every other KPI. */
+/** The inclusive day window each dashboard period covers. Exported so the
+    contract-sourced counter in ./property-state.ts measures the same windows. */
+export const periodWindow = (period: CountPeriod): number => PERIOD_MAX_DAYS[period];
+
+/**
+ * Count Sold / Rented listings whose last status change (p.updated) falls inside
+ * the selected rolling window.
+ *
+ * @deprecated A sale is a contract now, not a word on a property, and `p.updated` is
+ * the day the record was last touched rather than the day anything closed. Use
+ * `closedContractsInPeriod` in ./property-state.ts, which reads the contract's own
+ * `closedOn`. Kept only until the last caller moves over.
+ */
 export function countSoldRentedInPeriod(list: PropertyRecord[], period: CountPeriod): { sold: number; rented: number } {
   const max = PERIOD_MAX_DAYS[period];
   let sold = 0;
   let rented = 0;
   for (const p of list) {
-    if (p.status !== "Sold" && p.status !== "Rented") continue;
+    if (p.availability !== "sold" && p.availability !== "rented") continue;
     const ago = daysAgoFrom(p.updated);
     if (ago == null || ago < 0 || ago > max) continue;
-    if (p.status === "Sold") sold++;
+    if (p.availability === "sold") sold++;
     else rented++;
   }
   return { sold, rented };
@@ -640,15 +948,18 @@ export function countMembers(members: MemberRecord[]): MemberCounts {
 
 /** Overlay each agent's listing / sold / rented / members stats from properties.
     `members` counts every distinct client: owners plus the buyers / tenants the
-    agent closed deals with. */
+    agent closed contracts with. */
 export function withAgentStats(agents: AgentRecord[], list: PropertyRecord[]): AgentRecord[] {
   const stats: Record<string, { listings: number; sold: number; rented: number; clients: Set<string> }> = {};
   for (const p of list) {
     if (!p.agent) continue;
     const s = (stats[p.agent.name] ||= { listings: 0, sold: 0, rented: 0, clients: new Set() });
-    if (p.status === "Published" || p.status === "Pending") s.listings++;
-    else if (p.status === "Sold") s.sold++;
-    else if (p.status === "Rented") s.rented++;
+    /* "Listings" means what the agent is currently working: live or awaiting
+       approval, and not yet transacted. A reserved property still counts — it
+       is under offer, not gone. */
+    if (p.availability === "sold") s.sold++;
+    else if (p.availability === "rented") s.rented++;
+    else if (p.publication === "published" || p.publication === "pending") s.listings++;
     s.clients.add(p.owner.name);
     if (p.buyer) s.clients.add(p.buyer);
     if (p.tenant) s.clients.add(p.tenant);
@@ -778,5 +1089,4 @@ export function getAgentByName(name: string): AgentRecord | undefined {
   return AGENTS.find((a) => a.name === name);
 }
 
-export const fmtUSD = (n: number) => "$" + n.toLocaleString("en-US");
 export const ICON_PHONE: IconName = "phone";

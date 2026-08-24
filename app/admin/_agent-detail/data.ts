@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/ui/icon";
+import type { Money } from "@/lib/money";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
 import { type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord, MEMBERS as CAT_MEMBERS, daysAgoFrom } from "../_data/catalog";
@@ -48,10 +49,13 @@ export interface AgentDetail {
   rating: number;
   reviews: number;
   img: string;
+  /** Public profile copy — blank means /agents/[id] generates its own summary. */
+  headline: string;
+  bio: string;
 }
 export interface KpiCard { key: string; labelKey: string; value: number; percent?: boolean; icon: IconName; tone: StatTone; subKey: string }
 
-export interface ListingRow { id: string; title: string; loc: string; img: string; propertyType: string; type: string; owner: string; status: string; price: number; per?: string; date: string }
+export interface ListingRow { id: string; title: string; loc: string; img: string; propertyType: string; type: string; owner: string; status: string; price: Money; per?: string; date: string }
 
 export interface MemberRow { id: string; name: string; phone: string; img: string; roles: string[]; status: string; activity: string }
 
@@ -59,7 +63,7 @@ export interface AvViewing { id: string; title: string; loc: string; img: string
 
 export interface Review { name: string; img: string | null; deal: { key: string; title: string } | null; stars: number; when: string; text: string }
 
-export interface TLItem { icon: IconName; tone: string; titleKey: string; descKey: string; params?: Record<string, string>; price?: number; per?: string; time: string }
+export interface TLItem { icon: IconName; tone: string; titleKey: string; descKey: string; params?: Record<string, string>; price?: Money; per?: string; time: string }
 
 export interface NoteItem { author: string; role: string; time: string; kind: string; text: string }
 export const INIT_NOTES: NoteItem[] = [
@@ -113,6 +117,8 @@ export function toDetailAgent(a: AgentRecord): AgentDetail {
     rating,
     reviews: reviews.length,
     img: a.img || "", // no photo → initials, matching every other surface
+    headline: a.headline || "",
+    bio: a.bio || "",
   };
 }
 

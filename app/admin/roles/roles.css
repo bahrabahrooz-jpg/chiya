@@ -13,9 +13,11 @@
     font-size: clamp(26px, 3vw, 32px); line-height: 1.08; letter-spacing: -.018em;
     color: var(--text-primary); margin: 0;
   }
+  /* wide enough to hold the blurb on one line in en/ar/ku; it still wraps
+     once the header runs out of room next to the segmented toggle */
   .rb-head__sub {
     font-size: 15px; line-height: 1.5; color: var(--text-tertiary);
-    margin: 8px 0 0; max-width: 560px; text-wrap: pretty;
+    margin: 8px 0 0; max-width: 780px; text-wrap: pretty;
   }
 
   /* segmented Detail / Role matrix toggle */

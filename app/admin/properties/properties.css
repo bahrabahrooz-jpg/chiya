@@ -1,5 +1,5 @@
   /* Prevent base.css a:hover from overriding DS button text colour */
-  a.cx-btn--primary, a.cx-btn--primary:hover { color: #fff; }
+  a.cx-btn--primary, a.cx-btn--primary:hover { color: var(--text-on-brand); }
 
   /* ============================================================
      PROPERTIES PAGE  (pp- namespace)
@@ -102,13 +102,15 @@
     color: var(--text-secondary);
     transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
   }
-  .pp-tab:hover { background: rgba(255,255,255,.55); color: var(--text-primary); }
+  /* A raised surface, not a translucent white — white over the track works
+     in light and paints a pale smear over the dark theme. */
+  .pp-tab:hover { background: var(--surface-raised); color: var(--text-primary); }
   .pp-tab:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: 8px; }
 
   /* Active segment — lifted card */
   .pp-tab.is-active {
     background: var(--surface-card);
-    box-shadow: 0 1px 3px rgba(11,32,24,.10), 0 0 0 1px rgba(11,32,24,.06);
+    box-shadow: var(--shadow-sm);
     color: var(--text-primary); font-weight: 600;
   }
 
@@ -151,7 +153,7 @@
   .pp-filterbtn__badge {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 18px; height: 18px; padding: 0 5px; border-radius: 10px;
-    background: var(--brand-primary); color: #fff;
+    background: var(--brand-primary); color: var(--text-on-brand);
     font-size: 10.5px; font-weight: 700;
   }
 
@@ -185,7 +187,7 @@
     background: var(--surface-card);
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
-    box-shadow: 0 8px 28px rgba(11,32,24,.13), 0 2px 8px rgba(11,32,24,.07);
+    box-shadow: var(--shadow-xl);
     animation: ax-pop .14s cubic-bezier(.2,.7,.2,1);
   }
   .pp-custdrop__item {
@@ -287,7 +289,7 @@
   .pp-cal__day:hover { background: var(--gray-100); }
   .pp-cal__day.is-today { font-weight: 700; color: var(--text-brand); }
   .pp-cal__day.is-selected {
-    background: var(--brand-primary); color: #fff; font-weight: 600;
+    background: var(--brand-primary); color: var(--text-on-brand); font-weight: 600;
   }
   .pp-cal__day.is-selected:hover { background: var(--brand-primary-hover); }
 
@@ -313,7 +315,7 @@
     transition: background-color .13s, border-color .13s, color .13s;
   }
   .pp-page-btn:hover:not(:disabled) { background: var(--gray-50); border-color: var(--border-default); color: var(--text-primary); }
-  .pp-page-btn.is-active { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; font-weight: 600; }
+  .pp-page-btn.is-active { background: var(--brand-primary); border-color: var(--brand-primary); color: var(--text-on-brand); font-weight: 600; }
   .pp-page-btn:disabled { opacity: .38; cursor: not-allowed; }
   .pp-page-btn--nav { padding: 0 12px; }
   .pp-page-ellipsis {
@@ -339,13 +341,13 @@
       minmax(120px, 1.1fr)   /* agent */
       112px                  /* listing type */
       130px                  /* status */
-      106px                  /* price */
+      136px                  /* price — sized for "900,000,000 IQD", not just "$720,000" */
       106px                  /* date */
       72px;                  /* actions */
     align-items: center;
     gap: 14px;
     padding: 0 20px;
-    min-width: 1400px;
+    min-width: 1430px;
     width: 100%;
   }
   /* agent-scoped variant — same table without the "Assigned agent" column */
@@ -357,7 +359,7 @@
       minmax(130px, 1.4fr)   /* owner */
       112px                  /* listing type */
       130px                  /* status */
-      106px                  /* price */
+      136px                  /* price — sized for "900,000,000 IQD", not just "$720,000" */
       106px                  /* date */
       72px;                  /* actions */
     min-width: 1280px;
@@ -388,7 +390,7 @@
   .pp-prop { display: flex; align-items: center; gap: 13px; min-width: 0; }
   .pp-prop__thumb {
     width: 64px; height: 54px; flex: none; border-radius: 12px; object-fit: cover;
-    background: var(--gray-100); box-shadow: inset 0 0 0 1px rgba(11,32,24,.06);
+    background: var(--gray-100); box-shadow: inset 0 0 0 1px var(--border-subtle);
   }
   .pp-prop__body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
   .pp-prop__title {
@@ -450,8 +452,10 @@
 
   /* price */
   .pp-price { display: flex; flex-direction: column; gap: 2px; justify-self: start; text-align: start; }
+  /* Never break a figure across lines: a dinar price split mid-number misreads
+     at a glance. The column is sized for the long form and the table scrolls. */
   .pp-price__val {
-    font-size: 13.5px; font-weight: 400; color: var(--text-secondary); font-variant-numeric: tabular-nums;
+    font-size: 13.5px; font-weight: 400; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .pp-price__per { font-size: 11.5px; color: var(--text-tertiary); }
 
@@ -519,7 +523,7 @@
     background: var(--surface-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
-    box-shadow: 0 24px 64px rgba(11,32,24,.22), 0 4px 16px rgba(11,32,24,.10);
+    box-shadow: var(--shadow-3xl);
     padding: 28px 28px 24px;
     animation: pp-modal-in .2s cubic-bezier(.25,.85,.25,1);
   }
@@ -563,11 +567,11 @@
     height: 40px; padding: 0 18px;
     border: none; background: var(--error-600); border-radius: var(--radius-control); cursor: pointer;
     font-family: var(--font-sans); font-size: 14px; font-weight: 600;
-    color: #fff;
+    color: var(--white);
     transition: background-color .15s, box-shadow .15s;
   }
   .pp-modal__delete:hover { background: var(--error-700); }
-  .pp-modal__delete:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(220,38,38,.28); }
+  .pp-modal__delete:focus-visible { outline: none; box-shadow: var(--shadow-focus-error); }
 
   /* ============================================================
      ASSIGN / CHANGE AGENT MODAL
@@ -706,7 +710,7 @@
     height: 40px; padding: 0 18px;
     border: none; background: var(--brand-primary);
     border-radius: var(--radius-control); cursor: pointer;
-    font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: #fff;
+    font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text-on-brand);
     transition: background-color .15s, box-shadow .15s;
   }
   .pp-modal__confirm:hover:not(:disabled) { background: var(--brand-primary-hover); }
@@ -821,6 +825,8 @@
   @keyframes pp-toast-prog { from { transform: scaleX(1); } to { transform: scaleX(0); } }
   @media (max-width: 560px) { .pp-toaster { inset-inline-start: 16px; inset-inline-end: 16px; top: 16px; width: auto; } }
   @media (prefers-reduced-motion: reduce) {
+    .pp-filterbar, .pp-row, .pp-tab, .pp-filterbtn { transition: none; }
+    .pp-modal, .pp-custdrop { animation: none; }
     .pp-toast { transition: opacity .2s ease; transform: none; }
     .pp-toast.is-in, .pp-toast.is-out { transform: none; }
     .pp-toast.is-in .pp-toast__progress { animation: none; }

@@ -10,9 +10,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { Modal } from "@/components/ui/modal";
 import { AdminSelect } from "../_shared/filter-controls";
 import { logAudit } from "../_shared/audit-log";
+import { useAutoSave } from "../_shared/use-auto-save";
 import { useLang, type Lang } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import { fmtDate } from "@/lib/fmt";
+import { fromIso, toIso } from "@/lib/dates";
+import { ADMIN } from "@/components/admin/admin-data";
+import { ADMIN_PERMS } from "../_shared/admin-permissions";
 import {
   usePlatformSettings,
   storedKeyCount,
@@ -24,7 +28,6 @@ import {
 } from "@/lib/platform-settings";
 import {
   SETTINGS_GROUPS,
-  SECTION_HEADS,
   CURRENCY_OPTIONS,
   AREA_UNIT_OPTIONS,
   TIMEZONE_OPTIONS,
@@ -55,10 +58,11 @@ import {
    cover (grouped nav, chip inputs, toggle grids, the notification matrix, the
    staff table, etc.).
 
-   Each editable section keeps a local draft and commits the whole settings
-   object on Save (persisted via usePlatformSettings, + logAudit + toast). The
-   theme/language selectors in Branding and Preferences also apply live through
-   lib/theme and lib/i18n.
+   Each editable section keeps a local draft and auto-saves its slice of the
+   settings object shortly after edits settle (persisted via
+   usePlatformSettings, + logAudit + toast) — see useAutoSave. There is no
+   manual Save/Cancel bar. The theme/language selectors in Branding and
+   Preferences also apply live through lib/theme and lib/i18n.
    ------------------------------------------------------------------------- */
 
 type CommitFn = (patch: Partial<PlatformSettings>, actionKey: string) => void;
@@ -86,24 +90,6 @@ function Card({ title, desc, children }: { title: string; desc?: string; childre
       </div>
       {children}
     </section>
-  );
-}
-
-/** Sticky Save/Cancel bar (reuses settings.css st-savebar). */
-function SaveBar({ dirty, onCancel, onSave }: { dirty: boolean; onCancel: () => void; onSave: () => void }) {
-  const { t } = useLang();
-  return (
-    <div className={"st-savebar" + (dirty ? " is-dirty" : "")}>
-      <span className="st-savebar__note">{dirty ? t("admin.settings.unsaved") : t("admin.settings.allSaved")}</span>
-      <div className="st-savebar__actions">
-        <Button hierarchy="secondary" onClick={onCancel} disabled={!dirty}>
-          {t("admin.topbar.cancel")}
-        </Button>
-        <Button hierarchy="primary" iconLeading="check" onClick={onSave} disabled={!dirty}>
-          {t("admin.settings.save")}
-        </Button>
-      </div>
-    </div>
   );
 }
 
@@ -199,8 +185,9 @@ function ChipEditor({
 
 function GeneralSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.general);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings.general), [draft, settings.general]);
+  const [draft, setDraft] = useAutoSave(settings.general, (general) =>
+    onSave({ general }, "audit.action.updatedPlatformGeneral"),
+  );
   const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   return (
@@ -285,11 +272,6 @@ function GeneralSection({ settings, onSave }: { settings: PlatformSettings; onSa
         </div>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.general)}
-        onSave={() => onSave({ general: draft }, "audit.action.updatedPlatformGeneral")}
-      />
     </>
   );
 }
@@ -298,8 +280,9 @@ function GeneralSection({ settings, onSave }: { settings: PlatformSettings; onSa
 
 function BrandingSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.branding);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings.branding), [draft, settings.branding]);
+  const [draft, setDraft] = useAutoSave(settings.branding, (branding) =>
+    onSave({ branding }, "audit.action.updatedBranding"),
+  );
   const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   return (
@@ -346,11 +329,6 @@ function BrandingSection({ settings, onSave }: { settings: PlatformSettings; onS
         <Note>{t("admin.psettings.branding.storedLocally")}</Note>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.branding)}
-        onSave={() => onSave({ branding: draft }, "audit.action.updatedBranding")}
-      />
     </>
   );
 }
@@ -358,9 +336,10 @@ function BrandingSection({ settings, onSave }: { settings: PlatformSettings; onS
 /* ------------------------------- Listings --------------------------------- */
 
 function ListingsSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
-  const { t } = useLang();
-  const [draft, setDraft] = useState(settings.listings);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings.listings), [draft, settings.listings]);
+  const { t, lang } = useLang();
+  const [draft, setDraft] = useAutoSave(settings.listings, (listings) =>
+    onSave({ listings }, "audit.action.updatedListings"),
+  );
   const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   const enabledAmenities = draft.amenities.filter((a) => a.enabled).length;
@@ -374,6 +353,48 @@ function ListingsSection({ settings, onSave }: { settings: PlatformSettings; onS
       "currencies",
       draft.currencies.map((c) => (c.code === code ? { ...c, enabled: !c.enabled } : c)),
     );
+
+  /* ---- exchange rates ----
+     Editing is gated on settings.manage: owner and admin only. An agent must
+     not be able to move what every visitor to the public site sees converted,
+     or how the price filter matches. */
+  const canManage = ADMIN_PERMS.settings.manage;
+  const defaultCurrency = settings.general.defaultCurrency;
+
+  /** Typing in a rate field. Updates the draft only — the audit entry waits for
+      the value to settle, so a single edit does not log a row per keystroke. */
+  const setRate = (code: CurrencyCode, raw: string) => {
+    const next = Number(raw.replace(/[^0-9.]/g, ""));
+    set(
+      "rates",
+      draft.rates.map((r) => (r.code === code ? { ...r, perDefault: Number.isFinite(next) ? next : 0 } : r)),
+    );
+  };
+
+  /**
+   * Commit a rate on blur, recording WHO changed it, WHEN, and FROM WHAT TO WHAT.
+   *
+   * "Why did the prices on the site move?" is a question someone will ask, and
+   * without the old value in the log there is no way to answer it — the new
+   * value is already visible, it is the previous one that has been lost. Logged
+   * against the persisted settings rather than the draft so re-blurring an
+   * unchanged field records nothing.
+   */
+  const commitRate = (code: CurrencyCode) => {
+    const before = settings.listings.rates.find((r) => r.code === code)?.perDefault;
+    const after = draft.rates.find((r) => r.code === code)?.perDefault;
+    if (before === after || after === undefined) return;
+    set("ratesUpdatedOn", toIso(new Date()));
+    set("ratesUpdatedBy", ADMIN.name);
+    logAudit({
+      category: "settings",
+      actionKey: "audit.action.updatedRate",
+      actionParams: { code },
+      target: code,
+      metaKey: "audit.meta.rateChange",
+      metaParams: { from: String(before ?? "—"), to: String(after) },
+    });
+  };
 
   return (
     <>
@@ -431,7 +452,7 @@ function ListingsSection({ settings, onSave }: { settings: PlatformSettings; onS
 
       <Card title={t("admin.psettings.listings.currencies")} desc={t("admin.psettings.listings.currenciesDesc")}>
         <span className="st-field__label">{t("admin.psettings.listings.enabledCurrencies")}</span>
-        <div className="sx-togglegrid">
+        <div className="sx-togglegrid sx-togglegrid--few">
           {draft.currencies.map((c) => (
             <button
               key={c.code}
@@ -444,6 +465,62 @@ function ListingsSection({ settings, onSave }: { settings: PlatformSettings; onS
               {c.code}
             </button>
           ))}
+        </div>
+
+        {/* ---- exchange rates ---- */}
+        <div className="sx-rates">
+          <span className="st-field__label">{t("admin.psettings.listings.rates", { base: defaultCurrency })}</span>
+          <div className="sx-rates__rows">
+            {draft.currencies.map((c) => {
+              const isBase = c.code === defaultCurrency;
+              const row = draft.rates.find((r) => r.code === c.code);
+              return (
+                <div key={c.code} className={"sx-rate" + (c.enabled ? "" : " is-off")}>
+                  <span className="sx-rate__code">{c.code}</span>
+                  <span className="sx-rate__eq">
+                    {t("admin.psettings.listings.perBase", { base: defaultCurrency })}
+                  </span>
+                  {isBase ? (
+                    /* The base is 1 by definition. Shown rather than hidden so
+                       the panel reads as a rate table and not as a single
+                       mystery number, and locked so nobody can "correct" it. */
+                    <span className="sx-rate__locked cx-tnum" aria-label={t("admin.psettings.listings.baseLocked")}>
+                      1.00
+                      <Icon name="lock" size={13} />
+                    </span>
+                  ) : (
+                    <Input
+                      className="cx-tnum"
+                      inputMode="decimal"
+                      value={String(row?.perDefault ?? "")}
+                      disabled={!canManage || !c.enabled}
+                      onChange={(e) => setRate(c.code, e.target.value)}
+                      onBlur={() => commitRate(c.code)}
+                      aria-label={t("admin.psettings.listings.rateFor", { code: c.code })}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* The sentence that prevents a whole category of support question. */}
+          <Note icon="info">{t("admin.psettings.listings.ratesHelp")}</Note>
+
+          <p className="sx-rates__meta">
+            {t("admin.psettings.listings.ratesUpdated", {
+              date: fmtDate(lang, fromIso(draft.ratesUpdatedOn), "dmy"),
+              by: draft.ratesUpdatedBy,
+            })}
+          </p>
+
+          {!canManage && <Note icon="lock">{t("admin.psettings.listings.ratesLocked")}</Note>}
+        </div>
+
+        <div className="st-grid">
+          <Field label={t("admin.psettings.listings.showApprox")} hint={t("admin.psettings.listings.showApproxHint")}>
+            <Switch checked={draft.showApproxPrice} onChange={(e) => set("showApproxPrice", e.target.checked)} />
+          </Field>
         </div>
       </Card>
 
@@ -485,11 +562,6 @@ function ListingsSection({ settings, onSave }: { settings: PlatformSettings; onS
         </div>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.listings)}
-        onSave={() => onSave({ listings: draft }, "audit.action.updatedListings")}
-      />
     </>
   );
 }
@@ -498,8 +570,9 @@ function ListingsSection({ settings, onSave }: { settings: PlatformSettings; onS
 
 function ViewingsSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.viewings);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings.viewings), [draft, settings.viewings]);
+  const [draft, setDraft] = useAutoSave(settings.viewings, (viewings) =>
+    onSave({ viewings }, "audit.action.updatedViewings"),
+  );
   const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   const slots = useMemo(
@@ -600,11 +673,6 @@ function ViewingsSection({ settings, onSave }: { settings: PlatformSettings; onS
         <Note icon="history">{t("admin.psettings.viewings.keepTimeNote")}</Note>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.viewings)}
-        onSave={() => onSave({ viewings: draft }, "audit.action.updatedViewings")}
-      />
     </>
   );
 }
@@ -613,8 +681,9 @@ function ViewingsSection({ settings, onSave }: { settings: PlatformSettings; onS
 
 function MembersSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.members);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings.members), [draft, settings.members]);
+  const [draft, setDraft] = useAutoSave(settings.members, (members) =>
+    onSave({ members }, "audit.action.updatedMembers"),
+  );
   const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   return (
@@ -681,11 +750,6 @@ function MembersSection({ settings, onSave }: { settings: PlatformSettings; onSa
         </div>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.members)}
-        onSave={() => onSave({ members: draft }, "audit.action.updatedMembers")}
-      />
     </>
   );
 }
@@ -694,10 +758,8 @@ function MembersSection({ settings, onSave }: { settings: PlatformSettings; onSa
 
 function NotificationsSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.notifications);
-  const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(settings.notifications),
-    [draft, settings.notifications],
+  const [draft, setDraft] = useAutoSave(settings.notifications, (notifications) =>
+    onSave({ notifications }, "audit.action.updatedNotifMatrix"),
   );
 
   const toggleCell = (event: string, channel: NotifChannel) =>
@@ -755,11 +817,6 @@ function NotificationsSection({ settings, onSave }: { settings: PlatformSettings
         </div>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.notifications)}
-        onSave={() => onSave({ notifications: draft }, "audit.action.updatedNotifMatrix")}
-      />
     </>
   );
 }
@@ -768,10 +825,8 @@ function NotificationsSection({ settings, onSave }: { settings: PlatformSettings
 
 function LocalizationSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.localization);
-  const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(settings.localization),
-    [draft, settings.localization],
+  const [draft, setDraft] = useAutoSave(settings.localization, (localization) =>
+    onSave({ localization }, "audit.action.updatedLocalization"),
   );
 
   const toggleLang = (code: string) =>
@@ -816,50 +871,6 @@ function LocalizationSection({ settings, onSave }: { settings: PlatformSettings;
         <Note icon="triangle-alert">{t("admin.psettings.localization.machineNote")}</Note>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.localization)}
-        onSave={() => onSave({ localization: draft }, "audit.action.updatedLocalization")}
-      />
-    </>
-  );
-}
-
-/* ------------------------------ Legal & content --------------------------- */
-
-function LegalSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
-  const { t } = useLang();
-  const [draft, setDraft] = useState(settings.legal);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings.legal), [draft, settings.legal]);
-  const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
-
-  return (
-    <>
-      <Card title={t("admin.psettings.legal.pageContent")} desc={t("admin.psettings.legal.pageContentDesc")}>
-        <div className="sx-stack">
-          <Field label={t("admin.psettings.legal.about")} full>
-            <Textarea rows={3} value={draft.about} onChange={(e) => set("about", e.target.value)} />
-          </Field>
-          <Field label={t("admin.psettings.legal.terms")} full>
-            <Textarea rows={3} value={draft.terms} onChange={(e) => set("terms", e.target.value)} />
-          </Field>
-          <Field label={t("admin.psettings.legal.privacy")} full>
-            <Textarea rows={3} value={draft.privacy} onChange={(e) => set("privacy", e.target.value)} />
-          </Field>
-        </div>
-        <Note>
-          {t("admin.psettings.legal.wiringNote")}{" "}
-          <a className="sx-link" href="/admin/content">
-            /admin/content
-          </a>
-        </Note>
-      </Card>
-
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.legal)}
-        onSave={() => onSave({ legal: draft }, "audit.action.updatedLegal")}
-      />
     </>
   );
 }
@@ -868,10 +879,8 @@ function LegalSection({ settings, onSave }: { settings: PlatformSettings; onSave
 
 function IntegrationsSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.integrations);
-  const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(settings.integrations),
-    [draft, settings.integrations],
+  const [draft, setDraft] = useAutoSave(settings.integrations, (integrations) =>
+    onSave({ integrations }, "audit.action.updatedIntegrations"),
   );
   const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
@@ -937,11 +946,6 @@ function IntegrationsSection({ settings, onSave }: { settings: PlatformSettings;
         </div>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.integrations)}
-        onSave={() => onSave({ integrations: draft }, "audit.action.updatedIntegrations")}
-      />
     </>
   );
 }
@@ -958,13 +962,11 @@ function MaintenanceSection({
   onReset: (alsoAppearance: boolean) => void;
 }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.maintenance);
+  const [draft, setDraft] = useAutoSave(settings.maintenance, (maintenance) =>
+    onSave({ maintenance }, "audit.action.updatedMaintenance"),
+  );
   const [confirmReset, setConfirmReset] = useState(false);
   const [alsoAppearance, setAlsoAppearance] = useState(false);
-  const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(settings.maintenance),
-    [draft, settings.maintenance],
-  );
   const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   const exportJson = () => {
@@ -1044,12 +1046,6 @@ function MaintenanceSection({
         </div>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.maintenance)}
-        onSave={() => onSave({ maintenance: draft }, "audit.action.updatedMaintenance")}
-      />
-
       {confirmReset && (
         <Modal
           open
@@ -1084,12 +1080,11 @@ function MaintenanceSection({
 
 function TeamSection({ settings, onSave, lang }: { settings: PlatformSettings; onSave: CommitFn; lang: Lang }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.team);
+  const [draft, setDraft] = useAutoSave(settings.team, (team) => onSave({ team }, "audit.action.updatedTeam"));
   const [invite, setInvite] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<StaffRole>("agent");
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings.team), [draft, settings.team]);
 
   const updateStaff = (id: string, patch: Partial<StaffMember>) =>
     setDraft((d) => ({ ...d, staff: d.staff.map((s) => (s.id === id ? { ...s, ...patch } : s)) }));
@@ -1213,8 +1208,6 @@ function TeamSection({ settings, onSave, lang }: { settings: PlatformSettings; o
         </Note>
       </Card>
 
-      <SaveBar dirty={dirty} onCancel={() => setDraft(settings.team)} onSave={() => onSave({ team: draft }, "audit.action.updatedTeam")} />
-
       {invite && (
         <Modal
           open
@@ -1268,8 +1261,9 @@ function SecuritySection({
   onPasswordUpdate: () => void;
 }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState(settings.security);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(settings.security), [draft, settings.security]);
+  const [draft, setDraft] = useAutoSave(settings.security, (security) =>
+    onSave({ security }, "audit.action.updatedSecurity"),
+  );
 
   // Password fields are LOCAL ONLY — never persisted (there is no backend).
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
@@ -1380,11 +1374,6 @@ function SecuritySection({
         </div>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.security)}
-        onSave={() => onSave({ security: draft }, "audit.action.updatedSecurity")}
-      />
     </>
   );
 }
@@ -1394,10 +1383,8 @@ function SecuritySection({
 function PreferencesSection({ settings, onSave }: { settings: PlatformSettings; onSave: CommitFn }) {
   const { t, lang, setLang } = useLang();
   const { theme, setTheme } = useTheme();
-  const [draft, setDraft] = useState(settings.preferences);
-  const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(settings.preferences),
-    [draft, settings.preferences],
+  const [draft, setDraft] = useAutoSave(settings.preferences, (preferences) =>
+    onSave({ preferences }, "audit.action.updatedPreferences"),
   );
   const set = <K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
@@ -1492,11 +1479,6 @@ function PreferencesSection({ settings, onSave }: { settings: PlatformSettings; 
         </div>
       </Card>
 
-      <SaveBar
-        dirty={dirty}
-        onCancel={() => setDraft(settings.preferences)}
-        onSave={() => onSave({ preferences: draft }, "audit.action.updatedPreferences")}
-      />
     </>
   );
 }
@@ -1509,6 +1491,9 @@ export function SettingsApp() {
   const { settings, save, reset } = usePlatformSettings();
   const [active, setActive] = useState<SettingsSectionId>("general");
   const [toast, setToast] = useState<string | null>(null);
+  // bumped on reset so the open Maintenance pane remounts onto the fresh
+  // defaults — its draft would otherwise auto-save the pre-reset values back
+  const [resetNonce, setResetNonce] = useState(0);
 
   const flash = (key: string) => {
     setToast(key);
@@ -1523,6 +1508,7 @@ export function SettingsApp() {
 
   const onReset = (alsoAppearance: boolean) => {
     reset();
+    setResetNonce((n) => n + 1);
     if (alsoAppearance) {
       setTheme("light");
       setLang("en");
@@ -1536,11 +1522,13 @@ export function SettingsApp() {
     flash("admin.psettings.passwordUpdated");
   };
 
-  const head = SECTION_HEADS[active];
+  // the pane heading is the nav item's own label — no second copy to keep in sync
+  const headLabelKey =
+    SETTINGS_GROUPS.flatMap((g) => g.items).find((s) => s.id === active)?.labelKey ?? "admin.psettings.pageTitle";
 
   return (
     <>
-      <div className="pf-head">
+      <div className="pf-head st-head">
         <div className="pf-head__intro">
           <h1 className="pf-head__title">{t("admin.psettings.pageTitle")}</h1>
           <p className="pf-head__sub">{t("admin.psettings.pageSub")}</p>
@@ -1585,13 +1573,7 @@ export function SettingsApp() {
 
         <div className="st-detail">
           <div className="sx-sectionhead">
-            <span className="sx-sectionhead__icon">
-              <Icon name={head.icon} size={22} />
-            </span>
-            <div>
-              <h2 className="sx-sectionhead__title">{t(head.titleKey)}</h2>
-              <p className="sx-sectionhead__sub">{t(head.subKey)}</p>
-            </div>
+            <h2 className="sx-sectionhead__title">{t(headLabelKey)}</h2>
           </div>
 
           {active === "general" && <GeneralSection settings={settings} onSave={commit} />}
@@ -1601,9 +1583,10 @@ export function SettingsApp() {
           {active === "members" && <MembersSection settings={settings} onSave={commit} />}
           {active === "notifications" && <NotificationsSection settings={settings} onSave={commit} />}
           {active === "localization" && <LocalizationSection settings={settings} onSave={commit} />}
-          {active === "legal" && <LegalSection settings={settings} onSave={commit} />}
           {active === "integrations" && <IntegrationsSection settings={settings} onSave={commit} />}
-          {active === "maintenance" && <MaintenanceSection settings={settings} onSave={commit} onReset={onReset} />}
+          {active === "maintenance" && (
+            <MaintenanceSection key={resetNonce} settings={settings} onSave={commit} onReset={onReset} />
+          )}
           {active === "team" && <TeamSection settings={settings} onSave={commit} lang={lang} />}
           {active === "security" && <SecuritySection settings={settings} onSave={commit} onPasswordUpdate={onPasswordUpdate} />}
           {active === "preferences" && <PreferencesSection settings={settings} onSave={commit} />}

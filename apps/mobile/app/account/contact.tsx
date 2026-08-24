@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/account/ScreenHeader";
 import { MenuRow, Group } from "@/components/account/MenuRow";
 import { Button, TextField } from "@/components/ui";
 import { confirm } from "@/lib/confirm";
+import { addContactMessage } from "@/lib/contact-messages";
 
 const emailish = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const open = (url: string) => Linking.openURL(url).catch(() => {});
@@ -40,6 +41,11 @@ export default function ContactScreen() {
     if (!message.trim()) next.message = t("contact.errMessage");
     setErrors(next);
     if (Object.keys(next).length > 0) return;
+
+    // Keep the submission on the device rather than discarding it. There is no
+    // backend to send it to yet, and it does not reach the admin inbox — see
+    // lib/contact-messages.ts for why that bridge cannot exist without a server.
+    addContactMessage({ name: name.trim(), email: email.trim(), subject: subject.trim(), message: message.trim() });
 
     setName("");
     setEmail("");

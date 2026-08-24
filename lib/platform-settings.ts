@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { ANCHOR_ISO } from "@/lib/dates";
 
 /**
  * Platform-settings store — the state behind the admin Settings screen
- * (/admin/settings). Covers the full 13-section surface (identity, branding,
+ * (/admin/settings). Covers the full 12-section surface (identity, branding,
  * listing vocabularies, viewings, member/agent policy, notification delivery,
- * localization, legal copy, integrations, maintenance, team, security,
- * preferences).
+ * localization, integrations, maintenance, team, security, preferences).
+ *
+ * Public page copy — About, Terms, Privacy — is deliberately NOT here: it is
+ * content, not configuration, and lives in lib/site-content.ts behind
+ * /admin/content. Settings once carried a duplicate of it that nothing read.
  *
  * Same hydration-safe pattern as lib/theme.ts: an external store read via
  * useSyncExternalStore, seeded from a deterministic default so the server
@@ -21,7 +25,19 @@ import { useCallback, useSyncExternalStore } from "react";
 
 /* --------------------------------- Types ---------------------------------- */
 
-export type CurrencyCode = "USD" | "IQD" | "EUR" | "GBP" | "TRY" | "AED";
+/**
+ * The currencies the platform supports — THE single definition. Property in
+ * Kurdistan is quoted in dollars and in dinars, and in nothing else.
+ *
+ * This type is deliberately closed rather than wide-with-toggles: a code that
+ * cannot be selected should not exist, and every lookup table keyed by it
+ * (lib/fmt PLACEMENT, lib/money MINOR_UNITS) is a `Record<CurrencyCode, …>` so
+ * the compiler names the tables that need a row if a currency is ever added.
+ *
+ * What users may CHOOSE comes from the enabled list in ListingsSettings.currencies,
+ * not from this type — so a third currency is a settings change plus table rows.
+ */
+export type CurrencyCode = "USD" | "IQD";
 export type ThemeChoice = "light" | "dark" | "system";
 export type LangCode = "en" | "ar" | "ku";
 export type WeekdayId = "sat" | "sun" | "mon" | "tue" | "wed" | "thu" | "fri";
@@ -58,6 +74,19 @@ export interface CurrencyToggle {
   enabled: boolean;
 }
 
+/**
+ * A staff-entered exchange rate: how many units of `code` buy one unit of the
+ * platform's default currency. IQD at 1310 reads "1310 dinars to the dollar".
+ * The default currency's own row is always 1 and is not editable.
+ *
+ * A LIST, though today it holds exactly one meaningful number, so adding a
+ * currency later needs no schema change and no migration of stored settings.
+ */
+export interface CurrencyRate {
+  code: CurrencyCode;
+  perDefault: number;
+}
+
 export interface ListingsSettings {
   propertyTypes: string[];
   conditions: string[];
@@ -65,6 +94,20 @@ export interface ListingsSettings {
   orientations: string[];
   amenities: AmenityToggle[];
   currencies: CurrencyToggle[];
+  /**
+   * Rates for BROWSING ONLY — the approximate line on a listing, the search
+   * filter's cross-currency matching, and price sorting. Never read by a
+   * contract, an invoice or a payment: those carry a rate frozen at signing
+   * (ContractRecord.agreedRate) and are never recalculated when this moves.
+   *
+   * There is no FX feed. Someone types these in, which is exactly why every
+   * change is written to the audit log.
+   */
+  rates: CurrencyRate[];
+  ratesUpdatedOn: string; // ISO day
+  ratesUpdatedBy: string; // staff display name
+  /** Show a muted "≈ 1,113,500,000 IQD" line under prices on the public site. */
+  showApproxPrice: boolean;
   newListingStatus: "draft" | "pending" | "published";
   expiryDays: number;
   maxGalleryImages: number;
@@ -107,12 +150,6 @@ export interface LanguageRow {
 export interface LocalizationSettings {
   languages: LanguageRow[];
   defaultLanguage: LangCode;
-}
-
-export interface LegalSettings {
-  about: string;
-  terms: string;
-  privacy: string;
 }
 
 export interface IntegrationsSettings {
@@ -179,7 +216,6 @@ export interface PlatformSettings {
   members: MembersSettings;
   notifications: NotificationsSettings;
   localization: LocalizationSettings;
-  legal: LegalSettings;
   integrations: IntegrationsSettings;
   maintenance: MaintenanceSettings;
   team: TeamSettings;
@@ -189,8 +225,12 @@ export interface PlatformSettings {
 
 /* -------------------------------- Defaults -------------------------------- */
 
-// Bump when the default schema/seed changes so stale caches are dropped.
-export const PLATFORM_KEY = "chiya:platform-settings:v1";
+/* Bump when the default schema/seed changes so stale caches are dropped.
+   v2: currencies reduced to USD/IQD and exchange rates added. A v1 blob still
+   holds the EUR/GBP/TRY/AED toggles, and `parse` merges stored arrays wholesale
+   — so without this bump those four codes would come back from localStorage and
+   fail every Record<CurrencyCode, …> lookup they touched. */
+export const PLATFORM_KEY = "chiya:platform-settings:v2";
 
 /** The 16 amenities offered in the listing forms (matches the screenshots). */
 export const AMENITY_KEYS = [
@@ -269,11 +309,14 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
     currencies: [
       { code: "USD", enabled: true },
       { code: "IQD", enabled: true },
-      { code: "EUR", enabled: true },
-      { code: "GBP", enabled: false },
-      { code: "TRY", enabled: false },
-      { code: "AED", enabled: false },
     ],
+    rates: [
+      { code: "USD", perDefault: 1 },
+      { code: "IQD", perDefault: 1310 },
+    ],
+    ratesUpdatedOn: ANCHOR_ISO,
+    ratesUpdatedBy: "Chiya Estate",
+    showApproxPrice: false,
     newListingStatus: "pending",
     expiryDays: 90,
     maxGalleryImages: 20,
@@ -310,14 +353,6 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
       { code: "ar", enabled: true, translatedPct: 100 },
     ],
     defaultLanguage: "en",
-  },
-  legal: {
-    about:
-      "Chiya Estate is a curated property marketplace for the Kurdistan Region — verified listings, trusted agents, and a hand-picked collection of premium homes across Erbil, Duhok and Sulaymaniyah.",
-    terms:
-      "By using Chiya Estate you agree to list accurate information and to deal fairly with other members of the platform.",
-    privacy:
-      "We collect only what we need to run the marketplace, and we never sell personal data to third parties.",
   },
   integrations: {
     tileProvider: "osm",
@@ -391,7 +426,6 @@ function parse(raw: string | null): PlatformSettings {
         matrix: p.notifications?.matrix ?? d.notifications.matrix,
       },
       localization: { ...d.localization, ...p.localization },
-      legal: { ...d.legal, ...p.legal },
       integrations: { ...d.integrations, ...p.integrations },
       maintenance: { ...d.maintenance, ...p.maintenance },
       team: { ...d.team, ...p.team },
@@ -463,6 +497,40 @@ export function usePlatformSettings() {
   }, []);
 
   return { settings, save, reset };
+}
+
+/* ------------------------------ rate readers ------------------------------- */
+
+/**
+ * The rate for one currency — units of `code` per 1 unit of `defaultCurrency`.
+ *
+ * The one place the rates array is indexed. Everything else asks this, so a
+ * screen can never half-read the list or fall back to a silent 1 (which would
+ * quietly price a dinar property as if it were dollars). The default currency
+ * is 1 by definition; a missing row is a seed bug and throws rather than
+ * guessing, because a wrong rate produces a plausible number.
+ */
+export function rateFor(settings: PlatformSettings, code: CurrencyCode): number {
+  if (code === settings.general.defaultCurrency) return 1;
+  const row = settings.listings.rates.find((r) => r.code === code);
+  if (!row) throw new Error(`platform-settings: no exchange rate configured for ${code}`);
+  return row.perDefault;
+}
+
+/** The currencies a user may actually pick, in settings order. Forms and
+    filters offer THIS, never the CurrencyCode type — see the type's comment. */
+export function enabledCurrencies(settings: PlatformSettings): CurrencyCode[] {
+  const on = settings.listings.currencies.filter((c) => c.enabled).map((c) => c.code);
+  /* The default must always be selectable, even if someone unticks it. */
+  return on.includes(settings.general.defaultCurrency) ? on : [settings.general.defaultCurrency, ...on];
+}
+
+/** The other currency to show an approximate figure in, or undefined when a
+    listing is already in the default. Two currencies, so "the other one". */
+export function approxTarget(settings: PlatformSettings, from: CurrencyCode): CurrencyCode | undefined {
+  const dflt = settings.general.defaultCurrency;
+  if (from !== dflt) return dflt;
+  return enabledCurrencies(settings).find((c) => c !== dflt);
 }
 
 /** How many localStorage keys the reset card reports it will clear. */

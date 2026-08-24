@@ -1,7 +1,10 @@
 import type { IconName } from "@/components/ui/icon";
 import type { StatTone } from "@/components/data/stat-card";
+import { ANCHOR_DATE, fromIso } from "@/lib/dates";
 import { daysAgoFrom } from "../_data/catalog";
 import type { AgentRecord, MemberRecord, PropertyRecord } from "../_data/catalog";
+import { closedOn, isClosed } from "../_data/property-state";
+import type { ContractRecord } from "../_data/contracts";
 import type { ViewingRecord } from "../_viewings/data";
 
 /* Chart palette — brand-aligned tokens shared by every report visual. */
@@ -26,9 +29,9 @@ export const PERIODS: PeriodDef[] = [
   { short: "Year", label: "year", days: 365 },
 ];
 
-/* Mirrors the catalog's TODAY anchor (Jun 30, 2026) so day-bucket labels line up
-   with daysAgoFrom, which measures distance from that same anchor. */
-const TODAY = new Date(2026, 5, 30);
+/* The shared seed anchor (Jun 30, 2026) so day-bucket labels line up with
+   daysAgoFrom, which measures distance from that same anchor. */
+const TODAY = ANCHOR_DATE;
 function dayLabel(daysAgo: number): string {
   const d = new Date(TODAY);
   d.setDate(d.getDate() - daysAgo);
@@ -39,6 +42,34 @@ function dayLabel(daysAgo: number): string {
 function inCurrent(dateStr: string, days: number): boolean {
   const a = daysAgoFrom(dateStr);
   return a != null && a >= 0 && a < days;
+}
+
+/* Every helper in this module parses the "Mon D, YYYY" display strings the
+   property records carry. Contracts date themselves in ISO — the correct form,
+   and what the newer data layer uses throughout — so they are converted on the
+   way in rather than teaching every bucket helper a second format. */
+function isoToDisplay(iso: string): string {
+  const d = fromIso(iso);
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/**
+ * Signing dates of every closed contract, split by kind.
+ *
+ * This is where "sold" and "rented" come from now. They used to be counted from
+ * properties whose status string said Sold or Rented, dated by `p.updated` —
+ * the day the RECORD was last touched, which moves when someone edits a photo.
+ * A contract knows the day it was actually signed.
+ */
+function closedContractDisplayDates(contracts: ContractRecord[]): { sold: string[]; rented: string[] } {
+  const sold: string[] = [];
+  const rented: string[] = [];
+  for (const c of contracts) {
+    const on = closedOn(c);
+    if (!isClosed(c) || !on) continue;
+    (c.kind === "sale" ? sold : rented).push(isoToDisplay(on));
+  }
+  return { sold, rented };
 }
 
 /** Bucket granularity + count for the trend charts, chosen to fit the window. */
@@ -148,14 +179,15 @@ function windowCount(dates: string[], days: number): { value: number; delta?: De
   return { value: cur, delta: { text: (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%", dir: pct >= 0 ? "up" : "down" } };
 }
 
-export function buildPeriodKpis(properties: PropertyRecord[], members: MemberRecord[], viewings: ViewingRecord[], days: number, periodLabel: string): KpiCard[] {
+export function buildPeriodKpis(properties: PropertyRecord[], members: MemberRecord[], viewings: ViewingRecord[], contracts: ContractRecord[], days: number, periodLabel: string): KpiCard[] {
   const listed = windowCount(properties.map((p) => p.listingDate), days);
-  const sold = windowCount(properties.filter((p) => p.status === "Sold").map((p) => p.updated), days);
-  const rented = windowCount(properties.filter((p) => p.status === "Rented").map((p) => p.updated), days);
+  const closed = closedContractDisplayDates(contracts);
+  const sold = windowCount(closed.sold, days);
+  const rented = windowCount(closed.rented, days);
   const joined = windowCount(members.map((m) => m.joined), days);
   const views = windowCount(viewings.map((v) => v.date), days);
 
-  // Agents with a listing created or a deal closed inside the current window.
+  // Agents with a listing created or a contract closed inside the window.
   const activeAgents = new Set<string>();
   for (const p of properties) {
     if (!p.agent) continue;
@@ -184,25 +216,33 @@ export function buildListingsTrend(properties: PropertyRecord[], days: number): 
 }
 
 export interface StatusSlice { key: string; label: string; value: number; color: string }
-/** Property status breakdown donut — statuses of properties active in the window. */
+/**
+ * Property state breakdown donut — the states of properties active in the
+ * window. Each slice asks ONE field: publication for the visibility slices,
+ * availability for the transacted ones. That is why a sold property does not
+ * also land in "Unpublished" — availability is checked first, exactly as the
+ * list badge does.
+ */
 export function buildStatusSlices(properties: PropertyRecord[], days: number): StatusSlice[] {
   const inWin = properties.filter((p) => inCurrent(p.listingDate, days) || inCurrent(p.updated, days));
-  const defs: { key: string; label: string; status: string; color: string }[] = [
-    { key: "published", label: "Published", status: "Published", color: C.green },
-    { key: "pending", label: "Pending approval", status: "Pending", color: C.amber },
-    { key: "sold", label: "Sold", status: "Sold", color: C.gold },
-    { key: "rented", label: "Rented", status: "Rented", color: C.info },
-    { key: "draft", label: "Draft", status: "Draft", color: C.gray },
+  const defs: { key: string; label: string; match: (p: PropertyRecord) => boolean; color: string }[] = [
+    { key: "published", label: "Published", match: (p) => p.availability === "available" && p.publication === "published", color: C.green },
+    { key: "pending", label: "Pending approval", match: (p) => p.availability === "available" && p.publication === "pending", color: C.amber },
+    { key: "sold", label: "Sold", match: (p) => p.availability === "sold", color: C.gold },
+    { key: "rented", label: "Rented", match: (p) => p.availability === "rented", color: C.info },
+    { key: "draft", label: "Draft", match: (p) => p.availability === "available" && p.publication === "draft", color: C.gray },
   ];
-  return defs.map((d) => ({ key: d.key, label: d.label, color: d.color, value: inWin.filter((p) => p.status === d.status).length }));
+  return defs.map((d) => ({ key: d.key, label: d.label, color: d.color, value: inWin.filter(d.match).length }));
 }
 
-/** Sales & rentals grouped bars — closed sold vs rented bucketed across the window. */
-export function buildSalesRentals(properties: PropertyRecord[], days: number): { labels: string[]; series: Series[] } {
+/** Sales & rentals grouped bars — closed CONTRACTS bucketed across the window,
+    by the day each one was actually signed. */
+export function buildSalesRentals(contracts: ContractRecord[], days: number): { labels: string[]; series: Series[] } {
+  const closed = closedContractDisplayDates(contracts);
   return bucketSeries(
     [
-      { key: "sold", label: "Sold", color: C.gold, dates: properties.filter((p) => p.status === "Sold").map((p) => p.updated) },
-      { key: "rented", label: "Rented", color: C.info, dates: properties.filter((p) => p.status === "Rented").map((p) => p.updated) },
+      { key: "sold", label: "Sold", color: C.gold, dates: closed.sold },
+      { key: "rented", label: "Rented", color: C.info, dates: closed.rented },
     ],
     days,
   );
@@ -226,7 +266,7 @@ export function buildTopLocations(properties: PropertyRecord[], days: number): R
 export interface AgentRow { name: string; team: string; active: number; sold: number; rented: number; viewings: number; completed: number; verified: boolean; img: string }
 /** Agent performance table — per-agent activity within the window. Ranked by
    completion rate (completed viewings ÷ all viewings), which is always 0–100%. */
-export function buildAgentRows(agents: AgentRecord[], properties: PropertyRecord[], viewings: ViewingRecord[], days: number): AgentRow[] {
+export function buildAgentRows(agents: AgentRecord[], properties: PropertyRecord[], viewings: ViewingRecord[], contracts: ContractRecord[], days: number): AgentRow[] {
   const vtotal: Record<string, number> = {};
   const vdone: Record<string, number> = {};
   for (const v of viewings) {
@@ -234,18 +274,30 @@ export function buildAgentRows(agents: AgentRecord[], properties: PropertyRecord
     vtotal[v.agent] = (vtotal[v.agent] || 0) + 1;
     if (v.status === "Completed") vdone[v.agent] = (vdone[v.agent] || 0) + 1;
   }
-  const deals: Record<string, { active: number; sold: number; rented: number }> = {};
+  /* Listings come from properties; closings come from contracts. The contract
+     names its own agent, so a property reassigned after the sale still credits
+     whoever actually closed it — which reading the property could never do. */
+  const byAgent: Record<string, { active: number; sold: number; rented: number }> = {};
+  const agentName = (id: string) => agents.find((a) => a.id === id)?.name;
   for (const p of properties) {
     if (!p.agent) continue;
-    const rec = (deals[p.agent.name] ||= { active: 0, sold: 0, rented: 0 });
+    const rec = (byAgent[p.agent.name] ||= { active: 0, sold: 0, rented: 0 });
     if (inCurrent(p.listingDate, days)) rec.active++;
-    if (p.status === "Sold" && inCurrent(p.updated, days)) rec.sold++;
-    if (p.status === "Rented" && inCurrent(p.updated, days)) rec.rented++;
+  }
+  for (const c of contracts) {
+    const on = closedOn(c);
+    if (!isClosed(c) || !on) continue;
+    if (!inCurrent(isoToDisplay(on), days)) continue;
+    const name = agentName(c.agentId);
+    if (!name) continue;
+    const rec = (byAgent[name] ||= { active: 0, sold: 0, rented: 0 });
+    if (c.kind === "sale") rec.sold++;
+    else rec.rented++;
   }
   const rate = (r: AgentRow) => (r.viewings ? r.completed / r.viewings : 0);
   return agents
     .map((a) => {
-      const d = deals[a.name] || { active: 0, sold: 0, rented: 0 };
+      const d = byAgent[a.name] || { active: 0, sold: 0, rented: 0 };
       return {
         name: a.name,
         team: a.city,

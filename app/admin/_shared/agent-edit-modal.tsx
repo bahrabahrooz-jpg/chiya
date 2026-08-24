@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { EXPERIENCE_OPTIONS, LANGUAGE_OPTIONS, SERVICE_AREA_OPTIONS } from "../_agents-admin/data";
 import { useLang } from "@/lib/i18n";
 import { fmtNum, valueKey } from "@/lib/fmt";
@@ -354,6 +354,9 @@ export interface AgentEditSeed {
   languages: string[];
   areas: string[];
   status: string;
+  /** Public profile copy — blank means the profile page generates its own. */
+  headline: string;
+  bio: string;
 }
 
 export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed; onCancel: () => void; onSave: (values: AgentEditSeed) => void }) {
@@ -371,10 +374,13 @@ export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed
   const [experience, setExperience] = useState(initial.experience);
   const [languages, setLanguages] = useState(initial.languages);
   const [areas, setAreas] = useState(initial.areas);
-  const [status, setStatus] = useState(initial.status);
+  const [headline, setHeadline] = useState(initial.headline);
+  const [bio, setBio] = useState(initial.bio);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
-  const current: AgentEditSeed = { img: photo, name: fullName, phone, email, experience, languages, areas, status };
+  // Status is not editable here — it is changed from the row menu / agent detail page.
+  const status = initial.status;
+  const current: AgentEditSeed = { img: photo, name: fullName, phone, email, experience, languages, areas, status, headline, bio };
   const dirty = JSON.stringify(current) !== JSON.stringify(initial);
 
   const requestClose = useCallback(() => {
@@ -394,7 +400,7 @@ export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSave) return;
-    onSave({ img: photo, name: fullName.trim(), phone: phone.trim(), email: email.trim(), experience, languages, areas, status });
+    onSave({ img: photo, name: fullName.trim(), phone: phone.trim(), email: email.trim(), experience, languages, areas, status, headline: headline.trim(), bio: bio.trim() });
   };
 
   return createPortal(
@@ -434,10 +440,18 @@ export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed
           </section>
 
           <section className="aa-sect">
-            <div className="aa-stack">
+            <div className="aa-grid2">
               <Field label={t("admin.aem.languagesSpoken")}>
                 <MultiSelect values={languages} onChange={setLanguages} options={LANGUAGE_OPTIONS} placeholder={t("admin.aem.selectLanguages")} labelFor={(v) => tOr(valueKey("admin.ad.lang", v), v)} />
               </Field>
+              <Field label={t("admin.aem.yearsExperience")} htmlFor="ea-exp">
+                <CustomSelect value={experience} onChange={setExperience} options={[{ value: "", label: t("admin.aem.select") }, ...EXPERIENCE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))]} />
+              </Field>
+            </div>
+          </section>
+
+          <section className="aa-sect">
+            <div className="aa-stack">
               <Field label={t("admin.ad.serviceAreas")}>
                 <MultiSelect values={areas} onChange={setAreas} options={SERVICE_AREA_OPTIONS} placeholder={t("admin.aem.selectAreas")} labelFor={(v) => tOr(`city.${v}`, tOr(`loc.${v}`, v))} />
               </Field>
@@ -445,13 +459,16 @@ export function EditAgentModal({ seed, onCancel, onSave }: { seed: AgentEditSeed
           </section>
 
           <section className="aa-sect">
-            <div className="aa-grid2">
-              <Field label={t("admin.aem.yearsExperience")} htmlFor="ea-exp">
-                <CustomSelect value={experience} onChange={setExperience} options={[{ value: "", label: t("admin.aem.select") }, ...EXPERIENCE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))]} />
-              </Field>
-              <Field label={t("admin.props.th.status")} htmlFor="ea-status">
-                <CustomSelect value={status} onChange={(v) => setStatus(v || "Active")} options={[{ value: "", label: t("admin.aem.selectStatus") }, { value: "Active", label: t("status.active") }, { value: "Suspended", label: t("status.suspended") }]} />
-              </Field>
+            <div className="aa-stack">
+              <Input
+                label={t("admin.aem.headline")}
+                id="ea-headline"
+                placeholder={t("admin.aem.headlinePh")}
+                hint={t("admin.aem.headlineHint")}
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+              />
+              <Textarea label={t("admin.aem.bio")} id="ea-bio" rows={6} placeholder={t("admin.aem.bioPh")} hint={t("admin.aem.bioHint")} value={bio} onChange={(e) => setBio(e.target.value)} />
             </div>
           </section>
         </div>

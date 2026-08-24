@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import type { ApForm } from "@/app/admin/_add-property/data";
+import { formatPrice, money, type CurrencyCode } from "@/lib/money";
 
 /**
  * Chiya Estate — member listings store.
@@ -45,7 +46,7 @@ export interface ListingDraft {
   deal: ListingDeal;
   type: string;
   price: string;
-  currency: string;
+  currency: CurrencyCode;
   area: string;
   areaUnit: string;
   beds: number;
@@ -117,7 +118,13 @@ const getSnapshot = () => state;
 const EMPTY: MemberListing[] = [];
 const getServerSnapshot = () => EMPTY;
 
-const CUR: Record<string, string> = { USD: "$", EUR: "€", IQD: "IQD " };
+/* Canonical English display string, built through the ONE formatter so a member
+   listing renders its currency the same way every other surface does. Was a
+   local symbol map that carried a EUR entry the platform never supported. */
+const displayPrice = (amount: string, currency: CurrencyCode) =>
+  formatPrice("en", money(Number(amount) || 0, currency));
+
+/* Plain thousands grouping for the area figure, which carries no currency. */
 const fmtNum = (n: string) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 /** Turn a compose draft into a stored listing at the given status. */
@@ -131,7 +138,7 @@ export function draftToListing(d: ListingDraft, status: ListingStatus): MemberLi
     deal: d.deal,
     status,
     cover: d.cover || "",
-    price: d.price ? (CUR[d.currency] || "") + fmtNum(d.price) : undefined,
+    price: d.price ? displayPrice(d.price, d.currency) : undefined,
     beds: d.beds || undefined,
     baths: d.baths || undefined,
     area: d.area ? fmtNum(d.area) + " " + d.areaUnit : undefined,

@@ -22,8 +22,14 @@
 .pdp-head__addr svg { color: var(--text-brand-muted); }
 .pdp-head__addr a { color: var(--text-secondary); text-decoration: none; }
 .pdp-head__addr a:hover { color: var(--text-brand); text-decoration: underline; text-underline-offset: 3px; }
-.pdp-head__priceblock { flex: none; text-align: right; }
-.pdp-head__price { font-family: var(--font-sans); font-weight: 700; font-size: 34px; letter-spacing: -0.01em; color: var(--text-brand); font-variant-numeric: tabular-nums; line-height: 1; }
+/* `end`, not `right` — the header mirrors in Arabic and Kurdish, and a price
+   block pinned to the right edge lands on the wrong side there. */
+.pdp-head__priceblock { flex: none; text-align: end; }
+/* A dinar headline ("900,000,000 IQD") is roughly twice the width of a dollar
+   one at the same size, so the figure is allowed to step down rather than
+   overflow the header or force the title to wrap awkwardly beside it. */
+.pdp-head__price { font-family: var(--font-sans); font-weight: 700; font-size: clamp(24px, 4.4vw, 34px); letter-spacing: -0.01em; color: var(--text-brand); font-variant-numeric: tabular-nums; line-height: 1.05; white-space: nowrap; }
+.pdp-head__approx { margin-top: 6px; font-family: var(--font-sans); font-size: 13px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 
 /* gallery */
 .pdp-gal { margin-bottom: 18px; }
@@ -205,7 +211,7 @@
   .pdp-body { grid-template-columns: 1fr; }
   .pdp-aside--desktop { display: none; }
   .pdp-head { flex-direction: column; align-items: flex-start; gap: 14px; }
-  .pdp-head__priceblock { text-align: left; }
+  .pdp-head__priceblock { text-align: start; }
   .pdp-gal__hero { height: 360px; }
   .pdp-similar__grid { grid-template-columns: repeat(2, 1fr); }
   .pdp-mobar { display: block; }

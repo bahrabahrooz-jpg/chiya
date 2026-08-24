@@ -40,12 +40,12 @@ export default function AgentReportsPage() {
     const out = t(key);
     return out === key ? fallback : out;
   };
-  const { properties, members, viewings } = useAgentData();
+  const { properties, members, viewings, contracts } = useAgentData();
   const [pid, setPid] = useState("Month");
   const period = PERIODS.find((p) => p.short === pid) ?? PERIODS[2];
   const days = period.days;
 
-  const kpis = useMemo(() => buildPeriodKpis(properties, members, viewings, days, period.label), [properties, members, viewings, days, period.label]);
+  const kpis = useMemo(() => buildPeriodKpis(properties, members, viewings, contracts, days, period.label), [properties, members, viewings, contracts, days, period.label]);
   const status: StatusSlice[] = useMemo(() => buildStatusSlices(properties, days), [properties, days]);
   const locations: LocationRow[] = useMemo(() => buildTopLocations(properties, days).Cities, [properties, days]);
 

@@ -1,19 +1,35 @@
 import type { IconName } from "@/components/ui/icon";
+import { multiply, type CurrencyCode, type Money } from "@/lib/money";
 import type { BadgeVariant } from "@/components/ui/badge";
-import { AGENTS as CATALOG_AGENTS, MEMBERS as CATALOG_MEMBERS, PROPERTIES as CATALOG_PROPERTIES, getAgentByName, type PropertyDetails, type PropertyRecord } from "../_data/catalog";
+import {
+  AGENTS as CATALOG_AGENTS,
+  MEMBERS as CATALOG_MEMBERS,
+  PROPERTIES as CATALOG_PROPERTIES,
+  getAgentByName,
+  type Availability,
+  type ListingMandate,
+  type Publication,
+  type PropertyDetails,
+  type PropertyRecord,
+} from "../_data/catalog";
 import { VIEWINGS as ALL_VIEWINGS, AGENT_IMG } from "../_viewings/data";
 import { REVIEWS } from "../_reviews/data";
-export { statusRequiresAgent } from "../_data/catalog";
+export { statusRequiresAgent, requiresAgent, legacyStatus } from "../_data/catalog";
+/* The tone maps live on the properties page — one definition, so the list badge
+   and the detail badge can never disagree about what "Reserved" looks like. */
+export { AVAILABILITY_META, PUBLICATION_META, VISIBILITY_OPTIONS, labelKeyFor, toneFor } from "../_properties/data";
+export type { Availability, Publication, ListingMandate };
 
+/** @deprecated Keyed by the old single status string. Use `toneFor`. */
 export const STATUS_META: Record<string, { variant: BadgeVariant; dot?: boolean; icon?: IconName }> = {
   Draft: { variant: "neutral", dot: true },
   Pending: { variant: "warning", dot: true },
   Published: { variant: "success", dot: true },
+  Unpublished: { variant: "neutral", icon: "eye-off" },
   Sold: { variant: "error", dot: true },
   Rented: { variant: "info", dot: true },
   Archived: { variant: "neutral", icon: "archive" },
 };
-export const STATUS_OPTIONS = Object.keys(STATUS_META).filter((s) => s !== "Archived");
 export const STATUS_DOT_COLOR: Record<string, string> = {
   neutral: "var(--gray-400)", warning: "var(--warning-500)", success: "var(--success-500)",
   error: "var(--error-500)", info: "var(--info-500)", gold: "var(--gold-500)", brand: "var(--brand-primary)",
@@ -65,8 +81,14 @@ export interface OwnerRef { name: string; phone: string; type: string; email?: s
 export interface DetailAgent { name: string; verified: boolean; listings?: number; phone: string; img: string; email?: string; rating?: string; reviews?: number }
 interface BaseProperty {
   id: string; title: string; area: string; city: string; type: string; img: string;
-  owner: OwnerRef; agent: DetailAgent | null; listing: "sale" | "rent"; status: string;
-  price: number; per?: string; date: string; beds: number; baths: number; size: number;
+  owner: OwnerRef; agent: DetailAgent | null; listing: "sale" | "rent";
+  publication: Publication; availability: Availability;
+  /** @deprecated Derived from the two fields above. */
+  status: string;
+  mandate?: ListingMandate;
+  /** MemberRecord id of the owner — the seller/landlord a new deal pre-fills. */
+  ownerId?: string;
+  price: Money; per?: string; date: string; beds: number; baths: number; size: number;
   published: boolean; featured: boolean; listingDate: string; updated: string;
 }
 
@@ -95,7 +117,11 @@ function toBase(p: PropertyRecord): BaseProperty {
       ? { name: p.agent.name, verified: true, phone: roster?.phone || "+964 750 000 0000", img: p.agent.img, listings: roster?.listings, ...agentRating(p.agent.name) }
       : null,
     listing: p.listing,
+    publication: p.publication,
+    availability: p.availability,
     status: p.status,
+    mandate: p.mandate,
+    ownerId: p.ownerId,
     price: p.price,
     per: p.per,
     date: p.date,
@@ -113,17 +139,27 @@ function emailFromName(name: string) {
 }
 
 export interface NoteItem { author: string; role: string; time: string; kind: string; text: string }
+/* Demo copy, keyed off the record's state. Reads the two fields directly rather
+   than the deprecated string so a reserved or unpublished listing gets sensible
+   notes instead of falling through to the "Draft created" branch. */
 function buildNotes(p: BaseProperty): NoteItem[] {
   const notes: NoteItem[] = [];
+  if (p.availability === "sold" || p.availability === "rented") {
+    const word = p.availability === "sold" ? "sold" : "rented";
+    notes.push({ author: "Rêbîn Kawa", role: "Super Admin", time: p.updated + " · 14:30", kind: "approval", text: `Deal closed and removed from active search. Recorded as ${word} against the deal on this property.` });
+    notes.push({ author: p.agent ? p.agent.name : "Listing team", role: "Agent", time: p.listingDate + " · 09:15", kind: "note", text: "Final paperwork submitted to operations. Commission recorded against this listing." });
+    return notes;
+  }
+  if (p.availability === "reserved") {
+    notes.push({ author: "Rêbîn Kawa", role: "Super Admin", time: p.updated + " · 10:40", kind: "review", text: "Terms agreed — the listing is held and off the website until the deal completes or falls through." });
+    return notes;
+  }
   if (p.status === "Pending") {
     notes.push({ author: "Rêbîn Kawa", role: "Super Admin", time: "Jun 14, 2026 · 09:42", kind: "review", text: "Ownership documents verified. Awaiting final pricing confirmation from the owner before publishing." });
     notes.push({ author: "Lana Aziz", role: "Agent", time: "Jun 13, 2026 · 16:08", kind: "note", text: "Owner requested the listing go live before the weekend. Photography set is complete and approved." });
   } else if (p.status === "Published") {
     notes.push({ author: "Rêbîn Kawa", role: "Super Admin", time: p.updated + " · 11:20", kind: "approval", text: "Listing approved and published. Featured placement granted for the Erbil premium collection." });
     notes.push({ author: p.agent ? p.agent.name : "Listing team", role: "Agent", time: p.listingDate + " · 10:05", kind: "note", text: "All media uploaded and ownership confirmed. Ready for the public site." });
-  } else if (p.status === "Sold" || p.status === "Rented") {
-    notes.push({ author: "Rêbîn Kawa", role: "Super Admin", time: p.updated + " · 14:30", kind: "approval", text: `Deal closed and archived from active search. Marked as ${p.status.toLowerCase()} by the assigned agent.` });
-    notes.push({ author: p.agent ? p.agent.name : "Listing team", role: "Agent", time: p.listingDate + " · 09:15", kind: "note", text: "Final paperwork submitted to operations. Commission recorded against this listing." });
   } else {
     notes.push({ author: p.agent ? p.agent.name : "Listing team", role: "Agent", time: p.updated + " · 12:00", kind: "note", text: "Draft created. Pending media upload and ownership verification before submitting for approval." });
   }
@@ -141,7 +177,7 @@ export interface TimelineEvent {
   titleKey: string;
   descKey: string;
   params?: Record<string, string>;
-  price?: number;
+  price?: Money;
   per?: string;
   time: string;
 }
@@ -152,10 +188,11 @@ function buildTimeline(p: BaseProperty): TimelineEvent[] {
   if (p.agent) t.push({ icon: "user-check", tone: "info", titleKey: "admin.pd.tl.agentAssigned", descKey: "admin.pd.tl.agentAssignedDesc", params: { name: p.agent.name }, time: p.date });
   t.push({ icon: "image", tone: "neutral", titleKey: "admin.pd.tl.media", descKey: "admin.pd.tl.mediaDesc", time: p.date });
   t.push({ icon: "dollar-sign", tone: "gold", titleKey: "admin.pd.tl.price", descKey: "admin.pd.tl.priceDesc", price: p.price, per: p.per || "", time: p.listingDate !== "—" ? p.listingDate : p.date });
-  if (p.published) t.push({ icon: "globe", tone: "success", titleKey: "admin.pd.tl.published", descKey: "admin.pd.tl.publishedDesc", time: p.listingDate });
-  if (p.status === "Pending") t.push({ icon: "clock", tone: "warning", titleKey: "admin.pd.tl.submitted", descKey: "admin.pd.tl.submittedDesc", time: p.updated });
-  if (p.status === "Sold") t.push({ icon: "key", tone: "error", titleKey: "admin.pd.tl.sold", descKey: "admin.pd.tl.soldDesc", time: p.updated });
-  if (p.status === "Rented") t.push({ icon: "key-round", tone: "info", titleKey: "admin.pd.tl.rented", descKey: "admin.pd.tl.rentedDesc", time: p.updated });
+  if (p.listingDate !== "—") t.push({ icon: "globe", tone: "success", titleKey: "admin.pd.tl.published", descKey: "admin.pd.tl.publishedDesc", time: p.listingDate });
+  if (p.publication === "pending") t.push({ icon: "clock", tone: "warning", titleKey: "admin.pd.tl.submitted", descKey: "admin.pd.tl.submittedDesc", time: p.updated });
+  if (p.availability === "reserved") t.push({ icon: "lock", tone: "warning", titleKey: "admin.pd.tl.reserved", descKey: "admin.pd.tl.reservedDesc", time: p.updated });
+  if (p.availability === "sold") t.push({ icon: "key", tone: "error", titleKey: "admin.pd.tl.sold", descKey: "admin.pd.tl.soldDesc", time: p.updated });
+  if (p.availability === "rented") t.push({ icon: "key-round", tone: "info", titleKey: "admin.pd.tl.rented", descKey: "admin.pd.tl.rentedDesc", time: p.updated });
   return t.reverse();
 }
 
@@ -207,7 +244,7 @@ function buildAmenities(p: BaseProperty, seed: number): Amenity[] {
 export interface Specs {
   address: string; coords: string; mapUrl: string; landSize: number | null; garages: number | null;
   yearBuilt: number | null; furnished: string | null; floor: string | null; currency: string;
-  pricePerM2: number | null; orientation: string | null; condition: string | null;
+  pricePerM2: Money | null; orientation: string | null; condition: string | null;
   dateCreated: string; amenities: Amenity[];
 }
 const ORIENTATION_POOL = ["North facing", "South facing", "East facing", "West facing"];
@@ -228,8 +265,12 @@ function buildSpecs(p: BaseProperty): Specs {
     yearBuilt: t === "land" ? null : 2014 + (seed % 11),
     furnished: t === "land" ? null : t === "office" ? "Unfurnished" : ["Furnished", "Semi-furnished", "Unfurnished"][seed % 3],
     floor: isUnit ? "Floor " + (2 + (seed % 14)) : null,
-    currency: "USD · US Dollar",
-    pricePerM2: p.listing === "sale" && p.size ? Math.round(p.price / p.size) : null,
+    /* Read off the price, not assumed. This row used to say "USD · US Dollar"
+       on every seeded listing regardless of what it was actually priced in. */
+    currency: CURRENCY_LABEL[p.price.currency],
+    /* Price per m² is money divided by a plain count, so it stays a Money in the
+       listing's own currency — never a bare number that has lost its unit. */
+    pricePerM2: p.listing === "sale" && p.size ? multiply(p.price, 1 / p.size) : null,
     orientation: ORIENTATION_POOL[seed % 4],
     condition: t === "land" ? null : CONDITION_POOL[seed % 3],
     dateCreated: p.date,
@@ -237,7 +278,7 @@ function buildSpecs(p: BaseProperty): Specs {
   };
 }
 
-const CURRENCY_LABEL: Record<string, string> = { USD: "USD · US Dollar", IQD: "IQD · Iraqi Dinar", EUR: "EUR · Euro" };
+const CURRENCY_LABEL: Record<CurrencyCode, string> = { USD: "USD · US Dollar", IQD: "IQD · Iraqi Dinar" };
 
 /* Start from the deterministic specs and overlay whatever the user actually
    entered in the Add-property wizard, so only unfilled fields stay generated. */
@@ -254,7 +295,8 @@ function buildSpecsWith(p: BaseProperty, d: PropertyDetails): Specs {
     yearBuilt: d.year ? Number(d.year) || base.yearBuilt : base.yearBuilt,
     furnished: d.furnishing || base.furnished,
     floor: typeof d.floors === "number" && d.floors > 0 ? `${d.floors} floor${d.floors > 1 ? "s" : ""}` : base.floor,
-    currency: d.currency ? CURRENCY_LABEL[d.currency] || base.currency : base.currency,
+    /* No currency override here any more: `base.currency` already comes from
+       the price itself, which is the form's own answer. */
     orientation: d.orientation || base.orientation,
     condition: d.condition || base.condition,
     amenities: d.amenities && d.amenities.length ? d.amenities : base.amenities,

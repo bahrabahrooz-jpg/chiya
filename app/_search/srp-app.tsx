@@ -7,7 +7,10 @@ import { Icon } from "@/components/ui/icon";
 import { useLang } from "@/lib/i18n";
 import { useSaveGate, type SavedProperty } from "@/lib/favorites";
 import { usePublicCatalog } from "@/lib/public-catalog";
+import { formatPrice, money, normaliseFor, type CurrencyCode } from "@/lib/money";
+import { rateFor, usePlatformSettings } from "@/lib/platform-settings";
 import * as D from "./data";
+import { rangeLabel } from "./labels";
 import { emptyFilters, type Filters, type RangeVal } from "./types";
 import { SrpFilters } from "./srp-filters";
 import { SrpResults } from "./srp-results";
@@ -20,46 +23,32 @@ const detectCity = (q: string): string | null => {
   return null;
 };
 
-const commasNum = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-/** Display snapshot persisted when a search result is saved. */
-const toSavedProperty = (l: D.SrpListing): SavedProperty => ({
-  id: l.id,
-  image: l.cover,
-  price: "$" + l.price.toLocaleString("en-US"),
-  period: l.deal === "rent" ? "mo" : undefined,
-  title: l.title,
-  address: l.address,
-  beds: l.beds,
-  baths: l.baths,
-  area: l.area,
-  status: l.status,
-  href: `/property/${l.id}`,
-});
-
-function rangeLabel(lo: number | null, hi: number | null, d: string, kind: string) {
-  if (kind === "size") {
-    return (lo != null ? commasNum(lo) : "Any") + " – " + (hi != null ? commasNum(hi) : "Any") + " m²";
-  }
-  const suffix = d === "rent" ? "/mo" : "";
-  return (lo != null ? "$" + commasNum(lo) : "Any") + " – " + (hi != null ? "$" + commasNum(hi) : "Any") + suffix;
-}
-
-function parseRangeParam(raw: string | null, presets: D.Opt[], d: string, kind: string): RangeVal | null {
+/** Parse a `lo-hi` URL range. An exact bucket match is recorded as a preset so
+    the filter panel shows it selected; anything else is a custom range. */
+function parseRangeParam(raw: string | null, buckets: { value: string }[]): RangeVal | null {
   if (!raw) return null;
   const parts = raw.split("-");
   const lo = parts[0] !== "" && parts[0] != null ? Number(parts[0]) : null;
   const hi = parts[1] !== "" && parts[1] != null ? Number(parts[1]) : null;
   if (lo == null && hi == null) return null;
-  const match = presets.find((p) => p.value === raw);
-  if (match) return { lo, hi, label: match.label, preset: match.value };
-  return { lo, hi, label: rangeLabel(lo, hi, d, kind), custom: true };
+  const match = buckets.find((p) => p.value === raw);
+  return match ? { lo, hi, preset: match.value } : { lo, hi, custom: true };
 }
 
-function sortListings(list: D.SrpListing[], sort: string) {
+/**
+ * Sort, with prices normalised to ONE currency first.
+ *
+ * On raw numbers a 4,500,000 IQD flat sorts above an $850,000 villa, which is
+ * simply wrong — it is about a quarter the price. Every comparison goes through
+ * `normaliseFor`, the single place a cross-currency approximation is allowed to
+ * happen, and the result is used ONLY to order the list: each card still renders
+ * its own real price via formatMoney, and the normalised figure never appears.
+ */
+function sortListings(list: D.SrpListing[], sort: string, to: CurrencyCode, rate: (c: CurrencyCode) => number) {
   const arr = [...list];
-  if (sort === "price-asc") return arr.sort((a, b) => a.price - b.price);
-  if (sort === "price-desc") return arr.sort((a, b) => b.price - a.price);
+  const norm = (l: D.SrpListing) => normaliseFor(l.price, to, rate(l.price.currency));
+  if (sort === "price-asc") return arr.sort((a, b) => norm(a) - norm(b));
+  if (sort === "price-desc") return arr.sort((a, b) => norm(b) - norm(a));
   if (sort === "newest") {
     const rank = (l: D.SrpListing) => (l.pstatus === "new" || l.status === "New" ? 0 : 1);
     return arr.sort((a, b) => rank(a) - rank(b));
@@ -70,7 +59,12 @@ function sortListings(list: D.SrpListing[], sort: string) {
 
 export function SrpApp() {
   const params = useSearchParams();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { settings } = usePlatformSettings();
+  const defaultCurrency = settings.general.defaultCurrency;
+  /* Units of `c` per 1 unit of the default currency — the browsing rate, used
+     for sorting and range matching only, never for a figure on screen. */
+  const rate = useMemo(() => (c: CurrencyCode) => rateFor(settings, c), [settings]);
   // Live listings from the admin catalog (reflects featured/status edits without
   // a reload). Falls back to the seed when there's no stored data.
   const { siteProperties } = usePublicCatalog();
@@ -83,8 +77,14 @@ export function SrpApp() {
     const bedsParam = params.get("beds");
     if (type && D.propertyTypes.some((t) => t.value === type)) f.types = [type];
     if (bedsParam && D.beds.some((b) => b.value === bedsParam)) f.beds = bedsParam;
-    f.price = parseRangeParam(params.get("price"), dealVal === "rent" ? D.rentPresets : D.buyPresets, dealVal, "price");
-    f.size = parseRangeParam(params.get("size"), D.sizePresets, dealVal, "size");
+    /* The filter currency rides in the URL like every other filter value, so a
+       shared link reopens the search someone was actually looking at. An
+       unrecognised code falls back to the platform default rather than throwing
+       — a hand-edited URL should not blank the page. */
+    const curParam = params.get("cur");
+    f.priceCurrency = curParam === "USD" || curParam === "IQD" ? curParam : defaultCurrency;
+    f.price = parseRangeParam(params.get("price"), D.presetsFor(dealVal, f.priceCurrency));
+    f.size = parseRangeParam(params.get("size"), D.sizePresets);
     return { deal: dealVal as "buy" | "rent", query: params.get("q") || "", filters: f };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -143,6 +143,11 @@ export function SrpApp() {
     toggleProject: (v: string) => setFilters((f) => ({ ...f, projects: f.projects.includes(v) ? f.projects.filter((x) => x !== v) : [...f.projects, v] })),
     toggleType: (v: string) => setFilters((f) => ({ ...f, types: f.types.includes(v) ? f.types.filter((x) => x !== v) : [...f.types, v] })),
     setPrice: (p: RangeVal | null) => setFilters((f) => ({ ...f, price: p })),
+    /* Switching currency drops any active range. The two ladders are different
+       numbers, so carrying "150000–400000" across to dinars would silently mean
+       a ~$115–305 band and return nothing — which reads as a broken filter
+       rather than as a unit change. */
+    setPriceCurrency: (c: CurrencyCode) => setFilters((f) => (f.priceCurrency === c ? f : { ...f, priceCurrency: c, price: null })),
     setSize: (p: RangeVal | null) => setFilters((f) => ({ ...f, size: p })),
     setBeds: (v: string) => setFilters((f) => ({ ...f, beds: f.beds === v ? "" : v })),
     setBaths: (v: string) => setFilters((f) => ({ ...f, baths: f.baths === v ? "" : v })),
@@ -150,7 +155,26 @@ export function SrpApp() {
     toggleStatus: (v: string) => setFilters((f) => ({ ...f, pstatus: f.pstatus.includes(v) ? f.pstatus.filter((x) => x !== v) : [...f.pstatus, v] })),
   };
 
-  const clearAll = () => setFilters(emptyFilters);
+  /* Clearing filters keeps the currency the member is browsing in — it is how
+     they read prices, not a filter they set. */
+  const clearAll = () => setFilters({ ...emptyFilters, priceCurrency: filters.priceCurrency });
+
+  /** Display snapshot persisted when a search result is saved. The price is
+      frozen as TEXT at save time, in the listing's own currency. */
+  const toSavedProperty = (l: D.SrpListing): SavedProperty => ({
+    id: l.id,
+    image: l.cover,
+    price: formatPrice(lang, l.price),
+    period: l.deal === "rent" ? "mo" : undefined,
+    title: l.title,
+    address: l.address,
+    beds: l.beds,
+    baths: l.baths,
+    area: l.area,
+    status: l.status,
+    href: `/property/${l.id}`,
+  });
+
   const toggleFav = (id: string) => {
     const l = listings.find((x) => x.id === id);
     if (l) saveProperty(toSavedProperty(l));
@@ -179,13 +203,27 @@ export function SrpApp() {
     if (filters.areas.length) list = list.filter((l) => filters.areas.some((a) => l.address.toLowerCase().includes(a.toLowerCase())));
     if (filters.projects.length) list = list.filter((l) => filters.projects.some((p) => l.address.toLowerCase().includes(p.toLowerCase())));
     if (filters.types.length) list = list.filter((l) => filters.types.includes(l.type));
-    if (filters.price) list = list.filter((l) => (filters.price!.lo == null || l.price >= filters.price!.lo) && (filters.price!.hi == null || l.price <= filters.price!.hi));
+    if (filters.price) {
+      /* Both sides are normalised into the FILTER's currency, so a dinar-priced
+         listing is matched against a dollar range at the current rate (and vice
+         versa) rather than being excluded for being in the wrong units. The
+         boundaries are whole units, so they go through money() to compare like
+         with like. A listing near an edge can drift in or out as the rate moves
+         — the note under the filter says so. */
+      const cur = filters.priceCurrency;
+      const lo = filters.price.lo != null ? money(filters.price.lo, cur).amount : null;
+      const hi = filters.price.hi != null ? money(filters.price.hi, cur).amount : null;
+      list = list.filter((l) => {
+        const n = normaliseFor(l.price, cur, rate(l.price.currency));
+        return (lo == null || n >= lo) && (hi == null || n <= hi);
+      });
+    }
     if (filters.size) list = list.filter((l) => l.area != null && (filters.size!.lo == null || l.area >= filters.size!.lo) && (filters.size!.hi == null || l.area <= filters.size!.hi));
     if (filters.beds !== "") list = list.filter((l) => (l.beds || 0) >= Number(filters.beds));
     if (filters.baths !== "") list = list.filter((l) => (l.baths || 0) >= Number(filters.baths));
     if (filters.amenities.length) list = list.filter((l) => filters.amenities.every((a) => (l.amenities || []).includes(a)));
-    return sortListings(list, sort);
-  }, [listings, deal, query, filters, sort]);
+    return sortListings(list, sort, defaultCurrency, rate);
+  }, [listings, deal, query, filters, sort, rate, defaultCurrency]);
 
   // Honest count — the real number of available listings matching the current
   // deal + query + filters (no inflated placeholder totals).
@@ -222,8 +260,10 @@ export function SrpApp() {
   filters.types.forEach((ty) => {
     chips.push({ key: "type-" + ty, label: t("type." + ty), onRemove: () => on.toggleType(ty) });
   });
-  if (filters.price) chips.push({ key: "price", label: filters.price.label, onRemove: () => on.setPrice(null) });
-  if (filters.size) chips.push({ key: "size", label: filters.size.label, onRemove: () => on.setSize(null) });
+  /* Chip labels are generated here, not read off the stored filter, so they
+     follow the active language and the active filter currency. */
+  if (filters.price) chips.push({ key: "price", label: rangeLabel(t, lang, filters.price, "price", filters.priceCurrency, deal), onRemove: () => on.setPrice(null) });
+  if (filters.size) chips.push({ key: "size", label: rangeLabel(t, lang, filters.size, "size", filters.priceCurrency, deal), onRemove: () => on.setSize(null) });
   if (filters.beds !== "") {
     const o = D.beds.find((x) => x.value === filters.beds);
     chips.push({ key: "beds", label: o?.value === "0" ? t("srp.studio") : o ? o.label + " " + t("srp.sec.beds") : "", onRemove: () => on.setBeds("") });

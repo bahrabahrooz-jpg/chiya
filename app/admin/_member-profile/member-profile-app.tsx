@@ -11,7 +11,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
 import { useLang, isRtl } from "@/lib/i18n";
-import { fmtCurrency, fmtDate, fmtNum, fmtStamp, localizeDigits, roleKey, valueKey, popupLeft } from "@/lib/fmt";
+import { fmtDate, fmtNum, fmtStamp, localizeDigits, roleKey, valueKey, popupLeft } from "@/lib/fmt";
+import { formatPrice, type Money } from "@/lib/money";
 import {
   INIT_NOTES,
   MEMBER_STATUS_META,
@@ -390,11 +391,11 @@ function PropCell({ row, mono }: { row: { img: string; title: string; id: string
   );
 }
 
-function PriceCell({ price, per }: { price: number; per?: string }) {
+function PriceCell({ price, per }: { price: Money; per?: string }) {
   const { t, lang } = useLang();
   return (
     <span className="mpf-price">
-      {fmtCurrency(lang, price)}
+      {formatPrice(lang, price)}
       {per && <span className="mpf-price__per">{t("admin.mp.perMo")}</span>}
     </span>
   );
@@ -812,7 +813,7 @@ function Timeline({ items }: { items: TLItem[] }) {
             <p className="pd-tl__desc">
               {t(it.descKey, {
                 ...(it.params || {}),
-                ...(it.price !== undefined ? { price: fmtCurrency(lang, it.price) + (it.per ? t("admin.mp.perMo") : "") } : {}),
+                ...(it.price !== undefined ? { price: formatPrice(lang, it.price) + (it.per ? t("admin.mp.perMo") : "") } : {}),
               })}
             </p>
           </div>

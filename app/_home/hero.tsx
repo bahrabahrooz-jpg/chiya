@@ -217,7 +217,10 @@ export function Hero() {
   return (
     <section className="cxhero">
       <div className="cxhero__media">
-        <div className="cxhero__bg" />
+        {/* CMS-owned (Content › Homepage › Hero), so the photo is bound here
+            rather than in home.css. Everything else about the layer — the slow
+            push animation, the wash, the dark-mode dimming — stays in CSS. */}
+        <div className="cxhero__bg" style={{ backgroundImage: `url("${content.home.heroImage}")` }} />
         <div className="cxhero__grad" />
       </div>
       <div className="cxhero__inner">

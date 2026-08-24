@@ -2,9 +2,9 @@ import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
 
-import type { AgentRecord } from "../_data/catalog";
+import type { AgentRecord, LocationNode } from "../_data/catalog";
 export { AGENTS } from "../_data/catalog";
-export type { AgentRecord };
+export type { AgentRecord, LocationNode };
 
 export const AGENTS_PER_PAGE = 10;
 

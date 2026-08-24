@@ -1,6 +1,7 @@
 import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
+import { ANCHOR_DATE } from "@/lib/dates";
 import { PROPERTIES as CAT_PROPS, MEMBERS as CAT_MEMBERS, AGENTS as CAT_AGENTS, deriveMemberRoles } from "../_data/catalog";
 
 export const VIEWINGS_PER_PAGE = 10;
@@ -62,7 +63,7 @@ const GEN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep
 /* Generated viewings sit on the same fixed hourly slots the booking pickers
    offer, so an existing record always maps back to a selectable slot on edit. */
 const GEN_TIMES = VIEWING_SLOTS.map((s) => fmtTimeLabel(s)!);
-const GEN_TODAY = new Date(2026, 5, 30);
+const GEN_TODAY = ANCHOR_DATE; // the shared seed anchor (Jun 30, 2026)
 function gvDate(offset: number): string {
   const d = new Date(GEN_TODAY);
   d.setDate(d.getDate() + offset);

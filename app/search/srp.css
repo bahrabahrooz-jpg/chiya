@@ -65,13 +65,27 @@
 .srp-locsub { font-family: var(--font-sans); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-tertiary); margin: 0 0 6px 2px; }
 .srp-locempty { font-family: var(--font-sans); font-size: 13.5px; color: var(--text-tertiary); padding: 2px 2px 4px; }
 
+/* Currency picker for the price section. Two compact chips ($ / IQD); it sits
+   above the buckets because it decides which ladder they are. */
+.srp-curpick { display: inline-flex; gap: 4px; padding: 3px; margin-bottom: 10px; background: var(--gray-50); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.srp-curpick__btn { min-width: 46px; padding: 5px 10px; background: none; border: none; cursor: pointer; border-radius: calc(var(--radius-md) - 3px); font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-tertiary); font-variant-numeric: tabular-nums; transition: background-color .14s, color .14s; }
+.srp-curpick__btn:hover { color: var(--text-primary); }
+.srp-curpick__btn.is-on { background: var(--surface-card); color: var(--brand-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+
+/* The one line explaining cross-currency matching. Deliberately quiet. */
+.srp-fxnote { margin: 10px 2px 0; font-family: var(--font-sans); font-size: 11.5px; line-height: 1.5; color: var(--text-tertiary); }
+
 .srp-presets { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
-.srp-radio { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 9px 10px; background: none; border: none; cursor: pointer; border-radius: var(--radius-md); font-family: var(--font-sans); transition: background-color .14s; }
+/* `start`, not `left`: the filter panel mirrors in Arabic and Kurdish. */
+.srp-radio { display: flex; align-items: center; gap: 11px; width: 100%; text-align: start; padding: 9px 10px; background: none; border: none; cursor: pointer; border-radius: var(--radius-md); font-family: var(--font-sans); transition: background-color .14s; }
 .srp-radio:hover { background: var(--gray-50); }
 .srp-radio--on { background: var(--green-50); }
 .srp-radio__dot { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border-strong); transition: border-color .14s, border-width .14s; }
 .srp-radio--on .srp-radio__dot { border-color: var(--brand-primary); border-width: 5.5px; }
-.srp-radio__label { font-size: 14.5px; font-weight: 500; color: var(--text-primary); white-space: nowrap; }
+/* Dinar labels ("200M IQD – 500M IQD") run much longer than the dollar ones
+   this panel was sized for, so the label may no longer assume it fits on one
+   line at any width. It wraps instead of overflowing the sidebar. */
+.srp-radio__label { min-width: 0; font-size: 14.5px; font-weight: 500; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .srp-radio--on .srp-radio__label { font-weight: 600; }
 
 .srp-custom { margin-top: 12px; padding: 14px; background: var(--gray-50); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }

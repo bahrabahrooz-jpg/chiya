@@ -14,7 +14,10 @@ import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
 import { openAuth, useAuth } from "@/lib/auth";
 import { useSaveGate, type SavedProperty } from "@/lib/favorites";
+import { usePublicCatalog } from "@/lib/public-catalog";
 import { useProfile } from "@/lib/profile";
+import { formatPrice, normaliseFor, type CurrencyCode, type Money } from "@/lib/money";
+import { rateFor, usePlatformSettings } from "@/lib/platform-settings";
 import * as D from "./data";
 import type { AgentProfile, ProfileAgent } from "./data";
 
@@ -248,10 +251,13 @@ function SortMenu({ value, onChange }: { value: string; onChange: (v: string) =>
   );
 }
 
-function sortListings(list: D.ProListing[], sort: string) {
+/** Sort an agent's listings. Prices are normalised to one currency first — same
+    rule as the search results: compare converted, display the real figure. */
+function sortListings(list: D.ProListing[], sort: string, to: CurrencyCode, rate: (c: CurrencyCode) => number) {
   const arr = [...list];
-  if (sort === "price-desc") return arr.sort((a, b) => b.price - a.price);
-  if (sort === "price-asc") return arr.sort((a, b) => a.price - b.price);
+  const norm = (l: D.ProListing) => normaliseFor(l.price, to, rate(l.price.currency));
+  if (sort === "price-desc") return arr.sort((a, b) => norm(b) - norm(a));
+  if (sort === "price-asc") return arr.sort((a, b) => norm(a) - norm(b));
   if (sort === "newest") return arr.sort((a, b) => a.since - b.since);
   if (sort === "recommended") return arr.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
   return arr; // "default" → natural order
@@ -259,10 +265,14 @@ function sortListings(list: D.ProListing[], sort: string) {
 
 function ActiveListings({ agent, listings, favorites, onFavorite }: { agent: ProfileAgent; listings: D.ProListing[]; favorites: string[]; onFavorite: (id: string) => void }) {
   const router = useRouter();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { settings } = usePlatformSettings();
   const [sort, setSort] = useState("default");
-  const list = useMemo(() => sortListings(listings, sort), [listings, sort]);
-  const fmt = (l: D.ProListing) => "$" + l.price.toLocaleString("en-US");
+  const dflt = settings.general.defaultCurrency;
+  const rate = useMemo(() => (c: CurrencyCode) => rateFor(settings, c), [settings]);
+  const list = useMemo(() => sortListings(listings, sort, dflt, rate), [listings, sort, dflt, rate]);
+  /* Each card in its own currency — an agent's book mixes the two. */
+  const fmt = (l: D.ProListing) => formatPrice(lang, l.price);
   if (!listings.length) return null;
   return (
     <section className="pdp-sec pro-listings">
@@ -309,8 +319,9 @@ function ActiveListings({ agent, listings, favorites, onFavorite }: { agent: Pro
 }
 
 function RecentlySold({ sold }: { sold: D.Sold[] }) {
-  const { t } = useLang();
-  const fmt = (n: number) => "$" + n.toLocaleString("en-US");
+  const { t, lang } = useLang();
+  /* A sold record shows the price it actually sold at, in its own currency. */
+  const fmt = (m: Money) => formatPrice(lang, m);
   if (!sold.length) return null;
   return (
     <section className="pdp-sec">
@@ -593,7 +604,23 @@ function Reviews({ agent, reviews }: { agent: ProfileAgent; reviews: D.Review[] 
 
 export function ProfileApp({ profile }: { profile: AgentProfile }) {
   const { agent } = profile;
+  const { lang } = useLang();
   const { properties: savedProps, isAgentSaved, saveAgent, saveProperty } = useSaveGate();
+
+  /* The page is server-rendered from the seed catalog, so profile copy an admin
+     wrote in this browser wouldn't otherwise reach it. Read the live catalog and
+     override just the headline / About text — everything else stays seed-based.
+     Hydration-safe: the store returns the seed on the server and on the first
+     client render, so the initial markup matches either way. */
+  const { siteAgents } = usePublicCatalog();
+  const { intro, about } = useMemo(() => {
+    const live = siteAgents.find((a) => a.id === agent.id);
+    if (!live) return { intro: profile.intro, about: profile.about };
+    return {
+      intro: live.headline.trim() || profile.intro,
+      about: D.splitParagraphs(live.bio) ?? profile.about,
+    };
+  }, [siteAgents, agent.id, profile.intro, profile.about]);
 
   const saved = isAgentSaved(agent.id);
   const favorites = useMemo(() => savedProps.map((p) => p.id), [savedProps]);
@@ -630,7 +657,7 @@ export function ProfileApp({ profile }: { profile: AgentProfile }) {
     const snap: SavedProperty = {
       id: l.id,
       image: l.cover,
-      price: "$" + l.price.toLocaleString("en-US"),
+      price: formatPrice(lang, l.price),
       period: l.deal === "rent" ? "mo" : undefined,
       title: l.title,
       address: l.address,
@@ -648,11 +675,11 @@ export function ProfileApp({ profile }: { profile: AgentProfile }) {
       <main className="pro-main">
         <div className="pdp">
           <Crumb agent={agent} />
-          <Hero agent={agent} intro={profile.intro} saved={saved} onSave={onSave} onShare={onShare} onCall={onCall} onWhatsApp={onWhatsApp} onEmail={onEmail} />
+          <Hero agent={agent} intro={intro} saved={saved} onSave={onSave} onShare={onShare} onCall={onCall} onWhatsApp={onWhatsApp} onEmail={onEmail} />
           <TrustMetrics metrics={profile.metrics} />
           <div className="pdp-body pro-body">
             <div className="pdp-content">
-              <About agent={agent} about={profile.about} areas={profile.areas} />
+              <About agent={agent} about={about} areas={profile.areas} />
               <ActiveListings agent={agent} listings={profile.listings} favorites={favorites} onFavorite={onFavorite} />
               <RecentlySold sold={profile.sold} />
               <Reviews agent={agent} reviews={profile.reviews} />

@@ -5,6 +5,8 @@ import type { LayerGroup, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Icon } from "@/components/ui/icon";
 import type { SrpListing } from "./data";
+import { abbreviateMoney } from "@/lib/money";
+import type { Lang } from "@/lib/i18n";
 
 const CITY_GEO: Record<string, { lat: number; lng: number; zoom?: number }> = {
   Erbil: { lat: 36.1911, lng: 43.993 },
@@ -21,15 +23,22 @@ export interface Marker {
   active?: boolean;
 }
 
-/** Short price label for a map pin (e.g. "$1.2M", "$620k", "$2.8k"). */
-export function shortPrice(l: SrpListing): string {
-  if (l.deal === "rent") return "$" + (l.price >= 1000 ? (l.price / 1000).toFixed(l.price % 1000 ? 1 : 0) + "k" : l.price);
-  if (l.price >= 1000000) return "$" + (l.price / 1000000).toFixed(l.price % 1000000 ? 1 : 0) + "M";
-  return "$" + Math.round(l.price / 1000) + "k";
+/**
+ * Short price label for a map pin ("$1.2M", "620M IQD").
+ *
+ * A pin is a few dozen pixels wide, so abbreviating is the only option — but it
+ * abbreviates the listing's OWN price rather than converting it, and the
+ * thresholds now come from `abbreviateMoney` instead of being hardcoded around
+ * dollar magnitudes. The old version divided by 1,000,000 to decide "M", which
+ * on a dinar price labelled a 4.5-million-dinar flat (~$3,400/mo) as "4.5M" —
+ * the same string a $4.5M villa would get.
+ */
+export function shortPrice(lang: Lang, l: SrpListing): string {
+  return abbreviateMoney(lang, l.price);
 }
 
 /** Deterministic golden-angle spread of a city's listings around its centre. */
-export function buildMarkers(results: SrpListing[]): Marker[] {
+export function buildMarkers(lang: Lang, results: SrpListing[]): Marker[] {
   const seen: Record<string, number> = {};
   return results.slice(0, 40).map((l, i) => {
     const base = CITY_GEO[l.city] || CITY_GEO.Erbil;
@@ -39,7 +48,7 @@ export function buildMarkers(results: SrpListing[]): Marker[] {
     return {
       lat: base.lat + r * Math.sin(ang) * 0.72,
       lng: base.lng + r * Math.cos(ang),
-      price: shortPrice(l),
+      price: shortPrice(lang, l),
       address: l.address,
       active: i === 0,
     };

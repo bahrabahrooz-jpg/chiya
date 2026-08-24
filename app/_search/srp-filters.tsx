@@ -6,15 +6,16 @@ import { Checkbox } from "@/components/ui/choice";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useLang } from "@/lib/i18n";
+import { currencyMarker as curMarker, fmtDate } from "@/lib/fmt";
+import { fromIso } from "@/lib/dates";
+import { enabledCurrencies, usePlatformSettings } from "@/lib/platform-settings";
+import type { CurrencyCode } from "@/lib/money";
 import * as D from "./data";
+import { rangeLabel } from "./labels";
 import type { Filters, FilterHandlers, RangeVal } from "./types";
 
 const onlyDigits = (s: string) => (s || "").replace(/[^0-9]/g, "");
 const commas = (s: string) => onlyDigits(s).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-const parseRange = (v: string) => {
-  const [a, b] = v.split("-");
-  return { lo: a ? Number(a) : null, hi: b ? Number(b) : null };
-};
 
 function Section({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
   const [open, setOpen] = useState(true);
@@ -96,50 +97,51 @@ function QuickRow({ options, value, onPick }: { options: D.Opt[]; value: string;
   );
 }
 
+/**
+ * A price or size range picker: preset buckets, then a custom min/max.
+ *
+ * For price, the buckets and every label come from the ACTIVE CURRENCY — the
+ * ladder swaps wholesale when the currency does, and the labels are generated
+ * by `rangeLabel` rather than read from the dictionary. `currency` is also what
+ * decides the marker inside the custom inputs, which used to be a hardcoded
+ * dollar icon regardless of what the member was browsing in.
+ */
 function RangeGroup({
-  presets,
+  buckets,
   value,
   onPick,
   deal,
   kind,
+  currency,
 }: {
-  presets: D.Opt[];
+  buckets: { value: string; lo: number | null; hi: number | null }[];
   value: RangeVal | null;
   onPick: (p: RangeVal | null) => void;
-  deal?: "buy" | "rent";
+  deal: "buy" | "rent";
   kind: "price" | "size";
+  currency: CurrencyCode;
 }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [lo, setLo] = useState(value?.custom && value.lo != null ? String(value.lo) : "");
   const [hi, setHi] = useState(value?.custom && value.hi != null ? String(value.hi) : "");
   const isCustom = !!value?.custom;
-  const presetPrefix = kind === "size" ? "preset.size." : deal === "rent" ? "preset.rent." : "preset.buy.";
-
-  const makeLabel = (l: number | null, h: number | null) => {
-    const any = t("srp.any");
-    if (kind === "size") {
-      const a = l ? commas(String(l)) : any;
-      const b = h ? commas(String(h)) : any;
-      return a + " – " + b + " m²";
-    }
-    const suffix = deal === "rent" ? "/mo" : "";
-    const fmt = (n: number) => "$" + commas(String(n));
-    return (l ? fmt(l) : any) + " – " + (h ? fmt(h) : any) + suffix;
-  };
+  /* Size keeps its translated presets — m² is not a currency and its buckets
+     are the same numbers in every language. */
+  const sizeLabelAt = (idx: number) => t("preset.size." + idx);
 
   const applyCustom = () => {
     const l = lo ? Number(onlyDigits(lo)) : null;
     const h = hi ? Number(onlyDigits(hi)) : null;
     if (l == null && h == null) return;
-    onPick({ lo: l, hi: h, label: makeLabel(l, h), custom: true });
+    onPick({ lo: l, hi: h, custom: true });
   };
 
   return (
     <>
       <div className="srp-presets">
-        {presets.map((p, idx) => {
+        {buckets.map((p, idx) => {
           const sel = value && !value.custom && value.preset === p.value;
-          const label = t(presetPrefix + idx);
+          const label = kind === "size" ? sizeLabelAt(idx) : rangeLabel(t, lang, p, "price", currency, deal);
           return (
             <button
               key={p.value}
@@ -150,8 +152,7 @@ function RangeGroup({
                   onPick(null);
                   return;
                 }
-                const r = parseRange(p.value);
-                onPick({ lo: r.lo, hi: r.hi, label, preset: p.value });
+                onPick({ lo: p.lo, hi: p.hi, preset: p.value });
               }}
             >
               <span className="srp-radio__dot" />
@@ -169,21 +170,19 @@ function RangeGroup({
             size="sm"
             placeholder={t("srp.min")}
             inputMode="numeric"
-            iconLeading={kind === "size" ? undefined : "dollar-sign"}
             value={commas(lo)}
             onChange={(e) => setLo(onlyDigits(e.target.value))}
           />
-          {kind === "size" && <span className="srp-range__unit">m²</span>}
+          <span className="srp-range__unit">{kind === "size" ? "m²" : curMarker(currency)}</span>
           <span className="srp-range__dash">–</span>
           <Input
             size="sm"
             placeholder={t("srp.max")}
             inputMode="numeric"
-            iconLeading={kind === "size" ? undefined : "dollar-sign"}
             value={commas(hi)}
             onChange={(e) => setHi(onlyDigits(e.target.value))}
           />
-          {kind === "size" && <span className="srp-range__unit">m²</span>}
+          <span className="srp-range__unit">{kind === "size" ? "m²" : curMarker(currency)}</span>
         </div>
         <Button hierarchy={isCustom ? "primary" : "secondary"} size="sm" fullWidth onClick={applyCustom}>
           {isCustom ? t("srp.customApplied") : t("srp.applyCustom")}
@@ -204,13 +203,17 @@ export interface SrpFiltersProps {
 }
 
 export function SrpFilters({ deal, f, on, activeCount, onClearAll, listings }: SrpFiltersProps) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { settings } = usePlatformSettings();
   const typeCounts: Record<string, number> = {};
   listings.forEach((l) => {
     if (l.deal === deal) typeCounts[l.type] = (typeCounts[l.type] || 0) + 1;
   });
   const priceLabel = deal === "rent" ? t("srp.sec.monthlyRent") : t("srp.sec.priceRange");
-  const presets = deal === "rent" ? D.rentPresets : D.buyPresets;
+  /* The ladder is chosen by the active filter currency, not converted into it. */
+  const buckets = D.presetsFor(deal, f.priceCurrency);
+  const currencies = enabledCurrencies(settings);
+  const rateDate = fmtDate(lang, fromIso(settings.listings.ratesUpdatedOn), "dmy");
 
   return (
     <div className="srp-filters">
@@ -274,11 +277,32 @@ export function SrpFilters({ deal, f, on, activeCount, onClearAll, listings }: S
       </Section>
 
       <Section title={priceLabel} count={f.price ? 1 : 0}>
-        <RangeGroup presets={presets} value={f.price} onPick={on.setPrice} deal={deal} kind="price" />
+        {/* Currency first: it decides the whole bucket ladder below it, so it
+            reads as the unit for the section rather than as another filter. */}
+        {currencies.length > 1 && (
+          <div className="srp-curpick" role="group" aria-label={t("srp.priceCurrency")}>
+            {currencies.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={"srp-curpick__btn" + (f.priceCurrency === c ? " is-on" : "")}
+                aria-pressed={f.priceCurrency === c}
+                onClick={() => on.setPriceCurrency(c)}
+              >
+                {curMarker(c)}
+              </button>
+            ))}
+          </div>
+        )}
+        <RangeGroup buckets={buckets} value={f.price} onPick={on.setPrice} deal={deal} kind="price" currency={f.priceCurrency} />
+        {/* Said once, quietly: a listing quoted in the other currency is matched
+            at today's rate, so one sitting near an edge can drift in or out as
+            the rate moves. Without this line that reads as a broken filter. */}
+        <p className="srp-fxnote">{t("srp.fxNote", { date: rateDate })}</p>
       </Section>
 
       <Section title={t("srp.sec.size")} count={f.size ? 1 : 0}>
-        <RangeGroup presets={D.sizePresets} value={f.size} onPick={on.setSize} kind="size" />
+        <RangeGroup buckets={D.sizePresets} value={f.size} onPick={on.setSize} deal={deal} kind="size" currency={f.priceCurrency} />
       </Section>
 
       <Section title={t("srp.sec.beds")} count={f.beds !== "" ? 1 : 0}>

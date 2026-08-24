@@ -1,7 +1,7 @@
 import { Badge, type BadgeVariant, type BadgeSize } from "@/components/ui/badge";
 import "./card-status-pill.css";
 
-export type PropertyStatus = "For Sale" | "For Rent" | "Pending" | "Sold" | "New" | (string & {});
+export type PropertyStatus = "For Sale" | "For Rent" | "Pending" | "Sold" | "New" | "Under offer" | (string & {});
 
 /** Listing-status → Badge variant mapping (shared across cards & galleries). */
 export const STATUS_VARIANT: Record<string, BadgeVariant> = {
@@ -10,6 +10,9 @@ export const STATUS_VARIANT: Record<string, BadgeVariant> = {
   Pending: "warning",
   Sold: "error",
   New: "solid",
+  /* Under offer is still on the market — warning, not error. It says "move
+     quickly", which is true, rather than "this is gone", which is not. */
+  "Under offer": "warning",
 };
 
 export interface PropertyStatusBadgeProps {
@@ -34,6 +37,7 @@ const PILL_COLOR: Record<string, string> = {
   "For Rent": "var(--brand-primary)",
   New: "var(--brand-primary)",
   Pending: "var(--warning-600)",
+  "Under offer": "var(--warning-600)",
   Sold: "var(--error-500)",
 };
 

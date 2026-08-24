@@ -10,6 +10,7 @@
 
 import { getSiteProperty, similarProperties, type SiteProperty } from "@/lib/site-properties";
 import { getSiteAgent, portraitUrl } from "@/lib/site-agents";
+import type { Money } from "@/lib/money";
 import { getProperty as getAdminDetail, type DetailProperty } from "@/app/admin/_property-detail/data";
 
 export interface PdpProperty {
@@ -19,7 +20,7 @@ export interface PdpProperty {
   city: string;
   address: string;
   deal: "buy" | "rent";
-  price: number;
+  price: Money;
   per?: string;
   status: string; // "For Sale" | "For Rent"
   featured: boolean;
@@ -53,7 +54,7 @@ export interface Similar {
   id: string;
   title: string;
   address: string;
-  price: number;
+  price: Money;
   status: string;
   featured?: boolean;
   beds: number;

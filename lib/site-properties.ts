@@ -3,9 +3,16 @@
  *
  * The website (home, search, property detail) shows the SAME listings the admin
  * manages (app/admin/_data/catalog), filtered to what the public may see:
- *   - Only Published listings appear (the ones actually available to buy/rent).
- *   - Pending / Draft listings never surface here — they're admin-only.
+ *   - Only published listings appear, and only while nothing has closed on them.
+ *   - Pending / Draft / Unpublished listings never surface here — admin-only.
  * Sold / Rented listings are history and show only on agent profiles, not here.
+ *
+ * RESERVED LISTINGS STAY. A property under offer is still the most useful thing
+ * on the site for someone shopping that street, and hiding it the moment terms
+ * are agreed throws away every enquiry that would have become the back-up buyer
+ * when the deal falls through. It carries an "under offer" treatment instead —
+ * see `underOffer` below. The rule itself lives in one place,
+ * app/admin/_data/property-state.ts.
  *
  * Every figure (locations, category counts, the featured hero) is computed from
  * these live records, so adding/removing a property in the catalog updates every
@@ -14,9 +21,14 @@
  */
 
 import { PROPERTIES, LOCATION_DEF, slugify, type PropertyRecord } from "@/app/admin/_data/catalog";
+import { isPubliclyVisible } from "@/app/admin/_data/property-state";
+import type { Money } from "@/lib/money";
 
-/** The public subset: available (Published) listings only. */
-export const PUBLIC_PROPERTIES: PropertyRecord[] = PROPERTIES.filter((p) => p.status === "Published");
+/** The label a reserved listing shows in place of "For Sale" / "For Rent". */
+export const UNDER_OFFER = "Under offer";
+
+/** The public subset: published listings with nothing closed on them. */
+export const PUBLIC_PROPERTIES: PropertyRecord[] = PROPERTIES.filter(isPubliclyVisible);
 
 export interface SiteProperty {
   id: string; // catalog id, e.g. "CH-3200" (also the /property/[id] route)
@@ -25,9 +37,15 @@ export interface SiteProperty {
   city: string;
   address: string; // "{area}, {city}"
   deal: "buy" | "rent";
-  price: number;
+  /** The listing's own price, in the currency it was listed in. Carried through
+      from PropertyRecord.price unchanged — the public site never converts. */
+  price: Money;
   per?: string; // "/mo" for rentals
-  status: string; // "For Sale" | "For Rent"
+  status: string; // "For Sale" | "For Rent" | "Under offer"
+  /** Terms are agreed with someone else, but the listing is still live. Kept as
+      its own flag as well as folding into `status`, so a surface can show both
+      the deal type and the under-offer state if it has room for two. */
+  underOffer: boolean;
   featured: boolean;
   type: string; // lowercased: villa | apartment | house | office | land
   beds: number;
@@ -69,6 +87,7 @@ export function amenityTags(rec: PropertyRecord): string[] {
 }
 
 export function toSiteProperty(rec: PropertyRecord): SiteProperty {
+  const underOffer = rec.availability === "reserved";
   return {
     id: rec.id,
     title: rec.title,
@@ -78,7 +97,11 @@ export function toSiteProperty(rec: PropertyRecord): SiteProperty {
     deal: rec.listing === "rent" ? "rent" : "buy",
     price: rec.price,
     per: rec.per,
-    status: rec.listing === "rent" ? "For Rent" : "For Sale",
+    /* Under offer replaces the deal type rather than sitting beside it: on a
+       card badge there is room for one word, and "someone is buying this" is
+       the more useful one. `underOffer` carries the fact for anything wider. */
+    status: underOffer ? UNDER_OFFER : rec.listing === "rent" ? "For Rent" : "For Sale",
+    underOffer,
     featured: rec.featured,
     type: rec.type.toLowerCase(),
     beds: rec.beds,
@@ -99,8 +122,8 @@ export function toSiteProperty(rec: PropertyRecord): SiteProperty {
    functions applied to the static catalog, so the seed-based Server-Component
    pages keep working unchanged.
    ------------------------------------------------------------------------- */
-/** The public subset (available / Published listings) from any record set. */
-export const publicRecords = (records: PropertyRecord[]): PropertyRecord[] => records.filter((p) => p.status === "Published");
+/** The public subset from any record set — same rule as PUBLIC_PROPERTIES. */
+export const publicRecords = (records: PropertyRecord[]): PropertyRecord[] => records.filter(isPubliclyVisible);
 /** Public site listings from a live record set. */
 export const deriveSiteProperties = (records: PropertyRecord[]): SiteProperty[] => publicRecords(records).map(toSiteProperty);
 /** Featured available listings from a derived site-property set. */
@@ -137,12 +160,16 @@ export function publicCountByCity(records: PropertyRecord[] = PUBLIC_PROPERTIES)
   return counts;
 }
 
-/** Live count of available listings per property type. Keyed off the raw
-    PropertyRecord.type (e.g. "Apartment"); preserved as-is for seed parity.
+/** Live count of available listings per property type. Keyed lowercase
+    ("apartment", "villa", …) to match SiteProperty.type and the `?type=` search
+    param, so the home category tiles and the results they link to agree.
     Pass a live public-record set to reflect admin edits; defaults to the seed. */
 export function publicCountByType(records: PropertyRecord[] = PUBLIC_PROPERTIES): Record<string, number> {
   const counts: Record<string, number> = {};
-  for (const p of records) counts[p.type] = (counts[p.type] ?? 0) + 1;
+  for (const p of records) {
+    const key = p.type.toLowerCase();
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
   return counts;
 }
 

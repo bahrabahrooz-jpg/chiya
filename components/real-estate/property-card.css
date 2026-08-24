@@ -36,10 +36,20 @@
 }
 .cx-prop__grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(11, 32, 24, .28), transparent 38%); pointer-events: none; }
 .cx-prop__body { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
-.cx-prop__titleln { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.cx-prop__price { flex: none; font-family: var(--font-sans); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: var(--text-accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Title and price share a row. A dollar price is ~8 characters ("$720,000");
+   a dinar one is nearly double ("900,000,000 IQD"). With the price at
+   `flex: none` and the title ellipsising, the long form used to squeeze the
+   title down to a couple of letters. `flex-wrap` lets the price drop onto its
+   own line instead once the pair no longer fits, and the title's flex-basis
+   keeps it readable right up to that point. */
+.cx-prop__titleln { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
+.cx-prop__price { flex: 0 0 auto; font-family: var(--font-sans); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: var(--text-accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cx-prop__price small { font-size: 13px; font-weight: 600; color: var(--text-tertiary); }
-.cx-prop__title { flex: 1; min-width: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 24px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-prop__title { flex: 1 1 55%; min-width: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 24px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Optional "≈ …" second currency. Muted and small on purpose: it must never
+   compete with the real price above it. `start` keeps it on the correct edge
+   in Arabic and Kurdish. */
+.cx-prop__approx { margin-top: -4px; text-align: start; font-family: var(--font-sans); font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .cx-prop__addr { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-tertiary); }
 .cx-prop__addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cx-prop__specs { display: flex; align-items: center; gap: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }

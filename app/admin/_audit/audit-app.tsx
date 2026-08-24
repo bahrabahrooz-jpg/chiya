@@ -12,6 +12,7 @@ import { useAuditLog, resolveAuditParams, verbOf, descKeyOf, AUDIT_TODAY, type A
 /* ---------------- category (= "module" column) presentation ---------------- */
 const CAT_META: Record<AuditCategory, { icon: IconName; labelKey: string }> = {
   review: { icon: "star", labelKey: "admin.nav.reviews" },
+  message: { icon: "mail", labelKey: "admin.nav.messages" },
   property: { icon: "building-2", labelKey: "admin.nav.properties" },
   member: { icon: "users", labelKey: "admin.nav.members" },
   agent: { icon: "badge-check", labelKey: "admin.nav.agents" },

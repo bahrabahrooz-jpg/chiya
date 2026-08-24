@@ -16,7 +16,7 @@ import { deriveSiteAgents, deriveFeaturedAgents, type SiteAgent } from "@/lib/si
  * admin edits (featured toggles, status changes, new listings) without a reload.
  *
  * The admin store (app/admin/_shared/properties-store) persists its records to
- * `chiya:admin-store:v6`; the public site is never inside that React provider,
+ * `chiya:admin-store:v7`; the public site is never inside that React provider,
  * so this reads the same localStorage blob via useSyncExternalStore — the same
  * external-store pattern as lib/favorites.ts. It subscribes to the native
  * `storage` event (cross-tab) AND the admin store's same-tab `STORE_EVENT`.

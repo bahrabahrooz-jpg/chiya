@@ -1,0 +1,87 @@
+  /* ============================================================
+     SHARED BANNER IMAGE PICKER  (bn- namespace)
+     Chrome for <BannerUpload> in app/admin/_shared/banner-upload.tsx —
+     the wide-crop sibling of the circular .aa-photo avatar control.
+
+     The frame is one big button: the photo, the darkening scrim, the
+     caller's overlay, and the "Change photo" pill are all children of
+     it, so anywhere on the image is a valid click target and there is
+     no nested-button problem. The component imports this file itself,
+     so the styles travel with it to any page that adopts it.
+     ============================================================ */
+
+  .bn-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  /* matches .ct-locfield__label so the picker reads as one more field in the
+     stack rather than a foreign widget bolted onto the card */
+  .bn-field__label {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  /* ---------- the preview frame ---------- */
+  .bn-frame {
+    position: relative; display: block; width: 100%; padding: 0; overflow: hidden;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .bn-frame:hover { border-color: var(--brand-primary); }
+  .bn-frame:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  .bn-frame__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+  /* Mirrors the public hero's cream wash so the overlaid headline is judged
+     against roughly the contrast it will really have — without this the
+     preview would look harder to read than the live page. */
+  .bn-frame__scrim {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(60% 58% at 50% 44%, rgba(247,245,241,.66) 0%, rgba(247,245,241,.34) 44%, rgba(247,245,241,0) 78%),
+      linear-gradient(to bottom, rgba(247,245,241,.20) 0%, rgba(247,245,241,0) 34%, rgba(247,245,241,.42) 100%);
+  }
+
+  /* ---------- headline preview drawn on the photo ---------- */
+  .bn-frame__overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 24px 40px; text-align: center;
+  }
+
+  /* ---------- the change-photo pill ---------- */
+  .bn-frame__btn {
+    position: absolute; inset-block-end: 12px; inset-inline-end: 12px;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px;
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+    background: var(--surface-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-control);
+    box-shadow: var(--shadow-sm);
+    transition: background-color .15s, color .15s;
+  }
+  .bn-frame:hover .bn-frame__btn { background: var(--brand-primary); border-color: var(--brand-primary); color: var(--text-on-brand, #fff); }
+
+  /* ---------- hint + reset ---------- */
+  .bn-field__foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .bn-field__hint { font-size: 12.5px; color: var(--text-tertiary); line-height: 1.55; }
+  .bn-field__reset {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    padding: 4px 8px; border: none; background: transparent; cursor: pointer;
+    font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
+    border-radius: var(--radius-control); transition: background-color .15s, color .15s;
+  }
+  .bn-field__reset:hover { background: var(--surface-sunken); color: var(--text-primary); }
+  .bn-field__reset:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  .bn-field__error {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12.5px; font-weight: 500; color: var(--error-600);
+  }
+
+  @media (max-width: 640px) {
+    .bn-frame__overlay { padding: 12px 20px; }
+    .bn-frame__btn { inset-block-end: 8px; inset-inline-end: 8px; padding: 6px 10px; font-size: 12px; }
+    .bn-field__foot { flex-direction: column; align-items: flex-start; gap: 6px; }
+  }

@@ -1,0 +1,1642 @@
+/* =============================================================================
+   Chiya admin — contracts, invoices and payments.
+
+   THE CONTRACT IS THE RECORD OF THE TRANSACTION. There is no separate "deal"
+   sitting behind it. `catalog.ts` says what a property IS and who is linked to
+   it; this file says what was AGREED on it — the parties, the money, the dates
+   — and what was demanded and received against that agreement.
+
+   It replaces the earlier `deals.ts`, where a DealRecord held the transaction
+   and a ContractRecord held a document generated from it. Two records for one
+   agreement meant two places for the price, two places for the parties, and two
+   things to keep in step; the second one was never the authority for anything.
+   Everything a DealRecord carried now lives on ContractRecord.
+
+   Three record types, in dependency order:
+
+     ContractRecord  the agreement — one transaction on one property
+     InvoiceRecord   a demand for money against a contract, IMMUTABLE once issued
+     PaymentRecord   money actually received against an invoice
+
+   Three rules run through all of it:
+
+   1. MONEY IS `Money`, NEVER A NUMBER. Every amount is an integer count of minor
+      units with a currency attached, and every sum, percentage and comparison
+      goes through lib/money. Nothing in this file does arithmetic with `+`.
+
+   2. REFERENCE vs SNAPSHOT. A contract *references* its parties by id, so a
+      renamed member flows through everywhere. An invoice *snapshots* them: it
+      carries `billToId` for the link AND a frozen `billTo` block copied at issue
+      time, so reprinting it in five years shows what it showed on the day.
+
+   3. DERIVED VALUES ARE NEVER STORED. Invoice totals come from the lines.
+      "Overdue" comes from the due date and the payments. Storing either would
+      let a record disagree with itself.
+
+   A note on property state: nothing in this file touches a property. The rules
+   for how a contract moves its property's publication and availability are a
+   real design decision, and they are made in ./property-state.ts — one module,
+   four named transitions, no store calls. This file stays the record layer.
+   ========================================================================== */
+
+import { ANCHOR_ISO, daysBetween, isOverdue } from "@/lib/dates";
+import {
+  add,
+  compareMoney,
+  convert,
+  fromMinor,
+  isNegative,
+  isZero,
+  maxMoney,
+  money,
+  multiply,
+  percentOf,
+  subtract,
+  sumMoney,
+  zeroMoney,
+  type CurrencyCode,
+  type Money,
+} from "@/lib/money";
+import { AGENTS, MEMBERS, PROPERTIES, agentById, memberById, type Publication } from "./catalog";
+
+/* The platform's default currency. DEFAULT_PLATFORM_SETTINGS.general
+   .defaultCurrency in lib/platform-settings is the authority, but that module is
+   "use client" and this one is imported by server-rendered pages, so the value is
+   restated here rather than dragging a client boundary into the data layer. */
+export const PLATFORM_CURRENCY: CurrencyCode = "USD";
+
+/* ----------------------------------------------------------------------------
+   Contracts
+   ------------------------------------------------------------------------- */
+
+export type ContractKind = "sale" | "rent";
+
+/**
+ * Where a contract has got to. Four states, and the transitions between them
+ * are one-way:
+ *
+ *   draft      typed up, nobody has signed. The ONLY editable state.
+ *   signed     every party has signed. In force, and no longer editable.
+ *   completed  handover done (sale) or the term ran out (tenancy).
+ *   cancelled  abandoned. NEVER deleted — paid invoices hang off it.
+ *
+ * Correcting a signed contract is not an edit. It is a cancellation plus a
+ * replacement linked by `replacesContractId` — see `isEditable` below.
+ */
+export type ContractStatus = "draft" | "signed" | "completed" | "cancelled";
+
+/** How often rent falls due on a tenancy. */
+export type RentCycle = "monthly" | "quarterly" | "biannual" | "yearly";
+
+/** Who the tenant hands the rent to. Decides whether the agency raises a rent
+    invoice every cycle (agency) or exactly one commission invoice (owner). */
+export type RentPaidTo = "owner" | "agency";
+
+/** What the agency charges for collecting and managing, when it collects. */
+export interface ManagementFee {
+  type: "percent" | "fixed";
+  /** A percentage of each rent collection, or a flat amount per cycle in whole
+      units of the contract's currency — see `managementFeeAmount`. */
+  value: number;
+}
+
+/** A counterparty with no member account — most buyers and tenants never
+    register, and requiring an account first would push the agency back to
+    recording the transaction on paper. */
+export interface ExternalParty {
+  name: string;
+  phone: string;
+  /** Civil ID / passport number, when the paperwork captured one. */
+  idNumber?: string;
+}
+
+export interface ContractRecord {
+  id: string;
+  kind: ContractKind;
+  status: ContractStatus;
+
+  /** PropertyRecord id in catalog.ts. */
+  propertyId: string;
+  /** The seller (sale) or landlord (rent) — always the property's owner. */
+  ownerId: string;
+  /** The buyer or tenant, when they hold a member account. */
+  buyerId?: string;
+  /** The buyer or tenant when they do not. Never set alongside `buyerId`. */
+  buyerExternal?: ExternalParty;
+  /** AgentRecord id of the agent who wrote the contract. */
+  agentId: string;
+
+  /**
+   * The agreed figure: for a sale the price, for a tenancy the rent PER CYCLE.
+   * NOT the property's asking price — an offer below asking is normal, and the
+   * commission is charged on what was agreed.
+   */
+  price: Money;
+  deposit?: Money;
+  /** Always exactly percentOf(price, commissionRate) — asserted at module load. */
+  commission: Money;
+  /**
+   * Agency commission as a percentage of `price` (2.5 means 2.5%).
+   *
+   * On a SALE this is the familiar rate, and it must match the property's
+   * mandate unless `commissionOverrideReason` says why not.
+   *
+   * On a TENANCY the base is one cycle's rent, so the ordinary "one month's
+   * rent" fee is written as 100 and half a month as 50. That is a different
+   * base from the mandate's rate (which is stated against the whole term), so
+   * the two are deliberately NOT cross-checked — see the validation block.
+   */
+  commissionRate: number;
+  /** Why a sale's rate differs from its mandate. Required whenever it does: a
+      quiet discount is exactly the kind of thing that has to leave a trail. */
+  commissionOverrideReason?: string;
+
+  /** ISO — the day the agent typed it up. Not the day it took effect. */
+  createdOn: string;
+  /** ISO — the day the parties actually signed. The contract is in force from
+      here, and `createdOn` is routinely days or weeks earlier. */
+  signedOn?: string;
+  /** ISO — keys handed over / completion. */
+  handoverOn?: string;
+
+  /* ---- tenancy terms (rent only) ---- */
+  cycle?: RentCycle;
+  termMonths?: number;
+  /** ISO — when the term starts counting. Often LATER than `signedOn`. */
+  startsOn?: string;
+  /** ISO — derived from `startsOn` + `termMonths` (see `deriveEndsOn`). */
+  endsOn?: string;
+  rentPaidTo?: RentPaidTo;
+  managementFee?: ManagementFee;
+
+  /* ---- bookkeeping ---- */
+  /**
+   * The contract this one replaces — a renewal, or a signed contract that was
+   * cancelled and re-papered.
+   *
+   * PRESENT FROM DAY ONE even though nothing writes it yet. A renewal chain
+   * that was never recorded cannot be reconstructed afterwards: once the old
+   * and new contracts both exist with no link between them, no amount of later
+   * work can tell a renewal apart from an unrelated second tenancy.
+   */
+  replacesContractId?: string;
+  /**
+   * The signed paper lives somewhere else — a notary, a solicitor, the owner's
+   * own file. Recorded here so the screen can say the system holds no document,
+   * rather than implying one has gone missing. Also day-one for the same
+   * reason: it is a fact about the day of signing, and unrecoverable later.
+   */
+  externalPaperwork?: boolean;
+
+  cancelledOn?: string;
+  /** Why it fell through. Kept because "cancelled" with no reason is unusable
+      in a report, and the reason is never derivable after the fact. */
+  cancelReason?: string;
+
+  /* ---- currency ---- */
+  /**
+   * Whether the parties agreed to SETTLE in a second currency.
+   *
+   * Off by default, and that default matters: most contracts are struck and
+   * paid in one currency, and an always-on second figure would put a converted
+   * number beside every contractual one — which is exactly how an approximate
+   * figure gets mistaken for a binding one.
+   */
+  dualCurrency: boolean;
+  /** The settlement currency, when `dualCurrency` is on. Never equal to
+      `price.currency` — asserted at module load. */
+  secondaryCurrency?: CurrencyCode;
+  /**
+   * THE frozen exchange rate on this contract. A CONTRACTUAL TERM, not a market
+   * reading — NEVER re-read from settings, and never recalculated.
+   *
+   * Reads as "units of the other currency per 1 unit of `price.currency`". It is
+   * pre-filled from the settings rate when a contract is drawn up, but staff may
+   * type anything: parties routinely agree a round 1,300 when the market says
+   * 1,310, and their number is the one that binds. Once the contract is signed
+   * it is immutable — enforced in _shared/contracts-store, not just in the UI,
+   * because the UI is not the thing that guarantees it.
+   *
+   * Required when either the contract is not in the platform default currency
+   * (so its value can be reported alongside everything else) or `dualCurrency`
+   * is on. Forbidden otherwise, so a stale rate cannot sit on a record that has
+   * no use for one.
+   */
+  agreedRate?: number;
+  /** ISO day the rate was agreed. Present whenever `agreedRate` is. */
+  agreedRateSetOn?: string;
+
+  /**
+   * The property's publication at the moment this contract reserved it.
+   *
+   * Written by onContractDrafted() in ./property-state.ts and read by
+   * onContractCancelled(). Without it, cancelling could only ever guess where to
+   * put the listing back — and guessing "published" would re-advertise a
+   * property the owner had pulled.
+   */
+  previousPublication?: Publication;
+
+  /** Free-text context for the admin. Not shown to any counterparty. */
+  notes?: string;
+}
+
+/* ----------------------------------------------------------------------------
+   The rules, as named functions.
+
+   Every one of these is a decision about how a contract behaves, and each is
+   written once here rather than as an inline condition at a call site. A rule
+   spread across four `if`s in three screens is a rule that will be enforced in
+   two of them by next month.
+   ------------------------------------------------------------------------- */
+
+/**
+ * MAY THIS CONTRACT BE EDITED? Only while it is a draft.
+ *
+ * A signed contract is an agreement between people, not a form. Correcting one
+ * means cancelling it and creating a replacement that points back at it with
+ * `replacesContractId` — which leaves both documents on the record, which is
+ * what the parties (and anyone auditing them later) actually need. Silently
+ * rewriting a signed contract would make the copy in someone's drawer disagree
+ * with the copy on the screen, and nothing would show that it had happened.
+ */
+export function isEditable(c: Pick<ContractRecord, "status">): boolean {
+  return c.status === "draft";
+}
+
+/**
+ * MAY THIS CONTRACT BE DELETED? Never.
+ *
+ * Paid invoices attach to cancelled contracts, and money that was received has
+ * to stay attached to the reason it was received. Cancelling is the only way
+ * out, and it leaves the record in place with a date and a reason on it.
+ */
+export function isDeletable(): boolean {
+  return false;
+}
+
+/**
+ * The day the contract came into force — `signedOn`, never `createdOn`.
+ *
+ * The two are genuinely different dates and routinely weeks apart: an agent
+ * types the contract up when terms are agreed, and the parties sign when they
+ * can both get to the office. Anything measuring "since the contract started"
+ * reads this one.
+ */
+export function activeFrom(c: Pick<ContractRecord, "signedOn">): string | undefined {
+  return c.signedOn;
+}
+
+/**
+ * The day a tenancy's term starts counting — `startsOn`, falling back to the
+ * signing date.
+ *
+ * Rent terms do NOT count from signature. A lease signed on the 12th commonly
+ * starts on the 1st of the following month, and billing the tenant from the
+ * 12th would be wrong by three weeks on every cycle for a year.
+ */
+export function termStart(c: Pick<ContractRecord, "startsOn" | "signedOn">): string | undefined {
+  return c.startsOn ?? c.signedOn;
+}
+
+/** Calendar-month arithmetic for lease terms: the last day covered by a term of
+    `months` months beginning on `startsOn`. A 12-month term from 2026-06-01 ends
+    2027-05-31, not 2027-06-01 — the end date is the last day IN the term. */
+export function deriveEndsOn(startsOn: string, months: number): string {
+  const [y, m, d] = startsOn.split("-").map(Number);
+  const end = new Date(y, m - 1 + months, d);
+  end.setDate(end.getDate() - 1);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return `${end.getFullYear()}-${p2(end.getMonth() + 1)}-${p2(end.getDate())}`;
+}
+
+/** Is this contract in force right now? Signed, and not past its end date. */
+export function isActive(c: ContractRecord, asOf: string = ANCHOR_ISO): boolean {
+  if (c.status !== "signed") return false;
+  if (!c.endsOn) return true;
+  return daysBetween(c.endsOn, asOf) <= 0;
+}
+
+/** Has a tenancy run past its end date? Sales never expire, so they are never
+    true. Derived, not stored — nothing rewrites a record at midnight (see the
+    note on expireLease in _shared/contract-transitions). */
+export function hasExpired(c: ContractRecord, asOf: string = ANCHOR_ISO): boolean {
+  if (c.kind !== "rent" || !c.endsOn) return false;
+  return daysBetween(c.endsOn, asOf) > 0;
+}
+
+/** Days until a contract's term ends — negative once it has. Undefined for
+    anything with no end date, which is every sale. */
+export function daysToExpiry(c: ContractRecord, asOf: string = ANCHOR_ISO): number | undefined {
+  if (!c.endsOn) return undefined;
+  return daysBetween(asOf, c.endsOn);
+}
+
+/** How many rent cycles a term contains — 12 monthly cycles in a year, 4
+    quarterly, 2 biannual, 1 yearly. */
+export const CYCLE_MONTHS: Record<RentCycle, number> = { monthly: 1, quarterly: 3, biannual: 6, yearly: 12 };
+
+export function cycleCount(c: Pick<ContractRecord, "cycle" | "termMonths">): number {
+  if (!c.cycle || !c.termMonths) return 0;
+  return Math.round(c.termMonths / CYCLE_MONTHS[c.cycle]);
+}
+
+/**
+ * The whole value of the contract — the sale price, or every cycle's rent added
+ * up across the term.
+ *
+ * Separate from `price` on purpose. `price` is the contractual figure and the
+ * commission base; this is what the transaction is worth, and it is the only
+ * one of the two on which a sale and a tenancy can be compared.
+ */
+export function contractValue(c: ContractRecord): Money {
+  if (c.kind === "sale") return c.price;
+  const cycles = cycleCount(c);
+  return cycles > 0 ? multiply(c.price, cycles) : c.price;
+}
+
+/** The management fee charged on one rent collection, when the agency collects.
+    Undefined when there is no fee or the owner collects the rent themselves. */
+export function managementFeeAmount(c: ContractRecord): Money | undefined {
+  if (!c.managementFee || c.rentPaidTo !== "agency") return undefined;
+  return c.managementFee.type === "percent" ? percentOf(c.price, c.managementFee.value) : money(c.managementFee.value, c.price.currency);
+}
+
+/**
+ * The figure(s) a contract, invoice or receipt should display.
+ *
+ * ⚠ THE ONLY sanctioned way to show a second currency on a financial document.
+ * It reads `agreedRate` off the contract and NOTHING off settings, so a document
+ * renders identically today, next year, and after somebody edits the browsing
+ * rate in the admin. `formatApprox` is forbidden on these surfaces precisely
+ * because it does the opposite.
+ *
+ * Returns `secondary: undefined` when the contract settles in one currency,
+ * which is the default and the common case — callers render one figure and stop.
+ *
+ * Note there is no `asOf` and no "≈": this is not an approximation. It is the
+ * amount the parties agreed to settle, computed at the rate they agreed to
+ * settle it at, and it is as binding as the primary figure beside it.
+ */
+export function dualFigures(c: ContractRecord, m: Money): { primary: Money; secondary?: Money } {
+  if (!c.dualCurrency || !c.secondaryCurrency || !c.agreedRate) return { primary: m };
+  return { primary: m, secondary: convert(m, c.secondaryCurrency, c.agreedRate) };
+}
+
+/* ----------------------------------------------------------------------------
+   Invoices
+
+   An issued invoice is immutable. "Draft" is the only editable state; once it is
+   issued it is corrected with a credit note, never edited and never deleted.
+   That is why `billTo` is a frozen copy rather than a lookup, why the totals come
+   from the lines rather than being stored, and why voiding leaves the record in
+   place with a reason attached.
+   ------------------------------------------------------------------------- */
+
+/** The party an invoice was addressed to, frozen at issue time. */
+export interface BillTo {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  /** Present for company counterparties; individuals have none. */
+  taxId?: string;
+}
+
+export interface InvoiceLine {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: Money;
+  /** Percentage, per line — a fee and a rent charge can be taxed differently. */
+  taxRate: number;
+}
+
+/** What kind of demand this is. Drives the label and the icon; the money is the
+    money either way. */
+export type InvoiceCategory = "commission" | "rent" | "deposit" | "fee";
+
+/**
+ * The authored state of an invoice — what someone did to it, as opposed to what
+ * the payments and the calendar say about it. `invoiceStatus()` derives the
+ * settlement state on top of this.
+ */
+export type InvoiceLifecycle = "draft" | "issued" | "void";
+
+/**
+ * Everything an invoice can READ AS on a screen, once the due date and the
+ * payments are taken into account. Five states, and every one of them is
+ * derived — see `invoiceStatus`.
+ */
+export type InvoiceStatus = "not_due" | "due" | "paid" | "overdue" | "void";
+
+export interface InvoiceRecord {
+  id: string;
+  /**
+   * The human invoice number. Empty string while it is a draft — numbering
+   * happens at issue, because a number handed to a draft that is later discarded
+   * leaves a hole in the sequence. See nextInvoiceNumber().
+   */
+  number: string;
+  contractId: string;
+  category: InvoiceCategory;
+  status: InvoiceLifecycle;
+  /** ISO. Absent while a draft. */
+  issuedOn?: string;
+  /** ISO. Overdue is measured against this and never stored. */
+  dueOn: string;
+
+  /** Live reference to the party billed, when they are on the platform. */
+  billToId?: string;
+  /** Frozen snapshot of that party as they were at issue time (rule 2). */
+  billTo: BillTo;
+
+  lines: InvoiceLine[];
+
+  /* ---- void / credit note ---- */
+  voidedOn?: string;
+  voidReason?: string;
+  /** On a voided invoice: the credit note that reverses it. */
+  creditNoteId?: string;
+  /** On a credit note: the invoice it reverses. The back-pointer is stored too so
+      either document can be opened from the other without scanning the set. */
+  creditNoteFor?: string;
+}
+
+/* ----------------------------------------------------------------------------
+   Payments
+   ------------------------------------------------------------------------- */
+
+export type PaymentMethod = "bank_transfer" | "cash" | "card" | "cheque";
+
+export interface PaymentRecord {
+  id: string;
+  invoiceId: string;
+
+  /**
+   * WHAT ACTUALLY ARRIVED — the money as the payer handed it over.
+   *
+   * A tenant settling a dollar invoice with a bag of cash dinars is ordinary
+   * here, and recording that as a dollar payment throws away the only record of
+   * what was really received. The receipt has to be able to say "3,406,000 IQD",
+   * because that is what the tenant paid and what they will remember paying.
+   */
+  receivedAmount: Money;
+  /** Convenience mirror of `receivedAmount.currency`, so a caller can branch on
+      the currency without unpacking the amount. Asserted equal at module load. */
+  receivedCurrency: CurrencyCode;
+  /**
+   * The rate used to turn `receivedAmount` into `amount`. Present ONLY when the
+   * two currencies differ.
+   *
+   * Recorded per payment rather than read from the contract: a cash payment is
+   * converted at the rate on the day it is taken, which is not necessarily the
+   * rate the contract was signed at. Storing it is what makes the credit
+   * reproducible — without it, "why was 3,406,000 IQD only worth $2,600?" has no
+   * answer.
+   */
+  rateApplied?: number;
+
+  /**
+   * THE CREDIT against the invoice, in the INVOICE's currency.
+   *
+   * Derived from `receivedAmount` at `rateApplied`, but stored, because it is
+   * what the invoice's balance is actually reduced by — re-deriving it later at
+   * a different rate would silently change what an invoice has been paid.
+   * Equals `receivedAmount` when no conversion happened.
+   */
+  amount: Money;
+
+  receivedOn: string; // ISO
+  method: PaymentMethod;
+  /** Bank reference, cheque number, terminal receipt — whatever proves it. */
+  reference: string;
+  /** Staff id from Settings → Team (lib/platform-settings TeamSettings.staff). */
+  recordedBy: string;
+}
+
+/* ----------------------------------------------------------------------------
+   Derivations — nothing below is ever stored on a record
+   ------------------------------------------------------------------------- */
+
+/** The currency an invoice is denominated in (taken from its first line). */
+export function invoiceCurrency(invoice: InvoiceRecord): CurrencyCode {
+  return invoice.lines[0]?.unitPrice.currency ?? PLATFORM_CURRENCY;
+}
+
+/** One line's pre-tax amount: unit price × quantity. */
+export function lineAmount(line: InvoiceLine): Money {
+  return multiply(line.unitPrice, line.quantity);
+}
+
+export interface InvoiceTotals {
+  subtotal: Money;
+  tax: Money;
+  total: Money;
+}
+
+/**
+ * Totals, always recomputed from the lines. Tax is worked out per line and then
+ * summed, so lines at different rates come out right; summing first and taxing
+ * once would not.
+ */
+export function invoiceTotals(invoice: InvoiceRecord): InvoiceTotals {
+  const cur = invoiceCurrency(invoice);
+  const subtotal = sumMoney(invoice.lines.map(lineAmount), cur);
+  const tax = sumMoney(
+    invoice.lines.map((l) => percentOf(lineAmount(l), l.taxRate)),
+    cur,
+  );
+  return { subtotal, tax, total: add(subtotal, tax) };
+}
+
+/** Everything received against one invoice. */
+export function paidTotal(invoice: InvoiceRecord, payments: PaymentRecord[]): Money {
+  const cur = invoiceCurrency(invoice);
+  return sumMoney(
+    payments.filter((p) => p.invoiceId === invoice.id).map((p) => p.amount),
+    cur,
+  );
+}
+
+/** What is still owed, floored at zero so an overpayment reads as settled rather
+    than as a negative debt. */
+export function outstanding(invoice: InvoiceRecord, payments: PaymentRecord[]): Money {
+  const cur = invoiceCurrency(invoice);
+  return maxMoney(subtract(invoiceTotals(invoice).total, paidTotal(invoice, payments)), zeroMoney(cur));
+}
+
+/**
+ * The status an invoice actually reads as, right now.
+ *
+ * OVERDUE IS NEVER STORED — it is a function of the due date and the day you
+ * ask, so a stored copy would be wrong by the next morning. Precedence, from
+ * the top: void is an authored state and wins outright; a settled balance is
+ * paid; anything still owing past its due date is overdue; on its due date it
+ * is due; before that it is not yet due.
+ *
+ * A DRAFT reads as `not_due` — nothing has been demanded of anybody yet, so
+ * there is no date to be late against. That is also what keeps the badge set on
+ * screen to exactly five states.
+ *
+ * A credit note (negative total) settles at or below zero and so reads as paid —
+ * correct: there is nothing to collect on it.
+ */
+export function invoiceStatus(invoice: InvoiceRecord, payments: PaymentRecord[], asOf: string = ANCHOR_ISO): InvoiceStatus {
+  if (invoice.status === "void") return "void";
+  if (invoice.status === "draft") return "not_due";
+  const owed = outstanding(invoice, payments);
+  if (isZero(owed)) return "paid";
+  if (isOverdue(invoice.dueOn, asOf)) return "overdue";
+  return daysBetween(invoice.dueOn, asOf) >= 0 ? "due" : "not_due";
+}
+
+/** Days past due, 0 when not yet overdue. What "12 days overdue" reads off. */
+export function daysOverdue(invoice: InvoiceRecord, payments: PaymentRecord[], asOf: string = ANCHOR_ISO): number {
+  if (invoiceStatus(invoice, payments, asOf) !== "overdue") return 0;
+  return Math.max(0, daysBetween(invoice.dueOn, asOf));
+}
+
+/**
+ * Build the credit note that reverses an issued invoice.
+ *
+ * Lives here rather than in the store because it is a rule about the documents,
+ * not about state: a credit note must MIRROR what it reverses — the same lines
+ * with the sign flipped, the same tax rates, and the same frozen `billTo`, so
+ * the pair nets to exactly zero. A hand-built one that differs anywhere is how a
+ * ledger quietly stops balancing.
+ *
+ * Only the void markers are dropped: the credit note is a live document in its
+ * own right, and it carries `creditNoteFor` back to the invoice it cancels.
+ */
+export function buildCreditNote(original: InvoiceRecord, opts: { id: string; number: string; on: string }): InvoiceRecord {
+  return {
+    ...original,
+    id: opts.id,
+    number: opts.number,
+    status: "issued",
+    issuedOn: opts.on,
+    // Nothing is owed on a reversal, so it is due the day it is raised.
+    dueOn: opts.on,
+    lines: original.lines.map((l) => ({ ...l, unitPrice: { ...l.unitPrice, amount: -l.unitPrice.amount } })),
+    voidedOn: undefined,
+    voidReason: undefined,
+    creditNoteId: undefined,
+    creditNoteFor: original.id,
+  };
+}
+
+/* ------------------------------- numbering --------------------------------- */
+
+/**
+ * The next invoice number, and the ONLY place numbering lives.
+ *
+ * ⚠ NOT PRODUCTION-SAFE. The counter is kept in this browser's localStorage, so
+ * two people issuing an invoice at the same time on two machines will both be
+ * handed the same number and neither will know. Real invoice numbering has to be
+ * allocated by a single authority — a database sequence — and that cannot exist
+ * until there is a backend. Everything else in the finance model is designed so
+ * that swapping this one function out is the whole change.
+ *
+ * One continuous sequence, no per-year reset: resetting a sequence safely needs
+ * the same single authority, so inventing the ceremony here would only make the
+ * gap harder to see.
+ */
+const INVOICE_SEQ_KEY = "chiya:invoice-seq:v1";
+const INVOICE_PREFIX = "INV-";
+
+/** Highest number in the seed — the floor a live number must clear. */
+function seedSeqCeiling(): number {
+  let max = 0;
+  for (const inv of INVOICES) {
+    const n = Number(inv.number.replace(INVOICE_PREFIX, ""));
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return max;
+}
+
+export function nextInvoiceNumber(): string {
+  const floor = seedSeqCeiling();
+  let next = floor + 1;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = Number(window.localStorage.getItem(INVOICE_SEQ_KEY));
+      if (Number.isFinite(stored) && stored >= next) next = stored + 1;
+      window.localStorage.setItem(INVOICE_SEQ_KEY, String(next));
+    } catch {}
+  }
+  return INVOICE_PREFIX + next;
+}
+
+/* ----------------------------------------------------------------------------
+   Seed — 12 contracts, one per scenario.
+
+   Written the same way catalog.ts writes its seed: every property, member and
+   agent id below already exists there, and a validation block at the end of this
+   file throws at module load if any of it fails to reconcile. A seed that does
+   not add up is worse than no seed — it teaches the screens built on top of it
+   the wrong arithmetic.
+
+   Coverage, one record each:
+     CT-0201  signed sale — commission (plus tax) invoiced and PAID
+     CT-0202  DRAFT sale in dinars — unsigned, nothing invoiced, property held
+     CT-0203  CANCELLED sale whose deposit invoice was already PAID
+     CT-0204  tenancy, rent paid to the OWNER — exactly one commission invoice
+     CT-0205  tenancy in dinars, rent collected by the AGENCY with a management
+              fee — 12 monthly invoices + 1 commission: one paid, one overdue,
+              the rest not yet due
+     CT-0206  RENEWAL — replaces CT-0207
+     CT-0207  the tenancy CT-0206 renewed, run to completion
+     CT-0208  completed sale held on EXTERNAL PAPERWORK — commission overdue
+     CT-0209  completed sale in dinars, commission split into two instalments
+     CT-0210  tenancy to an OFF-PLATFORM tenant (buyerExternal, no member id)
+     CT-0211  completed sale, settled long ago
+     CT-0212  DRAFT tenancy, agency-collected, with a management fee
+
+   Two things the seed deliberately does NOT do:
+
+   1. It does not rewrite catalog.ts. A DRAFT contract reserves its property
+      (see ./property-state.ts), but the catalog's own seed predates contracts
+      and still lists CH-3198 and CH-3191 as available. The reservation is
+      applied by the transition at runtime, not baked in here, so the two only
+      agree once someone drafts a contract through the UI. Signed and completed
+      contracts ARE cross-checked against the property's availability below.
+
+   2. It seeds no credit note. `buildCreditNote` exists and the store uses it,
+      but the one voided invoice here (CT-0203's commission) was withdrawn when
+      the contract was cancelled, before anyone had paid a fils against it —
+      there is nothing to reverse.
+   ------------------------------------------------------------------------- */
+
+const usd = (major: number): Money => money(major, "USD");
+const iqd = (major: number): Money => money(major, "IQD");
+
+/**
+ * The rate the dinar contracts below were struck at, as `agreedRate` states it:
+ * units of the OTHER currency per 1 unit of the contract's own. A dinar contract
+ * reported in dollars therefore carries the reciprocal of the familiar 1,310,
+ * not 1,310 itself.
+ */
+const USD_PER_IQD = 1 / 1310;
+
+/* Commission is stated as a rate and computed, never typed twice. */
+function withCommission(price: Money, rate: number): { price: Money; commissionRate: number; commission: Money } {
+  return { price, commissionRate: rate, commission: percentOf(price, rate) };
+}
+
+/* A tenancy's end date is derived, never typed — see deriveEndsOn. */
+function term(startsOn: string, months: number): { startsOn: string; termMonths: number; endsOn: string } {
+  return { startsOn, termMonths: months, endsOn: deriveEndsOn(startsOn, months) };
+}
+
+export const CONTRACTS: ContractRecord[] = [
+  {
+    id: "CT-0201",
+    kind: "sale",
+    status: "signed",
+    propertyId: "CH-3187",
+    ownerId: "M-5013",
+    buyerId: "M-5006",
+    agentId: "A-2107",
+    ...withCommission(usd(720_000), 2.5),
+    /* Typed up in April, signed in June, keys handed over at the end of the
+       month. Three different dates, and none of them is derivable from another. */
+    createdOn: "2026-04-20",
+    signedOn: "2026-06-12",
+    handoverOn: "2026-06-30",
+    dualCurrency: false,
+  },
+  {
+    /* Listed at 900,000,000 IQD; agreed 20,000,000 under. Nothing has been
+       signed and nothing has been invoiced — a draft demands no money. */
+    id: "CT-0202",
+    kind: "sale",
+    status: "draft",
+    propertyId: "CH-3198",
+    ownerId: "M-5006",
+    buyerId: "M-5010",
+    agentId: "A-2107",
+    ...withCommission(iqd(880_000_000), 2.5),
+    createdOn: "2026-06-22",
+    dualCurrency: false,
+    agreedRate: USD_PER_IQD,
+    agreedRateSetOn: "2026-06-22",
+    notes: "Buyer's bank confirmation still outstanding; not sent for signature yet.",
+  },
+  {
+    /* THE CASE THAT PROVES CANCELLED RECORDS SURVIVE. The buyer paid a $5,000
+       deposit three weeks before the contract fell through. That payment is
+       real money that arrived, and it stays attached to the contract that
+       explains why — which is exactly why cancelling never deletes. */
+    id: "CT-0203",
+    kind: "sale",
+    status: "cancelled",
+    propertyId: "CH-3195",
+    ownerId: "M-5012",
+    buyerId: "M-5001",
+    agentId: "A-2107",
+    ...withCommission(usd(320_000), 2.5),
+    deposit: usd(5_000),
+    createdOn: "2026-05-18",
+    cancelledOn: "2026-06-12",
+    cancelReason: "Seller's account was suspended pending an ownership check; the sale could not proceed.",
+    previousPublication: "published",
+    dualCurrency: false,
+  },
+  {
+    /* The tenant pays the landlord directly, so the agency raises ONE invoice
+       on the whole tenancy — its own fee — and never touches the rent. */
+    id: "CT-0204",
+    kind: "rent",
+    status: "signed",
+    propertyId: "CH-3182",
+    ownerId: "M-5003",
+    buyerId: "M-5009",
+    agentId: "A-2105",
+    ...withCommission(usd(2_600), 100), // one month's rent, the standard fee
+    deposit: usd(2_600),
+    createdOn: "2025-08-10",
+    signedOn: "2025-08-18",
+    cycle: "monthly",
+    ...term("2025-08-20", 12),
+    rentPaidTo: "owner",
+    dualCurrency: false,
+    notes: "Term runs out in under two months — the owner has been asked whether to renew.",
+  },
+  {
+    /* The agency collects. That is what turns one fee into a thirteen-invoice
+       schedule: a rent demand every cycle for the whole term, plus the agency's
+       own commission, and an 8% management fee out of each collection. */
+    id: "CT-0205",
+    kind: "rent",
+    status: "signed",
+    propertyId: "CH-3181",
+    ownerId: "M-5007",
+    buyerId: "M-5003",
+    agentId: "A-2106",
+    ...withCommission(iqd(4_500_000), 100),
+    deposit: iqd(9_000_000), // two months, as a company let usually is
+    createdOn: "2026-05-20",
+    signedOn: "2026-05-28",
+    cycle: "monthly",
+    /* Signed on the 28th, term starts on the 1st — the gap is ordinary, and it
+       is why rent counts from `startsOn` and not from the signature. */
+    ...term("2026-06-01", 12),
+    rentPaidTo: "agency",
+    managementFee: { type: "percent", value: 8 },
+    dualCurrency: false,
+    agreedRate: USD_PER_IQD,
+    agreedRateSetOn: "2026-05-28",
+  },
+  {
+    /* A RENEWAL. Points back at the tenancy it follows, which is the only thing
+       that makes it a renewal rather than a second, unrelated let. The rent
+       went up $50 and the deposit rolled over, so none is taken again. */
+    id: "CT-0206",
+    kind: "rent",
+    status: "signed",
+    propertyId: "CH-3180",
+    ownerId: "M-5010",
+    buyerId: "M-5002",
+    agentId: "A-2104",
+    ...withCommission(usd(900), 50), // half a month — the renewal rate
+    createdOn: "2026-06-08",
+    signedOn: "2026-06-15",
+    cycle: "monthly",
+    ...term("2026-06-20", 12),
+    rentPaidTo: "owner",
+    replacesContractId: "CT-0207",
+    dualCurrency: false,
+    notes: "Deposit carried over from CT-0207 — not re-taken.",
+  },
+  {
+    id: "CT-0207",
+    kind: "rent",
+    status: "completed",
+    propertyId: "CH-3180",
+    ownerId: "M-5010",
+    buyerId: "M-5002",
+    agentId: "A-2104",
+    ...withCommission(usd(850), 100),
+    deposit: usd(850),
+    createdOn: "2025-06-12",
+    signedOn: "2025-06-19",
+    cycle: "monthly",
+    ...term("2025-06-20", 12),
+    rentPaidTo: "owner",
+    dualCurrency: false,
+  },
+  {
+    /* The signed paper is with the notary who handled the title transfer. The
+       system holds the terms and the money, and says plainly that it holds no
+       document — which is a different thing from a document being missing. */
+    id: "CT-0208",
+    kind: "sale",
+    status: "completed",
+    propertyId: "CH-3185",
+    ownerId: "M-5007",
+    buyerId: "M-5002",
+    agentId: "A-2107",
+    ...withCommission(usd(540_000), 2.5),
+    createdOn: "2026-01-15",
+    signedOn: "2026-05-20",
+    handoverOn: "2026-06-12",
+    externalPaperwork: true,
+    dualCurrency: false,
+  },
+  {
+    /* Listed at 255,000,000 IQD, agreed at 250,000,000. The mandate on this
+       listing is 3%, not the standard 2.5%, so the contract states 3% too. */
+    id: "CT-0209",
+    kind: "sale",
+    status: "completed",
+    propertyId: "CH-3186",
+    ownerId: "M-5004",
+    buyerId: "M-5001",
+    agentId: "A-2105",
+    ...withCommission(iqd(250_000_000), 3),
+    createdOn: "2026-03-02",
+    signedOn: "2026-05-20",
+    handoverOn: "2026-06-26",
+    dualCurrency: false,
+    agreedRate: USD_PER_IQD,
+    agreedRateSetOn: "2026-05-20",
+    notes: "Commission split into two equal instalments at the seller's request.",
+  },
+  {
+    /* The tenant never registered, so `buyerId` is absent and `buyerExternal`
+       is the only record of who they are anywhere in the system. */
+    id: "CT-0210",
+    kind: "rent",
+    status: "signed",
+    propertyId: "CH-3183",
+    ownerId: "M-5011",
+    buyerExternal: { name: "Renas Faiq", phone: "+964 750 902 4417", idNumber: "00219884471" },
+    agentId: "A-2107",
+    ...withCommission(usd(1_600), 100),
+    deposit: usd(1_600),
+    createdOn: "2026-06-10",
+    signedOn: "2026-06-26",
+    cycle: "monthly",
+    ...term("2026-06-30", 12),
+    rentPaidTo: "owner",
+    dualCurrency: false,
+  },
+  {
+    id: "CT-0211",
+    kind: "sale",
+    status: "completed",
+    propertyId: "CH-3184",
+    ownerId: "M-5002",
+    buyerId: "M-5005",
+    agentId: "A-2104",
+    ...withCommission(usd(260_000), 2.5),
+    createdOn: "2025-11-20",
+    signedOn: "2026-01-28",
+    handoverOn: "2026-02-10",
+    dualCurrency: false,
+  },
+  {
+    id: "CT-0212",
+    kind: "rent",
+    status: "draft",
+    propertyId: "CH-3191",
+    ownerId: "M-5010",
+    buyerId: "M-5008",
+    agentId: "A-2104",
+    ...withCommission(usd(900), 100),
+    deposit: usd(900),
+    createdOn: "2026-06-26",
+    cycle: "monthly",
+    ...term("2026-07-15", 12),
+    rentPaidTo: "agency",
+    managementFee: { type: "percent", value: 8 },
+    dualCurrency: false,
+    notes: "Tenant has asked for a mid-July start; awaiting the owner's signature.",
+  },
+];
+
+/* -------------------------------- invoices ---------------------------------
+   Numbered in one continuous sequence, in the order they were issued. The billTo
+   blocks are written out in full rather than looked up: that is the point of a
+   snapshot — editing a member later must not rewrite an issued document.
+   ------------------------------------------------------------------------- */
+
+/* Bill-to snapshots, as the parties were on the day each invoice went out. */
+const BT = {
+  shilan: { name: "Shilan Aziz", phone: "+964 770 331 5124", email: "shilan.aziz@gmail.com", address: "Villa 21, Italian Village, Erbil" },
+  chiman: { name: "Chiman Rasul", phone: "+964 751 267 9145", email: "chiman.rasul@gmail.com", address: "House 44, English Village, Erbil" },
+  avan: { name: "Avan Mustafa", phone: "+964 770 460 1173", email: "avan.mustafa@gmail.com", address: "Apt 12, Bakhtiari, Sulaymaniyah" },
+  awat: { name: "Awat Faraj", phone: "+964 773 350 1287", email: "awat.faraj@gmail.com", address: "Floor 5, Gulan Tower, Gulan Street, Erbil", taxId: "IQ-TX-220914" },
+  zana: { name: "Zana Ibrahim", phone: "+964 750 739 2264", email: "zana.ibrahim@gmail.com", address: "House 8, Malta, Duhok" },
+  hersh: { name: "Hersh Qadir", phone: "+964 751 448 2019", email: "hersh.qadir@gmail.com", address: "Plot 7, Ankawa, Erbil" },
+  nma: { name: "Nma Rashid", phone: "+964 773 902 6641", email: "nma.rashid@gmail.com", address: "Apt 3A, Dream City, Erbil" },
+  kani: { name: "Kani Omar", phone: "+964 773 514 6098", email: "kani.omar@gmail.com", address: "Villa 9, Sarchnar, Sulaymaniyah" },
+  tara: { name: "Tara Botan", phone: "+964 750 605 7812", email: "tara.botan@gmail.com", address: "House 61, Nizarke, Duhok" },
+} satisfies Record<string, BillTo>;
+
+/** Shorthand for the common single-quantity line. */
+function line(id: string, description: string, unitPrice: Money, taxRate = 0, quantity = 1): InvoiceLine {
+  return { id, description, quantity, unitPrice, taxRate };
+}
+
+/**
+ * The rent schedule on an agency-collected tenancy: one invoice per cycle for
+ * the whole term, raised together when the contract is signed.
+ *
+ * Generated rather than typed out twelve times. Typing them would put twelve
+ * chances to fat-finger a due date into the seed, and the whole point of the
+ * schedule is that the dates step evenly.
+ */
+function rentSchedule(opts: {
+  contractId: string;
+  prefix: string;
+  firstNumber: number;
+  issuedOn: string;
+  startsOn: string;
+  cycle: RentCycle;
+  count: number;
+  amount: Money;
+  billToId: string;
+  billTo: BillTo;
+  label: string;
+}): InvoiceRecord[] {
+  const [y, m, d] = opts.startsOn.split("-").map(Number);
+  const step = CYCLE_MONTHS[opts.cycle];
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  /* An invoice description is frozen at issue and never re-rendered through the
+     i18n catalog, so the period it covers is written the way a person reads it
+     rather than as an ISO stub. */
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return Array.from({ length: opts.count }, (_, i) => {
+    const due = new Date(y, m - 1 + i * step, d);
+    const dueOn = `${due.getFullYear()}-${p2(due.getMonth() + 1)}-${p2(due.getDate())}`;
+    const period = `${MON[due.getMonth()]} ${due.getFullYear()}`;
+    return {
+      id: `${opts.prefix}-R${p2(i + 1)}`,
+      number: INVOICE_PREFIX + (opts.firstNumber + i),
+      contractId: opts.contractId,
+      category: "rent" as const,
+      status: "issued" as const,
+      issuedOn: opts.issuedOn,
+      dueOn,
+      billToId: opts.billToId,
+      billTo: opts.billTo,
+      lines: [line("L1", `${opts.label} — ${period}`, opts.amount)],
+    };
+  });
+}
+
+export const INVOICES: InvoiceRecord[] = [
+  {
+    id: "INV-0207-C",
+    number: "INV-1001",
+    contractId: "CT-0207",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2025-06-16",
+    dueOn: "2025-06-20",
+    billToId: "M-5010",
+    billTo: BT.tara,
+    lines: [line("L1", "Agency commission — 12-month tenancy, Nizarke Sunset Terrace", usd(850))],
+  },
+  {
+    id: "INV-0204-C",
+    number: "INV-1002",
+    contractId: "CT-0204",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2025-08-18",
+    dueOn: "2025-08-25",
+    billToId: "M-5003",
+    billTo: BT.kani,
+    lines: [line("L1", "Agency commission — 12-month tenancy, Sarchnar Cypress Villa", usd(2_600))],
+  },
+  {
+    id: "INV-0211-C",
+    number: "INV-1003",
+    contractId: "CT-0211",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2026-02-10",
+    dueOn: "2026-02-24",
+    billToId: "M-5002",
+    billTo: BT.zana,
+    lines: [line("L1", "Agency commission — sale of Malta Summit Grounds", usd(6_500))],
+  },
+  {
+    id: "INV-0203-D",
+    number: "INV-1004",
+    contractId: "CT-0203",
+    category: "deposit",
+    status: "issued",
+    issuedOn: "2026-05-22",
+    dueOn: "2026-06-05",
+    billToId: "M-5001",
+    billTo: BT.avan,
+    lines: [line("L1", "Reservation deposit — Ankawa Olive Grove Land", usd(5_000))],
+  },
+  {
+    /* Withdrawn when the contract was cancelled. Voided, not deleted: it went
+       out, and a document that went out is a record. Nothing had been paid
+       against it, so there is no credit note to reverse. */
+    id: "INV-0203-C",
+    number: "INV-1005",
+    contractId: "CT-0203",
+    category: "commission",
+    status: "void",
+    issuedOn: "2026-05-22",
+    dueOn: "2026-07-05",
+    billToId: "M-5012",
+    billTo: BT.hersh,
+    lines: [line("L1", "Agency commission — sale of Ankawa Olive Grove Land", usd(8_000))],
+    voidedOn: "2026-06-12",
+    voidReason: "Contract cancelled before completion — no commission is due.",
+  },
+  {
+    id: "INV-0209-1",
+    number: "INV-1006",
+    contractId: "CT-0209",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2026-05-26",
+    dueOn: "2026-06-10",
+    billToId: "M-5004",
+    billTo: BT.chiman,
+    lines: [line("L1", "Agency commission — instalment 1 of 2, Bakhtiari Pearl Flat", iqd(3_750_000))],
+  },
+  {
+    id: "INV-0209-2",
+    number: "INV-1007",
+    contractId: "CT-0209",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2026-05-26",
+    dueOn: "2026-08-10",
+    billToId: "M-5004",
+    billTo: BT.chiman,
+    lines: [line("L1", "Agency commission — instalment 2 of 2, Bakhtiari Pearl Flat", iqd(3_750_000))],
+  },
+  {
+    id: "INV-0205-C",
+    number: "INV-1008",
+    contractId: "CT-0205",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2026-05-28",
+    dueOn: "2026-06-10",
+    billToId: "M-5007",
+    billTo: BT.awat,
+    lines: [line("L1", "Agency commission — 12-month tenancy, Ankawa Tower Suite", iqd(4_500_000))],
+  },
+  /* CT-0205's twelve rent demands, INV-1009 … INV-1020. The first is 29 days
+     past due against the seed anchor; the rest have not fallen due yet. */
+  ...rentSchedule({
+    contractId: "CT-0205",
+    prefix: "INV-0205",
+    firstNumber: 1009,
+    issuedOn: "2026-05-28",
+    startsOn: "2026-06-01",
+    cycle: "monthly",
+    count: 12,
+    amount: iqd(4_500_000),
+    billToId: "M-5003",
+    billTo: BT.kani,
+    label: "Rent — Ankawa Tower Suite",
+  }),
+  {
+    /* Past due and unpaid: due 2026-06-18 against the 2026-06-30 anchor, so this
+       reads as 12 days overdue. Nothing stores that — invoiceStatus() derives it. */
+    id: "INV-0208-C",
+    number: "INV-1021",
+    contractId: "CT-0208",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2026-06-12",
+    dueOn: "2026-06-18",
+    billToId: "M-5007",
+    billTo: BT.awat,
+    lines: [line("L1", "Agency commission — sale of Gulan Tower Office", usd(13_500))],
+  },
+  {
+    id: "INV-0206-C",
+    number: "INV-1022",
+    contractId: "CT-0206",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2026-06-15",
+    dueOn: "2026-06-29",
+    billToId: "M-5010",
+    billTo: BT.tara,
+    lines: [line("L1", "Renewal commission — Nizarke Sunset Terrace", usd(450))],
+  },
+  {
+    /* The only seed invoice carrying tax, so the per-line tax path is exercised. */
+    id: "INV-0201-C",
+    number: "INV-1023",
+    contractId: "CT-0201",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2026-06-30",
+    dueOn: "2026-07-14",
+    billToId: "M-5013",
+    billTo: BT.shilan,
+    lines: [
+      line("L1", "Agency commission — sale of Olive Grove Estate", usd(18_000), 5),
+      line("L2", "Title transfer handling", usd(1_200), 5),
+    ],
+  },
+  {
+    /* Due on receipt — the fee falls due the day the keys change hands, which
+       is what puts a "Due" row on this screen rather than a "Not due" one. */
+    id: "INV-0210-C",
+    number: "INV-1024",
+    contractId: "CT-0210",
+    category: "commission",
+    status: "issued",
+    issuedOn: "2026-06-30",
+    dueOn: "2026-06-30",
+    billToId: "M-5011",
+    billTo: BT.nma,
+    lines: [line("L1", "Agency commission — 12-month tenancy, Empire World Loft", usd(1_600))],
+  },
+];
+
+/* -------------------------------- payments --------------------------------- */
+
+/* The ordinary case: paid in the same currency the invoice demands, so what
+   arrived and what was credited are the same amount. */
+const paidAs = (m: Money) => ({ receivedAmount: m, receivedCurrency: m.currency, amount: m });
+
+/* Paid in a DIFFERENT currency from the invoice — cash dinars against a dollar
+   invoice, which is routine here. `received` is what came in, `rate` is what it
+   was converted at on the day, and the credit is derived from the two so the
+   three can never disagree. */
+const paidIn = (received: Money, invoiceCur: CurrencyCode, rate: number) => ({
+  receivedAmount: received,
+  receivedCurrency: received.currency,
+  rateApplied: rate,
+  amount: convert(received, invoiceCur, rate),
+});
+
+export const PAYMENTS: PaymentRecord[] = [
+  { id: "PAY-6001", invoiceId: "INV-0207-C", ...paidAs(usd(850)), receivedOn: "2025-06-19", method: "bank_transfer", reference: "TRF-250619-8841", recordedBy: "u-rawa" },
+  /* Cash dinars against a dollar invoice — the ordinary way a tenancy gets
+     settled here, and the case the receivedAmount fields exist for. 3,406,000
+     IQD at 1,310 to the dollar credits exactly $2,600. The receipt says dinars
+     because dinars are what changed hands. */
+  { id: "PAY-6002", invoiceId: "INV-0204-C", ...paidIn(iqd(3_406_000), "USD", USD_PER_IQD), receivedOn: "2025-08-22", method: "cash", reference: "RCPT-2508-118", recordedBy: "u-sara" },
+  { id: "PAY-6003", invoiceId: "INV-0211-C", ...paidAs(usd(6_500)), receivedOn: "2026-02-20", method: "bank_transfer", reference: "TRF-260220-4415", recordedBy: "u-rawa" },
+  /* Paid three weeks before the contract fell through — and it stays on the
+     record afterwards, attached to a cancelled contract. */
+  { id: "PAY-6004", invoiceId: "INV-0203-D", ...paidAs(usd(5_000)), receivedOn: "2026-05-29", method: "card", reference: "POS-260529-0442", recordedBy: "u-lana" },
+  { id: "PAY-6005", invoiceId: "INV-0205-C", ...paidAs(iqd(4_500_000)), receivedOn: "2026-06-05", method: "bank_transfer", reference: "TRF-260605-7731", recordedBy: "u-rebin" },
+  { id: "PAY-6006", invoiceId: "INV-0209-1", ...paidAs(iqd(3_750_000)), receivedOn: "2026-06-08", method: "bank_transfer", reference: "TRF-260608-5528", recordedBy: "u-sara" },
+  { id: "PAY-6007", invoiceId: "INV-0206-C", ...paidAs(usd(450)), receivedOn: "2026-06-22", method: "bank_transfer", reference: "TRF-260622-6183", recordedBy: "u-rawa" },
+  /* Settled out of the completion funds on the day of handover. */
+  { id: "PAY-6008", invoiceId: "INV-0201-C", ...paidAs(usd(20_160)), receivedOn: "2026-06-30", method: "bank_transfer", reference: "TRF-260630-1120", recordedBy: "u-lana" },
+];
+
+/* ----------------------------------------------------------------------------
+   Seed validation — runs at module load, exactly like catalog.ts's cross-link
+   checks. A seed whose money does not add up would teach every screen built on
+   it the wrong arithmetic, so it fails the dev server instead of rendering.
+   ------------------------------------------------------------------------- */
+{
+  const propertyById = new Map(PROPERTIES.map((p) => [p.id, p]));
+  const contractById = new Map(CONTRACTS.map((c) => [c.id, c]));
+  const invoiceById = new Map(INVOICES.map((i) => [i.id, i]));
+
+  if (contractById.size !== CONTRACTS.length) throw new Error("contracts: duplicate contract id");
+  if (invoiceById.size !== INVOICES.length) throw new Error("contracts: duplicate invoice id");
+  if (new Set(PAYMENTS.map((p) => p.id)).size !== PAYMENTS.length) throw new Error("contracts: duplicate payment id");
+
+  /* Which contracts have been superseded — a replaced contract is history, so
+     the property-state checks below skip it. */
+  const replaced = new Set(CONTRACTS.map((c) => c.replacesContractId).filter(Boolean) as string[]);
+
+  for (const c of CONTRACTS) {
+    const property = propertyById.get(c.propertyId);
+    if (!property) throw new Error(`contracts: ${c.id} references unknown property "${c.propertyId}"`);
+    if (!agentById(c.agentId)) throw new Error(`contracts: ${c.id} references unknown agent "${c.agentId}"`);
+    if (!memberById(c.ownerId)) throw new Error(`contracts: ${c.id} references unknown owner "${c.ownerId}"`);
+    if (c.buyerId && !memberById(c.buyerId)) throw new Error(`contracts: ${c.id} references unknown buyer "${c.buyerId}"`);
+
+    /* The owner side is the property's owner — always. A contract naming a
+       different seller means one of the two records is wrong about who owns it. */
+    if (property.ownerId && property.ownerId !== c.ownerId) {
+      throw new Error(`contracts: ${c.id} names ${c.ownerId} as owner but ${property.id} belongs to ${property.ownerId}`);
+    }
+    if (property.listing !== c.kind) throw new Error(`contracts: ${c.id} is a ${c.kind} contract on a ${property.listing} listing`);
+    /* Currency flows property → contract → invoice and is never re-decided. */
+    if (property.price.currency !== c.price.currency) {
+      throw new Error(`contracts: ${c.id} is priced in ${c.price.currency} on a ${property.price.currency} listing`);
+    }
+
+    /* A counterparty is either a member or an external block, never both — two
+       records of who the same person is will disagree eventually. */
+    if (c.buyerId && c.buyerExternal) throw new Error(`contracts: ${c.id} has both a linked and an external counterparty`);
+
+    /* Dates. The three are independent facts, and each state needs its own. */
+    if (c.status === "draft" && c.signedOn) throw new Error(`contracts: draft ${c.id} carries a signedOn — a draft is by definition unsigned`);
+    if ((c.status === "signed" || c.status === "completed") && !c.signedOn) throw new Error(`contracts: ${c.id} is ${c.status} but has no signedOn`);
+    if (c.status === "cancelled" && !c.cancelledOn) throw new Error(`contracts: ${c.id} is cancelled but has no cancelledOn`);
+    if (c.status === "cancelled" && !c.cancelReason) throw new Error(`contracts: cancelled ${c.id} has no reason — "cancelled" with no reason is unusable in a report`);
+    if (c.signedOn && daysBetween(c.createdOn, c.signedOn) < 0) throw new Error(`contracts: ${c.id} was signed before it was written`);
+
+    /* Tenancy terms. `endsOn` is DERIVED, so the stored one has to be the one
+       deriveEndsOn would produce — otherwise the two disagree the first time
+       anything recomputes it. */
+    if (c.kind === "rent") {
+      if (!c.cycle) throw new Error(`contracts: tenancy ${c.id} has no billing cycle`);
+      if (!c.termMonths) throw new Error(`contracts: tenancy ${c.id} has no term`);
+      if (!c.startsOn) throw new Error(`contracts: tenancy ${c.id} has no start date`);
+      if (!c.rentPaidTo) throw new Error(`contracts: tenancy ${c.id} does not say who the tenant pays`);
+      if (c.endsOn !== deriveEndsOn(c.startsOn!, c.termMonths!)) {
+        throw new Error(`contracts: tenancy ${c.id} stores endsOn ${c.endsOn}, but ${c.termMonths} months from ${c.startsOn} ends ${deriveEndsOn(c.startsOn!, c.termMonths!)}`);
+      }
+      if (c.termMonths % CYCLE_MONTHS[c.cycle] !== 0) throw new Error(`contracts: tenancy ${c.id} runs ${c.termMonths} months, which is not a whole number of ${c.cycle} cycles`);
+    } else {
+      if (c.cycle || c.termMonths || c.startsOn || c.endsOn || c.rentPaidTo || c.managementFee) {
+        throw new Error(`contracts: sale ${c.id} carries tenancy terms`);
+      }
+    }
+    /* A management fee only means something when the agency collects the rent. */
+    if (c.managementFee && c.rentPaidTo !== "agency") throw new Error(`contracts: ${c.id} charges a management fee but the owner collects the rent`);
+
+    /* Commission must BE the rate applied to the price, not a number that
+       merely looks close to it. */
+    const expected = percentOf(c.price, c.commissionRate);
+    if (compareMoney(expected, c.commission) !== 0) {
+      throw new Error(`contracts: ${c.id} commission does not reconcile — ${c.commissionRate}% of the price is not the stored amount`);
+    }
+    /**
+     * A SALE's rate comes from the property's mandate; differing from it is
+     * allowed (that is what an override is) but only with a reason on the
+     * record.
+     *
+     * A TENANCY is deliberately not checked. Its rate is stated against one
+     * cycle's rent while the mandate's is stated against the whole term, so the
+     * two numbers measure different things and "3 ≠ 100" would be a false
+     * alarm. Cross-checking them properly needs the mandate to say which base
+     * it means, which is a change to catalog.ts and its own piece of work.
+     */
+    if (c.kind === "sale" && property.mandate && property.mandate.commissionRate !== c.commissionRate && !c.commissionOverrideReason) {
+      throw new Error(`contracts: ${c.id} is at ${c.commissionRate}% but ${property.id}'s mandate says ${property.mandate.commissionRate}% — state a commissionOverrideReason or fix the mandate`);
+    }
+    if (c.deposit && c.deposit.currency !== c.price.currency) throw new Error(`contracts: ${c.id} deposit is in a different currency from the price`);
+
+    /* A frozen rate is required exactly when something needs one: a contract not
+       in the platform currency (so its value can be reported alongside the rest)
+       or one settling in a second currency. Forbidden otherwise, so a stale rate
+       cannot sit unnoticed on a record that never consults it. */
+    const needsRate = c.price.currency !== PLATFORM_CURRENCY || c.dualCurrency;
+    if (needsRate && !c.agreedRate) throw new Error(`contracts: ${c.id} needs a frozen agreedRate (currency ${c.price.currency}, dualCurrency ${c.dualCurrency})`);
+    if (!needsRate && c.agreedRate) throw new Error(`contracts: ${c.id} carries an agreedRate but nothing on it uses one`);
+    if (c.agreedRate && !c.agreedRateSetOn) throw new Error(`contracts: ${c.id} has an agreedRate with no agreedRateSetOn — a rate with no date is not a term`);
+    if (c.dualCurrency && !c.secondaryCurrency) throw new Error(`contracts: ${c.id} is dual-currency but names no secondaryCurrency`);
+    if (c.secondaryCurrency && c.secondaryCurrency === c.price.currency) throw new Error(`contracts: ${c.id} settles in the same currency it is denominated in`);
+    if (!c.dualCurrency && c.secondaryCurrency) throw new Error(`contracts: ${c.id} names a secondaryCurrency but is not dual-currency`);
+
+    /* A replacement points at a real, earlier contract on the SAME property —
+       that is what makes a renewal chain a chain rather than two loose records. */
+    if (c.replacesContractId) {
+      const prior = contractById.get(c.replacesContractId);
+      if (!prior) throw new Error(`contracts: ${c.id} replaces missing contract "${c.replacesContractId}"`);
+      if (prior.id === c.id) throw new Error(`contracts: ${c.id} replaces itself`);
+      if (prior.propertyId !== c.propertyId) throw new Error(`contracts: ${c.id} replaces a contract on a different property`);
+    }
+
+    /* A contract in force has taken the property off the market, and the
+       catalog has to agree. Skipped for drafts (the reservation is applied by
+       the transition at runtime, not baked into catalog.ts — see the seed note)
+       and for contracts a later one has replaced. */
+    if (!replaced.has(c.id) && (c.status === "signed" || (c.status === "completed" && c.kind === "sale"))) {
+      const want = c.kind === "sale" ? "sold" : "rented";
+      if (property.availability !== want) {
+        throw new Error(`contracts: ${c.id} is ${c.status} but ${property.id} reads "${property.availability}" rather than "${want}"`);
+      }
+    }
+  }
+
+  /* Invoices: numbering, currency, and the derived-totals contract. */
+  const numbers = INVOICES.filter((i) => i.number).map((i) => i.number);
+  if (new Set(numbers).size !== numbers.length) throw new Error("contracts: two invoices share a number");
+  for (const inv of INVOICES) {
+    const contract = contractById.get(inv.contractId);
+    if (!contract) throw new Error(`contracts: invoice ${inv.id} references unknown contract "${inv.contractId}"`);
+    if (!inv.lines.length) throw new Error(`contracts: invoice ${inv.id} has no lines`);
+    if (inv.billToId && !memberById(inv.billToId)) throw new Error(`contracts: invoice ${inv.id} bills unknown member "${inv.billToId}"`);
+    if (inv.status === "draft" && inv.number) throw new Error(`contracts: draft invoice ${inv.id} must not carry a number until it is issued`);
+    if (inv.status !== "draft" && !inv.number) throw new Error(`contracts: issued invoice ${inv.id} has no number`);
+    if (inv.status !== "draft" && !inv.issuedOn) throw new Error(`contracts: issued invoice ${inv.id} has no issue date`);
+    if (inv.status === "void" && !inv.voidReason) throw new Error(`contracts: voided invoice ${inv.id} has no reason`);
+    if (inv.creditNoteId && !invoiceById.has(inv.creditNoteId)) throw new Error(`contracts: invoice ${inv.id} points at a missing credit note`);
+    if (inv.creditNoteFor && !invoiceById.has(inv.creditNoteFor)) throw new Error(`contracts: credit note ${inv.id} points at a missing invoice`);
+    /* A DRAFT contract has demanded nothing of anybody — that is what makes it
+       a draft, and an invoice against one would be a bill for an agreement that
+       does not yet exist. */
+    if (contract.status === "draft") throw new Error(`contracts: invoice ${inv.id} bills against draft contract ${contract.id}`);
+    /* Every line, and therefore every total, in the contract's own currency —
+       this is what makes the Money helpers safe to use across a whole invoice. */
+    for (const l of inv.lines) {
+      if (l.unitPrice.currency !== contract.price.currency) throw new Error(`contracts: invoice ${inv.id} line ${l.id} is not in the contract's currency`);
+    }
+    /* Totals are derived, so the only thing to assert is that the derivation is
+       self-consistent: subtotal + tax must be the total, from the same lines. */
+    const t = invoiceTotals(inv);
+    if (compareMoney(add(t.subtotal, t.tax), t.total) !== 0) throw new Error(`contracts: invoice ${inv.id} totals do not reconcile`);
+  }
+
+  /* Payments: real invoice, credit in the invoice's currency, and the received
+     amount reconciling to that credit at the rate recorded on the payment. */
+  for (const p of PAYMENTS) {
+    const inv = invoiceById.get(p.invoiceId);
+    if (!inv) throw new Error(`contracts: payment ${p.id} references unknown invoice "${p.invoiceId}"`);
+    const invCur = invoiceCurrency(inv);
+    if (p.amount.currency !== invCur) throw new Error(`contracts: payment ${p.id} credits ${p.amount.currency} against a ${invCur} invoice`);
+    if (p.receivedCurrency !== p.receivedAmount.currency) throw new Error(`contracts: payment ${p.id} receivedCurrency does not match receivedAmount`);
+    const converted = p.receivedCurrency !== invCur;
+    if (converted && !p.rateApplied) throw new Error(`contracts: payment ${p.id} arrived in ${p.receivedCurrency} against a ${invCur} invoice but records no rateApplied`);
+    if (!converted && p.rateApplied) throw new Error(`contracts: payment ${p.id} records a rateApplied but no conversion happened`);
+    /* The credit must BE the received amount converted — not a number that
+       merely looks plausible beside it. */
+    const want = converted ? convert(p.receivedAmount, invCur, p.rateApplied!) : p.receivedAmount;
+    if (compareMoney(want, p.amount) !== 0) throw new Error(`contracts: payment ${p.id} credit does not reconcile with what was received`);
+  }
+  for (const inv of INVOICES) {
+    const total = invoiceTotals(inv).total;
+    /* Only a demand for money can be overpaid. A credit note's total is negative
+       by construction — it gives money back — so "paid more than demanded" has no
+       meaning there, and asserting it would fail every credit note in the set. */
+    if (isNegative(total)) {
+      if (!inv.creditNoteFor) throw new Error(`contracts: invoice ${inv.id} has a negative total but is not a credit note`);
+      continue;
+    }
+    const paid = paidTotal(inv, PAYMENTS);
+    if (compareMoney(paid, total) > 0) throw new Error(`contracts: invoice ${inv.id} has been paid more than it demands`);
+  }
+
+  /* The seed must actually exercise what it claims to cover — if a later edit
+     quietly removes the overdue case, the derivation stops being tested. Every
+     one of the five invoice badges has to be reachable, or a state ships
+     unrendered and nobody notices until a customer hits it. */
+  for (const want of ["not_due", "due", "paid", "overdue", "void"] as InvoiceStatus[]) {
+    if (!INVOICES.some((i) => invoiceStatus(i, PAYMENTS) === want)) throw new Error(`contracts: seed no longer produces a "${want}" invoice`);
+  }
+  if (!CONTRACTS.some((c) => c.price.currency !== PLATFORM_CURRENCY)) throw new Error("contracts: seed no longer contains a non-default-currency contract");
+  if (!CONTRACTS.some((c) => c.replacesContractId)) throw new Error("contracts: seed no longer contains a renewal chain");
+  if (!CONTRACTS.some((c) => c.externalPaperwork)) throw new Error("contracts: seed no longer contains an externally-papered contract");
+  if (!CONTRACTS.some((c) => c.buyerExternal)) throw new Error("contracts: seed no longer contains an off-platform counterparty");
+  if (!CONTRACTS.some((c) => c.rentPaidTo === "agency" && c.managementFee)) throw new Error("contracts: seed no longer contains an agency-collected tenancy");
+  if (!PAYMENTS.some((p) => p.receivedCurrency !== invoiceCurrency(invoiceById.get(p.invoiceId)!))) {
+    throw new Error("contracts: seed no longer contains a payment made in a different currency from its invoice");
+  }
+  /* The cancelled-contract case is the one that proves records survive: money
+     that arrived must still be attached to the contract that explains it. */
+  {
+    const cancelled = CONTRACTS.filter((c) => c.status === "cancelled");
+    if (!cancelled.length) throw new Error("contracts: seed no longer contains a cancelled contract");
+    const paidOnCancelled = cancelled.some((c) =>
+      INVOICES.filter((i) => i.contractId === c.id).some((i) => invoiceStatus(i, PAYMENTS) === "paid"),
+    );
+    if (!paidOnCancelled) throw new Error("contracts: no cancelled contract carries a paid invoice — the case that proves cancelled records survive is gone");
+  }
+
+  /* ------------------------------------------------------------------------
+     AN INVOICE REPRINTED IN FIVE YEARS SHOWS WHAT IT SHOWED ON ITS ISSUE DATE.
+
+     The whole frozen-rate design exists for this one property, so it is checked
+     rather than trusted. A dual-currency contract is rendered twice — once
+     as-is, once against a contract object whose rate has been moved a long way
+     — and the two must come out identical, because `dualFigures` is supposed to
+     read the rate from the CONTRACT and nothing else.
+
+     This would fail the moment someone "helpfully" reaches for the settings
+     rate inside a document path, which is exactly the regression worth catching
+     at module load rather than in a support ticket about a reprinted invoice
+     that no longer matches the one in the customer's filing cabinet.
+     ---------------------------------------------------------------------- */
+  {
+    const probe: ContractRecord = {
+      ...CONTRACTS[0],
+      dualCurrency: true,
+      secondaryCurrency: CONTRACTS[0].price.currency === "USD" ? "IQD" : "USD",
+      agreedRate: CONTRACTS[0].price.currency === "USD" ? 1310 : USD_PER_IQD,
+      agreedRateSetOn: CONTRACTS[0].createdOn,
+    };
+    const atSigning = dualFigures(probe, probe.price).secondary;
+    /* The same contract as it would be read after the market — and the admin's
+       settings — have moved on. Only the rate the CONTRACT carries may matter. */
+    const drifted: ContractRecord = { ...probe, agreedRate: probe.agreedRate! * 1.35 };
+    const reprint = dualFigures(probe, probe.price).secondary;
+    if (!atSigning || !reprint || compareMoney(atSigning, reprint) !== 0) {
+      throw new Error("contracts: a reprinted document does not reproduce its original figures");
+    }
+    /* And prove the check has teeth: a genuinely different rate MUST produce a
+       different figure, or the assertion above would pass on a stub. */
+    const moved = dualFigures(drifted, drifted.price).secondary;
+    if (!moved || compareMoney(atSigning, moved) === 0) {
+      throw new Error("contracts: dualFigures ignores agreedRate — the reprint check is vacuous");
+    }
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Lookups — the read side, shared by the store and by anything reading the seed
+   ------------------------------------------------------------------------- */
+
+export function getContractById(id: string, contracts: ContractRecord[] = CONTRACTS): ContractRecord | undefined {
+  return contracts.find((c) => c.id === id);
+}
+
+/** Every contract written on one property, newest first. */
+export function contractsByProperty(propertyId: string, contracts: ContractRecord[] = CONTRACTS): ContractRecord[] {
+  return contracts.filter((c) => c.propertyId === propertyId).sort((a, b) => b.createdOn.localeCompare(a.createdOn));
+}
+
+/** Every contract an agent wrote, newest first. */
+export function contractsByAgent(agentId: string, contracts: ContractRecord[] = CONTRACTS): ContractRecord[] {
+  return contracts.filter((c) => c.agentId === agentId).sort((a, b) => b.createdOn.localeCompare(a.createdOn));
+}
+
+/** The contract this one replaced — the earlier link in a renewal chain. */
+export function previousContract(c: ContractRecord, contracts: ContractRecord[] = CONTRACTS): ContractRecord | undefined {
+  return c.replacesContractId ? contracts.find((x) => x.id === c.replacesContractId) : undefined;
+}
+
+/** The contract that replaced this one — the later link. Stored only on the
+    replacement, so this is a scan; there are never enough contracts on one
+    property for that to matter, and a second stored pointer would be a second
+    thing to keep in step. */
+export function replacedBy(c: ContractRecord, contracts: ContractRecord[] = CONTRACTS): ContractRecord | undefined {
+  return contracts.find((x) => x.replacesContractId === c.id);
+}
+
+export function invoicesByContract(contractId: string, invoices: InvoiceRecord[] = INVOICES): InvoiceRecord[] {
+  return invoices.filter((i) => i.contractId === contractId).sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+}
+
+export function paymentsByInvoice(invoiceId: string, payments: PaymentRecord[] = PAYMENTS): PaymentRecord[] {
+  return payments.filter((p) => p.invoiceId === invoiceId);
+}
+
+/**
+ * What a contract is still owed, across all of its live invoices.
+ *
+ * Voided invoices are skipped — they were withdrawn, and counting them would
+ * chase money nobody owes. Drafts are skipped too: nothing has been demanded.
+ */
+export function outstandingForContract(contractId: string, invoices: InvoiceRecord[] = INVOICES, payments: PaymentRecord[] = PAYMENTS): Money {
+  const contract = getContractById(contractId);
+  const cur = contract?.price.currency ?? PLATFORM_CURRENCY;
+  const live = invoicesByContract(contractId, invoices).filter((i) => i.status === "issued");
+  return sumMoney(
+    live.map((i) => outstanding(i, payments)),
+    cur,
+  );
+}
+
+/* ------------------------------ list-screen counts ------------------------- */
+
+/** Contracts in force right now — signed, and not run past their end date. */
+export function activeContracts(contracts: ContractRecord[] = CONTRACTS, asOf: string = ANCHOR_ISO): ContractRecord[] {
+  return contracts.filter((c) => isActive(c, asOf));
+}
+
+/** Drafts waiting for a signature. */
+export function draftContracts(contracts: ContractRecord[] = CONTRACTS): ContractRecord[] {
+  return contracts.filter((c) => c.status === "draft");
+}
+
+/**
+ * Contracts whose term runs out within `days` — the renewal queue.
+ *
+ * Only ones still in force count. A contract that already ended is not
+ * "expiring", it has expired, and putting it in the same number would make the
+ * card say there is time to act when there is not.
+ */
+export function expiringWithin(days: number, contracts: ContractRecord[] = CONTRACTS, asOf: string = ANCHOR_ISO): ContractRecord[] {
+  return contracts.filter((c) => {
+    if (!isActive(c, asOf)) return false;
+    const left = daysToExpiry(c, asOf);
+    return left !== undefined && left >= 0 && left <= days;
+  });
+}
+
+/**
+ * The value signed in the calendar month `asOf` falls in.
+ *
+ * SINGLE-CURRENCY BY DESIGN. `currency` says which slice of the book to total,
+ * and contracts in any other currency are left out rather than converted.
+ * Totalling a mixed book needs a rate per contract per day, and inventing one
+ * would make the card confidently wrong — so the count of what was left out is
+ * returned alongside the figure, for a screen that wants to say so.
+ */
+export function signedValueInMonth(
+  currency: CurrencyCode = PLATFORM_CURRENCY,
+  asOf: string = ANCHOR_ISO,
+  contracts: ContractRecord[] = CONTRACTS,
+): { total: Money; excluded: number } {
+  const month = asOf.slice(0, 7);
+  let excluded = 0;
+  const inMonth: Money[] = [];
+  for (const c of contracts) {
+    if (!c.signedOn || c.signedOn.slice(0, 7) !== month) continue;
+    if (c.status === "cancelled") continue;
+    if (c.price.currency !== currency) {
+      excluded += 1;
+      continue;
+    }
+    inMonth.push(contractValue(c));
+  }
+  return { total: sumMoney(inMonth, currency), excluded };
+}
+
+/** Standard receivables aging buckets, by how far past due each balance is. */
+export interface AgingBuckets {
+  current: Money; // not yet due
+  d1to30: Money;
+  d31to60: Money;
+  d61to90: Money;
+  d90plus: Money;
+  total: Money;
+}
+
+/**
+ * Age every unpaid balance into buckets. Only issued invoices count — a draft has
+ * demanded nothing and a voided one has been withdrawn.
+ *
+ * Single-currency by design, for the same reason as `signedValueInMonth`:
+ * `currency` says which slice of the book to age, and invoices in any other
+ * currency are left out rather than converted.
+ */
+export function receivablesAging(
+  currency: CurrencyCode = PLATFORM_CURRENCY,
+  asOf: string = ANCHOR_ISO,
+  invoices: InvoiceRecord[] = INVOICES,
+  payments: PaymentRecord[] = PAYMENTS,
+): AgingBuckets {
+  const buckets: AgingBuckets = {
+    current: zeroMoney(currency),
+    d1to30: zeroMoney(currency),
+    d31to60: zeroMoney(currency),
+    d61to90: zeroMoney(currency),
+    d90plus: zeroMoney(currency),
+    total: zeroMoney(currency),
+  };
+  for (const inv of invoices) {
+    if (inv.status !== "issued" || invoiceCurrency(inv) !== currency) continue;
+    const owed = outstanding(inv, payments);
+    if (isZero(owed)) continue;
+    const late = daysBetween(inv.dueOn, asOf);
+    const key: keyof AgingBuckets = late <= 0 ? "current" : late <= 30 ? "d1to30" : late <= 60 ? "d31to60" : late <= 90 ? "d61to90" : "d90plus";
+    buckets[key] = add(buckets[key], owed);
+    buckets.total = add(buckets.total, owed);
+  }
+  return buckets;
+}
+
+/* Re-exported so a consumer of this module does not need a second import just to
+   resolve the party a record points at. */
+export { memberById, agentById, MEMBERS, AGENTS, PROPERTIES };
+export { fromMinor };

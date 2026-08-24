@@ -1,0 +1,354 @@
+  /* Prevent base.css a:hover from overriding DS button text colour */
+  a.cx-btn--primary, a.cx-btn--primary:hover { color: var(--text-on-brand); }
+
+  /* ============================================================
+     CONTRACTS PAGE  (ct- namespace)
+
+     Deliberately the same chrome as the properties list
+     (app/admin/properties/properties.css, pp- namespace): same header,
+     same KPI strip, same table card, same filter row, same footer. Two
+     admin lists that look almost-but-not-quite alike read as though the
+     difference means something, so the difference is only the columns.
+     ============================================================ */
+
+  /* ---------- PAGE HEADER WITH PRIMARY ACTION ---------- */
+  .ct-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 28px; margin-bottom: 28px;
+  }
+  .ct-head__intro { min-width: 0; }
+  .ct-head__title {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(30px, 3.6vw, 40px); line-height: 1.05; letter-spacing: -.018em;
+    color: var(--text-primary); margin: 0;
+  }
+  .ct-head__sub {
+    font-size: 16px; line-height: 1.55; color: var(--text-secondary);
+    margin: 12px 0 0; max-width: 560px; text-wrap: pretty;
+  }
+  .ct-head__action { flex: none; }
+  @media (max-width: 767px) {
+    .ct-head { flex-direction: column; align-items: stretch; gap: 18px; }
+    .ct-head__sub { font-size: 15px; }
+    .ct-head__action, .ct-head__action .cx-btn { width: 100%; }
+  }
+
+  /* ---------- KPI SUMMARY (4 cards) ----------
+     Four, not five: the money card carries a full amount ("$720,900"), and a
+     fifth column would squeeze it into two lines on a laptop. */
+  .ct-kpis {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px; margin-bottom: 30px;
+  }
+  .ct-kpis > .cx-stat { padding: 20px; gap: 12px; }
+  @media (max-width: 1180px) { .ct-kpis { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 540px)  { .ct-kpis { grid-template-columns: 1fr; gap: 14px; } }
+
+  /* ---------- TABLE CARD ---------- */
+  .ct-tablecard {
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+  .ct-tablecard__head {
+    padding: 16px 24px 0; border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-card);
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .ct-tablecard__titlerow {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap; min-height: 30px;
+    padding-bottom: 16px; margin-bottom: 16px;
+    margin-inline-start: -24px; margin-inline-end: -24px;
+    padding-inline-start: 24px; padding-inline-end: 24px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .ct-tablecard__heading { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .ct-tablecard__title {
+    font-family: var(--font-display); font-weight: 600; font-size: 22px;
+    letter-spacing: -.015em; line-height: 1.1; color: var(--text-primary); margin: 0;
+    white-space: nowrap;
+  }
+  .ct-tablecard__count {
+    display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+    border-radius: var(--radius-pill); background: var(--brand-subtle);
+    color: var(--text-brand); font-family: var(--font-sans);
+    font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; flex: none;
+  }
+  .ct-tablecard__resultnote {
+    display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 13px; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- STATUS TABS ROW ---------- */
+  .ct-tabrow {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; min-width: 0; flex-wrap: wrap;
+  }
+  .ct-tabs {
+    display: inline-flex; align-items: center;
+    background: var(--gray-100); border: 1px solid var(--border-subtle);
+    border-radius: 10px; padding: 3px; gap: 2px;
+    overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+    flex: none; max-width: 100%;
+  }
+  .ct-tabs::-webkit-scrollbar { display: none; }
+  .ct-tab {
+    display: inline-flex; align-items: center;
+    height: 30px; padding: 0 14px; flex: none; white-space: nowrap;
+    border: none; background: transparent; border-radius: 8px; cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    color: var(--text-secondary);
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+  }
+  /* A raised surface, not a translucent white — white over the track works
+     in light and paints a pale smear over the dark theme. */
+  .ct-tab:hover { background: var(--surface-raised); color: var(--text-primary); }
+  .ct-tab:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: 8px; }
+  .ct-tab.is-active {
+    background: var(--surface-card);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary); font-weight: 600;
+  }
+
+  /* ---------- SEARCH + FILTERS ---------- */
+  .ct-tabrow__right {
+    display: flex; align-items: center; gap: 8px; flex: none;
+    min-width: 0; max-width: 100%; flex-wrap: wrap;
+  }
+  .ct-tabsearch { position: relative; flex: 1 1 160px; max-width: 224px; min-width: 0; }
+  .ct-tabsearch input {
+    width: 100%; height: 38px; padding: 0 14px 0 38px;
+    font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-xs);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .ct-tabsearch input::placeholder { color: var(--text-placeholder); }
+  .ct-tabsearch input:hover { border-color: var(--border-strong); }
+  .ct-tabsearch input:focus { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .ct-tabsearch__lead {
+    position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--text-brand-muted); display: flex; pointer-events: none;
+  }
+  /* RTL: the search icon sits at the inline start, so the padding follows it. */
+  [dir="rtl"] .ct-tabsearch input { padding: 0 38px 0 14px; }
+
+  .ct-filterbtn {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 38px; padding: 0 14px;
+    border: 1px solid var(--border-default); background: var(--surface-card);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-xs); cursor: pointer;
+    font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    color: var(--text-secondary); white-space: nowrap;
+    transition: border-color .15s, color .15s, background-color .15s;
+  }
+  .ct-filterbtn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .ct-filterbtn.is-open, .ct-filterbtn.has-active { border-color: var(--brand-primary); color: var(--text-brand); }
+  .ct-filterbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ct-filterbtn__badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
+    background: var(--brand-primary); color: var(--text-on-brand); font-size: 11px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Collapsing filter drawer — the same grid-rows trick the properties page
+     uses, so the two open and close identically. */
+  .ct-filterbar {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows .22s ease;
+  }
+  .ct-filterbar.is-open { grid-template-rows: 1fr; }
+  .ct-filterbar__inner { overflow: hidden; min-height: 0; }
+  .ct-filterbar__row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 14px 0 16px;
+  }
+  .ct-filterbar__actions { margin-inline-start: auto; }
+  .ct-clearbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px; border: none; background: transparent;
+    border-radius: var(--radius-control); cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    color: var(--text-tertiary); white-space: nowrap;
+  }
+  .ct-clearbtn:hover { background: var(--gray-50); color: var(--text-primary); }
+  .ct-clearbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ---------- TABLE ----------
+     The value column is 150px, wider than the properties list's 136px, because
+     a contract value can be a whole term of dinar rent ("943,200,000 IQD") and
+     that figure must never wrap: a money column that breaks is a money column
+     someone misreads. The table scrolls horizontally rather than shrinking it. */
+  .ct-table {
+    display: flex; flex-direction: column;
+    overflow-x: auto; overflow-y: visible;
+    width: 100%;
+    background: var(--gray-50);
+  }
+  .ct-table::-webkit-scrollbar { height: 9px; }
+  .ct-table::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+
+  .ct-thead, .ct-row {
+    display: grid;
+    grid-template-columns:
+      minmax(126px, 0.9fr)   /* contract id (+ renewal tag) */
+      minmax(210px, 2.2fr)   /* property */
+      minmax(150px, 1.4fr)   /* counterparty */
+      96px                   /* kind */
+      132px                  /* status */
+      150px                  /* value — sized for "943,200,000 IQD" */
+      116px                  /* signing date */
+      48px;                  /* go */
+    align-items: center;
+    gap: 14px;
+    padding: 0 20px;
+    min-width: 1180px;
+    width: 100%;
+  }
+  .ct-thead {
+    height: 46px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .ct-th {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-tertiary); white-space: nowrap;
+  }
+  .ct-row {
+    min-height: 70px;
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: background-color .14s ease;
+  }
+  .ct-row:last-child { border-bottom: none; }
+  .ct-row:hover { background: var(--gray-25); }
+  .ct-row:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--brand-primary); }
+
+  /* id cell */
+  .ct-col--id { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+  .ct-id {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+    color: var(--text-primary); white-space: nowrap;
+  }
+  .ct-id__tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 7px; border-radius: var(--radius-pill);
+    background: var(--gray-100); color: var(--text-tertiary);
+    font-size: 10.5px; font-weight: 600; white-space: nowrap;
+  }
+  .ct-id__tag svg { flex: none; }
+
+  /* property cell */
+  .ct-col--property { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ct-prop__title {
+    font-size: 14px; font-weight: 700; letter-spacing: -.005em; color: var(--text-primary);
+    line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ct-prop__id {
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+
+  /* counterparty cell */
+  .ct-col--party { min-width: 0; }
+  .ct-party {
+    display: flex; align-items: center; gap: 7px; min-width: 0;
+    font-size: 13.5px; color: var(--text-secondary);
+  }
+  /* The name gives way before the chip does — a truncated name is still
+     recognisable, a wrapped row is not. */
+  .ct-party__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ct-party--none { color: var(--text-tertiary); font-style: italic; }
+  /* Marks a counterparty with no account. Most buyers and tenants never
+     register, so this has to read as normal, not as missing data. */
+  .ct-party__ext {
+    flex: none; font-size: 10.5px; font-weight: 600; color: var(--text-tertiary);
+    padding: 1px 6px; border-radius: var(--radius-pill); background: var(--gray-100);
+  }
+
+  /* money + date cells — tabular figures so the columns line up down the page */
+  .ct-money {
+    font-size: 14px; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .ct-date {
+    font-size: 13px; color: var(--text-secondary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .ct-date--none { color: var(--text-tertiary); font-style: italic; }
+
+  /* go arrow */
+  .ct-col--go { display: flex; justify-content: center; }
+  .ct-golink {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: var(--radius-control);
+    color: var(--text-tertiary); text-decoration: none;
+  }
+  .ct-golink:hover { background: var(--gray-100); color: var(--text-brand); }
+  .ct-golink:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  /* The chevron points the way the reader travels. */
+  [dir="rtl"] .ct-golink svg { transform: scaleX(-1); }
+
+  /* mobile-only label inside cells (hidden on desktop) */
+  .ct-celllabel { display: none; }
+
+  /* ---------- FOOTER / PAGINATION ---------- */
+  .ct-tablefooter {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    padding: 14px 24px; border-top: 1px solid var(--border-subtle);
+    background: var(--surface-card);
+  }
+  .ct-pagination__info { font-size: 13px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .ct-pagination { display: flex; align-items: center; gap: 3px; }
+  .ct-page-btn {
+    display: inline-flex; align-items: center; gap: 4px; justify-content: center;
+    min-width: 34px; height: 34px; padding: 0 8px;
+    border: 1px solid transparent; background: transparent; border-radius: var(--radius-control);
+    cursor: pointer; font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    color: var(--text-secondary); font-variant-numeric: tabular-nums;
+  }
+  .ct-page-btn:hover:not(:disabled) { background: var(--gray-50); border-color: var(--border-default); color: var(--text-primary); }
+  .ct-page-btn.is-active { background: var(--brand-primary); border-color: var(--brand-primary); color: var(--text-on-brand); font-weight: 600; }
+  .ct-page-btn:disabled { opacity: .38; cursor: not-allowed; }
+  .ct-page-btn--nav { padding: 0 12px; }
+  .ct-page-btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ct-page-ellipsis {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; font-size: 13.5px; color: var(--text-tertiary);
+  }
+  /* Nav chevrons follow the reading direction. */
+  [dir="rtl"] .ct-page-btn--nav svg { transform: scaleX(-1); }
+
+  /* ---------- EMPTY STATE ---------- */
+  .ct-noresults {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 56px 24px; gap: 6px;
+    background: var(--surface-card);
+  }
+  .ct-noresults__art {
+    width: 60px; height: 60px; border-radius: var(--radius-2xl); margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--green-50), var(--gray-50));
+    border: 1px solid var(--border-subtle); color: var(--text-brand);
+  }
+  .ct-noresults h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--text-primary); margin: 0; }
+  .ct-noresults p { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 380px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ct-filterbar, .ct-row, .ct-tab, .ct-filterbtn { transition: none; }
+  }
+
+  /* ============================================================
+     MOBILE — toolbar stacks; the table itself scrolls horizontally
+     ============================================================ */
+  @media (max-width: 767px) {
+    .ct-tabrow { flex-direction: column; align-items: stretch; gap: 10px; }
+    .ct-tabs { width: 100%; }
+    .ct-tabrow__right { width: 100%; }
+    .ct-tabsearch { flex: 1 1 0; max-width: none; min-width: 140px; }
+    .ct-filterbar__actions { margin-inline-start: 0; }
+    .ct-tablefooter { justify-content: center; }
+  }

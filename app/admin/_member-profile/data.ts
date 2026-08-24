@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/ui/icon";
+import type { Money } from "@/lib/money";
 import type { BadgeVariant } from "@/components/ui/badge";
 import { getAgentByName, daysAgoFrom, type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
 import { VIEWINGS as ALL_VIEWINGS, AGENT_IMG } from "../_viewings/data";
@@ -38,7 +39,7 @@ export interface MemberRecord {
   email: string; phone: string; language: string; contactMethod: string; img: string; agent: MemberAgent | null;
 }
 
-export interface PortfolioRow { id: string; title: string; loc: string; type: string; img: string; rel: string; status: string; price: number; per?: string; agent: string; agentImg: string; date: string }
+export interface PortfolioRow { id: string; title: string; loc: string; type: string; img: string; rel: string; status: string; price: Money; per?: string; agent: string; agentImg: string; date: string }
 
 export interface MpfViewing { id: string; title: string; loc: string; img: string; requested: string; agent: string; agentImg: string; status: string }
 
@@ -50,7 +51,7 @@ export const INIT_NOTES: NoteItem[] = [
 
 /* Timeline entries are i18n-keyed and parameterized so derived items localize
    like the rest of the admin. */
-export interface TLItem { icon: IconName; tone: string; titleKey: string; descKey: string; params?: Record<string, string>; price?: number; per?: string; time: string }
+export interface TLItem { icon: IconName; tone: string; titleKey: string; descKey: string; params?: Record<string, string>; price?: Money; per?: string; time: string }
 
 /** Agents offered by the reassign modal = the live verified roster. */
 export function buildReassignAgents(agents: AgentRecord[]): MemberAgent[] {

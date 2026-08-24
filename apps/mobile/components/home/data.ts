@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { getActiveLocale } from "@/lib/locale-state";
+import { formatPriceIn, normalisePrice, type CurrencyCode } from "@/lib/money";
 
 /** Demo signed-in member (no auth backend yet). */
 export const user = {
@@ -68,20 +69,12 @@ export const propertyTypes: Opt[] = [
   { value: "villa", label: "Villa", ar: "فيلا", Icon: House },
 ];
 
-export const buyPresets: Opt[] = [
-  { value: "0-150000", label: "Up to $150K", ar: "حتى 150 ألف $" },
-  { value: "150000-400000", label: "$150K – $400K", ar: "150 – 400 ألف $" },
-  { value: "300000-600000", label: "$300K – $600K", ar: "300 – 600 ألف $" },
-  { value: "600000-1000000", label: "$600K – $1M", ar: "600 ألف – مليون $" },
-  { value: "1000000-", label: "$1M and above", ar: "مليون $ فأكثر" },
-];
-
-export const rentPresets: Opt[] = [
-  { value: "0-1000", label: "Up to $1,000/mo", ar: "حتى 1,000 $/شهر" },
-  { value: "1000-2500", label: "$1,000 – $2,500/mo", ar: "1,000 – 2,500 $/شهر" },
-  { value: "2500-5000", label: "$2,500 – $5,000/mo", ar: "2,500 – 5,000 $/شهر" },
-  { value: "5000-", label: "$5,000/mo and above", ar: "5,000 $/شهر فأكثر" },
-];
+/* buyPresets / rentPresets used to live here with "$150K" written into both the
+   English and Arabic labels. Nothing referenced them — the mobile price filter
+   is a min/max range with its own currency toggle (components/home/PriceRange),
+   not a bucket list. Deleted rather than migrated: dead strings with a hardcoded
+   currency in them are an invitation to wire them up later and reintroduce the
+   exact bug this change removes. */
 
 export const beds: Opt[] = [
   { value: "", label: "Any", ar: "أي" },
@@ -190,8 +183,10 @@ const LANG_AR: Record<string, string> = {
 export const agentLanguageLabel = (l: string): string => (getActiveLocale() === "ar" ? LANG_AR[l] ?? l : l);
 
 /** Active search filters (mirrors the website's SRP filter shape). */
-/** Approx. exchange rate for the price filter's dinar option. */
-export const IQD_PER_USD = 1310;
+/* IQD_PER_USD lives in lib/money now — one rate, next to the conversion that
+   uses it, so a screen cannot pick up a second copy. Re-exported because
+   PriceRange already imports it from here. */
+export { IQD_PER_USD } from "@/lib/money";
 export const SQFT_PER_SQM = 10.7639;
 export interface PriceFilter {
   min: number;
@@ -251,7 +246,11 @@ export interface Listing {
   address: string;
   city: string;
   deal: "buy" | "rent";
+  /* Whole units in `currency` — the price as it is actually quoted. Mirrors
+     PropertyRecord.price on the web (a Money there; a pair here, see lib/money). */
   price: number;
+  /** Omitted means USD. Set on the listings quoted in dinars. */
+  currency?: CurrencyCode;
   type: string;
   beds?: number;
   baths?: number;
@@ -276,11 +275,11 @@ export interface Listing {
 export const listings: Listing[] = [
   { id: "CH-3200", title: "Marble Hill Villa", address: "Empire World, Erbil", city: "Erbil", deal: "buy", price: 850000, type: "villa", beds: 5, baths: 4, area: 480, status: "For Sale", featured: true, amenities: ["pool", "garden", "security", "terraces", "parking", "smartHome", "gym", "hvac", "cctv"], cover: img("1613490493576-7fde63acd811"), agentId: "lana-aziz", furnishing: "Fully furnished", parking: 2, year: 2019, orientation: "South facing", condition: "New" },
   { id: "CH-3199", title: "Dream City Garden Flat", address: "Dream City, Erbil", city: "Erbil", deal: "rent", price: 1400, type: "apartment", beds: 2, baths: 2, area: 130, status: "For Rent", featured: true, amenities: ["terraces", "elevator", "parking", "security", "internet", "hvac", "cctv"], cover: img("1502672260266-1c1ef2d93688"), agentId: "lana-aziz", furnishing: "Fully furnished", parking: 1, floor: 4, year: 2020, orientation: "East facing", condition: "Good" },
-  { id: "CH-3198", title: "Naz City Sky Suite", address: "Naz City, Erbil", city: "Erbil", deal: "buy", price: 690000, type: "apartment", beds: 3, baths: 3, area: 300, status: "For Sale", amenities: ["terraces", "elevator", "parking", "security", "smartHome", "internet", "hvac"], cover: img("1545324418-cc1a3fa10c00"), agentId: "lana-aziz", furnishing: "Semi-furnished", parking: 1, floor: 8, year: 2018, orientation: "North facing", condition: "New" },
+  { id: "CH-3198", title: "Naz City Sky Suite", address: "Naz City, Erbil", city: "Erbil", deal: "buy", price: 900000000, currency: "IQD", type: "apartment", beds: 3, baths: 3, area: 300, status: "For Sale", amenities: ["terraces", "elevator", "parking", "security", "smartHome", "internet", "hvac"], cover: img("1545324418-cc1a3fa10c00"), agentId: "lana-aziz", furnishing: "Semi-furnished", parking: 1, floor: 8, year: 2018, orientation: "North facing", condition: "New" },
   { id: "CH-3197", title: "English Village Court", address: "English Village, Erbil", city: "Erbil", deal: "buy", price: 420000, type: "house", beds: 4, baths: 3, area: 260, status: "For Sale", amenities: ["garden", "parking", "security", "terraces", "fireplace", "hvac", "cctv"], cover: img("1576941089067-2de3c901e126"), agentId: "karwan-mahmoud", furnishing: "Unfurnished", parking: 2, year: 2016, orientation: "West facing", condition: "Good" },
   { id: "CH-3196", title: "Gulan Business Suite", address: "Gulan, Erbil", city: "Erbil", deal: "rent", price: 2800, type: "office", baths: 1, area: 210, status: "For Rent", amenities: ["parking", "elevator", "security", "internet", "hvac", "cctv"], cover: img("1497366754035-f200968a6e72"), agentId: "karwan-mahmoud", furnishing: "Unfurnished", parking: 3, floor: 5, year: 2021, orientation: "South facing", condition: "New" },
   { id: "CH-3195", title: "Ankawa Olive Grove Land", address: "Ankawa, Erbil", city: "Erbil", deal: "buy", price: 320000, type: "land", area: 1200, status: "For Sale", amenities: [], cover: img("1500382017468-9049fed747ef"), agentId: "lana-aziz", orientation: "West facing" },
-  { id: "CH-3194", title: "Cedar Court Apartments", address: "Salim Street, Sulaymaniyah", city: "Sulaymaniyah", deal: "buy", price: 210000, type: "apartment", beds: 3, baths: 2, area: 150, status: "For Sale", featured: true, amenities: ["elevator", "parking", "terraces", "security", "internet", "hvac", "water"], cover: img("1493809842364-78817add7ffb"), agentId: "sara-hama", furnishing: "Semi-furnished", parking: 1, floor: 3, year: 2015, orientation: "East facing", condition: "Good" },
+  { id: "CH-3194", title: "Cedar Court Apartments", address: "Salim Street, Sulaymaniyah", city: "Sulaymaniyah", deal: "buy", price: 275000000, currency: "IQD", type: "apartment", beds: 3, baths: 2, area: 150, status: "For Sale", featured: true, amenities: ["elevator", "parking", "terraces", "security", "internet", "hvac", "water"], cover: img("1493809842364-78817add7ffb"), agentId: "sara-hama", furnishing: "Semi-furnished", parking: 1, floor: 3, year: 2015, orientation: "East facing", condition: "Good" },
   { id: "CH-3193", title: "Sarchnar Hillside Villa", address: "Sarchnar, Sulaymaniyah", city: "Sulaymaniyah", deal: "rent", price: 2200, type: "villa", beds: 4, baths: 3, area: 380, status: "For Rent", amenities: ["garden", "parking", "security", "pool", "terraces", "gym", "hvac", "generator", "cctv"], cover: img("1599809275671-b5942cabc7a2"), agentId: "sara-hama", furnishing: "Fully furnished", parking: 2, year: 2017, orientation: "North facing", condition: "Good" },
   { id: "CH-3192", title: "Masike Highland Villa", address: "Masike, Duhok", city: "Duhok", deal: "buy", price: 380000, type: "villa", beds: 4, baths: 3, area: 340, status: "For Sale", amenities: ["pool", "garden", "parking", "security", "terraces", "smartHome", "hvac", "generator", "fireplace"], cover: img("1512917774080-9991f1c4c750"), agentId: "rawa-jamal", furnishing: "Semi-furnished", parking: 2, year: 2019, orientation: "West facing", condition: "New" },
   { id: "CH-3191", title: "Malta Riverside Loft", address: "Malta, Duhok", city: "Duhok", deal: "rent", price: 900, type: "apartment", beds: 1, baths: 1, area: 95, status: "For Rent", amenities: ["elevator", "parking", "internet", "security", "water"], cover: img("1560448204-e02f11c3d0e2"), agentId: "rawa-jamal", furnishing: "Unfurnished", parking: 1, floor: 6, year: 2014, orientation: "South facing", condition: "Good" },
@@ -294,7 +293,11 @@ export const recentlyAdded = [...listings].reverse().slice(0, 10);
 
 const commas = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const perMonth = () => (getActiveLocale() === "ar" ? "/شهر" : "/mo");
-export const priceLabel = (l: Listing) => (l.deal === "rent" ? `$${commas(l.price)}${perMonth()}` : `$${commas(l.price)}`);
+
+/* Each listing in its OWN currency — the list mixes dollars and dinars, which
+   is what the market here actually looks like. Was a hardcoded "$". */
+export const priceLabel = (l: Listing) =>
+  formatPriceIn(l.price, l.currency ?? "USD") + (l.deal === "rent" ? perMonth() : "");
 
 /** Sort options for the search results. "" = Default (the app's natural order). */
 export const searchSort: Opt[] = [
@@ -332,8 +335,13 @@ export function searchListings(opts: { query: string; deal: string; filters: Fil
     if (filters.projects.length && !filters.projects.some((p) => addr.includes(p.toLowerCase()))) return false;
     if (filters.types.length && !filters.types.includes(l.type)) return false;
     if (filters.price) {
-      const rate = filters.price.currency === "IQD" ? IQD_PER_USD : 1;
-      if (l.price < filters.price.min / rate || l.price > filters.price.max / rate) return false;
+      /* Both sides in the FILTER's currency, so a dinar listing is matched
+         against a dollar range (and vice versa) rather than excluded for being
+         in the wrong units. The old version divided the range by the rate and
+         compared against a raw price, which silently assumed every listing was
+         in dollars — true until the catalog gained dinar-quoted ones. */
+      const inFilterCur = normalisePrice(l.price, l.currency ?? "USD", filters.price.currency);
+      if (inFilterCur < filters.price.min || inFilterCur > filters.price.max) return false;
     }
     if (filters.size) {
       const factor = filters.size.unit === "sqft" ? SQFT_PER_SQM : 1;
@@ -344,8 +352,11 @@ export function searchListings(opts: { query: string; deal: string; filters: Fil
     if (filters.amenities.length && !filters.amenities.every((a) => l.amenities.includes(a))) return false;
     return true;
   });
-  if (sort === "price-asc") list.sort((a, b) => a.price - b.price);
-  else if (sort === "price-desc") list.sort((a, b) => b.price - a.price);
+  /* Sort on normalised prices — on raw numbers a 4,500,000 IQD flat outranks an
+     $850,000 villa, which is about four times wrong. Display stays untouched. */
+  const norm = (l: Listing) => normalisePrice(l.price, l.currency ?? "USD", "USD");
+  if (sort === "price-asc") list.sort((a, b) => norm(a) - norm(b));
+  else if (sort === "price-desc") list.sort((a, b) => norm(b) - norm(a));
   else if (sort === "newest") { /* keep source order (newest-first demo data) */ }
   else list.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)); // "featured" and "" default
   return list;

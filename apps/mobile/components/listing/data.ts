@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { getActiveLocale } from "@/lib/locale-state";
+import { formatPriceIn, type CurrencyCode } from "@/lib/money";
 
 /**
  * Arabic display labels for the wizard's option strings. The form stores the
@@ -87,8 +88,10 @@ export const CITIES = ["Erbil", "Sulaymaniyah", "Duhok"];
 // Districts (areas) and projects are city-scoped; the wizard sources them from
 // the shared catalog mirror in components/home/data.ts (areasByCity /
 // projectsByCity) so they stay in lockstep with the web LOCATION_DEF.
-export const CURRENCIES = ["USD", "IQD"];
-export const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", IQD: "IQD " };
+/* The two currencies the platform supports, typed so a third cannot be added
+   here without also adding it to lib/money's tables. The symbol map that used
+   to sit beside this is gone — placement lives in lib/money, once. */
+export const CURRENCIES: CurrencyCode[] = ["USD", "IQD"];
 export const CONDITIONS = ["New", "Good", "Needs renovation"];
 export const FURNISHING = ["Unfurnished", "Semi-furnished", "Fully furnished"];
 export const ORIENTATIONS = ["North facing", "South facing", "East facing", "West facing"];
@@ -140,7 +143,7 @@ export interface ListingForm {
   title: string;
   description: string;
   price: string;
-  currency: string;
+  currency: CurrencyCode;
   area: string;
   areaUnit: "sqm" | "sqft";
   // Location
@@ -216,7 +219,9 @@ const commas = (n: string) => n.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 export const formatPrice = (f: ListingForm) => {
   const n = f.price.replace(/[^0-9]/g, "");
   if (!n) return "";
-  return `${CURRENCY_SYMBOL[f.currency] || ""}${commas(n)}${f.listing === "rent" ? "/mo" : ""}`;
+  /* Through the ONE formatter, so a listing composed on the phone renders its
+     currency exactly as the website and the admin will render it. */
+  return formatPriceIn(Number(n), f.currency) + (f.listing === "rent" ? "/mo" : "");
 };
 export const formatArea = (f: ListingForm) => {
   const n = f.area.replace(/[^0-9]/g, "");

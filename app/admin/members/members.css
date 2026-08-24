@@ -170,94 +170,12 @@
   .mp-clearbtn:hover { color: var(--text-primary); background: var(--gray-100); }
   .mp-clearbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-control); }
 
-  /* ---------- FILTER DROPDOWN (status) ---------- */
-  .mp-datebtn-wrap { flex: 0 1 240px; min-width: 150px; position: relative; }
-  .mp-datebtn {
-    display: flex; align-items: center; gap: 7px;
-    width: 100%; height: 42px; padding: 0 14px;
-    border: 1px solid var(--border-default); background: var(--surface-card);
-    border-radius: var(--radius-control); box-shadow: var(--shadow-xs); cursor: pointer;
-    font-family: var(--font-sans); font-size: 15px; color: var(--text-secondary);
-    text-align: start; transition: border-color .15s, background-color .15s, color .15s;
-  }
-  .mp-datebtn svg { flex: none; color: var(--text-tertiary); }
-  .mp-datebtn:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--gray-25); }
-  .mp-datebtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
-  .mp-datebtn.is-open { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
-  .mp-datebtn.has-value .mp-datebtn__label { font-weight: 600; color: var(--text-primary); }
-  .mp-datebtn__label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mp-custdrop {
-    position: fixed; z-index: 130; padding: 6px;
-    background: var(--surface-card); border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    box-shadow: 0 8px 28px rgba(11,32,24,.13), 0 2px 8px rgba(11,32,24,.07);
-    animation: mp-pop .14s cubic-bezier(.2,.7,.2,1);
-  }
-  @keyframes mp-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-  .mp-custdrop__item {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    width: 100%; padding: 11px 14px;
-    border: none; background: transparent; cursor: pointer;
-    border-radius: var(--radius-md);
-    font-family: var(--font-sans); font-size: 14.5px; font-weight: 400;
-    color: var(--text-primary); text-align: start;
-    transition: background-color .13s; white-space: nowrap;
-  }
-  .mp-custdrop__item:hover { background: var(--gray-50); }
-  .mp-custdrop__item.is-selected { background: var(--green-50); font-weight: 600; }
-  .mp-custdrop__item.is-selected svg { color: var(--text-brand); flex: none; }
-
-  /* ---------- DATE PICKER CALENDAR ---------- */
-  .mp-datebtn__clear {
-    display: inline-flex; align-items: center; justify-content: center;
-    flex: none; width: 18px; height: 18px; border-radius: 50%; border: none; cursor: pointer;
-    background: var(--gray-100); color: var(--text-tertiary); transition: background-color .13s, color .13s;
-  }
-  .mp-datebtn__clear svg { color: var(--text-tertiary); }
-  .mp-datebtn__clear:hover { background: var(--gray-200); }
-  .mp-datebtn__clear:hover svg { color: var(--text-primary); }
-  .mp-cal {
-    position: fixed; z-index: 130; width: 272px; padding: 12px;
-    background: var(--surface-card); border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
-    animation: mp-pop .14s cubic-bezier(.2,.7,.2,1);
-  }
-  .mp-cal__head {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 10px;
-  }
-  .mp-cal__title {
-    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600;
-    color: var(--text-primary);
-  }
-  .mp-cal__nav {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 28px; height: 28px; border: none; background: transparent;
-    border-radius: var(--radius-md); cursor: pointer; color: var(--text-secondary);
-    transition: background-color .13s, color .13s;
-  }
-  .mp-cal__nav:hover { background: var(--gray-100); color: var(--text-primary); }
-  .mp-cal__nav:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
-  .mp-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-  .mp-cal__wd { margin-bottom: 0; }
-  .mp-cal__wdcell {
-    display: flex; align-items: center; justify-content: center; height: 28px;
-    font-family: var(--font-sans); font-size: 11px; font-weight: 700;
-    letter-spacing: .04em; color: var(--text-tertiary);
-  }
-  .mp-cal__day {
-    display: flex; align-items: center; justify-content: center;
-    height: 34px; border: none; background: transparent;
-    border-radius: var(--radius-md); cursor: pointer;
-    font-family: var(--font-sans); font-size: 13px; font-weight: 400;
-    color: var(--text-primary); transition: background-color .13s, color .13s;
-  }
-  .mp-cal__day:hover { background: var(--gray-100); }
-  .mp-cal__day.is-today { font-weight: 700; color: var(--text-brand); }
-  .mp-cal__day.is-selected,
-  .mp-cal__day.is-selected:hover {
-    background: var(--brand-primary); color: #fff; font-weight: 600;
-  }
+  /* The filter dropdown + day picker chrome (`mp-datebtn`, `mp-custdrop`,
+     `mp-cal`) lives in app/admin/_shared/filter-controls.css, imported by the
+     components themselves. Only the filter-row sizing belongs to this page —
+     scoped to the row so it can't act as a height on pages that stack the
+     control in a column-flex field (see the note in the shared file). */
+  .mp-filterbar__row .mp-datebtn-wrap { flex: 0 1 240px; min-width: 150px; }
 
   /* ---------- TABLE (CSS grid rows; scrolls horizontally on mobile) ---------- */
   .mp-table { overflow-x: auto; overflow-y: visible; }
@@ -465,7 +383,7 @@
     .mp-tabsearch { flex: 1 1 auto; }
     .mp-tabsearch input { width: 100%; }
     .mp-filterbar__row { flex-wrap: wrap; }
-    .mp-datebtn-wrap { flex: 1 1 100%; }
+    .mp-filterbar__row .mp-datebtn-wrap { flex: 1 1 100%; }
 
     .mp-tablefooter { flex-direction: column; align-items: stretch; gap: 12px; }
     .mp-pagination { justify-content: center; flex-wrap: wrap; }

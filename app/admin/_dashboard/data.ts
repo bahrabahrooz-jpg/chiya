@@ -2,7 +2,7 @@ import type { IconName } from "@/components/ui/icon";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type { StatTone } from "@/components/data/stat-card";
 import type { PropertyCounts } from "../_properties/data";
-import { AGENTS as CATALOG_AGENTS, PROPERTIES as CATALOG_PROPERTIES } from "../_data/catalog";
+import { AGENTS as CATALOG_AGENTS, PROPERTIES as CATALOG_PROPERTIES, type Availability, type Publication } from "../_data/catalog";
 
 /* KPI periods + cards (Section 2) */
 export interface KpiPeriod {
@@ -92,6 +92,8 @@ export const PERF_SERIES: PerfSeries[] = [
 ];
 
 /* Recent properties + agents (Section 5) */
+/** @deprecated Keyed by the old single status string. Use `toneFor` from
+    ../_properties/data, which reads publication and availability. */
 export const PROP_STATUS: Record<string, { variant: BadgeVariant; dot: boolean }> = {
   Pending: { variant: "warning", dot: true },
   Published: { variant: "success", dot: true },
@@ -105,7 +107,10 @@ export interface RecentProperty {
   location: string;
   agent: string;
   agentImg: string;
-  status: string;
+  /** Both state fields, carried through so the row can tone its own badge and
+      the "live listings" filter can ask the right question. */
+  publication: Publication;
+  availability: Availability;
   img: string;
 }
 /* Latest listed properties, resolved from the shared catalog by id so title /
@@ -115,7 +120,16 @@ const RECENT_PROPERTY_IDS = ["CH-3190", "CH-3200", "CH-3194", "CH-3183", "CH-319
 export const RECENT_PROPERTIES: RecentProperty[] = RECENT_PROPERTY_IDS.map((id) => {
   const p = CATALOG_PROPERTIES.find((cp) => cp.id === id);
   if (!p) throw new Error(`dashboard: unknown recent property "${id}"`);
-  return { id: p.id, title: p.title, location: `${p.area}, ${p.city}`, agent: p.agent?.name ?? "Unassigned", agentImg: p.agent?.img ?? "", status: p.status, img: p.img };
+  return {
+    id: p.id,
+    title: p.title,
+    location: `${p.area}, ${p.city}`,
+    agent: p.agent?.name ?? "Unassigned",
+    agentImg: p.agent?.img ?? "",
+    publication: p.publication,
+    availability: p.availability,
+    img: p.img,
+  };
 });
 
 export interface RecentAgent {

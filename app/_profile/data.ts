@@ -4,6 +4,7 @@
     null for an unknown slug (the route then 404s). */
 
 import { PROPERTIES } from "@/app/admin/_data/catalog";
+import type { Money } from "@/lib/money";
 import { getSiteAgent, portraitUrl, siteReviewsFor, type SiteAgent } from "@/lib/site-agents";
 
 /* ---- shapes the profile page renders ---- */
@@ -39,7 +40,7 @@ export interface ProListing {
   title: string;
   address: string;
   deal: "buy" | "rent";
-  price: number;
+  price: Money;
   status: string;
   featured?: boolean;
   beds: number;
@@ -54,7 +55,7 @@ export interface Sold {
   id: string;
   title: string;
   address: string;
-  price: number;
+  price: Money;
   deal: string;
   beds: number;
   baths: number;
@@ -116,6 +117,16 @@ const hash = (s: string) => {
 };
 /* Deterministic photo count so a listing card always shows the same number. */
 const photoCountFor = (id: string) => 12 + (hash(id) % 20);
+/** Authored bio → paragraphs (blank line separates), or null when it's empty
+    and the caller should fall back to the generated copy. */
+export function splitParagraphs(bio: string): string[] | null {
+  const paras = bio
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return paras.length ? paras : null;
+}
+
 /* "Jun 20, 2026" → "Jun 2026" for the recently-sold "when" line. */
 const monthYear = (date: string) => {
   const m = /^([A-Za-z]{3})\s+\d+,\s*(\d+)$/.exec(date);
@@ -175,11 +186,16 @@ function buildProfile(a: SiteAgent): AgentProfile {
 
   const dealsCount = a.sold + a.rented;
   const specialtyList = specialties.map((s) => s.toLowerCase()).join(", ");
-  const about = [
+  /* Fallbacks: agents whose profile copy hasn't been written in the admin still
+     get a readable About section, derived from their live record. */
+  const generatedAbout = [
     `${a.name} is a verified property consultant based in ${a.city}, specialising in ${specialtyList} across the Kurdistan Region. With ${a.experience} years of experience${dealsCount ? ` and ${dealsCount} completed ${dealsCount === 1 ? "deal" : "deals"} on Chiya` : ""}, ${firstName} guides buyers, sellers, and renters through confident, well-informed moves — from first viewing to handover of keys.`,
     `${firstName}'s approach is straightforward and client-first: clear advice backed by real local market knowledge, and steady communication at every step. Clients value ${firstName}'s honesty, responsiveness, and deep familiarity with ${a.area} and the surrounding districts of ${a.city}.`,
   ];
-  const intro = `${a.name} specialises in ${specialtyList} across ${a.city} and the wider Kurdistan Region, backed by ${a.experience} years of local market experience.`;
+  const generatedIntro = `${a.name} specialises in ${specialtyList} across ${a.city} and the wider Kurdistan Region, backed by ${a.experience} years of local market experience.`;
+
+  const intro = a.headline.trim() || generatedIntro;
+  const about = splitParagraphs(a.bio) ?? generatedAbout;
 
   return {
     agent: {

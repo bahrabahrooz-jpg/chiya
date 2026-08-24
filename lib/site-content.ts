@@ -75,23 +75,31 @@ export interface HomePillar {
   desc: Loc;
 }
 
-export interface HomeTestimonial {
-  name: Loc;
-  loc: Loc;
-  quote: Loc;
-}
-
 export interface HomeCtaCard {
   cta: Loc;
 }
 
+/** The homepage hero photograph shipped with the build. Also the "reset to
+    default" target in the CMS, so it is exported rather than inlined. */
+export const DEFAULT_HERO_IMAGE = "/images/hero-chiya-cover.png";
+
 export interface SiteContent {
   home: {
+    /* The full-bleed photo behind the hero. A path under /public for the seed,
+       or a data: URL once an admin picks a file — there is no upload endpoint,
+       so the chosen image rides along in the same localStorage blob as the
+       copy. Never blank: the hero has no design without a photo, so the CMS
+       offers "reset to default" instead of a remove. */
+    heroImage: string;
     heroTitle: Loc;
     heroSub: Loc;
     sections: Record<HomeSectionId, SectionHead>;
     pillars: HomePillar[];
-    testimonials: HomeTestimonial[];
+    /* The testimonial band shows real approved reviews, so the CMS stores only
+       the admin's *pick* — review ids, never the quotes (lib/site-reviews).
+       `null` means they never curated it and the band uses the default pick;
+       `[]` is a deliberate "show nothing" and hides the band. */
+    featuredReviews: string[] | null;
     ctaTitle: Loc;
     ctaSub: Loc;
     ctaCards: { find: HomeCtaCard; agent: HomeCtaCard; list: HomeCtaCard };
@@ -134,7 +142,6 @@ const PRIVACY_COUNT = 7;
 const TERMS_COUNT = 8;
 const ABOUT_VALUES = 4;
 const HOME_PILLARS = 4;
-const HOME_TESTIMONIALS = 3;
 
 function seedFaq(): FaqEntry[] {
   return Array.from({ length: FAQ_COUNT }, (_, i) => ({
@@ -165,6 +172,7 @@ function seedHead(id: HomeSectionId): SectionHead {
 
 function seedHome(): SiteContent["home"] {
   return {
+    heroImage: DEFAULT_HERO_IMAGE,
     heroTitle: loc("hero.title"),
     heroSub: loc("hero.sub"),
     sections: HOME_SECTION_IDS.reduce(
@@ -172,11 +180,10 @@ function seedHome(): SiteContent["home"] {
       {} as Record<HomeSectionId, SectionHead>,
     ),
     pillars: Array.from({ length: HOME_PILLARS }, (_, i) => ({ title: loc(`why.${i}.title`), desc: loc(`why.${i}.desc`) })),
-    testimonials: Array.from({ length: HOME_TESTIMONIALS }, (_, i) => ({
-      name: loc(`test.${i}.name`),
-      loc: loc(`test.${i}.loc`),
-      quote: loc(`test.${i}.quote`),
-    })),
+    // Uncurated by default: the band resolves null to lib/site-reviews' default
+    // pick. Deliberately not imported here — every public page loads this store
+    // for the footer, and the review pool pulls in the whole admin catalog.
+    featuredReviews: null,
     ctaTitle: loc("cta.title"),
     ctaSub: loc("cta.sub"),
     ctaCards: { find: { cta: loc("cta.find.cta") }, agent: { cta: loc("cta.agent.cta") }, list: { cta: loc("cta.list.cta") } },
@@ -217,7 +224,9 @@ export const DEFAULT_CONTENT: SiteContent = {
 };
 
 // Bump when the DEFAULT_CONTENT schema changes so stale caches are dropped.
-const KEY = "chiya:site-content:v2";
+// v3: the testimonial band stopped storing authored quotes (name/detail/quote)
+// and now stores picked review ids.
+const KEY = "chiya:site-content:v3";
 
 let current: SiteContent = DEFAULT_CONTENT;
 let hydrated = false;
@@ -239,6 +248,8 @@ function parse(raw: string | null): SiteContent {
       home: {
         ...DEFAULT_CONTENT.home,
         ...ph,
+        // Never blank — a hero with no photo is a broken page, not a choice.
+        heroImage: ph?.heroImage || DEFAULT_HERO_IMAGE,
         // Fixed-key record: merge each band over its default so a section added
         // in a later build always exists even in an old cache.
         sections: HOME_SECTION_IDS.reduce(
@@ -246,7 +257,9 @@ function parse(raw: string | null): SiteContent {
           {} as Record<HomeSectionId, SectionHead>,
         ),
         pillars: ph?.pillars ?? DEFAULT_CONTENT.home.pillars,
-        testimonials: ph?.testimonials ?? DEFAULT_CONTENT.home.testimonials,
+        // Stored [] must survive as [] — it means "band curated to empty", which
+        // is not the same as the uncurated null that falls back to the default.
+        featuredReviews: ph?.featuredReviews ?? null,
         ctaCards: { ...DEFAULT_CONTENT.home.ctaCards, ...ph?.ctaCards },
       },
       faq: p.faq ?? DEFAULT_CONTENT.faq,

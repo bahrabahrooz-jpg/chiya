@@ -42,6 +42,21 @@ export const AGENT = {
     assign: can("properties.assign"),
     status: can("properties.status"),
   },
+  /**
+   * Contracts ride on `properties.view` for now.
+   *
+   * There are deliberately no `contracts.*` permission ids yet: adding them
+   * means adding rows to the Roles & permissions screen and to the roles design
+   * doc, and getting the split right (who may write one, who may sign one off,
+   * who may see the money on it, who may cancel one) is a decision worth making
+   * on its own rather than as a side effect of building the screens.
+   *
+   * TODO(contracts permissions task): contracts will eventually need at least
+   * `contracts.view`, `contracts.create`, `contracts.edit` (drafts only),
+   * `contracts.cancel`, and — separately, because seeing terms and seeing money
+   * are different jobs — `contracts.invoices` and `contracts.payments`.
+   */
+  contracts: { view: can("properties.view"), create: false, edit: false, cancel: false },
   members: { view: can("members.view"), create: can("members.create"), edit: can("members.edit") },
   agents: { view: can("agents.view"), create: can("agents.create"), edit: can("agents.edit") },
   viewings: { view: can("viewings.view"), schedule: can("viewings.schedule"), edit: can("viewings.edit"), cancel: can("viewings.cancel") },

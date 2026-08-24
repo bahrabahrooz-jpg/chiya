@@ -14,8 +14,9 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input, Textarea } from "@/components/ui/input";
 import { useLang, isRtl } from "@/lib/i18n";
-import { fmtCurrency, fmtNum, localizeDigits, valueKey } from "@/lib/fmt";
-import { useAdminSettings } from "@/lib/admin-settings";
+import { fmtNum, localizeDigits, valueKey } from "@/lib/fmt";
+import { formatPrice, money, type CurrencyCode } from "@/lib/money";
+import { enabledCurrencies, usePlatformSettings } from "@/lib/platform-settings";
 import {
   AMENITIES,
   AMENITY_GROUPS,
@@ -32,7 +33,8 @@ import {
   type ApForm,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
-import type { PropertyRecord } from "../_data/catalog";
+import { toIso } from "@/lib/dates";
+import { buildMandate, legacyStatus, type Publication, type PropertyRecord } from "../_data/catalog";
 import { useListings, type MemberListing } from "@/lib/listings";
 
 export type Opt = { value: string; label: string };
@@ -46,17 +48,33 @@ function todayLabel(): string {
 // persisted to localStorage) don't collide on lookup.
 const ID_BASE = 10000 + Math.floor(Date.now() % 90000);
 let addedSeq = 0;
-function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader): PropertyRecord {
+/**
+ * Build a catalog record from the wizard form.
+ *
+ * `publication` is the wizard's third exit: Publish takes the default, Save
+ * draft forces "draft", and Create contract forces "unpublished" — a property
+ * being sold the moment it is created never belongs on the website.
+ * `availability` is always "available": only a contract may change it.
+ */
+function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader, publication?: Publication): PropertyRecord {
   const listing: "sale" | "rent" = f.listing === "rent" ? "rent" : "sale";
   const district = f.district || "Ankawa";
   const area = f.project || district; // most specific location (project → district)
   const date = todayLabel();
+  // Real wall-clock time is right here: a listing is only ever created client
+  // side after a user gesture, so it can't desync the server render the way a
+  // seed built on `new Date()` would.
+  const iso = toIso(new Date());
   const amenIcon: Record<string, IconName> = Object.fromEntries(AMENITIES.map((a) => [a.label, a.icon]));
   // Uploaded photos, cover first, as the gallery. Falls back to nothing → the
   // detail page uses a type-based gallery when the user skipped media.
   const ordered = photos.cover ? [photos.cover, ...photos.photos.filter((x) => x.id !== photos.coverId)] : photos.photos;
   const gallery = ordered.map((x) => x.url);
   const cover = photos.cover?.url || COVER_IMG;
+  // A property can only go live with an assigned agent; without one it stays
+  // Pending until an agent is assigned.
+  const pub: Publication = publication ?? (agent ? "published" : "pending");
+  const state = { publication: pub, availability: "available" as const };
   return {
     id: "CH-" + (ID_BASE + addedSeq++),
     title: f.title || "Untitled property",
@@ -68,23 +86,24 @@ function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader)
     owner: { name: f.ownerName || "New owner", phone: f.ownerPhone || "", type: "Individual owner" },
     agent: agent ? { name: agent.name, verified: true, img: agent.avatar } : null,
     listing,
-    // A property can only go live with an assigned agent; without one it stays
-    // Pending until an agent is assigned.
-    status: agent ? "Published" : "Pending",
-    price: Number(String(f.price).replace(/[^0-9.]/g, "")) || 0,
+    ...state,
+    status: legacyStatus(state),
+    mandate: buildMandate(listing, iso),
+    price: money(Number(String(f.price).replace(/[^0-9.]/g, "")) || 0, f.currency),
     per: listing === "rent" ? "/mo" : undefined,
     date,
     daysAgo: 0,
+    listedOn: iso,
+    updatedOn: iso,
     beds: f.beds,
     baths: f.baths,
     size: Number(String(f.area).replace(/[^0-9.]/g, "")) || 0,
     featured: false,
-    published: !!agent,
+    published: pub === "published",
     listingDate: date,
     updated: date,
     details: {
       description: f.description || undefined,
-      currency: f.currency,
       areaUnit: f.areaUnit,
       ownerEmail: f.ownerEmail || undefined,
       ownerType: "Individual owner",
@@ -420,7 +439,22 @@ export function Dropdown({ id, options, value, onChange, placeholder, disabled }
   );
 }
 
-export function ComboSelect({ side, value, onChange, options }: { side: "left" | "right"; value: string; onChange: (v: string) => void; options: string[] }) {
+export function ComboSelect({
+  side,
+  value,
+  onChange,
+  options,
+  disabled = false,
+}: {
+  side: "left" | "right";
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  /** Renders the current value as read-only. Used where changing it would
+      invalidate records that already reference it — see the currency lock in
+      _edit-property. */
+  disabled?: boolean;
+}) {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -452,13 +486,26 @@ export function ComboSelect({ side, value, onChange, options }: { side: "left" |
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className={"ap-combo__sel ap-combo__sel--" + side}>
-      <button ref={triggerRef} type="button" className={"ap-combo__sel-btn" + (open ? " is-open" : "")} onClick={() => (open ? setOpen(false) : openDropdown())} aria-haspopup="listbox" aria-expanded={open} aria-label={t("admin.ap.unit")}>
+    <div className={"ap-combo__sel ap-combo__sel--" + side + (disabled ? " is-disabled" : "")}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={"ap-combo__sel-btn" + (open ? " is-open" : "")}
+        onClick={() => (open ? setOpen(false) : openDropdown())}
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t("admin.ap.unit")}
+      >
         {value}
       </button>
-      <span className={"ap-combo__sel__chev" + (open ? " is-open" : "")}>
-        <Icon name="chevron-down" size={16} />
-      </span>
+      {/* No chevron when it cannot open — an affordance that does nothing is
+          worse than none at all. */}
+      {!disabled && (
+        <span className={"ap-combo__sel__chev" + (open ? " is-open" : "")}>
+          <Icon name="chevron-down" size={16} />
+        </span>
+      )}
       {open &&
         coords &&
         createPortal(
@@ -1292,11 +1339,15 @@ export function AddPropertyApp({
   const agentMode = mode === "agent";
   const assignableAgents = useAssignableAgents();
   const photos = usePhotoUploader(false);
-  // A new listing starts in the org's default currency (Settings → General).
-  // The listing currency picker only offers USD/IQD, so anything else (EUR)
-  // falls back to USD rather than seeding a value the picker can't represent.
-  const { settings } = useAdminSettings();
-  const defaultCurrency = settings.org.currency === "IQD" ? "IQD" : "USD";
+  /* THE one place a listing's currency is chosen (see lib/money's header). It
+     starts at the platform default and offers whatever Settings → Listings has
+     enabled — the type is not the menu, the enabled list is, so switching a
+     currency on for the whole platform is a settings change and nothing else.
+     Read from platform-settings rather than the legacy admin-settings store
+     because that is where both the default AND the enabled list live. */
+  const { settings } = usePlatformSettings();
+  const defaultCurrency = settings.general.defaultCurrency;
+  const currencyOptions = enabledCurrencies(settings);
   const [f, setF] = useState<ApForm>(() => ({
     ...EMPTY_FORM,
     currency: defaultCurrency,
@@ -1347,11 +1398,11 @@ export function AddPropertyApp({
   // record, which lib/listings.ts and the public site also read. Keeping them
   // language-neutral stops a record from freezing in whatever language it was
   // submitted in; the review step below renders localized copies instead.
-  const CUR: Record<string, string> = { USD: "$", EUR: "€", IQD: "IQD " };
+
   const groupDigits = (n: string | number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  const priceStr = f.price ? (CUR[f.currency] || "") + groupDigits(f.price) : "";
+  const priceStr = f.price ? formatPrice("en", money(Number(f.price), f.currency)) : "";
   const areaStr = f.area ? groupDigits(f.area) + " " + (f.areaUnit === "sqm" ? "m²" : f.areaUnit) : "";
-  const priceDisplay = f.price ? fmtCurrency(lang, Number(f.price), f.currency) : "";
+  const priceDisplay = f.price ? formatPrice(lang, money(Number(f.price), f.currency)) : "";
   const areaDisplay = f.area ? fmtNum(lang, Number(f.area)) + " " + (f.areaUnit === "sqm" ? t("unit.sqm") : f.areaUnit) : "";
   const rev = {
     listing: t(f.listing === "rent" ? "admin.pd.forRent" : "admin.pd.forSale"),
@@ -1393,7 +1444,7 @@ export function AddPropertyApp({
       router.push("/my-listings");
       return;
     }
-    const rec: PropertyRecord = { ...formToProperty(f, f.agent ? revAgent : null, photos), status: "Draft", published: false };
+    const rec: PropertyRecord = formToProperty(f, f.agent ? revAgent : null, photos, "draft");
     if (draftIdRef.current) {
       updateProperty(draftIdRef.current, { ...rec, id: draftIdRef.current });
     } else {
@@ -1470,7 +1521,7 @@ export function AddPropertyApp({
               <div className="ap-field">
                 <FieldLabel htmlFor="ap-price">{t("admin.props.th.price")}</FieldLabel>
                 <div className="ap-combo">
-                  <ComboSelect side="left" value={f.currency} onChange={(v) => set("currency", v)} options={["USD", "IQD"]} />
+                  <ComboSelect side="left" value={f.currency} onChange={(v) => set("currency", v as CurrencyCode)} options={currencyOptions} />
                   <input id="ap-price" className="ap-combo__input" inputMode="numeric" placeholder={t("admin.ap.pricePh")} value={f.price} onChange={(e) => set("price", e.target.value.replace(/[^\d]/g, ""))} />
                   {f.listing === "rent" && <span className="ap-combo__suffix cx-tnum" aria-hidden="true">{t("admin.mp.perMo")}</span>}
                 </div>
@@ -1911,6 +1962,27 @@ export function AddPropertyApp({
               <Button hierarchy="secondary" size="lg" iconLeading="save" onClick={saveDraft}>
                 {t("admin.ap.saveDraft")}
               </Button>
+              {/* The third exit. Some listings are created only to record a sale
+                  that already happened — they should never touch the website, so
+                  this files them unpublished and goes straight to the property's
+                  Contracts tab. Members never see it: they submit for approval,
+                  they do not write contracts.
+                  TODO(NewContractModal task): make ?contract=1 open the create
+                  modal, so this stays one continuous action. */}
+              {!member && (
+                <Button
+                  hierarchy="secondary"
+                  size="lg"
+                  iconLeading="file-signature"
+                  onClick={() => {
+                    const rec = formToProperty(f, f.agent ? revAgent : null, photos, "unpublished");
+                    addProperty(rec);
+                    router.push(`${agentMode ? "/agent" : "/admin"}/properties/${encodeURIComponent(rec.id)}?contract=1`);
+                  }}
+                >
+                  {t("admin.pd.createContract")}
+                </Button>
+              )}
               <Button
                 hierarchy="primary"
                 size="lg"
@@ -1934,7 +2006,7 @@ export function AddPropertyApp({
                     id: rec.id,
                     title: rec.title,
                     address: rec.area + ", " + rec.city,
-                    price: priceDisplay || fmtCurrency(lang, rec.price, f.currency),
+                    price: priceDisplay || formatPrice(lang, rec.price),
                     listing: t(rec.listing === "rent" ? "admin.pd.forRent" : "admin.pd.forSale"),
                     beds: rec.beds,
                     baths: rec.baths,

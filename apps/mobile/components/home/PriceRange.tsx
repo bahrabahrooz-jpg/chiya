@@ -2,22 +2,23 @@ import { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useTheme } from "@/theme";
 import { useTranslation } from "@/lib/i18n";
-import { IQD_PER_USD, type PriceFilter } from "./data";
+import { type PriceFilter } from "./data";
+import { abbreviatePrice, currencyMarker, type CurrencyCode } from "@/lib/money";
 import { RangeInput, clamp } from "./RangeSlider";
 import { Segmented } from "./Segmented";
 
-type Cur = "USD" | "IQD";
-const BOUND: Record<Cur, number> = { USD: 2_000_000, IQD: 2_000_000 * IQD_PER_USD };
+type Cur = CurrencyCode;
 
-function abbr(v: number): string {
-  if (v >= 1e9) return `${(v / 1e9).toFixed(v % 1e9 ? 1 : 0)}B`;
-  if (v >= 1e6) return `${(v / 1e6).toFixed(v % 1e6 ? 1 : 0)}M`;
-  if (v >= 1e3) return `${Math.round(v / 1e3)}K`;
-  return `${v}`;
-}
-function fmt(v: number, currency: Cur): string {
-  return currency === "USD" ? `$${abbr(v)}` : `${abbr(v)} IQD`;
-}
+/* Upper bound of the range PER CURRENCY, chosen as a round figure in each rather
+   than converted. $2M and 2.5 billion dinars are both numbers someone would
+   recognise as "the top of the market"; 2,620,000,000 — which is what $2M comes
+   to at 1,310 — is not a bound any person would pick. */
+const BOUND: Record<Cur, number> = { USD: 2_000_000, IQD: 2_500_000_000 };
+
+/* Abbreviated and currency-aware. The marker and its placement come from
+   lib/money, so the filter can never disagree with the cards behind it. */
+const fmt = (v: number, currency: Cur) => abbreviatePrice(v, currency);
+
 export function priceRangeLabel(p: PriceFilter): string {
   const atMax = p.max >= BOUND[p.currency];
   return `${fmt(p.min, p.currency)} – ${fmt(p.max, p.currency)}${atMax ? "+" : ""}`;
@@ -62,12 +63,18 @@ export function PriceRange({
       </View>
 
       <View style={styles.minmax}>
-        <RangeInput label={t("range.minPrice")} value={lo} prefix={currency === "USD" ? "$" : "IQD"} onCommit={(v) => onChange({ min: clamp(v, 0, hi), max: hi, currency })} />
+        <RangeInput label={t("range.minPrice")} value={lo} prefix={currencyMarker(currency)} onCommit={(v) => onChange({ min: clamp(v, 0, hi), max: hi, currency })} />
         <View style={styles.dash}>
           <Text style={{ color: colors.textTertiary }}>–</Text>
         </View>
-        <RangeInput label={t("range.maxPrice")} value={hi} prefix={currency === "USD" ? "$" : "IQD"} onCommit={(v) => onChange({ min: lo, max: clamp(v, lo, bound), currency })} />
+        <RangeInput label={t("range.maxPrice")} value={hi} prefix={currencyMarker(currency)} onCommit={(v) => onChange({ min: lo, max: clamp(v, lo, bound), currency })} />
       </View>
+
+      {/* Said once, quietly — the same line the website shows under its price
+          filter. A listing quoted in the other currency is matched at the
+          current rate, so one near the edge of the range can move in or out.
+          Without this it reads as a broken filter. */}
+      <Text style={[type.bodySm, { color: colors.textTertiary }]}>{t("range.fxNote")}</Text>
     </View>
   );
 }

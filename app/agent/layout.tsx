@@ -6,6 +6,7 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AgentTopbar } from "@/components/agent/agent-topbar";
 import { AGENT_NAV_GROUPS, activeAgentNavId } from "@/components/agent/agent-data";
 import { PropertiesProvider } from "@/app/admin/_shared/properties-store";
+import { ContractsProvider } from "@/app/admin/_shared/contracts-store";
 import "@/components/admin/admin-shell.css";
 
 function categoryFor(w: number) {
@@ -48,8 +49,11 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  /* Same nesting as the admin layout — the transitions hook reads both stores,
+     and a contract's consequences land on a property. */
   return (
     <PropertiesProvider>
+      <ContractsProvider>
       <div className="ax-app" data-layout="B">
         <AdminSidebar
           collapsed={collapsed}
@@ -68,6 +72,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
           <main className="ax-content">{children}</main>
         </div>
       </div>
+      </ContractsProvider>
     </PropertiesProvider>
   );
 }

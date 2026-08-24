@@ -11,21 +11,29 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
 import { useLang, isRtl } from "@/lib/i18n";
-import { fmtNum, fmtCurrency, fmtDate, fmtStamp, localizeDigits, roleKey, valueKey } from "@/lib/fmt";
+import { fmtNum, fmtDate, fmtStamp, localizeDigits, roleKey, valueKey } from "@/lib/fmt";
+import { formatMoney, formatPrice } from "@/lib/money";
+import { fromIso } from "@/lib/dates";
 import {
+  AVAILABILITY_META,
+  PUBLICATION_META,
   STATUS_DOT_COLOR,
-  STATUS_META,
-  STATUS_OPTIONS,
   VIEWING_STATUS,
-  statusRequiresAgent,
+  VISIBILITY_OPTIONS,
   getProperty,
   getViewings,
+  legacyStatus,
   toDetailProperty,
   type DetailAgent,
   type DetailProperty,
   type NoteItem,
+  type Publication,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
+import { useContracts } from "../_shared/contracts-store";
+import { canPublish } from "../_data/property-state";
+import { STATUS_META as CONTRACT_STATUS_META } from "../_contracts/data";
+import { contractValue, invoiceStatus, type ContractRecord } from "../_data/contracts";
 
 const ADMIN = { name: "Rêbîn Kawa", role: "Super Admin" };
 
@@ -105,13 +113,20 @@ function useToasts(): [ToastData[], (t: Omit<ToastData, "id">) => void, (id: num
 }
 
 /* ---------------- modals ---------------- */
-function ChangeStatusModal({ property, onCancel, onConfirm }: { property: DetailProperty; onCancel: () => void; onConfirm: (s: string) => void }) {
+/**
+ * Change visibility — who may see the listing, and nothing else.
+ *
+ * Sold and Rented used to be in this list. They are not any more, and that is
+ * the point of the whole change: a sale is a contract, not a word someone
+ * picks from a dropdown, and there is no way back to it from here.
+ */
+function ChangeVisibilityModal({ property, onCancel, onConfirm }: { property: DetailProperty; onCancel: () => void; onConfirm: (p: Publication) => void }) {
   const { t } = useLang();
   const tOr = (key: string, fallback: string) => {
     const out = t(key);
     return out === key ? fallback : out;
   };
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Publication | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -153,27 +168,27 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
     };
   }, [dropOpen]);
 
-  const canConfirm = selected && selected !== property.status;
+  const canConfirm = selected && selected !== property.publication;
   return createPortal(
     <div className="pp-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="pp-modal pp-modal--agent" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
         <div className="pp-modal__icon pp-modal__icon--status">
-          <Icon name="refresh-cw" size={24} strokeWidth={1.8} />
+          <Icon name="eye" size={24} strokeWidth={1.8} />
         </div>
         <h2 className="pp-modal__title" id="status-modal-title">
-          {t("admin.props.changeStatus")}
+          {t("admin.props.changeVisibility")}
         </h2>
-        <p className="pp-modal__sublabel">{t("admin.props.selectNewStatus")}</p>
+        <p className="pp-modal__sublabel">{t("admin.props.selectNewVisibility")}</p>
         <button ref={triggerRef} type="button" className={"pp-amodal__trigger" + (dropOpen ? " is-open" : "")} onClick={toggleDrop}>
           {selected ? (
             <>
-              <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[STATUS_META[selected].variant] }} />
+              <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[PUBLICATION_META[selected].variant] }} />
               <span className="pp-smodal__label">{tOr(valueKey("status", selected), selected)}</span>
             </>
           ) : (
             <span className="pp-amodal__trigger-placeholder">
-              <Icon name="tag" size={16} />
-              {t("admin.props.chooseStatus")}
+              <Icon name="eye" size={16} />
+              {t("admin.props.chooseVisibility")}
             </span>
           )}
           <Icon name="chevron-down" size={15} className="pp-amodal__trigger-chev" />
@@ -182,30 +197,34 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
           dropPos &&
           createPortal(
             <div className="pp-smodal__drop pp-amodal__drop" style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
-              {STATUS_OPTIONS.map((status) => {
-                const meta = STATUS_META[status];
-                // A property with no agent can't move to a live status.
-                const blocked = !property.agent && statusRequiresAgent(status);
+              {VISIBILITY_OPTIONS.map((pub) => {
+                const meta = PUBLICATION_META[pub];
+                /* Two ways publishing can be out of reach, each with its own
+                   explanation: nobody is assigned, or something has already
+                   closed on the property. Never silently ignored. */
+                const guard = pub === "published" ? canPublish(property) : ({ ok: true } as const);
+                const needsAgent = pub === "published" && !property.agent;
+                const blocked = needsAgent || !guard.ok;
                 return (
                   <button
-                    key={status}
+                    key={pub}
                     type="button"
                     disabled={blocked}
-                    className={"pp-smodal__item" + (selected === status ? " is-selected" : "") + (blocked ? " is-disabled" : "")}
+                    className={"pp-smodal__item" + (selected === pub ? " is-selected" : "") + (blocked ? " is-disabled" : "")}
                     onClick={() => {
-                      setSelected(status);
+                      setSelected(pub);
                       setDropOpen(false);
                     }}
                   >
                     <span className="pp-smodal__dot" style={{ background: STATUS_DOT_COLOR[meta.variant] }} />
-                    <span className="pp-smodal__label">{status}</span>
+                    <span className="pp-smodal__label">{tOr(valueKey("status", pub), pub)}</span>
                     <span className="pp-smodal__spacer" />
                     {blocked ? (
-                      <span className="pp-smodal__req">{t("admin.props.needsAgent")}</span>
+                      <span className="pp-smodal__req">{needsAgent ? t("admin.props.needsAgent") : t(guard.ok ? "" : guard.reasonKey)}</span>
                     ) : (
                       <>
-                        {property.status === status && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
-                        {selected === status && (
+                        {property.publication === pub && <span className="pp-amodal__current-tag">{t("admin.props.current")}</span>}
+                        {selected === pub && (
                           <span className="pp-smodal__check">
                             <Icon name="check" size={16} strokeWidth={2.5} />
                           </span>
@@ -223,8 +242,8 @@ function ChangeStatusModal({ property, onCancel, onConfirm }: { property: Detail
             {t("admin.common.cancel")}
           </button>
           <button type="button" className="pp-modal__confirm" disabled={!canConfirm} onClick={() => selected && onConfirm(selected)}>
-            <Icon name="refresh-cw" size={15} />
-            {t("admin.props.changeStatus")}
+            <Icon name="eye" size={15} />
+            {t("admin.props.changeVisibility")}
           </button>
         </div>
       </div>
@@ -392,6 +411,16 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
     document.body,
   );
 }
+
+/* ---------------- create a contract ----------------
+   The modal that used to live here built a DealRecord inline. There is no
+   DealRecord any more — the contract IS the transaction — and rebuilding the
+   form against ContractRecord is its own piece of work.
+
+   TODO(NewContractModal task): restore the create flow as NewContractModal.
+   Until then every button that would open it renders disabled, so the action
+   stays visible in its usual place rather than disappearing and reappearing.
+   Contracts are read from the seed and shown at /admin/contracts. */
 
 function ConfirmModal({ kind, property, onCancel, onConfirm }: { kind: "archive" | "delete"; property: DetailProperty; onCancel: () => void; onConfirm: () => void }) {
   const { t } = useLang();
@@ -573,7 +602,7 @@ function DGroup({ title, desc, children, cols, noRowDivider }: { title: string; 
   );
 }
 
-function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onDelete, onFeature, agentSurface }: { p: DetailProperty; onEdit: () => void; onChangeStatus: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void; onFeature: () => void; agentSurface?: boolean }) {
+function DetailHeader({ p, onEdit, onChangeVisibility, onAssignAgent, onArchive, onDelete, onFeature, agentSurface }: { p: DetailProperty; onEdit: () => void; onChangeVisibility: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void; onFeature: () => void; agentSurface?: boolean }) {
   const { t, lang } = useLang();
   const tOr = (key: string, fallback: string) => {
     const out = t(key);
@@ -590,15 +619,28 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
     return () => document.removeEventListener("mousedown", close);
   }, [menuOpen]);
 
-  const st = STATUS_META[p.status] || { variant: "neutral" as const };
+  /* Two badges, two independent facts. The publication badge always shows; the
+     availability badge appears ONLY when something has happened to the property,
+     so an ordinary listing gains no extra noise. It carries the lock icon
+     because it is derived from contracts — nothing here can set it. */
+  const pubMeta = PUBLICATION_META[p.publication];
+  const availMeta = AVAILABILITY_META[p.availability];
+  const showAvailability = p.availability !== "available";
   return (
     <div className="pd-head__main">
         <div className="pd-head__intro">
           <div className="pd-head__titlerow">
             <h1 className="pd-head__title">{p.title}</h1>
-            <Badge variant={st.variant} size="sm" dot={st.dot} icon={st.icon}>
-              {t(valueKey("status", p.status))}
-            </Badge>
+            <span className="pd-head__badges">
+              <Badge variant={pubMeta.variant} size="sm" dot={pubMeta.dot} icon={pubMeta.icon}>
+                {t(valueKey("status", p.publication))}
+              </Badge>
+              {showAvailability && (
+                <Badge variant={availMeta.variant} size="sm" icon="lock" title={t("admin.pd.availabilityDerived")}>
+                  {t(valueKey("status", p.availability))}
+                </Badge>
+              )}
+            </span>
           </div>
           <div className="pd-head__meta">
             <span className="pd-head__metaitem pd-head__metaitem--id">
@@ -629,9 +671,15 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
         </div>
 
         <div className="pd-head__actions">
-          <Button hierarchy="secondary" size="md" iconLeading="refresh-cw" onClick={onChangeStatus}>
-            {t("admin.props.changeStatus")}
-          </Button>
+          {/* Writing a contract is the second thing you can do to a property,
+              in the slot "Change status" used to hold. Visibility moved into the
+              ⋯ menu: it is housekeeping, and this is the transaction.
+              TODO(NewContractModal task): enable once the create flow exists. */}
+          {!agentSurface && (
+            <Button hierarchy="secondary" size="md" iconLeading="file-signature" disabled>
+              {t("admin.pd.createContract")}
+            </Button>
+          )}
           <Button hierarchy="primary" size="md" iconLeading="pencil" onClick={onEdit}>
             {t("admin.props.editProperty")}
           </Button>
@@ -641,6 +689,18 @@ function DetailHeader({ p, onEdit, onChangeStatus, onAssignAgent, onArchive, onD
             </button>
             {menuOpen && (
               <div className="pd-moremenu" role="menu">
+                <button
+                  type="button"
+                  className="pd-moreitem"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onChangeVisibility();
+                  }}
+                >
+                  <Icon name="eye" size={17} />
+                  {t("admin.props.changeVisibility")}
+                </button>
                 {!agentSurface && (
                   <button
                     type="button"
@@ -761,7 +821,10 @@ function PropertyInfo({ p }: { p: DetailProperty }) {
           <Field
             icon="wallet"
             label={t(p.listing === "sale" ? "admin.pd.f.askingPrice" : "admin.pd.f.monthlyRent")}
-            value={fmtNum(lang, p.price) + " " + s.currency + (p.per ? t("admin.pd.perMonth") : "")}
+            /* One formatter, so this field can't disagree with the price shown
+               in the header or the list. It used to glue a raw number to the
+               spec table's currency LABEL — "720,000 USD · US Dollar". */
+            value={formatPrice(lang, p.price) + (p.per ? t("admin.pd.perMonth") : "")}
             em
           />
         </DGroup>
@@ -986,7 +1049,7 @@ function Timeline({ p, onViewAll }: { p: DetailProperty; onViewAll: () => void }
               <p className="pd-tl__desc">
                 {t(e.descKey, {
                   ...e.params,
-                  ...(e.price !== undefined ? { price: fmtCurrency(lang, e.price) + (e.per ? t("admin.pd.perMonth") : "") } : {}),
+                  ...(e.price !== undefined ? { price: formatPrice(lang, e.price) + (e.per ? t("admin.pd.perMonth") : "") } : {}),
                 })}
               </p>
             </div>
@@ -1044,6 +1107,204 @@ function Ownership({ p, agentSurface }: { p: DetailProperty; agentSurface?: bool
           </div>
           <Icon name="external-link" size={15} className="pd-contact__go" />
         </a>
+      </div>
+    </SectionCard>
+  );
+}
+
+/**
+ * The listing mandate — the agency's agreement with the OWNER.
+ *
+ * On the Overview tab, under Ownership, deliberately NOT on the Contracts tab.
+ * A mandate is not a transaction: it is the permission to market the property
+ * at all, and it belongs beside the person who granted it. Its commission rate
+ * is the default every sale contract on this property inherits, which is why
+ * the rate is called out rather than buried in a list.
+ */
+function Mandate({ p }: { p: DetailProperty }) {
+  const { t, lang } = useLang();
+  const m = p.mandate;
+  if (!m) {
+    return (
+      <SectionCard title={t("admin.pd.mandate")} desc={t("admin.pd.mandateDesc")} id="mandate">
+        <div className="pd-noagent">
+          <span className="pd-noagent__art">
+            <Icon name="file-signature" size={24} strokeWidth={1.6} />
+          </span>
+          <p>{t("admin.pd.mandateEmpty")}</p>
+        </div>
+      </SectionCard>
+    );
+  }
+  const expired = new Date(m.expiresOn) < new Date(p.updated);
+  return (
+    <SectionCard title={t("admin.pd.mandate")} desc={t("admin.pd.mandateDesc")} id="mandate">
+      <div className="pd-detailgroups">
+        <DGroup title={t("admin.pd.mandateTerms")} cols={1} noRowDivider>
+          <Field
+            icon={m.exclusive ? "lock" : "unlock"}
+            label={t("admin.pd.f.exclusivity")}
+            value={t(m.exclusive ? "admin.pd.exclusive" : "admin.pd.nonExclusive")}
+          />
+          <Field icon="percent" label={t("admin.pd.f.commissionRate")} value={localizeDigits(lang, String(m.commissionRate)) + "%"} em />
+          <Field icon="calendar-check" label={t("admin.pd.f.signedOn")} value={fmtDate(lang, new Date(m.signedOn))} />
+          <Field
+            icon={expired ? "calendar-x" : "calendar"}
+            label={t("admin.pd.f.expiresOn")}
+            value={
+              <>
+                {fmtDate(lang, new Date(m.expiresOn))}
+                {expired && (
+                  <>
+                    {" "}
+                    <Badge variant="warning" size="sm">
+                      {t("admin.pd.mandateExpired")}
+                    </Badge>
+                  </>
+                )}
+              </>
+            }
+          />
+        </DGroup>
+      </div>
+    </SectionCard>
+  );
+}
+
+/* ---------------- contracts tab ---------------- */
+
+/** Who the property changed hands with, on one contract. A member link when
+    they have an account, a plain name when they do not — most buyers never
+    register — and a dash where nobody has committed yet. */
+function counterpartyOf(c: ContractRecord, memberName: (id?: string) => string | undefined): { name: string; id?: string } | null {
+  const linked = memberName(c.buyerId);
+  if (linked) return { name: linked, id: c.buyerId };
+  if (c.buyerExternal) return { name: c.buyerExternal.name };
+  return null;
+}
+
+function ContractsPanel({ p, agentSurface }: { p: DetailProperty; agentSurface?: boolean }) {
+  const { t, lang } = useLang();
+  const { payments, contractsByProperty, invoicesByContract, outstandingForContract } = useContracts();
+  const { members } = useProperties();
+  const rows = contractsByProperty(p.id);
+  const memberName = (id?: string) => (id ? members.find((m) => m.id === id)?.name : undefined);
+  const base = agentSurface ? "/agent" : "/admin";
+
+  if (rows.length === 0) {
+    return (
+      <SectionCard title={t("admin.pd.contracts")} desc={t("admin.pd.contractsEmptyDesc")} id="contracts">
+        <div className="pd-noagent">
+          <span className="pd-noagent__art">
+            <Icon name="file-signature" size={24} strokeWidth={1.6} />
+          </span>
+          <p>{t("admin.pd.contractsEmpty")}</p>
+          {/* TODO(NewContractModal task): enable once the create flow exists. */}
+          {!agentSurface && (
+            <Button hierarchy="primary" size="sm" iconLeading="file-signature" disabled>
+              {t("admin.pd.createContract")}
+            </Button>
+          )}
+        </div>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard
+      title={t("admin.pd.contracts")}
+      desc={t(rows.length === 1 ? "admin.pd.contractsCountOne" : "admin.pd.contractsCount", { count: fmtNum(lang, rows.length) })}
+      action={
+        /* TODO(NewContractModal task): enable once the create flow exists. */
+        !agentSurface && (
+          <Button hierarchy="secondary" size="sm" iconLeading="file-signature" disabled>
+            {t("admin.pd.createContract")}
+          </Button>
+        )
+      }
+      id="contracts"
+    >
+      <div className="pd-deals">
+        {rows.map((c) => {
+          const party = counterpartyOf(c, memberName);
+          /* Toned from the SHARED contract-status map, so a status badge looks
+             the same here as it does on the contracts list. Toning it by the
+             property availability instead (which this panel used to do) made
+             one contract read green on one screen and blue on the other. */
+          const tone = CONTRACT_STATUS_META[c.status];
+          const contractInvoices = invoicesByContract(c.id);
+          const owed = outstandingForContract(c.id);
+          const href = `${base}/contracts/${encodeURIComponent(c.id)}`;
+          return (
+            <div className="pd-deal" key={c.id}>
+              <div className="pd-deal__head">
+                <Link className="pd-deal__id" href={href}>
+                  {localizeDigits(lang, c.id)}
+                </Link>
+                <Badge variant={c.kind === "sale" ? "brand" : "info"} size="sm">
+                  {t(`admin.ct.kind.${c.kind}`)}
+                </Badge>
+                <span className="pd-deal__party">
+                  {party ? (
+                    party.id ? (
+                      <Link href={`${base}/members/${encodeURIComponent(party.id)}`}>{party.name}</Link>
+                    ) : (
+                      <>
+                        {party.name}
+                        <span className="pd-deal__ext">{t("admin.pd.externalParty")}</span>
+                      </>
+                    )
+                  ) : (
+                    t("admin.pd.noCounterparty")
+                  )}
+                </span>
+                <span className="pd-deal__spacer" />
+                <Badge variant={tone.variant} size="sm" icon={"icon" in tone ? tone.icon : undefined}>
+                  {t(`admin.ct.status.${c.status}`)}
+                </Badge>
+                {/* formatMoney, never formatApprox: a contract value is
+                    authoritative and must never render as an estimate. */}
+                <span className="pd-deal__value">{formatMoney(lang, contractValue(c))}</span>
+              </div>
+
+              <div className="pd-deal__line">
+                <Icon name="calendar-check" size={15} />
+                <span className="pd-deal__linelabel">{t("admin.ct.f.signedOn")}</span>
+                <span className="pd-deal__linevalue">{c.signedOn ? fmtDate(lang, fromIso(c.signedOn)) : t("admin.ct.unsigned")}</span>
+                <span className="pd-deal__spacer" />
+                <Link className="pd-deal__action" href={href}>
+                  {t("admin.pd.viewContract")}
+                  <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={14} />
+                </Link>
+              </div>
+
+              <div className="pd-deal__line">
+                <Icon name="receipt" size={15} />
+                <span className="pd-deal__linelabel">{t("admin.pd.invoices")}</span>
+                <span className="pd-deal__linevalue">
+                  {contractInvoices.length === 0
+                    ? t("admin.pd.noInvoices")
+                    : t("admin.pd.invoiceSummary", {
+                        count: fmtNum(lang, contractInvoices.length),
+                        paid: fmtNum(lang, contractInvoices.filter((i) => invoiceStatus(i, payments) === "paid").length),
+                        owed: formatMoney(lang, owed),
+                      })}
+                </span>
+                <span className="pd-deal__spacer" />
+                <Link className="pd-deal__action" href={href}>
+                  {t("admin.pd.viewInvoices")}
+                  <Icon name={isRtl(lang) ? "chevron-left" : "chevron-right"} size={14} />
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="pd-deals__foot">
+        <Link className="pd-deals__all" href={`${base}/contracts`}>
+          {t("admin.pd.allContracts")}
+          <Icon name={isRtl(lang) ? "arrow-left" : "arrow-right"} size={15} />
+        </Link>
       </div>
     </SectionCard>
   );
@@ -1246,10 +1507,25 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
   const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);
   const [featureOpen, setFeatureOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
-  const [tab, setTab] = useState<"overview" | "viewings" | "activity">("overview");
+  // Contracts sits between Viewings and Activity — the order follows the
+  // lifecycle of a property: it is shown, it is transacted, then it is history.
+  const [tab, setTab] = useState<"overview" | "viewings" | "contracts" | "activity">("overview");
   const [toasts, pushToast, dismissToast] = useToasts();
+  const { contractsByProperty } = useContracts();
 
   const onEdit = () => router.push(`/admin/properties/${encodeURIComponent(property.id)}/edit?from=details`);
+
+  /* The wizard's third exit lands here with ?contract=1 — the listing was just
+     created unpublished, and the Contracts tab opens straight away so writing
+     the contract is one continuous action rather than two screens with a gap.
+     TODO(NewContractModal task): open the create modal here instead of only
+     switching tabs. */
+  const contractParamHandled = useRef(false);
+  useEffect(() => {
+    if (contractParamHandled.current || searchParams.get("contract") !== "1") return;
+    contractParamHandled.current = true;
+    setTab("contracts");
+  }, [searchParams]);
 
   const toastShown = useRef(false);
   useEffect(() => {
@@ -1261,11 +1537,16 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
     }
   }, [searchParams, property.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleStatus = (status: string) => {
-    setProperty((p) => ({ ...p, status, published: status === "Published" ? true : p.published }));
+  /* Visibility only. Availability is never set here — it is what a contract
+     did. */
+  const handleVisibility = (publication: Publication) => {
+    const next = { publication, availability: property.availability };
+    setProperty((p) => ({ ...p, publication, status: legacyStatus(next), published: publication === "published" }));
+    updateProperty(property.id, { publication, status: legacyStatus(next), published: publication === "published" });
     setStatusOpen(false);
-    pushToast({ tone: "brand", icon: "refresh-cw", title: t("admin.props.toast.statusTitle"), msg: t("admin.pd.toast.statusMsg", { title: property.title, status: t(valueKey("status", status)) }) });
+    pushToast({ tone: "brand", icon: "eye", title: t("admin.props.toast.visibilityTitle"), msg: t("admin.pd.toast.visibilityMsg", { title: property.title, status: t(valueKey("status", publication)) }) });
   };
+
   const handleAssign = (agent: DetailAgent) => {
     const wasAssigned = !!property.agent;
     const enriched = { ...agent, email: agent.email || agent.name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@mail.chiya.estate", listings: agent.listings || 8 };
@@ -1288,7 +1569,9 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
     });
   };
   const handleArchive = () => {
-    setProperty((p) => ({ ...p, status: "Archived", published: false }));
+    const next = { publication: "archived" as const, availability: property.availability };
+    setProperty((p) => ({ ...p, publication: "archived", status: legacyStatus(next), published: false }));
+    updateProperty(property.id, { publication: "archived", status: legacyStatus(next), published: false });
     setConfirm(null);
     pushToast({ tone: "brand", icon: "archive", title: t("admin.pd.toast.archivedTitle"), msg: t("admin.pd.toast.archivedMsg", { title: property.title }) });
   };
@@ -1327,6 +1610,7 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
 
   const viewingsCount = getViewings(property.id).length;
   const activityCount = property.timeline.length;
+  const contractsCount = contractsByProperty(property.id).length;
 
   return (
     <>
@@ -1339,7 +1623,7 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
 
         <div className="vwd-panel">
           <div className="vwd-hero">
-            <DetailHeader p={property} onEdit={onEdit} onChangeStatus={() => setStatusOpen(true)} onAssignAgent={() => setAgentOpen(true)} onArchive={() => setConfirm("archive")} onDelete={() => setConfirm("delete")} onFeature={() => setFeatureOpen(true)} agentSurface={agentSurface} />
+            <DetailHeader p={property} onEdit={onEdit} onChangeVisibility={() => setStatusOpen(true)} onAssignAgent={() => setAgentOpen(true)} onArchive={() => setConfirm("archive")} onDelete={() => setConfirm("delete")} onFeature={() => setFeatureOpen(true)} agentSurface={agentSurface} />
           </div>
 
           <div className="vwd-segwrap">
@@ -1350,6 +1634,10 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
               <button type="button" role="tab" aria-selected={tab === "viewings"} className={"vwd-seg__btn" + (tab === "viewings" ? " is-active" : "")} onClick={() => setTab("viewings")}>
                 {t("admin.nav.viewings")}
                 <span className="vwd-seg__count">{fmtNum(lang, viewingsCount)}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={tab === "contracts"} className={"vwd-seg__btn" + (tab === "contracts" ? " is-active" : "")} onClick={() => setTab("contracts")}>
+                {t("admin.pd.contracts")}
+                <span className="vwd-seg__count">{fmtNum(lang, contractsCount)}</span>
               </button>
               <button type="button" role="tab" aria-selected={tab === "activity"} className={"vwd-seg__btn" + (tab === "activity" ? " is-active" : "")} onClick={() => setTab("activity")}>
                 {t("admin.vd.tab.audit")}
@@ -1369,6 +1657,9 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
                 <aside className="pd-grid__aside">
                   <Ownership p={property} agentSurface={agentSurface} />
                   <AssignedAgent p={property} onAssignAgent={() => setAgentOpen(true)} agentSurface={agentSurface} />
+                  {/* The mandate is the agreement with the OWNER, so it sits
+                      under Ownership — not on the Deals tab. */}
+                  <Mandate p={property} />
                 </aside>
               </div>
             )}
@@ -1376,6 +1667,12 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
             {tab === "viewings" && (
               <div className="pd-grid__main">
                 <ViewingRequests p={property} onViewAll={() => router.push("/admin/viewings")} />
+              </div>
+            )}
+
+            {tab === "contracts" && (
+              <div className="pd-grid__main">
+                <ContractsPanel p={property} agentSurface={agentSurface} />
               </div>
             )}
 
@@ -1388,7 +1685,7 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
         </div>
       </header>
 
-      {statusOpen && <ChangeStatusModal property={property} onCancel={() => setStatusOpen(false)} onConfirm={handleStatus} />}
+      {statusOpen && <ChangeVisibilityModal property={property} onCancel={() => setStatusOpen(false)} onConfirm={handleVisibility} />}
       {agentOpen && <AssignAgentModal property={property} onCancel={() => setAgentOpen(false)} onConfirm={handleAssign} />}
       {confirm && <ConfirmModal kind={confirm} property={property} onCancel={() => setConfirm(null)} onConfirm={confirm === "delete" ? handleDelete : handleArchive} />}
       {featureOpen && <FeatureModal featured={property.featured} onCancel={() => setFeatureOpen(false)} onConfirm={handleFeature} />}

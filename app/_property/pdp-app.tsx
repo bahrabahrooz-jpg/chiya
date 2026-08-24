@@ -7,6 +7,8 @@ import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useSaveGate, type SavedProperty } from "@/lib/favorites";
+import { formatPrice } from "@/lib/money";
+import { useApproxPrice } from "@/lib/use-approx-price";
 import type { PdpData } from "./data";
 import { PdpProvider, usePdp } from "./pdp-context";
 import { PdpGallery } from "./pdp-gallery";
@@ -26,8 +28,10 @@ export function PdpApp({ data }: { data: PdpData }) {
 }
 
 function PdpAppInner() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const approxOf = useApproxPrice();
   const { property, gallery, agent, similar } = usePdp();
+  const approxPrice = approxOf(property.price);
   const { user } = useAuth();
   const { properties: savedProps, isPropertySaved, saveProperty } = useSaveGate();
   const [bookOpen, setBookOpen] = useState(false);
@@ -41,7 +45,7 @@ function PdpAppInner() {
     saveProperty({
       id: property.id,
       image: gallery[0],
-      price: "$" + property.price.toLocaleString("en-US"),
+      price: formatPrice(lang, property.price),
       title: property.title,
       address: property.address,
       beds: property.beds,
@@ -58,7 +62,7 @@ function PdpAppInner() {
     const snap: SavedProperty = {
       id: s.id,
       image: s.cover,
-      price: "$" + s.price.toLocaleString("en-US"),
+      price: formatPrice(lang, s.price),
       title: s.title,
       address: s.address,
       beds: s.beds,
@@ -104,9 +108,13 @@ function PdpAppInner() {
           </div>
           <div className="pdp-head__priceblock">
             <div className="pdp-head__price">
-              ${property.price.toLocaleString("en-US")}
+              {formatPrice(lang, property.price)}
               {property.per ? <span className="pdp-head__per">{property.per}</span> : null}
             </div>
+            {/* Convenience only, and off unless an admin turns it on. The
+                authoritative figure is the one above, in the currency the
+                property is actually listed in. */}
+            {approxPrice && <div className="pdp-head__approx">{approxPrice}</div>}
           </div>
         </div>
 
