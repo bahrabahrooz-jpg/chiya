@@ -14,6 +14,7 @@ import {
   getContractById as getContractByIdOf,
   invoiceTotals,
   invoicesByContract as invoicesByContractOf,
+  nextContractNumber,
   nextInvoiceNumber,
   outstandingForContract as outstandingForContractOf,
   paymentsByInvoice as paymentsByInvoiceOf,
@@ -21,10 +22,13 @@ import {
   receivablesAging as receivablesAgingOf,
   replacedBy as replacedByOf,
   type AgingBuckets,
+  type ContractAmendment,
+  type ContractKind,
   type ContractRecord,
   type InvoiceRecord,
   type PaymentRecord,
 } from "../_data/contracts";
+import { ledgerForContract as ledgerForContractOf, ledgerForOwner as ledgerForOwnerOf, ownerBalance as ownerBalanceOf, ownerTotals as ownerTotalsOf, type OwnerLedgerEntry, type OwnerTotals } from "../_data/owner-ledger";
 import { logAudit } from "./audit-log";
 
 /* ----------------------------------------------------------------------------
@@ -50,8 +54,21 @@ import { logAudit } from "./audit-log";
    v3: DealRecord is gone. The contract IS the transaction, and it carries the
    property, the parties, the money and the dates that used to sit on the deal;
    invoices point at `contractId` rather than `dealId`. A v2 cache has no record
-   that could be read as a v3 contract, so it is discarded rather than migrated. */
-export const CONTRACTS_STORAGE_KEY = "chiya:admin-contracts:v3";
+   that could be read as a v3 contract, so it is discarded rather than migrated.
+   v4: invoices carry `payee` — whose money the invoice is — and the owner
+   ledger is persisted alongside them. THIS BUMP IS NOT OPTIONAL. A v3 invoice
+   has no `payee`, so `isAgencyMoney` would read undefined and every rent demand
+   on an agency-collected tenancy would drop out of the figures (or, with the
+   test written the other way, land in them). Either way the finance page would
+   be wrong by the whole rent roll and would look entirely normal.
+   v5: contracts carry a `template`, a commission PER PARTY, clause variables,
+   an insurance deposit with its own lifecycle, and instalment terms — and their
+   ids are now the printed contract number (S-2026-0009). Every new field reads
+   through a fallback, so a v4 record would technically load; the bump is for the
+   ids. A v4 cache holds `CT-<timestamp>` contracts, and leaving those beside
+   numbered ones would show two id formats in one list with no way to tell which
+   was which. */
+export const CONTRACTS_STORAGE_KEY = "chiya:admin-contracts:v5";
 
 /* Same-tab change signal, like properties-store's STORE_EVENT: the browser
    `storage` event only fires in OTHER tabs. */
@@ -62,6 +79,34 @@ export const CONTRACTS_EVENT = "chiya:admin-contracts-changed";
    data, not copy — freezing it in Western digits keeps a stored event stable and
    means the amount reads the same to everyone reviewing the trail. */
 const auditMoney = (m: Money) => formatMoney("en", m, { useCode: true });
+
+/**
+ * WHAT MAY STILL BE WRITTEN TO A CONTRACT THAT IS NO LONGER A DRAFT.
+ *
+ * Not terms — those are frozen, and changing one is an amendment (see
+ * `amendContract`). These are the things that HAPPEN TO a contract that stands:
+ * it gets signed, keys change hands, it is cancelled, it runs to completion,
+ * and at the end of a tenancy somebody decides what becomes of the deposit.
+ *
+ * The deposit fields are on this list rather than the frozen side deliberately.
+ * Where the deposit went is not a term of the agreement — nobody knows the
+ * answer on the day of signing, which is exactly why closing a lease is an
+ * action on the contract screen and not a field on the creation form.
+ */
+const LIFECYCLE_FIELDS: string[] = [
+  "status",
+  "signedOn",
+  "handoverOn",
+  "cancelledOn",
+  "cancelReason",
+  "notes",
+  "previousPublication",
+  "depositStatus",
+  "depositReturnedOn",
+  "depositDeduction",
+  "depositDeductionReason",
+  "depositCarriedToContractId",
+];
 
 /* Infer a specific audit verb from a contract patch so the log reads naturally
    ("Signed contract") instead of a generic "updated" — same approach, and the
@@ -83,11 +128,38 @@ function nextId(prefix: string) {
   return prefix + "-" + Date.now().toString(36) + "-" + seq.toString(36);
 }
 
-/** The id for a contract created through the UI. Exported so the screens that
-    open one do not each invent their own format — or call the clock during
-    render. */
-export function nextContractId(): string {
-  return nextId("CT");
+/**
+ * The id for a contract created through the UI — AND its contract number.
+ *
+ * They are the same string on purpose. A contract has exactly one identifier
+ * that anyone outside this system will ever use: the number printed on the
+ * document, quoted down the telephone and written on the notary's file. Keeping
+ * a separate opaque id beside it would mean every screen had to decide which of
+ * the two to show, and the invoices and receipts pointing at a contract would
+ * name something no party recognises.
+ *
+ * This REPLACES the generic `CT-<timestamp>` counter this store shipped with.
+ * That one produced ids nobody could read, in no order, with no year in them —
+ * fine as a placeholder, useless on paper. Format and the per-browser caveat
+ * both live in `nextContractNumber`; this is the seam that gives it the live
+ * records so a number cannot collide with one already in the store.
+ */
+export function nextContractId(kind: ContractKind, contracts: ContractRecord[], year: number): string {
+  return nextContractNumber(kind, year, contracts);
+}
+
+/**
+ * An id for any other record created through the UI — an invoice, a payment, a
+ * ledger line.
+ *
+ * Exported from HERE rather than re-implemented in the finance module so every
+ * live id comes off one counter. Two modules each keeping their own `seq` would
+ * hand out the same suffix inside the same millisecond, and duplicate invoice
+ * ids are the kind of bug that only shows up under the exact conditions nobody
+ * tests. Never call it during render — it reads the clock.
+ */
+export function nextRecordId(prefix: "INV" | "PAY" | "LED"): string {
+  return nextId(prefix);
 }
 
 interface ContractsContextValue {
@@ -95,12 +167,15 @@ interface ContractsContextValue {
   contracts: ContractRecord[];
   invoices: InvoiceRecord[];
   payments: PaymentRecord[];
+  ledger: OwnerLedgerEntry[];
   /* mutations */
   createContract: (contract: ContractRecord) => void;
   updateContract: (id: string, patch: Partial<ContractRecord>) => void;
+  /** Change a SIGNED contract’s terms, keeping its number. See amendContract. */
+  amendContract: (id: string, patch: Partial<ContractRecord>, amendment: ContractAmendment) => void;
   issueInvoice: (invoice: InvoiceRecord, issuedOn?: string) => InvoiceRecord;
   voidInvoice: (id: string, reason: string, voidedOn?: string) => InvoiceRecord | undefined;
-  recordPayment: (payment: PaymentRecord) => void;
+  recordPayment: (payment: PaymentRecord, ledgerEntries?: OwnerLedgerEntry[]) => void;
   /* derived selectors, all reading the live records */
   getContract: (id: string) => ContractRecord | undefined;
   contractsByProperty: (propertyId: string) => ContractRecord[];
@@ -111,6 +186,10 @@ interface ContractsContextValue {
   paymentsByInvoice: (invoiceId: string) => PaymentRecord[];
   outstandingForContract: (contractId: string) => Money;
   receivablesAging: (currency?: CurrencyCode, asOf?: string) => AgingBuckets;
+  ledgerForOwner: (ownerId: string) => OwnerLedgerEntry[];
+  ledgerForContract: (contractId: string) => OwnerLedgerEntry[];
+  ownerBalance: (ownerId: string, currency: CurrencyCode) => Money;
+  ownerTotals: (ownerId: string, currency: CurrencyCode) => OwnerTotals;
 }
 
 const ContractsContext = createContext<ContractsContextValue | null>(null);
@@ -119,6 +198,7 @@ interface PersistedContracts {
   contracts: ContractRecord[];
   invoices: InvoiceRecord[];
   payments: PaymentRecord[];
+  ledger: OwnerLedgerEntry[];
 }
 
 /**
@@ -130,6 +210,10 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
   const [contracts, setContracts] = useState<ContractRecord[]>(CONTRACTS);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>(INVOICES);
   const [payments, setPayments] = useState<PaymentRecord[]>(PAYMENTS);
+  /* No seeded ledger, and that is correct rather than an omission: the seed has
+     no payment against a rent invoice, so no money has ever passed through the
+     agency on an owner's behalf. Lines appear the first time one does. */
+  const [ledger, setLedger] = useState<OwnerLedgerEntry[]>([]);
 
   /* Audit events name the record a human would recognise. Contracts have no
      title of their own, so they are logged by id — which is what the contract
@@ -166,9 +250,7 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       const existing = contracts.find((c) => c.id === id);
       if (existing && existing.status !== "draft") {
         const keys = Object.keys(patch);
-        const lifecycleOnly = keys.every((k) =>
-          ["status", "signedOn", "handoverOn", "cancelledOn", "cancelReason", "notes", "previousPublication"].includes(k),
-        );
+        const lifecycleOnly = keys.every((k) => LIFECYCLE_FIELDS.includes(k));
         if (!lifecycleOnly) {
           throw new Error(
             `contracts-store: ${id} is ${existing.status} and its terms are frozen. Cancel it and create a replacement carrying replacesContractId: "${id}".`,
@@ -177,6 +259,54 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       }
       logAudit({ category: "property", actionKey: contractAction(patch), target: id, targetId: id });
       setContracts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    },
+    [contracts],
+  );
+
+  /**
+   * AMEND A SIGNED CONTRACT — the one sanctioned way its terms ever change.
+   *
+   * `updateContract` refuses this outright, and rightly: a signed contract is
+   * an agreement between people, not a form. But the parties DO agree changes —
+   * a rent reduction, a start date pushed back a fortnight — and the choice is
+   * between recording that properly and having somebody cancel and re-paper a
+   * contract that both sides are perfectly happy with.
+   *
+   * The difference between an amendment and an edit is the record it leaves:
+   *
+   *   · IT KEEPS THE CONTRACT NUMBER. Renumbering would orphan every invoice
+   *     and receipt that names it, and both parties are holding paper with the
+   *     old number printed on it.
+   *   · The change is APPENDED to `amendments`, never rewritten, so a contract
+   *     amended three times shows all three in order.
+   *   · A REASON IS REQUIRED, and it is refused without one.
+   *
+   * Drafts are refused too, from the other direction: a draft is edited through
+   * `updateContract`, and calling it an amendment would put a ceremony in the
+   * trail for something nobody had agreed to yet.
+   */
+  const amendContract = useCallback(
+    (id: string, patch: Partial<ContractRecord>, amendment: ContractAmendment) => {
+      const existing = contracts.find((c) => c.id === id);
+      if (!existing) return;
+      if (existing.status === "draft") {
+        throw new Error(`contracts-store: ${id} is a draft — edit it with updateContract rather than amending it.`);
+      }
+      if (!amendment.reason.trim()) {
+        throw new Error(`contracts-store: amending ${id} requires a reason.`);
+      }
+      logAudit({
+        category: "property",
+        actionKey: "audit.action.amendedContract",
+        target: id,
+        targetId: id,
+        // Free text an admin typed — real data, so it goes in the untranslated
+        // `meta` slot rather than through a catalog key.
+        meta: amendment.reason,
+      });
+      setContracts((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...patch, id: c.id, amendments: [...(c.amendments ?? []), amendment] } : c)),
+      );
     },
     [contracts],
   );
@@ -241,8 +371,19 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
     [invoices],
   );
 
+  /**
+   * Record money received — and, when it was somebody else's money, the fact
+   * that we are now holding it.
+   *
+   * THE TWO ARE ONE EVENT AND ARE WRITTEN TOGETHER. A payment against an
+   * owner-payee invoice means the agency has taken in rent that belongs to the
+   * landlord; the ledger lines saying so cannot be worked out again afterwards
+   * (see ../_data/owner-ledger for why). Letting a caller record the payment and
+   * forget the ledger would lose them silently, so the ledger travels in the
+   * same call rather than in a second one somebody has to remember.
+   */
   const recordPayment = useCallback(
-    (payment: PaymentRecord) => {
+    (payment: PaymentRecord, ledgerEntries?: OwnerLedgerEntry[]) => {
       const invoice = invoices.find((i) => i.id === payment.invoiceId);
       logAudit({
         category: "property",
@@ -253,6 +394,7 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
         metaParams: { amount: auditMoney(payment.amount) },
       });
       setPayments((prev) => [payment, ...prev]);
+      if (ledgerEntries?.length) setLedger((prev) => [...ledgerEntries, ...prev]);
     },
     [invoices],
   );
@@ -269,8 +411,12 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       paymentsByInvoice: (invoiceId: string) => paymentsByInvoiceOf(invoiceId, payments),
       outstandingForContract: (contractId: string) => outstandingForContractOf(contractId, invoices, payments),
       receivablesAging: (currency?: CurrencyCode, asOf?: string) => receivablesAgingOf(currency, asOf, invoices, payments),
+      ledgerForOwner: (ownerId: string) => ledgerForOwnerOf(ownerId, ledger),
+      ledgerForContract: (contractId: string) => ledgerForContractOf(contractId, ledger),
+      ownerBalance: (ownerId: string, currency: CurrencyCode) => ownerBalanceOf(ownerId, currency, ledger),
+      ownerTotals: (ownerId: string, currency: CurrencyCode) => ownerTotalsOf(ownerId, currency, ledger),
     }),
-    [contracts, invoices, payments],
+    [contracts, invoices, payments, ledger],
   );
 
   // Hydrate from localStorage once on mount (client only) — same reasoning as
@@ -284,6 +430,7 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       if (Array.isArray(data.contracts)) setContracts(data.contracts);
       if (Array.isArray(data.invoices)) setInvoices(data.invoices);
       if (Array.isArray(data.payments)) setPayments(data.payments);
+      if (Array.isArray(data.ledger)) setLedger(data.ledger);
       /* eslint-enable react-hooks/set-state-in-effect */
     } catch {}
   }, []);
@@ -296,24 +443,26 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      window.localStorage.setItem(CONTRACTS_STORAGE_KEY, JSON.stringify({ contracts, invoices, payments }));
+      window.localStorage.setItem(CONTRACTS_STORAGE_KEY, JSON.stringify({ contracts, invoices, payments, ledger }));
       window.dispatchEvent(new Event(CONTRACTS_EVENT));
     } catch {}
-  }, [contracts, invoices, payments]);
+  }, [contracts, invoices, payments, ledger]);
 
   const value = useMemo(
     () => ({
       contracts,
       invoices,
       payments,
+      ledger,
       createContract,
       updateContract,
+      amendContract,
       issueInvoice,
       voidInvoice,
       recordPayment,
       ...selectors,
     }),
-    [contracts, invoices, payments, createContract, updateContract, issueInvoice, voidInvoice, recordPayment, selectors],
+    [contracts, invoices, payments, ledger, createContract, updateContract, amendContract, issueInvoice, voidInvoice, recordPayment, selectors],
   );
 
   return <ContractsContext.Provider value={value}>{children}</ContractsContext.Provider>;

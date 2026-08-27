@@ -352,3 +352,34 @@
     .ct-filterbar__actions { margin-inline-start: 0; }
     .ct-tablefooter { justify-content: center; }
   }
+
+  /* ---------- NEW CONTRACT MENU ----------
+     Sale and Lease are different documents with different clauses, so the
+     choice is made HERE, before the form opens — see §1 and the note on
+     the button in _contracts/contracts-app. */
+  .ct-head__action { position: relative; }
+  .ct-newmenu {
+    position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + var(--space-2));
+    z-index: 20; min-inline-size: 288px;
+    padding: var(--space-1);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-lg);
+  }
+  .ct-newmenu__item {
+    display: flex; align-items: flex-start; gap: var(--space-3);
+    padding: var(--space-3); border-radius: var(--radius-control);
+    text-decoration: none; color: inherit;
+  }
+  .ct-newmenu__item:hover { background: var(--surface-sunken); }
+  .ct-newmenu__item:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ct-newmenu__item > svg { flex: none; margin-block-start: 2px; color: var(--text-brand-muted); }
+  .ct-newmenu__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ct-newmenu__label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .ct-newmenu__desc { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); text-wrap: pretty; }
+
+  /* ---------- OUTSTANDING ITEMS ----------
+     A tenancy that has ended while the agency is still holding a deposit,
+     and a tenancy inside its notice window. Both DERIVED from dates — no
+     scheduler rewrites anything at midnight. */
+  .ct-flags { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-block-start: var(--space-1); }

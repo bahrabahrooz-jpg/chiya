@@ -17,7 +17,7 @@
    ========================================================================== */
 
 import type { IconName } from "@/components/ui/icon";
-import { ANCHOR_DATE, ANCHOR_ISO, addDays, fromIso, toIso } from "@/lib/dates";
+import { ANCHOR_DATE, ANCHOR_ISO, addDays, addMonths } from "@/lib/dates";
 import { money, type CurrencyCode, type Money } from "@/lib/money";
 
 /* ----------------------------------------------------------------------------
@@ -147,6 +147,23 @@ export interface PropertyRecord {
   /** MemberRecord id of the tenant. Set wherever `tenant` is. */
   tenantId?: string;
   listing: "sale" | "rent";
+  /**
+   * The unit as the DEVELOPER numbers it — "ES3-4-2": block, floor, door.
+   *
+   * Prints on the contract, and it is the identifier the parties actually use.
+   * Nobody at a signing says "CH-3198"; they say "the flat is ES3-4-2". It is
+   * also what the property search on the contract form matches against, because
+   * that is the string an agent has in front of them on a scrap of paper.
+   *
+   * Free text on purpose — every developer numbers differently and there is no
+   * scheme worth enforcing across them.
+   *
+   * The other half of that identity, the project name, is NOT a field: it is
+   * already on the record twice over (`area` when it names a project, and
+   * `details.project`). Read it through `projectNameOf` rather than adding a
+   * third copy that can disagree with the other two.
+   */
+  unitNumber?: string;
   /** Website visibility. Set by staff. */
   publication: Publication;
   /** Transaction state. DERIVED from contracts — never set by hand. */
@@ -321,14 +338,6 @@ function dateFromDaysAgo(days: number): string {
    the ISO form. */
 const isoFromDaysAgo = (days: number): string => addDays(ANCHOR_ISO, -days);
 
-/* Calendar-month arithmetic, for mandate terms. Not in lib/dates because a
-   mandate is the only thing in the system measured in months rather than days —
-   everything else counts days from the anchor. */
-function addMonths(iso: string, n: number): string {
-  const d = fromIso(iso);
-  d.setMonth(d.getMonth() + n);
-  return toIso(d);
-}
 
 /* ----------------------------------------------------------------------------
    Image pools
@@ -431,6 +440,26 @@ export const LOCATION_DEF: CityDef[] = [
     ],
   },
 ];
+
+/**
+ * THE DEVELOPMENT A PROPERTY SITS IN — "Empire World", "Naz City" — or
+ * undefined for one that sits on an ordinary street.
+ *
+ * Derived rather than stored, because the answer is already on the record in
+ * two places and a third copy would be the one that goes stale. `area` holds
+ * either a district or a project (see `resolvePlace`), and the two are told
+ * apart by comparing it with `district`: a property placed in a district has
+ * the same string in both, a property placed in a project does not.
+ * `details.project`, written by the add-property wizard, wins when it is set.
+ *
+ * Read by the contract form's property search and printed on the contract
+ * beside the unit number.
+ */
+export function projectNameOf(p: Pick<PropertyRecord, "area" | "district" | "details">): string | undefined {
+  const fromDetails = p.details?.project?.trim();
+  if (fromDetails) return fromDetails;
+  return p.area !== p.district ? p.area : undefined;
+}
 
 /* Resolve a placeable area name (project or district) to its district + city.
    Throws at module load on a typo so a bad cross-link fails the dev server
@@ -614,6 +643,9 @@ interface PropSpec {
   id: string;
   title: string;
   area: string; // placeable: district or project name
+  /** Developer's unit reference, on the rows that sit in a numbered development.
+      Prints on the contract — see PropertyRecord.unitNumber. */
+  unit?: string;
   type: string;
   listing: "sale" | "rent";
   status: string;
@@ -648,25 +680,25 @@ interface PropSpec {
 }
 const PROP_SPECS: PropSpec[] = [
   /* -------- Published (6 sale + 4 rent) -------- */
-  { id: "CH-3200", title: "Marble Hill Villa", area: "Empire World", type: "Villa", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Shilan Aziz", price: 850000, beds: 5, baths: 4, size: 480, featured: true, daysAgo: 34, updatedDaysAgo: 10, exclusive: true },
-  { id: "CH-3199", title: "Dream City Garden Flat", area: "Dream City", type: "Apartment", listing: "rent", status: "Published", agent: "Lana Aziz", owner: "Nma Rashid", price: 1400, beds: 2, baths: 2, size: 130, featured: true, daysAgo: 18, updatedDaysAgo: 5, img: 1, exclusive: true },
-  { id: "CH-3198", title: "Naz City Sky Suite", area: "Naz City", type: "Apartment", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Berivan Salar", price: 900000000, currency: "IQD", beds: 3, baths: 3, size: 300, daysAgo: 60, updatedDaysAgo: 12 },
+  { id: "CH-3200", title: "Marble Hill Villa", area: "Empire World", unit: "EW-V12", type: "Villa", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Shilan Aziz", price: 850000, beds: 5, baths: 4, size: 480, featured: true, daysAgo: 34, updatedDaysAgo: 10, exclusive: true },
+  { id: "CH-3199", title: "Dream City Garden Flat", area: "Dream City", unit: "DC-B4-0902", type: "Apartment", listing: "rent", status: "Published", agent: "Lana Aziz", owner: "Nma Rashid", price: 1400, beds: 2, baths: 2, size: 130, featured: true, daysAgo: 18, updatedDaysAgo: 5, img: 1, exclusive: true },
+  { id: "CH-3198", title: "Naz City Sky Suite", area: "Naz City", unit: "NC-T2-1704", type: "Apartment", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Berivan Salar", price: 690000, beds: 3, baths: 3, size: 300, daysAgo: 60, updatedDaysAgo: 12 },
   { id: "CH-3197", title: "English Village Court", area: "English Village", type: "House", listing: "sale", status: "Published", agent: "Karwan Mahmoud", owner: "Chiman Rasul", price: 420000, beds: 4, baths: 3, size: 260, daysAgo: 90, updatedDaysAgo: 15, img: 1 },
   { id: "CH-3196", title: "Gulan Business Suite", area: "Gulan", type: "Office", listing: "rent", status: "Published", agent: "Karwan Mahmoud", owner: "Awat Faraj", companyOwner: true, price: 2800, beds: 0, baths: 1, size: 210, daysAgo: 45, updatedDaysAgo: 8, mandateRate: 4 },
   { id: "CH-3195", title: "Ankawa Olive Grove Land", area: "Ankawa", type: "Land", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Hersh Qadir", price: 320000, beds: 0, baths: 0, size: 1200, daysAgo: 120, updatedDaysAgo: 20 },
-  { id: "CH-3194", title: "Cedar Court Apartments", area: "Salim Street", type: "Apartment", listing: "sale", status: "Published", agent: "Sara Hama", owner: "Shilan Aziz", price: 275000000, currency: "IQD", beds: 3, baths: 2, size: 150, featured: true, daysAgo: 25, updatedDaysAgo: 18, img: 2, exclusive: true },
+  { id: "CH-3194", title: "Cedar Court Apartments", area: "Salim Street", unit: "CC-A-0301", type: "Apartment", listing: "sale", status: "Published", agent: "Sara Hama", owner: "Shilan Aziz", price: 210000, beds: 3, baths: 2, size: 150, featured: true, daysAgo: 25, updatedDaysAgo: 18, img: 2, exclusive: true },
   { id: "CH-3193", title: "Sarchnar Hillside Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Published", agent: "Sara Hama", owner: "Kani Omar", price: 2200, beds: 4, baths: 3, size: 380, daysAgo: 30, updatedDaysAgo: 6, img: 2 },
   { id: "CH-3192", title: "Masike Highland Villa", area: "Masike", type: "Villa", listing: "sale", status: "Published", agent: "Rawa Jamal", owner: "Chiman Rasul", price: 380000, beds: 4, baths: 3, size: 340, daysAgo: 150, updatedDaysAgo: 22, img: 3 },
-  { id: "CH-3191", title: "Malta Riverside Loft", area: "Malta", type: "Apartment", listing: "rent", status: "Published", agent: "Rawa Jamal", owner: "Tara Botan", price: 900, beds: 1, baths: 1, size: 95, daysAgo: 12, updatedDaysAgo: 4, img: 3 },
+  { id: "CH-3191", title: "Malta Riverside Loft", area: "Malta", unit: "MR-3-1102", type: "Apartment", listing: "rent", status: "Published", agent: "Rawa Jamal", owner: "Tara Botan", price: 900, beds: 1, baths: 1, size: 95, daysAgo: 12, updatedDaysAgo: 4, img: 3 },
   /* -------- Pending (3: sale+agent, rent+no agent, land sale) -------- */
   { id: "CH-3190", title: "Italian Village Rose Flat", area: "Italian Village", type: "Apartment", listing: "sale", status: "Pending", agent: "Lana Aziz", owner: "Berivan Salar", price: 260000, beds: 2, baths: 2, size: 140, daysAgo: 3, updatedDaysAgo: 3 },
   { id: "CH-3189", title: "Raparin Terrace House", area: "Raparin", type: "House", listing: "rent", status: "Pending", agent: null, owner: "Nma Rashid", price: 1100, beds: 3, baths: 2, size: 220, daysAgo: 2, updatedDaysAgo: 2, img: 2 },
-  { id: "CH-3188", title: "Nizarke Vineyard Plot", area: "Nizarke", type: "Land", listing: "sale", status: "Pending", agent: "Rawa Jamal", owner: "Awat Faraj", companyOwner: true, price: 235000000, currency: "IQD", beds: 0, baths: 0, size: 800, daysAgo: 7, updatedDaysAgo: 7, img: 1 },
+  { id: "CH-3188", title: "Nizarke Vineyard Plot", area: "Nizarke", type: "Land", listing: "sale", status: "Pending", agent: "Rawa Jamal", owner: "Awat Faraj", companyOwner: true, price: 180000, beds: 0, baths: 0, size: 800, daysAgo: 7, updatedDaysAgo: 7, img: 1 },
   /* -------- Sold (4, sale only) — updated: today / week / month / year --------
      Every Sold record links its buyer; buyers must have joined before the sale
      closed (buyer joined-daysAgo ≥ updatedDaysAgo, validated in buildProperty). */
-  { id: "CH-3187", title: "Olive Grove Estate", area: "Italian Village", type: "Villa", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Shilan Aziz", buyer: "Berivan Salar", price: 720000, beds: 5, baths: 4, size: 520, daysAgo: 200, updatedDaysAgo: 0, exclusive: true },
-  { id: "CH-3186", title: "Bakhtiari Pearl Flat", area: "Bakhtiari", type: "Apartment", listing: "sale", status: "Sold", agent: "Sara Hama", owner: "Chiman Rasul", buyer: "Avan Mustafa", price: 255000000, currency: "IQD", beds: 2, baths: 1, size: 120, daysAgo: 160, updatedDaysAgo: 4, mandateRate: 3 },
+  { id: "CH-3187", title: "Olive Grove Estate", area: "Italian Village", unit: "IV-24", type: "Villa", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Shilan Aziz", buyer: "Berivan Salar", price: 720000, beds: 5, baths: 4, size: 520, daysAgo: 200, updatedDaysAgo: 0, exclusive: true },
+  { id: "CH-3186", title: "Bakhtiari Pearl Flat", area: "Bakhtiari", type: "Apartment", listing: "sale", status: "Sold", agent: "Sara Hama", owner: "Chiman Rasul", buyer: "Avan Mustafa", price: 195000, beds: 2, baths: 1, size: 120, daysAgo: 160, updatedDaysAgo: 4, mandateRate: 3 },
   { id: "CH-3185", title: "Gulan Tower Office", area: "Gulan", type: "Office", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Awat Faraj", buyer: "Zana Ibrahim", companyOwner: true, price: 540000, beds: 0, baths: 2, size: 320, daysAgo: 240, updatedDaysAgo: 18, img: 1, exclusive: true },
   { id: "CH-3184", title: "Malta Summit Grounds", area: "Malta", type: "Land", listing: "sale", status: "Sold", agent: "Rawa Jamal", owner: "Zana Ibrahim", buyer: "Rebwar Tofiq", price: 260000, beds: 0, baths: 0, size: 1600, daysAgo: 400, updatedDaysAgo: 140 },
   /* -------- Rented (4, rent only) — updated: today / week / month / year --------
@@ -675,7 +707,7 @@ const PROP_SPECS: PropSpec[] = [
      (Dara, Sara) stay prospective. */
   { id: "CH-3183", title: "Empire World Loft", area: "Empire World", type: "Apartment", listing: "rent", status: "Rented", agent: "Lana Aziz", owner: "Nma Rashid", price: 1600, beds: 2, baths: 2, size: 125, daysAgo: 80, updatedDaysAgo: 0 },
   { id: "CH-3182", title: "Sarchnar Cypress Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Rented", agent: "Sara Hama", owner: "Kani Omar", tenant: "Aland Tariq", price: 2600, beds: 4, baths: 4, size: 420, daysAgo: 110, updatedDaysAgo: 5, img: 1 },
-  { id: "CH-3181", title: "Ankawa Tower Suite", area: "Ankawa", type: "Apartment", listing: "rent", status: "Rented", agent: "Karwan Mahmoud", owner: "Awat Faraj", tenant: "Kani Omar", price: 4500000, currency: "IQD", beds: 3, baths: 3, size: 280, daysAgo: 140, updatedDaysAgo: 25, img: 1, mandateRate: 4 },
+  { id: "CH-3181", title: "Ankawa Tower Suite", area: "Ankawa", type: "Apartment", listing: "rent", status: "Rented", agent: "Karwan Mahmoud", owner: "Awat Faraj", tenant: "Kani Omar", price: 3400, beds: 3, baths: 3, size: 280, daysAgo: 140, updatedDaysAgo: 25, img: 1, mandateRate: 4 },
   { id: "CH-3180", title: "Nizarke Sunset Terrace", area: "Nizarke", type: "House", listing: "rent", status: "Rented", agent: "Rawa Jamal", owner: "Tara Botan", tenant: "Zana Ibrahim", price: 850, beds: 3, baths: 2, size: 230, daysAgo: 380, updatedDaysAgo: 258 },
   /* -------- Draft (3: sale+agent, rent+no agent, sale+no agent) -------- */
   { id: "CH-3179", title: "Gulan Emerald Suite", area: "Gulan", type: "Apartment", listing: "sale", status: "Draft", agent: "Karwan Mahmoud", owner: "Zana Ibrahim", price: 610000, beds: 3, baths: 3, size: 340, daysAgo: 1, updatedDaysAgo: 1, img: 2 },
@@ -766,6 +798,7 @@ function buildProperty(s: PropSpec): PropertyRecord {
     id: s.id,
     title: s.title,
     area: place.area,
+    ...(s.unit ? { unitNumber: s.unit } : {}),
     district: place.district,
     city: place.city,
     type: s.type,

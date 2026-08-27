@@ -101,7 +101,14 @@ export function useContractTransitions(): ContractTransitions {
         storeCreate(contract as ContractRecord);
         return;
       }
-      const { property: patch, contract: contractPatch } = onContractDrafted(property);
+      /* A contract can be born signed. The walk-in case is two people at the
+         desk agreeing terms and signing on the spot, and making them save a
+         draft and re-open it would be a ceremony invented by the software.
+         Both paths still run onContractDrafted() first, because that is what
+         captures where the listing was before the contract took it — without
+         that reading, cancelling later could only guess. */
+      const { property: reservation, contract: contractPatch } = onContractDrafted(property);
+      const patch = contract.status === "signed" ? onContractSigned(contract) : reservation;
       storeCreate({ ...contract, ...contractPatch });
       logVisibility(property.title, property.id, patch.publication as string);
       updateProperty(property.id, patch);
@@ -132,7 +139,14 @@ export function useContractTransitions(): ContractTransitions {
       if (!contract) return;
       updateContract(contractId, { status: "cancelled", cancelledOn, cancelReason: reason });
       const property = propertyFor(contract.propertyId);
-      if (!property || property.availability !== "reserved") return;
+      if (!property) return;
+      /* Release whatever this contract was holding — reserved by a draft, or
+         sold/rented by a signed one. It used to release only reservations, which
+         left a cancelled sale showing "Sold" on the property forever and the
+         listing unreachable. A property that is already available is left alone:
+         something else is the reason for that, and this is not the contract
+         holding it. */
+      if (!reservesProperty(contract.status) || property.availability === "available") return;
       const patch = onContractCancelled(contract);
       if (property.publication !== patch.publication) logVisibility(property.title, property.id, patch.publication as string);
       updateProperty(property.id, patch);

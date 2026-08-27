@@ -1,0 +1,743 @@
+  /* ============================================================
+     NEW CONTRACT  (cn- namespace) — the form's internals
+
+     The SHELL is not here. Breadcrumbs, centred title, progress rail,
+     card and footer all come from ../../properties/new/ap.css, which
+     this route imports first: the contract form and the add-property
+     wizard are meant to be the same product, and a second copy of that
+     chrome would drift within a month.
+
+     What IS here is the answer to two review notes.
+
+     THE FIRST said the earlier screen was cramped. Every rule below
+     buys vertical room back:
+
+       · one question per row
+       · money inputs larger than text inputs, right-aligned, tabular
+       · choices as cards with a description, never bare radios
+       · generous space BETWEEN groups, tight space within them
+
+     THE SECOND said the fix had gone too far the other way — twenty-
+     five identical full-width bars, each under a grey sentence, and
+     the deal's figures scattered one per row so they never appeared
+     together. The answers to that are:
+
+       · the CONTROL is the width of its answer — .cn-input--sm / --md
+       · short answers pair up — .cn-grid. The "never a column pair"
+         rule above was written against three inputs crammed on one
+         line; two labelled fields side by side is the opposite problem
+       · the hint is gone from fields whose label already said it
+       · the figures live WITH the fields that produce them — the
+         term end beside the dates, each commission showing its own
+         amount. A summary panel beside the form did that job for a
+         while and was removed once the form itself did it better
+
+     Tokens only — no hex, no rgba, no raw radii. Logical properties
+     only: this screen runs in Arabic and Kurdish with dir="rtl", and
+     the money column is exactly where a physical `right` would break.
+     ============================================================ */
+
+  .cn-wrap { padding-block-end: var(--space-16); }
+
+  /* ONE COLUMN. The summary panel that needed a second one is gone — see the
+     note where the form is rendered. Back to the add-property wizard’s own
+     reading width, which is what the chrome above it was always using. */
+  .cn-form { max-inline-size: 900px; margin-inline: auto; }
+
+  /* ---------- SECTIONS ---------- */
+  /* The generous gap is between GROUPS, not between fields: a group is
+     one topic, and spreading its rows apart makes them read as
+     unrelated questions. */
+  /* Any block followed by a section, not only another section — a group that
+     renders a bare body with no heading of its own still needs the gap after
+     it, and `.cn-section + .cn-section` cannot see one. */
+  /* THE RULE GOES ABOVE THE HEADING, NOT UNDER IT.
+     Underneath, it read as a line CLOSING the group above rather than opening
+     the one below — so "Landlord and tenant" looked like a footnote to the
+     property section it followed. A rule between two groups belongs between
+     them. Same shape as .ap-sect + .ap-sect in the add-property wizard, and as
+     .cn-divider further down this file; the first section on a card gets no
+     rule at all, because there is nothing above it to separate from. */
+  .cn-section + .cn-section,
+  .cn-section__body + .cn-section {
+    margin-block-start: var(--space-8);
+    padding-block-start: var(--space-8);
+    border-block-start: 1px solid var(--border-subtle);
+  }
+  /* An ORGANISER, not a title. It used to be serif at --display-xs, which
+     put a 24px heading inside a card whose own heading is 26px, inside a
+     page whose heading is 42px — three levels, the third nearly as loud
+     as the first, and the eye had no way to tell which one was the step
+     and which one was a group inside it. Same treatment as .cn-divider
+     below, which is the other thing on this screen doing this job. The
+     element stays an <h3> so the outline is still readable. */
+  /* NUMBERED, AND LOUDER THAN THE FIELDS IT CONTAINS.
+     It was 12px tertiary sitting over 14px primary field labels — a heading
+     quieter than its own contents, which is the hierarchy upside down. The
+     number does two jobs: it gives the eye something solid to catch, and it
+     says out loud what order the form is meant to be filled in.
+
+     COUNTED IN CSS, NOT PASSED IN. Sections come and go with the contract —
+     an instalment schedule, an amendment reason — so a number written at the
+     call site would be wrong the moment one of them did not render. A counter
+     numbers what is actually on the page, and resets per step because each
+     step starts its own sequence. */
+  .cn-form { counter-reset: cn-sec; }
+  .cn-section { counter-increment: cn-sec; }
+  .cn-section__title {
+    display: flex; align-items: center; gap: var(--space-3);
+    font-family: var(--font-sans); font-weight: 700;
+    font-size: var(--text-sm-size); line-height: var(--text-sm-line);
+    text-transform: uppercase; letter-spacing: var(--tracking-wider);
+    color: var(--text-primary);
+    margin: 0 0 var(--space-5);
+  }
+  .cn-section__title::before {
+    content: counter(cn-sec);
+    flex: none;
+    inline-size: 24px; block-size: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--brand-subtle); color: var(--text-brand);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs-size); font-weight: 700;
+    /* The tracking on the label would push the digit off its own centre. */
+    letter-spacing: 0; font-variant-numeric: tabular-nums;
+  }
+  .cn-section__body { display: flex; flex-direction: column; gap: var(--space-6); }
+
+  /* ---------- ROW ---------- */
+  /* Label, then control. The same shape as .ap-field in the add-property
+     wizard, at the same weight and the same 8px gap, because the two
+     screens are meant to be one product and a denser or airier field here
+     is exactly how they stop looking like it. */
+  .cn-row { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+  .cn-row__label {
+    display: flex; align-items: baseline; gap: var(--space-2);
+    font-family: var(--font-sans); font-size: var(--text-sm-size); font-weight: 600;
+    letter-spacing: -.005em; color: var(--text-primary);
+  }
+  .cn-row__opt { font-size: var(--text-xs-size); font-weight: 500; color: var(--text-tertiary); }
+  /* ⚠ A HINT IS AN EXCEPTION, NOT A ROW COMPONENT. It was a required prop
+     once, and the result was a grey paragraph under every label — two lines
+     of it, at the same size as the label, on questions like "Signed in".
+     The form read as a wall of prose with inputs buried in it. Now: small,
+     tertiary, ONE line, and only where the label cannot say which contract
+     clause the value prints into. */
+  .cn-row__hint {
+    font-size: var(--text-xs-size); line-height: 1.45;
+    color: var(--text-tertiary); margin: 0;
+    max-width: 68ch; text-wrap: pretty;
+  }
+
+  /* A worked-out value, at the height of a control so it lines up beside one.
+     Sunken and borderless: nothing here can be typed into, and it should not
+     look like it invites a try. */
+  .cn-readout {
+    display: flex; align-items: center;
+    height: 48px; padding-inline: var(--space-4);
+    background: var(--surface-sunken); border-radius: var(--radius-control);
+    font-family: var(--font-sans); font-size: var(--text-md-size); font-weight: 600;
+    color: var(--text-primary);
+  }
+  .cn-readout.is-empty { color: var(--text-placeholder); font-weight: 500; }
+
+  /* ---------- FIELD GRID ---------- */
+  /* Short answers pair up. The add-property wizard puts price beside area
+     size and nobody has ever been confused by it; a lease's start date and
+     its length are the same kind of pair. Anything that needs the width —
+     a search, choice cards, a paragraph — takes .cn-grid__full. */
+  /* align-items: START, not end.
+     `end` aligned the bottoms of the two cells — and a money field is taller
+     than a select, because it carries a conversion line underneath. So the
+     bottoms matched and the INPUTS sat thirty pixels apart, which is the
+     misalignment you can see on any row pairing money with a dropdown.
+     Aligning the tops puts every control directly under its own label. The
+     cost is that a hint wrapping to two lines on one side pushes that control
+     down — so paired fields keep their hints to one line. */
+  .cn-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: var(--space-5) var(--space-6); align-items: start;
+  }
+  /* THREE COLUMNS, WHERE A LINE HOLDS THREE BOXES. The dates line is the one:
+     start date, term length and end date. On the two-column grid the first two
+     shared one cell and the end date had the other to itself, so one line
+     carried three different widths — a 250px date, a 150px term and a 440px
+     read-out — and read as three unrelated fields rather than one sentence.
+     Every box on the section is one column wide now. The pair spanning two of
+     them splits on the SAME gap (.cn-pair--equal), which is what makes its
+     halves land exactly on the columns beside them. */
+  .cn-grid--3 { grid-template-columns: repeat(3, 1fr); }
+  .cn-grid__full { grid-column: 1 / -1; }
+  .cn-grid__wide { grid-column: span 2; }
+  @media (max-width: 760px) {
+    .cn-grid { grid-template-columns: 1fr; }
+    /* Two, not one: the pair still wants a line of its own, and two columns
+       keep the read-out and the signing date the width of its halves. */
+    .cn-grid--3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 560px) {
+    .cn-grid--3 { grid-template-columns: 1fr; }
+    .cn-grid__wide { grid-column: auto; }
+  }
+  .cn-row__control { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+  .cn-row__error {
+    display: flex; align-items: center; gap: var(--space-2);
+    font-size: var(--text-sm-size); color: var(--error-600); margin: 0;
+  }
+  .cn-row__error svg { flex: none; }
+
+  /* Two controls that are ONE answer — amount + currency, date + term.
+     justify-content: start so the pair HUGS. Across a full-width row the two
+     auto columns were otherwise thrown to opposite edges, leaving a date on
+     the far left and "12 months" four hundred pixels away, reading as two
+     unrelated fields rather than one answer. */
+  .cn-pair { display: grid; gap: var(--space-3); align-items: start; justify-content: start; }
+  /* HUGGING IS WRONG WHEN A THIRD BOX SITS BESIDE THE PAIR. Two halves on the
+     grid's own column gap are exactly one grid column each, so the start date,
+     the term and the end date beside them are three boxes of one width. */
+  .cn-pair--equal {
+    grid-template-columns: 1fr 1fr; gap: var(--space-6); justify-content: stretch;
+  }
+  @media (max-width: 560px) { .cn-pair { grid-template-columns: 1fr !important; } }
+
+  /* ---------- INPUTS ---------- */
+  .cn-input {
+    inline-size: 100%; min-inline-size: 0;
+    height: 48px; padding-inline: var(--space-4);
+    font-family: var(--font-sans); font-size: var(--text-md-size); color: var(--text-primary);
+    background: var(--surface-card);
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .cn-input::placeholder { color: var(--text-placeholder); }
+  .cn-input:focus-visible {
+    outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand);
+  }
+  /* TYPED FROM THE LEFT, like every other field on the form. These were
+     right-aligned on the reasoning that a COLUMN of figures checks faster that
+     way — true on the invoice table, wrong in a form: the caret starts at the
+     far edge, the digits crawl leftwards away from the label, and nothing else
+     on the screen behaves like it. Tabular figures stay, so the numbers still
+     line up with each other. */
+  .cn-input--num { text-align: start; font-variant-numeric: tabular-nums; }
+  .cn-input.is-readonly { background: var(--surface-sunken); color: var(--text-secondary); }
+
+  /* ---------- CONTROL WIDTH ---------- */
+  /* The ROW is full width; the CONTROL is the width of its answer. A date,
+     a term in months and a page count are short, and stretching them the
+     whole way made every question look identical — you could not tell the
+     one wanting two digits from the one wanting a company name. Applied to
+     the wrapper on a select or a suffixed number, to the input itself
+     otherwise; both work because each is the element that owns the width. */
+  .cn-input--sm { max-inline-size: 190px; }
+  .cn-input--md { max-inline-size: 340px; }
+  /* At phone width a cap is a liability, not a help. */
+  @media (max-width: 560px) {
+    .cn-input--sm, .cn-input--md { max-inline-size: none; }
+  }
+
+  /* ---------- TEXTAREA ---------- */
+  .cn-textarea {
+    inline-size: 100%; min-inline-size: 0;
+    padding: var(--space-3) var(--space-4);
+    font-family: var(--font-sans); font-size: var(--text-md-size);
+    line-height: var(--text-md-line); color: var(--text-primary);
+    background: var(--surface-card);
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    resize: vertical;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .cn-textarea::placeholder { color: var(--text-placeholder); }
+  .cn-textarea:focus-visible {
+    outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand);
+  }
+
+
+
+  /* ---------- SUFFIXED NUMBER ----------
+     "12 months", "30 days", "3 copies" — the unit belongs INSIDE the field,
+     against its far edge, not on a line of its own underneath. */
+  .cn-suffixwrap { position: relative; display: flex; }
+  .cn-suffixwrap .cn-input { padding-inline-end: var(--space-16); }
+  .cn-suffixwrap__suffix {
+    position: absolute; inset-inline-end: var(--space-4); inset-block-start: 50%;
+    transform: translateY(-50%);
+    font-size: var(--text-sm-size); font-weight: 600; color: var(--text-tertiary);
+    pointer-events: none;
+  }
+
+  /* ---------- SELECT ----------
+     The control itself is the add-property wizard's own listbox (see
+     SelectInput); this only gives it the width of whatever cell it is in. */
+  .cn-selectwrap { position: relative; display: flex; }
+  .cn-selectwrap > * { inline-size: 100%; min-inline-size: 0; }
+
+  /* ---------- MONEY ---------- */
+  /* THE CURRENCY LEADS, THE FIGURE FOLLOWS, AND THE WHOLE THING IS THE WIDTH
+     OF A PRICE. This was a full-width bar with the amount pushed to the far
+     end and the code floating beside it: the label sat at one edge, the value
+     six hundred pixels away at the other, and an empty one read as broken
+     rather than blank. */
+  .cn-money { display: flex; flex-direction: column; gap: var(--space-1); max-inline-size: 340px; }
+  /* Inside a grid the column IS the width. A second cap on top of it left
+     controls at three different widths down one column, which is what read as
+     "fields all over the place". */
+  .cn-grid .cn-money,
+  .cn-grid .cn-input--md,
+  .cn-grid .cn-input--sm { max-inline-size: none; }
+  /* Except where two controls share one cell — there the small one stays small. */
+  .cn-grid .cn-pair .cn-input--sm { max-inline-size: 150px; }
+  .cn-money__field {
+    display: flex; align-items: stretch;
+    background: var(--surface-card);
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    overflow: hidden;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .cn-money__field:focus-within { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  /* The unit is a SWITCH, because it decides what you are typing in — not what
+     the contract says. Only two currencies exist, so it is a two-item select
+     that reads as a unit chip rather than a field of its own. */
+  .cn-money__curwrap {
+    flex: none; position: relative; display: flex; align-items: center;
+    background: var(--surface-sunken);
+    border-inline-end: 1px solid var(--border-subtle);
+  }
+  .cn-money__cur {
+    appearance: none; cursor: pointer;
+    /* --space-6, not --space-7: the scale is 0-1-2-3-4-5-6-8-10-12-16-20-24-32-40
+       and there is no 7. An invalid value voids the WHOLE declaration, so the
+       select had no padding at all and the chevron sat on top of the code. */
+    height: 48px; padding-inline: var(--space-3) var(--space-6);
+    background: none; border: none; outline: none;
+    font-family: var(--font-sans); font-size: var(--text-sm-size); font-weight: 700;
+    color: var(--text-secondary); letter-spacing: var(--tracking-wider);
+  }
+  .cn-money__cur:focus-visible { box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
+  .cn-money__curchev {
+    position: absolute; inset-inline-end: var(--space-2);
+    color: var(--text-tertiary); pointer-events: none;
+  }
+  .cn-money__field.is-error { border-color: var(--error-500); }
+  .cn-money__field.is-error:focus-within { box-shadow: var(--shadow-focus-error); }
+  /* What the contract will actually state, when that is not what was typed.
+     Not muted like the approximate line — this figure binds. */
+  .cn-money__approx--states { color: var(--text-brand); font-weight: 600; }
+  .cn-money__input {
+    flex: 1 1 auto; min-inline-size: 0;
+    height: 48px; padding-inline: var(--space-3);
+    background: none; border: none; outline: none;
+    /* A step up from the text scale, not a headline: it is the figure two
+       people across the desk are agreeing to, and a dinar amount runs nine
+       digits — but it is still a field on a form. */
+    font-family: var(--font-sans); font-size: var(--text-lg-size); font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .cn-money__input::placeholder { color: var(--text-placeholder); font-weight: 500; }
+  .cn-money__under {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-3); min-height: 20px;
+  }
+  /* Guidance, never a term. Muted deliberately — it must not read as one of
+     the contract's own figures. See useApproxGuidance. */
+  .cn-money__approx {
+    font-size: var(--text-xs-size); color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .cn-money__quick {
+    flex: none; background: none; border: none; cursor: pointer;
+    font-size: var(--text-xs-size); font-weight: 600; color: var(--text-brand);
+    padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+  }
+  .cn-money__quick:hover { background: var(--brand-subtle); }
+  .cn-money__quick:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ---------- DATE PICKER ----------
+     Ours, not the browser's. The trigger is the same 48px box as a dropdown so
+     a date and a select sitting side by side are indistinguishable until you
+     open them; the panel is portalled to the body because .ap-card clips. */
+  .cn-dp__trigger {
+    inline-size: 100%; min-inline-size: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+    height: 48px; padding-inline: var(--space-4) var(--space-3);
+    background: var(--surface-card); cursor: pointer;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    font-family: var(--font-sans); font-size: var(--text-md-size); text-align: start;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .cn-dp__trigger:hover:not(.is-readonly) { border-color: var(--border-strong); }
+  .cn-dp__trigger:focus-visible,
+  .cn-dp__trigger.is-open { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .cn-dp__trigger.is-readonly { background: var(--surface-sunken); cursor: default; }
+  .cn-dp__val { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .cn-dp__ph { color: var(--text-placeholder); }
+  .cn-dp__ic { flex: none; color: var(--text-tertiary); }
+
+  .cn-dp__panel {
+    position: fixed; z-index: 120;
+    inline-size: 296px; padding: var(--space-3);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-2xl);
+  }
+  .cn-dp__head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-2); margin-block-end: var(--space-2);
+  }
+  .cn-dp__month {
+    font-family: var(--font-sans); font-size: var(--text-sm-size); font-weight: 600;
+    color: var(--text-primary);
+  }
+  .cn-dp__nav {
+    inline-size: 32px; block-size: 32px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer; color: var(--text-secondary);
+    border-radius: var(--radius-control); transition: background-color .15s, color .15s;
+  }
+  .cn-dp__nav:hover { background: var(--surface-sunken); color: var(--text-primary); }
+  .cn-dp__nav:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  /* The chevrons point through time, so they follow the reading direction. */
+  [dir="rtl"] .cn-dp__nav svg { transform: scaleX(-1); }
+
+  .cn-dp__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cn-dp__dow {
+    display: flex; align-items: center; justify-content: center;
+    block-size: 28px;
+    font-size: var(--text-xs-size); font-weight: 700; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: var(--tracking-wider);
+  }
+  .cn-dp__blank { block-size: 34px; }
+  .cn-dp__day {
+    block-size: 34px; display: flex; align-items: center; justify-content: center;
+    background: none; border: 1px solid transparent; border-radius: var(--radius-control);
+    cursor: pointer; font-family: var(--font-sans); font-size: var(--text-sm-size);
+    color: var(--text-primary); font-variant-numeric: tabular-nums;
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .cn-dp__day:hover { background: var(--brand-subtle); }
+  .cn-dp__day:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  /* Today is outlined; the SELECTED day is filled. Two different facts, and a
+     day that is both still reads as chosen first. */
+  .cn-dp__day.is-today { border-color: var(--border-strong); font-weight: 700; }
+  .cn-dp__day.is-selected {
+    background: var(--brand-primary); border-color: var(--brand-primary);
+    color: var(--text-on-brand); font-weight: 600;
+  }
+
+  .cn-dp__foot {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+    margin-block-start: var(--space-2); padding-block-start: var(--space-2);
+    border-block-start: 1px solid var(--border-subtle);
+  }
+  .cn-dp__today, .cn-dp__clear {
+    background: none; border: none; cursor: pointer;
+    padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+    font-family: var(--font-sans); font-size: var(--text-sm-size); font-weight: 600;
+  }
+  .cn-dp__today { color: var(--text-brand); }
+  .cn-dp__clear { color: var(--text-tertiary); }
+  .cn-dp__today:hover { background: var(--brand-subtle); }
+  .cn-dp__clear:hover { background: var(--surface-sunken); color: var(--text-secondary); }
+  .cn-dp__today:focus-visible, .cn-dp__clear:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ---------- GROUP DIVIDER ---------- */
+  .cn-divider {
+    display: flex; flex-direction: column; gap: var(--space-1);
+    margin-block: var(--space-10) var(--space-6);
+    padding-block-start: var(--space-6);
+    border-block-start: 1px solid var(--border-subtle);
+  }
+  .cn-divider__label {
+    font-size: var(--text-xs-size); font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--tracking-wider); color: var(--text-brand);
+  }
+  .cn-divider__note { font-size: var(--text-sm-size); color: var(--text-tertiary); }
+  /* A divider already drew the line; the section after it must not draw a
+     second one a few pixels below. */
+  .cn-divider + .cn-section { margin-block-start: 0; padding-block-start: 0; border-block-start: none; }
+
+  /* ---------- CHOICE CARDS ----------
+     SLIMMER THAN THEY WERE. These still earn cards — picking "Our office"
+     means the agency starts collecting rent and raising twelve invoices a
+     year, and that is worth a sentence. But the 36px icon tile and the
+     two-line description made a routine choice the loudest thing on the step,
+     so: smaller tile, one line, less padding. */
+  .cn-choices { display: grid; gap: var(--space-3); }
+  .cn-choices--1 { grid-template-columns: 1fr; }
+  .cn-choices--2 { grid-template-columns: 1fr 1fr; }
+  .cn-choices--3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 640px) { .cn-choices { grid-template-columns: 1fr !important; } }
+
+  .cn-choice {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3) var(--space-4); text-align: start; cursor: pointer;
+    background: var(--surface-card);
+    border: 1.5px solid var(--border-default); border-radius: var(--radius-control);
+    box-shadow: var(--shadow-xs);
+    transition: border-color .15s, background-color .15s, box-shadow .15s;
+  }
+  .cn-choice:hover { border-color: var(--border-strong); }
+  .cn-choice:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .cn-choice.is-active { border-color: var(--brand-primary); background: var(--brand-subtle); }
+  .cn-choice__ic {
+    flex: none; inline-size: 28px; block-size: 28px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-sunken); color: var(--text-secondary);
+  }
+  .cn-choice.is-active .cn-choice__ic { background: var(--brand-primary); color: var(--text-on-brand); }
+  .cn-choice__txt { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1 1 auto; }
+  .cn-choice__label { font-size: var(--text-sm-size); font-weight: 600; color: var(--text-primary); }
+  /* Required by ChoiceCards, and this is why: it says what picking the option
+     actually DOES. */
+  .cn-choice__desc { font-size: var(--text-xs-size); line-height: 1.45; color: var(--text-tertiary); text-wrap: pretty; }
+  .cn-choice__tick {
+    flex: none; inline-size: 20px; block-size: 20px; border-radius: var(--radius-full);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-on-brand);
+  }
+  .cn-choice.is-active .cn-choice__tick { background: var(--brand-primary); }
+
+  /* ---------- SEARCH + RESULTS ---------- */
+  .cn-search { position: relative; }
+  .cn-search__ic {
+    position: absolute; inset-inline-start: var(--space-4); inset-block-start: 15px;
+    color: var(--text-tertiary); pointer-events: none; display: inline-flex;
+  }
+  .cn-search__input {
+    inline-size: 100%; height: 48px;
+    padding-inline: var(--space-12) var(--space-4);
+    font-family: var(--font-sans); font-size: var(--text-md-size); color: var(--text-primary);
+    background: var(--surface-card);
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .cn-search__input::placeholder { color: var(--text-placeholder); }
+  .cn-search__input:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+
+  .cn-results {
+    list-style: none; margin: var(--space-2) 0 0; padding: var(--space-1);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-control);
+    box-shadow: var(--shadow-lg);
+    max-block-size: 320px; overflow-y: auto;
+  }
+  .cn-result {
+    inline-size: 100%; display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-3); padding: var(--space-3); text-align: start; cursor: pointer;
+    background: none; border: none; border-radius: var(--radius-sm);
+  }
+  .cn-result:hover { background: var(--surface-sunken); }
+  .cn-result:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .cn-result__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .cn-result__title { font-size: var(--text-sm-size); font-weight: 600; color: var(--text-primary); }
+  .cn-result__meta {
+    font-size: var(--text-xs-size); color: var(--text-tertiary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cn-empty { font-size: var(--text-sm-size); color: var(--text-tertiary); margin: var(--space-2) 0 0; }
+
+  /* A slot whose answer comes from somewhere else on the form. Not a disabled
+     control — there is nothing to type here ever — and not an absence either,
+     because the heading above already promised this row. */
+  .cn-pending {
+    display: flex; align-items: center; gap: var(--space-2);
+    margin: 0; padding: var(--space-4);
+    background: var(--surface-sunken);
+    border: 1px dashed var(--border-default); border-radius: var(--radius-card);
+    font-size: var(--text-sm-size); color: var(--text-tertiary);
+  }
+  .cn-pending svg { flex: none; color: var(--text-tertiary); }
+
+  /* ---------- THE THING YOU PICKED ----------
+     ONE CARD, WHATEVER IS IN IT. A property, an owner, a tenant — each was a
+     flat grey box with two lines of text in it, and a chosen property looked
+     the same as a disabled field. This is the add-property wizard's
+     .ap-agentcard: a real card, a picture of the thing, its name at reading
+     size, one line of detail with an icon, and the action on the far side.
+     The picture is what makes it feel chosen rather than typed. */
+  .cn-pick {
+    display: flex; align-items: center; gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-xs);
+  }
+  /* A property gets its photograph; a person gets an Avatar, which brings its
+     own initials fallback. */
+  .cn-pick__thumb {
+    /* 48px — the same box as Avatar size="lg" on the party card below, so a
+       property and a person line up at the same size. */
+    flex: none; inline-size: 48px; block-size: 48px;
+    border-radius: var(--radius-image); object-fit: cover; display: block;
+    background: var(--surface-sunken); border: 1px solid var(--border-subtle);
+  }
+  .cn-pick__meta { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1 1 auto; }
+  .cn-pick__name {
+    display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+    font-size: var(--text-md-size); font-weight: 600; line-height: 1.2;
+    letter-spacing: -.005em; color: var(--text-primary);
+  }
+  .cn-pick__sub {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    font-size: var(--text-sm-size); font-weight: 500; color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cn-pick__sub svg { flex: none; color: var(--text-tertiary); }
+  /* Read-only by nature — the owner comes from the property and is changed by
+     changing the property. A padlock says that without a disabled control. */
+  .cn-pick__lock {
+    flex: none; inline-size: 36px; block-size: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-tertiary);
+  }
+  /* QUIET, AND IN THE SAME SLOT AS THE PADLOCK.
+     It was a bordered button, which gave a secondary action the weight of a
+     primary one and set a second box inside a card that is already a box. The
+     locked version of this card shows a padlock in that slot; the unlocked one
+     should not suddenly grow a button there. So: no border, brand text, an icon
+     that says what it does, and a tinted pad only on hover. */
+  .cn-pick__change {
+    flex: none; display: inline-flex; align-items: center; gap: var(--space-2);
+    height: 36px; padding-inline: var(--space-3);
+    background: none; border: none; cursor: pointer;
+    border-radius: var(--radius-control);
+    font-family: var(--font-sans); font-size: var(--text-sm-size); font-weight: 600;
+    color: var(--text-brand);
+    transition: background-color .15s, color .15s;
+  }
+  .cn-pick__change svg { flex: none; }
+  .cn-pick__change:hover { background: var(--brand-subtle); color: var(--brand-primary-hover); }
+  .cn-pick__change:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  .cn-inlinebtn {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: var(--space-2);
+    background: none; border: none; cursor: pointer;
+    font-size: var(--text-sm-size); font-weight: 600; color: var(--text-brand);
+    padding: var(--space-2); border-radius: var(--radius-sm);
+  }
+  .cn-inlinebtn:hover { background: var(--brand-subtle); }
+  .cn-inlinebtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  .cn-aside { font-size: var(--text-sm-size); color: var(--text-secondary); margin: 0; }
+  .cn-aside__link {
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-size: inherit; font-weight: 600; color: var(--text-brand); text-decoration: none;
+  }
+  .cn-aside__link:hover { text-decoration: underline; }
+  .cn-aside__link:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
+
+  /* ---------- INSTALMENT SCHEDULE ---------- */
+  .cn-schedule {
+    padding: var(--space-4);
+    background: var(--surface-sunken); border-radius: var(--radius-control);
+    display: flex; flex-direction: column; gap: var(--space-3);
+  }
+  .cn-schedule__summary {
+    margin: 0; font-size: var(--text-md-size); font-weight: 600; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; text-wrap: pretty;
+  }
+  .cn-schedule__toggle {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: var(--space-1);
+    background: none; border: none; cursor: pointer;
+    font-size: var(--text-sm-size); font-weight: 600; color: var(--text-brand);
+    padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+  }
+  .cn-schedule__toggle:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .cn-schedule__list {
+    list-style: none; margin: 0; padding: 0;
+    max-block-size: 300px; overflow-y: auto;
+    /* Nine-digit dinar figures do not fit a narrow column; the list scrolls
+       inside itself rather than pushing the page sideways. */
+    overflow-x: auto;
+  }
+  .cn-schedule__row {
+    display: grid; grid-template-columns: 3ch 1fr auto auto;
+    gap: var(--space-3); align-items: baseline;
+    padding-block: var(--space-2);
+    border-block-start: 1px dashed var(--border-subtle);
+    font-size: var(--text-sm-size);
+  }
+  .cn-schedule__row:first-child { border-block-start: none; }
+  .cn-schedule__n { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .cn-schedule__date { color: var(--text-secondary); white-space: nowrap; }
+  .cn-schedule__amt { font-weight: 600; color: var(--text-primary); text-align: end; white-space: nowrap; }
+  .cn-schedule__bal { color: var(--text-tertiary); text-align: end; white-space: nowrap; }
+
+  /* ---------- WHAT SIGNING WILL DO (review step) ---------- */
+  /* Was .cn-preview, a toggle at the bottom of the last step. It is not a
+     toggle any more — it is the step, and the list below is the same
+     plannedInvoices the signature actually issues. */
+  .cn-plan {
+    padding: var(--space-5);
+    background: var(--surface-sunken); border-radius: var(--radius-card);
+    display: flex; flex-direction: column; gap: var(--space-4);
+  }
+  .cn-plan__note { margin: 0; font-size: var(--text-sm-size); color: var(--text-tertiary); }
+  .cn-plan__list { margin: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+  .cn-plan__row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--space-4); flex-wrap: wrap;
+    padding-block-end: var(--space-3);
+    border-block-end: 1px dashed var(--border-subtle);
+  }
+  .cn-plan__row:last-child { padding-block-end: 0; border-block-end: none; }
+  .cn-plan__row dt { font-size: var(--text-sm-size); color: var(--text-secondary); min-width: 0; }
+  .cn-plan__row dd {
+    margin: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    font-size: var(--text-md-size); font-weight: 600; color: var(--text-primary);
+  }
+  /* ⚠ The words are as authoritative as the figure — they are what a court
+     reads when the two disagree. Never formatApprox here. */
+  .cn-plan__words {
+    font-size: var(--text-xs-size); font-weight: 500; color: var(--text-tertiary);
+    text-align: end; max-inline-size: 46ch; text-wrap: pretty;
+  }
+  .cn-plan__empty { margin: 0; font-size: var(--text-sm-size); color: var(--text-tertiary); }
+
+
+  /* ---------- CONSEQUENCE BAR ---------- */
+  /* Above the footer, on every step. Every exit from this screen either
+     changes the public website or creates financial records, and nobody
+     should discover which one afterwards. */
+  .cn-consequence {
+    display: flex; align-items: flex-start; gap: var(--space-3);
+    padding: var(--space-4) var(--space-8);
+    border-block-start: 1px solid var(--border-subtle);
+    background: var(--info-50);
+  }
+  .cn-consequence--warn { background: var(--warning-50); }
+  .cn-consequence__ic { flex: none; color: var(--info-600); margin-block-start: 1px; }
+  .cn-consequence--warn .cn-consequence__ic { color: var(--warning-600); }
+  .cn-consequence__txt {
+    margin: 0; font-size: var(--text-sm-size); line-height: var(--text-sm-line);
+    color: var(--text-primary); text-wrap: pretty;
+  }
+
+  /* ---------- AMENDMENT BANNER ---------- */
+  .cn-amend {
+    display: flex; align-items: flex-start; gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    margin-block-end: var(--space-8);
+    background: var(--warning-50);
+    border: 1px solid var(--warning-100); border-radius: var(--radius-card);
+  }
+  .cn-amend__ic { flex: none; color: var(--warning-600); margin-block-start: 2px; }
+  .cn-amend__txt { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+  .cn-amend__title { font-size: var(--text-md-size); font-weight: 600; color: var(--text-primary); }
+  .cn-amend__body { font-size: var(--text-sm-size); line-height: var(--text-sm-line); color: var(--text-secondary); text-wrap: pretty; }
+
+  /* ---------- NARROW ---------- */
+  @media (max-width: 720px) {
+    .cn-consequence { padding-inline: var(--space-5); }
+    .cn-money__input { font-size: var(--text-lg-size); height: 52px; }
+    .cn-schedule__row { grid-template-columns: 3ch 1fr auto; }
+    .cn-schedule__bal { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cn-input, .cn-select, .cn-choice, .cn-money__field, .cn-search__input,
+    .cn-textarea, .cn-dp__trigger, .cn-dp__day, .cn-dp__nav { transition: none; }
+  }

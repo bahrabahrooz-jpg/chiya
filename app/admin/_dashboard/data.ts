@@ -49,6 +49,12 @@ export interface ActionItem {
 export const ACTION_ITEMS: ActionItem[] = [
   { key: "properties", icon: "building-2", tone: "brand", title: "Pending property approvals", unit: "Listings waiting review", desc: "New agent submissions need your approval before they go live on Chiya.", cta: "Review listings" },
   { key: "agents", icon: "badge-check", tone: "gold", title: "Pending agent verifications", unit: "Applications waiting review", desc: "Confirm ID documents and credentials before agents can list properties.", cta: "Review agents" },
+  /* Tenancies inside their own stated notice window, plus any that ended while
+     the agency was still holding the deposit. Both are DERIVED from dates when
+     this renders — there is no scheduler in this app, and one that rewrote
+     records at 3am would change what the admin sees overnight with nothing to
+     explain it. See isExpiringSoon and depositNeedsClosing. */
+  { key: "renewals", icon: "calendar-clock", tone: "info", title: "Contracts needing attention", unit: "Renewals and deposits", desc: "Tenancies inside their notice period, and ended tenancies whose deposit nobody has dealt with.", cta: "Open contracts" },
 ];
 
 export interface ActivityItem {

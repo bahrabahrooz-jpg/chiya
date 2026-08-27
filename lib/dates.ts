@@ -75,3 +75,55 @@ export function addDays(iso: string, n: number): string {
 export function isOverdue(dueIso: string, asOfIso: string = ANCHOR_ISO): boolean {
   return daysBetween(dueIso, asOfIso) > 0;
 }
+
+/* ----------------------------------------------------------------------------
+   Calendar-month arithmetic
+
+   Days are the easy case — `addDays` above. Months are not, because months are
+   not all the same length, and every rent schedule in the system is built by
+   stepping a start date forward by months.
+   ------------------------------------------------------------------------- */
+
+/**
+ * `iso` shifted by `n` calendar months, CLAMPED to the last day of the target
+ * month.
+ *
+ * The clamp is the whole reason this function exists. `new Date(y, m + 1, 31)`
+ * for a tenancy starting 31 January does not produce 28 February — it rolls
+ * over into 3 March, and the next step compounds it, so a twelve-month schedule
+ * built the naive way drifts several days by the end and puts rent due dates on
+ * days the tenant never agreed to. A lease that starts on the 31st falls due on
+ * the last day of every month, which is what a person means when they say "the
+ * same date each month".
+ *
+ * Negative `n` steps backwards.
+ */
+export function addMonths(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  /* Day 0 of month X is the last day of month X-1 — how many days the target
+     month actually has. */
+  const lastDayOfTarget = new Date(y, m - 1 + n + 1, 0).getDate();
+  return toIso(new Date(y, m - 1 + n, Math.min(d ?? 1, lastDayOfTarget)));
+}
+
+/**
+ * THE rent-schedule date walk. Every due date on every tenancy comes from here.
+ *
+ * Counts forward from `startsOn` in steps of `cycleMonths`, one date per cycle,
+ * with the first cycle falling due on the start date itself — rent here is paid
+ * in advance, so the tenant owes the first period on the day they take the keys.
+ *
+ * `count` is the number of CYCLES, not months. A twelve-month term billed
+ * quarterly is four dates, not twelve: see `cycleCount` in _data/contracts,
+ * which is the one place that division is done.
+ *
+ * Written once, and called by both the consequence bar on the contract form and
+ * the invoices actually generated at signing — and by the instalment schedule,
+ * which walks the same steps from its own first due date. If any of them walked
+ * its own dates they would disagree the first time one changed, and the preview
+ * exists precisely so an agent can catch a wrong date BEFORE signing.
+ */
+export function cycleDueDates(startsOn: string, cycleMonths: number, count: number): string[] {
+  if (count <= 0 || cycleMonths <= 0) return [];
+  return Array.from({ length: count }, (_, i) => addMonths(startsOn, i * cycleMonths));
+}

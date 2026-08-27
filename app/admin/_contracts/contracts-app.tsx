@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
@@ -39,10 +39,11 @@ import {
    Two admin list screens that look almost-but-not-quite alike is worse than one
    that is copied exactly, because the differences read as meaning.
 
-   Everything on this screen is READ-ONLY. Creating a contract is
-   NewContractModal, a separate piece of work, so the header button renders in
-   its usual place and is disabled — the action stays where people will look for
-   it instead of appearing later in a spot nobody has learned yet.
+   The list itself is READ-ONLY — a row opens the contract, it never edits one.
+   The single action on the screen is writing a new contract, and it is a MENU
+   rather than a button: a sale and a lease are different documents with
+   different clauses, so which one you are writing is settled here, before the
+   form opens. Both items navigate to /admin/contracts/new.
    ========================================================================== */
 
 /* ---------------- pagination ---------------- */
@@ -115,6 +116,22 @@ function ContractTableRow({ row, basePath }: { row: ContractRow; basePath: strin
     >
       <div className="ct-col--id">
         <span className="ct-id">{localizeDigits(lang, c.id)}</span>
+        {/* Two derived flags, both of them a job somebody has to do. Neither is
+            stored and neither is written by a timer — see ContractRow. */}
+        {(row.depositHeld || row.expiring) && (
+          <span className="ct-flags">
+            {row.depositHeld && (
+              <Badge variant="warning" size="sm" icon="wallet">
+                {t("admin.ct.flag.depositHeld")}
+              </Badge>
+            )}
+            {row.expiring && (
+              <Badge variant="warning" size="sm" dot>
+                {t("admin.ct.flag.expiring")}
+              </Badge>
+            )}
+          </span>
+        )}
         {c.replacesContractId && (
           <span className="ct-id__tag" title={t("admin.ct.renewalOf", { id: c.replacesContractId })}>
             <Icon name="refresh-cw" size={11} />
@@ -189,11 +206,30 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
      scopes itself — same data, filtered, never a second copy. */
   const baseList = useMemo(() => (scopeAgentId ? contracts.filter((c) => c.agentId === scopeAgentId) : contracts), [contracts, scopeAgentId]);
 
+  /* WRITING IS ADMIN-ONLY FOR NOW. `scopeAgentId` is what makes this the agent
+     view, and whether an agent may write a contract at all is a permissions
+     decision nobody has taken yet — see the TODO on app/agent/contracts/page.
+     The property page gates its own Create contract the same way. Reading is
+     already allowed; granting the write here by omission would decide the
+     question by accident. */
+  const canWrite = !scopeAgentId;
+
   const [activeTab, setActiveTab] = useState<string>("all");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<ContractFilters>(EMPTY_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const newMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!newMenuOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!newMenuRef.current?.contains(e.target as Node)) setNewMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [newMenuOpen]);
 
   const setFilter = (k: keyof ContractFilters, v: string) => {
     setFilters((f) => ({ ...f, [k]: v }));
@@ -253,8 +289,11 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
     [agents, baseList],
   );
 
+  /* Both money cards render with formatMoney, never formatApprox: one is what
+     the agency signed and the other is what it is holding for other people, and
+     both are figures somebody acts on. */
   const kpiValue = (key: (typeof KPI_CARDS)[number]["key"]) =>
-    key === "signedThisMonth" ? formatMoney(lang, kpis.signedThisMonth) : fmtNum(lang, kpis[key]);
+    key === "signedThisMonth" ? formatMoney(lang, kpis.signedThisMonth) : key === "depositsHeld" ? formatMoney(lang, kpis.depositsHeld) : fmtNum(lang, kpis[key]);
 
   return (
     <>
@@ -263,13 +302,43 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
           <h1 className="ct-head__title">{t("admin.ct.title")}</h1>
           <p className="ct-head__sub">{t("admin.ct.sub")}</p>
         </div>
-        <div className="ct-head__action">
-          {/* TODO(NewContractModal task): enable once the create flow exists.
-              Rendered rather than hidden so the action keeps its place. */}
-          <Button hierarchy="primary" size="lg" iconLeading="plus" disabled>
-            {t("admin.ct.new")}
-          </Button>
-        </div>
+        {canWrite && (
+          <div className="ct-head__action" ref={newMenuRef}>
+            {/* A MENU, NOT A BUTTON. A sale and a lease are different documents
+                with different clauses, and the choice is made here rather than
+                as a first step inside the form — branching mid-form would ask
+                half the questions twice. See §1 and the form's header note. */}
+            <Button
+              hierarchy="primary"
+              size="lg"
+              iconLeading="plus"
+              iconTrailing="chevron-down"
+              onClick={() => setNewMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={newMenuOpen}
+            >
+              {t("admin.ct.new")}
+            </Button>
+            {newMenuOpen && (
+              <div className="ct-newmenu" role="menu">
+                <Link className="ct-newmenu__item" role="menuitem" href="/admin/contracts/new?type=sale">
+                  <Icon name="banknote" size={17} />
+                  <span className="ct-newmenu__txt">
+                    <span className="ct-newmenu__label">{t("admin.ct.newSale")}</span>
+                    <span className="ct-newmenu__desc">{t("admin.ct.newSaleDesc")}</span>
+                  </span>
+                </Link>
+                <Link className="ct-newmenu__item" role="menuitem" href="/admin/contracts/new?type=lease">
+                  <Icon name="key" size={17} />
+                  <span className="ct-newmenu__txt">
+                    <span className="ct-newmenu__label">{t("admin.ct.newLease")}</span>
+                    <span className="ct-newmenu__desc">{t("admin.ct.newLeaseDesc")}</span>
+                  </span>
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="ct-kpis">
@@ -283,6 +352,8 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
             sub={
               c.key === "expiring"
                 ? t("admin.ct.kpiSub.expiring", { days: fmtNum(lang, EXPIRY_WINDOW_DAYS) })
+                : c.key === "depositsHeld"
+                  ? t(kpis.depositsToClose > 0 ? "admin.ct.kpiSub.depositsToClose" : "admin.ct.kpiSub.depositsHeld", { count: fmtNum(lang, kpis.depositsToClose) })
                 : c.key === "signedThisMonth" && kpis.excludedFromSigned > 0
                   ? t("admin.ct.kpiSub.signedExcluded", { count: fmtNum(lang, kpis.excludedFromSigned) })
                   : t(`admin.ct.kpiSub.${c.key}`)
@@ -412,6 +483,7 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
         </div>
         <PaginationFooter currentPage={currentPage} totalItems={rows.length} onPageChange={setCurrentPage} />
       </section>
+
     </>
   );
 }

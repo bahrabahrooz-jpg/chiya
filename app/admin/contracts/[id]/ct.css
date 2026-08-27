@@ -86,10 +86,11 @@
       minmax(180px, 1fr)    /* description */
       132px                 /* due date */
       132px                 /* status badge */
-      148px;                /* amount */
+      148px                 /* amount */
+      88px;                 /* row actions */
     align-items: center; gap: 12px;
     padding: 12px 14px;
-    min-width: 760px;
+    min-width: 848px;
     background: var(--surface-card);
   }
   .ctd-inv + .ctd-inv { border-top: 1px solid var(--border-subtle); }
@@ -103,6 +104,31 @@
   .ctd-inv__amount {
     font-size: 14px; font-weight: 700; color: var(--text-primary);
     white-space: nowrap; text-align: end;
+  }
+
+  /* ---------- ROW ACTIONS ----------
+     Record payment, and void. THERE IS NO EDIT AND NO DELETE HERE, on any row,
+     in any state — an issued invoice is corrected with a credit note, which is
+     what voiding writes. The absence is deliberate; see the header of
+     ../../_shared/contracts-store. */
+  .ctd-inv__actions { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+  .ctd-invbtn {
+    width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; background: transparent;
+    border-radius: var(--radius-md); cursor: pointer; color: var(--text-tertiary);
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .ctd-invbtn:hover { background: var(--brand-subtle); border-color: var(--green-100); color: var(--text-brand); }
+  .ctd-invbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-invbtn--danger:hover { background: var(--error-50); border-color: var(--error-100); color: var(--error-600); }
+  .ctd-invbtn--danger:focus-visible { box-shadow: var(--shadow-focus-error); }
+
+  /* The reason a void was raised, under the row it belongs to. A struck-through
+     line with no explanation is the thing nobody can ask about later. */
+  .ctd-voidnote {
+    grid-column: 3 / -1;
+    margin: 0; font-size: 12px; line-height: 1.45; color: var(--text-tertiary);
+    text-wrap: pretty;
   }
 
   /* A void invoice is struck through and muted — still listed, plainly no
@@ -151,3 +177,30 @@
     .ctd-banner { flex-direction: column; gap: 10px; }
     .ctd-showall { align-self: stretch; justify-content: center; }
   }
+
+  /* ---------- LATE-RENT PENALTY: offered, never applied ----------
+     A strip under an overdue row showing what the contract's own late
+     clause would come to, and a button to raise it. It is styled as a
+     SUGGESTION — warning tint, not an error, and the figure is not in
+     the amount column — because nothing here has been charged. See the
+     note beside it in contract-detail-app, and `latePenaltyFor`. */
+  .ctd-penalty {
+    grid-column: 3 / -1;
+    display: flex; align-items: center; gap: var(--space-2);
+    margin-block-start: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--warning-50); border-radius: var(--radius-control);
+    font-size: 12.5px;
+  }
+  .ctd-penalty__ic { flex: none; color: var(--warning-600); }
+  .ctd-penalty__txt {
+    flex: 1 1 auto; min-width: 0; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; text-wrap: pretty;
+  }
+  .ctd-penalty__btn {
+    flex: none; background: none; border: none; cursor: pointer;
+    font-size: 12.5px; font-weight: 700; color: var(--text-brand);
+    padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+  }
+  .ctd-penalty__btn:hover { background: var(--brand-subtle); }
+  .ctd-penalty__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }

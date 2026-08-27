@@ -7,10 +7,14 @@ import { useLang } from "@/lib/i18n";
 import { fmtNum } from "@/lib/fmt";
 import { ACTION_ITEMS, ACTIVITY_ITEMS, type ActionItem } from "./data";
 import { useProperties } from "../_shared/properties-store";
+import { useContracts } from "../_shared/contracts-store";
+import { depositNeedsClosing } from "../_data/contracts";
+import { isExpiringSoon } from "../_contracts/data";
 
 const ACTION_HREF: Record<string, string> = {
   properties: "/admin/properties?status=pending",
   agents: "/admin/agents?verification=Pending",
+  renewals: "/admin/contracts?status=signed",
 };
 
 function ActionCard({ item, count }: { item: ActionItem; count: number }) {
@@ -40,9 +44,15 @@ function ActionCard({ item, count }: { item: ActionItem; count: number }) {
 export function OpsSection() {
   const { t, lang } = useLang();
   const { counts, agentCounts } = useProperties();
+  const { contracts } = useContracts();
+  /* Counted here rather than stored: "inside its notice window" and "ended with
+     the deposit still held" are both facts about today, and a stored copy would
+     be wrong by the next morning. */
+  const contractsNeedingAttention = contracts.filter((c) => isExpiringSoon(c) || depositNeedsClosing(c)).length;
   const actionCounts: Record<string, number> = {
     properties: counts.pending,
     agents: agentCounts.pending,
+    renewals: contractsNeedingAttention,
   };
   return (
     <section className="ax-section ax-grid2" aria-label={t("admin.dash.opsAria")}>

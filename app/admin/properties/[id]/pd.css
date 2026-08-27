@@ -857,7 +857,9 @@
      .pd-field2, .pd-seg2, .pd-party, .pd-ownerchip, .pd-commission,
      .pd-consequence) went with it rather than being left behind for a form
      that no longer exists.
-     TODO(NewContractModal task): the create modal will bring its own. */
+     Nothing replaced it here, and nothing will: writing a contract is a full
+     page now (/admin/contracts/new), and it brings its own chrome. The button
+     on this screen navigates. */
 
   /* The contract id in a row heading links to the contract. */
   .pd-deal__id { text-decoration: none; }

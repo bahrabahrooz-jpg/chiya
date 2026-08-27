@@ -7,7 +7,10 @@ import {
   PLATFORM_CURRENCY,
   contractValue,
   daysToExpiry,
+  depositNeedsClosing,
+  depositsHeld,
   isActive,
+  noticeDaysOf,
   signedValueInMonth,
   type ContractKind,
   type ContractRecord,
@@ -127,6 +130,25 @@ export interface ContractKpis {
   active: number;
   drafts: number;
   expiring: number;
+  /**
+   * TENANCIES THAT ENDED WHILE WE WERE STILL HOLDING THE DEPOSIT.
+   *
+   * The outstanding item the whole deposit lifecycle exists for. A lease runs
+   * out, the tenant moves on, and their money stays in the agency's account
+   * with nothing anywhere saying so — until they ring up a year later. Derived
+   * from dates and the deposit's own status; nothing rewrites a record at
+   * midnight to produce it. See depositNeedsClosing.
+   */
+  depositsToClose: number;
+  /**
+   * TOTAL DEPOSIT MONEY THE AGENCY IS SITTING ON.
+   *
+   * ⚠ A LIABILITY, NOT REVENUE, AND NEVER ADDED TO ONE. It is the tenants'
+   * money in our account. It is given its own card, away from every income
+   * figure, precisely so the two can never be read as one number — the failure
+   * mode is not a wrong total, it is a total that looks entirely plausible.
+   */
+  depositsHeld: Money;
   signedThisMonth: Money;
   /** Contracts signed this month in some OTHER currency, and therefore not in
       the figure above. Shown as a footnote rather than converted — see
@@ -150,13 +172,15 @@ export function buildKpis(contracts: ContractRecord[], currency: CurrencyCode = 
       const left = daysToExpiry(c, asOf);
       return left !== undefined && left >= 0 && left <= EXPIRY_WINDOW_DAYS;
     }).length,
+    depositsToClose: contracts.filter((c) => depositNeedsClosing(c, asOf)).length,
+    depositsHeld: depositsHeld(currency, contracts),
     signedThisMonth: signed.total,
     excludedFromSigned: signed.excluded,
   };
 }
 
 export interface KpiCardDef {
-  key: "active" | "drafts" | "expiring" | "signedThisMonth";
+  key: "active" | "drafts" | "expiring" | "depositsHeld" | "signedThisMonth";
   icon: IconName;
   tone: StatTone;
 }
@@ -168,6 +192,10 @@ export const KPI_CARDS: KpiCardDef[] = [
   { key: "active", icon: "file-signature", tone: "brand" },
   { key: "drafts", icon: "file-pen", tone: "info" },
   { key: "expiring", icon: "calendar-clock", tone: "gold" },
+  /* Deposits held earns a card rather than a footnote because it is money in
+     the agency's account that belongs to somebody else. Its sub-line carries
+     the count that actually needs acting on. */
+  { key: "depositsHeld", icon: "wallet", tone: "gold" },
   { key: "signedThisMonth", icon: "banknote", tone: "success" },
 ];
 
@@ -184,16 +212,47 @@ export interface ContractRow {
   counterpartyId?: string;
   agentName: string;
   value: Money;
+  /**
+   * The two things about a contract that need somebody to DO something, both
+   * derived from the calendar rather than stored.
+   *
+   *   expiring   inside its own stated notice window — the point at which a
+   *              renewal has to be discussed. Derived per contract from
+   *              `noticeDays`, not from one global number, because a lease that
+   *              asks for ninety days' notice is not "expiring soon" at sixty.
+   *   depositHeld the term ended and the deposit is still ours to deal with.
+   *
+   * ⚠ NO SCHEDULER. Nothing rewrites a record when a date passes; both are
+   * computed when the list renders. See the note on expireLease in
+   * ../_shared/contract-transitions.
+   */
+  expiring: boolean;
+  depositHeld: boolean;
 }
 
 /** Resolve the display fields for one row. The names come off the live records
     rather than being stored on the contract (reference, not snapshot — see the
     header of _data/contracts), so a renamed member follows everywhere. */
+/**
+ * Is this tenancy inside its own notice window?
+ *
+ * The contract states how much notice a renewal needs (`noticeDays`, default
+ * 30). A lease asking for ninety days is not "expiring soon" when the KPI's
+ * sixty-day window says so — it is already late. So the row flag reads the
+ * contract, while the KPI card keeps its single window for a headline number.
+ */
+export function isExpiringSoon(c: ContractRecord, asOf: string = ANCHOR_ISO): boolean {
+  if (!isActive(c, asOf)) return false;
+  const left = daysToExpiry(c, asOf);
+  return left !== undefined && left >= 0 && left <= noticeDaysOf(c);
+}
+
 export function toRow(
   c: ContractRecord,
   propertyTitle: (id: string) => string,
   memberName: (id?: string) => string | undefined,
   agentName: (id: string) => string,
+  asOf: string = ANCHOR_ISO,
 ): ContractRow {
   const linked = memberName(c.buyerId);
   return {
@@ -204,5 +263,7 @@ export function toRow(
     counterpartyId: linked ? c.buyerId : undefined,
     agentName: agentName(c.agentId),
     value: contractValue(c),
+    expiring: isExpiringSoon(c, asOf),
+    depositHeld: depositNeedsClosing(c, asOf),
   };
 }

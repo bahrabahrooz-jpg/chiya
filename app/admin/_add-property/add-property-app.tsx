@@ -168,14 +168,22 @@ interface PublishPreview {
   published: boolean;
 }
 
-export function ProgressStepper({ active }: { active: number }) {
+/**
+ * The wizard progress rail.
+ *
+ * Takes its step labels as a prop, defaulting to the add-property wizard’s own,
+ * so the contract form can render the SAME rail rather than a lookalike. Two
+ * steppers that are nearly identical read as though the difference means
+ * something — see the note at the top of app/admin/_contracts/contracts-app.
+ */
+export function ProgressStepper({ active, steps = STEP_KEYS }: { active: number; steps?: readonly string[] }) {
   const { t, lang } = useLang();
   const rtl = isRtl(lang);
-  const nextLabel = STEP_KEYS[active + 1];
+  const nextLabel = steps[active + 1];
   return (
     <>
       <ol className="ap-steps" aria-label={t("admin.ap.progress")}>
-        {STEP_KEYS.map((key, i) => {
+        {steps.map((key, i) => {
           const done = i < active;
           const isActive = i === active;
           const cls = ["ap-step", done ? "is-done" : "", isActive ? "is-active" : ""].filter(Boolean).join(" ");
@@ -185,7 +193,7 @@ export function ProgressStepper({ active }: { active: number }) {
                 <span className="ap-step__dot">{done && <Icon name="check" size={14} strokeWidth={3} />}</span>
                 <span className="ap-step__label">{t(key)}</span>
               </li>
-              {i < STEP_KEYS.length - 1 && <span className={"ap-conn" + (i < active ? " is-done" : "")} aria-hidden="true" />}
+              {i < steps.length - 1 && <span className={"ap-conn" + (i < active ? " is-done" : "")} aria-hidden="true" />}
             </Fragment>
           );
         })}
@@ -203,15 +211,15 @@ export function ProgressStepper({ active }: { active: number }) {
             strokeWidth="3"
             strokeLinecap="round"
             strokeDasharray={2 * Math.PI * 17}
-            strokeDashoffset={2 * Math.PI * 17 * (1 - (active + 1) / STEP_KEYS.length)}
+            strokeDashoffset={2 * Math.PI * 17 * (1 - (active + 1) / steps.length)}
             transform={rtl ? "rotate(-90 20 20) scale(-1 1) translate(-40 0)" : "rotate(-90 20 20)"}
           />
           <text x="20" y="20" textAnchor="middle" dominantBaseline="central" style={{ fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 700, fill: "var(--text-primary)" }}>
-            {fmtNum(lang, active + 1)}/{fmtNum(lang, STEP_KEYS.length)}
+            {fmtNum(lang, active + 1)}/{fmtNum(lang, steps.length)}
           </text>
         </svg>
         <div className="ap-steps-mini__txt">
-          <span className="ap-steps-mini__now">{t(STEP_KEYS[active])}</span>
+          <span className="ap-steps-mini__now">{t(steps[active])}</span>
           {nextLabel && <span className="ap-steps-mini__next">{t("admin.ap.next", { step: t(nextLabel) })}</span>}
         </div>
       </div>
@@ -1348,9 +1356,20 @@ export function AddPropertyApp({
   const { settings } = usePlatformSettings();
   const defaultCurrency = settings.general.defaultCurrency;
   const currencyOptions = enabledCurrencies(settings);
+  /* Arriving from the contract form’s “Property not listed? Add it” link, which
+     passes the kind of contract being written (?contract=sale|rent). The listing
+     type is pre-selected from it so the round trip does not ask a question the
+     person has already answered — they are writing a lease, so the property they
+     are about to describe is for rent. Read once, at mount, and never again. */
+  const [contractKind] = useState<"sale" | "rent" | null>(() => {
+    if (typeof window === "undefined") return null;
+    const v = new URLSearchParams(window.location.search).get("contract");
+    return v === "rent" || v === "sale" ? v : null;
+  });
   const [f, setF] = useState<ApForm>(() => ({
     ...EMPTY_FORM,
     currency: defaultCurrency,
+    ...(contractKind ? { listing: contractKind } : {}),
     ...(lockedAgentId ? { agent: lockedAgentId } : {}),
   }));
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
@@ -1964,11 +1983,18 @@ export function AddPropertyApp({
               </Button>
               {/* The third exit. Some listings are created only to record a sale
                   that already happened — they should never touch the website, so
-                  this files them unpublished and goes straight to the property's
-                  Contracts tab. Members never see it: they submit for approval,
-                  they do not write contracts.
-                  TODO(NewContractModal task): make ?contract=1 open the create
-                  modal, so this stays one continuous action. */}
+                  this files them unpublished and goes STRAIGHT to the contract
+                  form, with the property selected and the document type taken
+                  from the listing. One continuous action: describe the property,
+                  then paper the deal, with no chooser in between asking a
+                  question the listing just answered.
+
+                  It is also the return path for the form's own 'Property not
+                  listed? Add it' link — you leave the contract form, describe
+                  the property here, and land back on the form with it selected.
+
+                  Members never see it — they submit for approval, they do not
+                  write contracts. */}
               {!member && (
                 <Button
                   hierarchy="secondary"
@@ -1977,7 +2003,7 @@ export function AddPropertyApp({
                   onClick={() => {
                     const rec = formToProperty(f, f.agent ? revAgent : null, photos, "unpublished");
                     addProperty(rec);
-                    router.push(`${agentMode ? "/agent" : "/admin"}/properties/${encodeURIComponent(rec.id)}?contract=1`);
+                    router.push(`/admin/contracts/new?type=${f.listing}&property=${encodeURIComponent(rec.id)}`);
                   }}
                 >
                   {t("admin.pd.createContract")}

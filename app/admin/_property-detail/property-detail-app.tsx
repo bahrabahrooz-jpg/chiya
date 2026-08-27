@@ -413,14 +413,14 @@ function AssignAgentModal({ property, onCancel, onConfirm }: { property: DetailP
 }
 
 /* ---------------- create a contract ----------------
-   The modal that used to live here built a DealRecord inline. There is no
-   DealRecord any more — the contract IS the transaction — and rebuilding the
-   form against ContractRecord is its own piece of work.
+   Nothing is rendered here for it. Writing a contract used to open a modal on
+   this page; it is a full page now, at /admin/contracts/new, because a lease
+   asks about twenty questions and a panel could not hold them.
 
-   TODO(NewContractModal task): restore the create flow as NewContractModal.
-   Until then every button that would open it renders disabled, so the action
-   stays visible in its usual place rather than disappearing and reappearing.
-   Contracts are read from the seed and shown at /admin/contracts. */
+   The button NAVIGATES, carrying two things the person has already told us by
+   standing on this screen: the property (pre-selected and locked) and the
+   document type (taken from the listing, so a for-rent property opens the lease
+   form with no chooser in front of it). See onCreateContract below. */
 
 function ConfirmModal({ kind, property, onCancel, onConfirm }: { kind: "archive" | "delete"; property: DetailProperty; onCancel: () => void; onConfirm: () => void }) {
   const { t } = useLang();
@@ -602,7 +602,7 @@ function DGroup({ title, desc, children, cols, noRowDivider }: { title: string; 
   );
 }
 
-function DetailHeader({ p, onEdit, onChangeVisibility, onAssignAgent, onArchive, onDelete, onFeature, agentSurface }: { p: DetailProperty; onEdit: () => void; onChangeVisibility: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void; onFeature: () => void; agentSurface?: boolean }) {
+function DetailHeader({ p, onEdit, onChangeVisibility, onAssignAgent, onArchive, onDelete, onFeature, onCreateContract, agentSurface }: { p: DetailProperty; onEdit: () => void; onChangeVisibility: () => void; onAssignAgent: () => void; onArchive: () => void; onDelete: () => void; onFeature: () => void; onCreateContract: () => void; agentSurface?: boolean }) {
   const { t, lang } = useLang();
   const tOr = (key: string, fallback: string) => {
     const out = t(key);
@@ -673,10 +673,9 @@ function DetailHeader({ p, onEdit, onChangeVisibility, onAssignAgent, onArchive,
         <div className="pd-head__actions">
           {/* Writing a contract is the second thing you can do to a property,
               in the slot "Change status" used to hold. Visibility moved into the
-              ⋯ menu: it is housekeeping, and this is the transaction.
-              TODO(NewContractModal task): enable once the create flow exists. */}
+              ⋯ menu: it is housekeeping, and this is the transaction. */}
           {!agentSurface && (
-            <Button hierarchy="secondary" size="md" iconLeading="file-signature" disabled>
+            <Button hierarchy="secondary" size="md" iconLeading="file-signature" onClick={onCreateContract}>
               {t("admin.pd.createContract")}
             </Button>
           )}
@@ -1183,7 +1182,7 @@ function counterpartyOf(c: ContractRecord, memberName: (id?: string) => string |
   return null;
 }
 
-function ContractsPanel({ p, agentSurface }: { p: DetailProperty; agentSurface?: boolean }) {
+function ContractsPanel({ p, agentSurface, onCreateContract }: { p: DetailProperty; agentSurface?: boolean; onCreateContract: () => void }) {
   const { t, lang } = useLang();
   const { payments, contractsByProperty, invoicesByContract, outstandingForContract } = useContracts();
   const { members } = useProperties();
@@ -1199,9 +1198,8 @@ function ContractsPanel({ p, agentSurface }: { p: DetailProperty; agentSurface?:
             <Icon name="file-signature" size={24} strokeWidth={1.6} />
           </span>
           <p>{t("admin.pd.contractsEmpty")}</p>
-          {/* TODO(NewContractModal task): enable once the create flow exists. */}
           {!agentSurface && (
-            <Button hierarchy="primary" size="sm" iconLeading="file-signature" disabled>
+            <Button hierarchy="primary" size="sm" iconLeading="file-signature" onClick={onCreateContract}>
               {t("admin.pd.createContract")}
             </Button>
           )}
@@ -1215,9 +1213,8 @@ function ContractsPanel({ p, agentSurface }: { p: DetailProperty; agentSurface?:
       title={t("admin.pd.contracts")}
       desc={t(rows.length === 1 ? "admin.pd.contractsCountOne" : "admin.pd.contractsCount", { count: fmtNum(lang, rows.length) })}
       action={
-        /* TODO(NewContractModal task): enable once the create flow exists. */
         !agentSurface && (
-          <Button hierarchy="secondary" size="sm" iconLeading="file-signature" disabled>
+          <Button hierarchy="secondary" size="sm" iconLeading="file-signature" onClick={onCreateContract}>
             {t("admin.pd.createContract")}
           </Button>
         )
@@ -1515,17 +1512,16 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
 
   const onEdit = () => router.push(`/admin/properties/${encodeURIComponent(property.id)}/edit?from=details`);
 
-  /* The wizard's third exit lands here with ?contract=1 — the listing was just
-     created unpublished, and the Contracts tab opens straight away so writing
-     the contract is one continuous action rather than two screens with a gap.
-     TODO(NewContractModal task): open the create modal here instead of only
-     switching tabs. */
-  const contractParamHandled = useRef(false);
-  useEffect(() => {
-    if (contractParamHandled.current || searchParams.get("contract") !== "1") return;
-    contractParamHandled.current = true;
-    setTab("contracts");
-  }, [searchParams]);
+  /**
+   * Write a contract on this property.
+   *
+   * THE TYPE IS NOT ASKED FOR — it comes from the listing. A for-rent property
+   * opens the lease form directly; a for-sale one opens the sale form. Putting a
+   * Sale/Lease chooser in front of somebody who is standing on a for-rent
+   * listing would be asking a question the screen already answers.
+   */
+  const onCreateContract = () =>
+    router.push(`/admin/contracts/new?type=${property.listing}&property=${encodeURIComponent(property.id)}`);
 
   const toastShown = useRef(false);
   useEffect(() => {
@@ -1623,7 +1619,7 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
 
         <div className="vwd-panel">
           <div className="vwd-hero">
-            <DetailHeader p={property} onEdit={onEdit} onChangeVisibility={() => setStatusOpen(true)} onAssignAgent={() => setAgentOpen(true)} onArchive={() => setConfirm("archive")} onDelete={() => setConfirm("delete")} onFeature={() => setFeatureOpen(true)} agentSurface={agentSurface} />
+            <DetailHeader p={property} onEdit={onEdit} onChangeVisibility={() => setStatusOpen(true)} onAssignAgent={() => setAgentOpen(true)} onArchive={() => setConfirm("archive")} onDelete={() => setConfirm("delete")} onFeature={() => setFeatureOpen(true)} onCreateContract={onCreateContract} agentSurface={agentSurface} />
           </div>
 
           <div className="vwd-segwrap">
@@ -1672,7 +1668,7 @@ export function PropertyDetailApp({ id, agentSurface }: { id: string; agentSurfa
 
             {tab === "contracts" && (
               <div className="pd-grid__main">
-                <ContractsPanel p={property} agentSurface={agentSurface} />
+                <ContractsPanel p={property} agentSurface={agentSurface} onCreateContract={onCreateContract} />
               </div>
             )}
 

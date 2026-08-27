@@ -24,14 +24,43 @@ import { approxTarget, rateFor, usePlatformSettings } from "@/lib/platform-setti
  * See formatApprox in lib/money.
  */
 export function useApproxPrice(): (m: Money) => string | null {
-  const { lang } = useLang();
   const { settings } = usePlatformSettings();
   const on = settings.listings.showApproxPrice;
+  const approx = useApproxGuidance();
+
+  return useCallback((m: Money) => (on ? approx(m) : null), [on, approx]);
+}
+
+/**
+ * The same "≈ 917,000 IQD · 18 Aug" line, shown UNDER A MONEY INPUT while
+ * somebody is filling a form in.
+ *
+ * Separate from `useApproxPrice` for two reasons, and both matter:
+ *
+ * 1. IT IS NOT GATED on Settings → Listings → `showApproxPrice`. That toggle
+ *    decides what MEMBERS see while browsing the public website. This line is
+ *    an aid for the member of staff at the keyboard, agreeing a number with two
+ *    people sitting across the desk from them, and turning off a website
+ *    feature has nothing to do with whether they get it.
+ *
+ * 2. ⚠ IT IS GUIDANCE, NEVER A TERM. It converts at TODAY'S settings rate, and
+ *    that rate moves. The contract prints ONE currency and the approximate
+ *    figure never appears on it — putting it there would make an estimate
+ *    somebody typed into a settings box last Tuesday into something a court
+ *    could enforce. Nothing computed here is stored: it is derived at render
+ *    from the amount in the field, and it disappears with the form.
+ *
+ * The rule this sits under is unchanged: `formatApprox` is forbidden on
+ * contracts, invoices, receipts and payment records. A form input is none of
+ * those — it is the thing you use BEFORE there is a record.
+ */
+export function useApproxGuidance(): (m: Money) => string | null {
+  const { lang } = useLang();
+  const { settings } = usePlatformSettings();
   const asOf = settings.listings.ratesUpdatedOn;
 
   return useCallback(
     (m: Money) => {
-      if (!on) return null;
       const to = approxTarget(settings, m.currency);
       if (!to || to === m.currency) return null;
       /* The rate is quoted per unit of the DEFAULT currency, so converting the
@@ -41,6 +70,6 @@ export function useApproxPrice(): (m: Money) => string | null {
       const rate = m.currency === dflt ? rateFor(settings, to) : 1 / rateFor(settings, m.currency);
       return formatApprox(lang, m, to, rate, asOf);
     },
-    [lang, on, asOf, settings],
+    [lang, asOf, settings],
   );
 }
