@@ -44,11 +44,22 @@ export const NAV_GROUPS: NavGroupDef[] = [
          operational work an agent does daily — the same shelf as the property it
          is written on — not accounting someone visits at month end. */
       { id: "contracts", label: "Contracts", labelKey: "admin.nav.contracts", icon: "file-signature", href: "/admin/contracts" },
+      /* Under Contracts, because every invoice is raised by one. It earns its
+         own entry rather than a tab inside the contract screen: a contract
+         answers "what does this deal owe", and the question this list answers —
+         "who owes us money this week" — spans all of them. */
+      { id: "invoices", label: "Invoices", labelKey: "admin.nav.invoices", icon: "receipt", href: "/admin/invoices" },
+      /* Beside Invoices and never merged with it. Invoices is what the agency
+         is OWED; Payouts is what the agency OWES — other people's rent sitting
+         in our account. One screen showing both would invite a single total
+         across the two, which is the exact confusion `isAgencyMoney` exists to
+         prevent. */
+      { id: "payouts", label: "Payouts", labelKey: "admin.nav.payouts", icon: "wallet", href: "/admin/payouts" },
       { id: "members", label: "Members", labelKey: "admin.nav.members", icon: "users", href: "/admin/members" },
       { id: "agents", label: "Agents", labelKey: "admin.nav.agents", icon: "badge-check", href: "/admin/agents" },
       { id: "viewings", label: "Viewings", labelKey: "admin.nav.viewings", icon: "calendar-check", href: "/admin/viewings" },
       { id: "reviews", label: "Reviews", labelKey: "admin.nav.reviews", icon: "star", href: "/admin/reviews" },
-      { id: "messages", label: "Messages", labelKey: "admin.nav.messages", icon: "mail", href: "/admin/messages" },
+      { id: "messages", label: "Inbox", labelKey: "admin.nav.messages", icon: "inbox", href: "/admin/messages" },
       { id: "locations", label: "Locations", labelKey: "admin.nav.locations", icon: "map-pin", href: "/admin/locations" },
     ],
   },
@@ -70,6 +81,19 @@ export const NAV_GROUPS: NavGroupDef[] = [
     label: "System",
     labelKey: "admin.nav.system",
     items: [
+      /* MESSAGING IS THE OUTBOX; "Messages" up in Management is the INBOX.
+         One is what strangers send us through the website contact form, the
+         other is what we say to the two people on a contract — a rent reminder
+         to a tenant, "your money is here" to a landlord. Merging them would put
+         an enquiry from a stranger in the same list as a scheduled reminder, and
+         nothing an office does with one it does with the other. They sit in
+         different groups so the sidebar itself keeps them apart.
+
+         It is here rather than under Settings because two of its three panes are
+         configuration and the third is a LOG, which is the one people open daily
+         — the same reason the Audit log is a sidebar entry and not a Settings
+         section. */
+      { id: "messaging", label: "Messaging", labelKey: "admin.nav.messaging", icon: "message-circle", href: "/admin/messaging" },
       { id: "roles", label: "Roles & permissions", labelKey: "admin.nav.roles", icon: "key-round", href: "/admin/roles" },
       { id: "audit", label: "Audit log", labelKey: "admin.nav.audit", icon: "scroll-text", href: "/admin/audit" },
       { id: "settings", label: "Settings", labelKey: "admin.nav.settings", icon: "settings", href: "/admin/settings" },

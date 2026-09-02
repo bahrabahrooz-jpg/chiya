@@ -30,3 +30,6 @@ export type {
   EarlySettlementResult,
 } from "./finance-actions";
 export type { ContractDraft, PlannedInvoice } from "./invoice-generation";
+/* The one way a screen turns a stored invoice line into text — never read
+   `line.description` directly. See the note on the function. */
+export { invoiceLineText } from "./invoice-generation";

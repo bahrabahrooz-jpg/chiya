@@ -11,7 +11,7 @@
   /* Every figure on this screen is authoritative money or a date, so every one
      of them is tabular: a column that does not line up is a column someone has
      to read twice. */
-  .ctd-num, .ctd-inv__amount, .ctd-inv__due, .ctd-inv__number {
+  .ctd-num, .ctd-inv__total, .ctd-inv__owed, .ctd-inv__when, .ctd-inv__issued, .ctd-inv__no {
     font-variant-numeric: tabular-nums;
   }
 
@@ -66,52 +66,170 @@
   .ctd-chain__line--note { color: var(--text-tertiary); }
 
   /* ---------- INVOICES ----------
-     One grid template shared by every row, so the amounts form a single column
-     down the page. The amount column is 148px — enough for "943,200,000 IQD"
-     without wrapping — and the whole list scrolls sideways rather than letting
-     a dinar figure break onto two lines. */
-  .ctd-invs {
-    display: flex; flex-direction: column;
-    border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
-    overflow-x: auto;
+     Separated by what the demand IS, ordered by when it has to be paid. The
+     blocks do the separating; the chip row above only narrows to one of them.
+     See the note on groupInvoiceRows, and the card anatomy further down. */
+
+  /* Filter chips. A filter and not a tab strip, so "All" stays a real, and the
+     default, choice — see the note in the component. */
+  .ctd-invfilter {
+    display: flex; align-items: center; gap: var(--space-2);
+    flex-wrap: wrap; margin-block-end: 16px;
   }
-  .ctd-invs::-webkit-scrollbar { height: 8px; }
-  .ctd-invs::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; }
+  .ctd-invchip {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 32px; padding-inline: 12px;
+    border: 1px solid var(--border-default); border-radius: var(--radius-pill);
+    background: var(--surface-card); color: var(--text-secondary);
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+    transition: background-color .15s, border-color .15s, color .15s;
+  }
+  .ctd-invchip > svg { flex: none; color: var(--text-tertiary); }
+  .ctd-invchip:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .ctd-invchip:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .ctd-invchip.is-active {
+    background: var(--brand-subtle); border-color: var(--green-100); color: var(--text-brand);
+  }
+  .ctd-invchip.is-active > svg { color: var(--text-brand-muted); }
+  .ctd-invchip__count {
+    font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 700;
+    color: var(--text-tertiary);
+  }
+  .ctd-invchip.is-active .ctd-invchip__count { color: var(--text-brand); }
+  /* Says only "something in here needs paying" — the block heading below
+     carries the count. */
+  .ctd-invchip__dot {
+    inline-size: 7px; block-size: 7px; flex: none;
+    border-radius: var(--radius-pill); background: var(--warning-500);
+  }
+
+  /* One block per kind of demand. */
+  .ctd-invgroups { display: flex; flex-direction: column; gap: 20px; }
+  .ctd-invgroup { display: flex; flex-direction: column; gap: 10px; }
+  .ctd-invgroup__head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .ctd-invgroup__ic { flex: none; color: var(--text-brand-muted); }
+  .ctd-invgroup__title {
+    font-family: var(--font-display); font-weight: 600; font-size: 15px;
+    letter-spacing: -.008em; line-height: 1.2; color: var(--text-primary); margin: 0;
+  }
+  .ctd-invgroup__count {
+    display: inline-flex; align-items: center; height: 20px; padding-inline: 8px;
+    border-radius: var(--radius-pill); background: var(--gray-100); color: var(--text-tertiary);
+    font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  /* The block already spaces its own children, so the button drops the standing
+     top margin it carries when it sits directly under a card. */
+  .ctd-invgroup > .ctd-showall { margin-block-start: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ctd-invchip { transition: none; }
+  }
+
+  /* ---------- ONE CARD PER DEMAND ----------
+     It was a seven-column table wide enough to need its own horizontal
+     scrollbar, with the number, the party, the description, two dates, a
+     badge, the money and two buttons all at roughly the same weight.
+     Everything was on screen and nothing led the eye.
+
+     Three bands now, in the order somebody reads them:
+
+       head   what it is, and what it costs — the two loudest things on the
+              card, on one line, money hard right
+       meta   when, and between whom — the circumstances, one quiet line
+       foot   the reference number and the buttons, on a tinted strip
+
+     And it STACKS instead of scrolling sideways, which is what actually made
+     the old one unreadable on anything narrower than a desk monitor. */
+  .ctd-invs { display: flex; flex-direction: column; gap: 10px; }
 
   .ctd-inv {
-    display: grid;
-    grid-template-columns:
-      28px                  /* category icon */
-      104px                 /* invoice number */
-      minmax(180px, 1fr)    /* description */
-      132px                 /* due date */
-      132px                 /* status badge */
-      148px                 /* amount */
-      88px;                 /* row actions */
-    align-items: center; gap: 12px;
-    padding: 12px 14px;
-    min-width: 848px;
+    display: flex; flex-direction: column;
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
     background: var(--surface-card);
+    overflow: hidden;
   }
-  .ctd-inv + .ctd-inv { border-top: 1px solid var(--border-subtle); }
-  .ctd-inv__icon { color: var(--text-tertiary); display: flex; }
-  .ctd-inv__number { font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
-  .ctd-inv__desc {
-    font-size: 13.5px; color: var(--text-secondary); min-width: 0;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+
+  /* ---------- HEAD: what it is | what it costs ---------- */
+  .ctd-inv__head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--space-4); flex-wrap: wrap;
+    padding: 14px 16px 0;
   }
-  .ctd-inv__due { font-size: 12.5px; color: var(--text-tertiary); white-space: nowrap; }
-  .ctd-inv__amount {
-    font-size: 14px; font-weight: 700; color: var(--text-primary);
+  .ctd-inv__lead {
+    display: flex; align-items: center; gap: var(--space-2);
+    flex: 1 1 260px; min-width: 0; flex-wrap: wrap;
+  }
+  .ctd-inv__title {
+    font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--text-primary);
+    min-width: 0; overflow-wrap: anywhere;
+  }
+  .ctd-inv__money { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+  .ctd-inv__total {
+    font-size: 19px; font-weight: 700; line-height: 1.1; color: var(--text-primary);
+    letter-spacing: -.01em; white-space: nowrap;
+  }
+  .ctd-inv__owed {
+    font-size: 11.5px; font-weight: 600; color: var(--warning-600);
     white-space: nowrap; text-align: end;
   }
+
+  /* ---------- META: when, and between whom ----------
+     One line, because they are the same kind of fact — the circumstances of
+     the demand rather than the demand itself. It wraps rather than truncating:
+     a name cut in half is a name nobody can act on. */
+  .ctd-inv__meta {
+    display: flex; align-items: center; gap: var(--space-2) 14px;
+    flex-wrap: wrap; padding: 6px 16px 14px;
+    font-size: 12.5px; color: var(--text-tertiary);
+  }
+  .ctd-inv__when { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .ctd-inv__when > svg { flex: none; }
+  .ctd-inv__flow { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
+  .ctd-inv__party { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; }
+  /* The role is the fixed part and leads, so the eye runs down "TENANT" and
+     stops only when it is looking for a name. */
+  .ctd-inv__role {
+    flex: none; font-size: 10px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap;
+  }
+  .ctd-inv__who { min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+  .ctd-inv__arrow { flex: none; color: var(--text-tertiary); }
+  /* Mirrored under dir=rtl: the money still travels from the payer to the
+     recipient, and in Arabic that direction is right to left. */
+  [dir="rtl"] .ctd-inv__arrow { transform: scaleX(-1); }
+  .ctd-inv__held {
+    font-size: 11.5px; font-weight: 600; color: var(--text-tertiary);
+    padding: 2px 8px; border-radius: var(--radius-pill); background: var(--gray-100);
+    white-space: nowrap;
+  }
+
+  /* ---------- FOOT: the quiet band ----------
+     A reference number nobody says out loud, the day it went out, and the two
+     things you can do to it. Tinted, so none of it competes with the money. */
+  .ctd-inv__foot {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding-block: 6px; padding-inline: 16px 10px; min-block-size: 42px;
+    border-block-start: 1px solid var(--border-subtle);
+    background: var(--gray-25);
+  }
+  .ctd-inv__no {
+    font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
+    color: var(--text-tertiary); white-space: nowrap;
+  }
+  .ctd-inv__issued { font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
 
   /* ---------- ROW ACTIONS ----------
      Record payment, and void. THERE IS NO EDIT AND NO DELETE HERE, on any row,
      in any state — an issued invoice is corrected with a credit note, which is
      what voiding writes. The absence is deliberate; see the header of
      ../../_shared/contracts-store. */
-  .ctd-inv__actions { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+  /* Hard against the card’s end edge, so every button on the card — these and
+     the receipts above them — sits on one line down the right-hand side. */
+  .ctd-inv__actions {
+    margin-inline-start: auto; flex: none;
+    display: flex; align-items: center; gap: 4px; justify-content: flex-end;
+  }
   .ctd-invbtn {
     width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
     border: 1px solid transparent; background: transparent;
@@ -122,25 +240,164 @@
   .ctd-invbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .ctd-invbtn--danger:hover { background: var(--error-50); border-color: var(--error-100); color: var(--error-600); }
   .ctd-invbtn--danger:focus-visible { box-shadow: var(--shadow-focus-error); }
+  /* Dead, not hidden — a missing button is a thing somebody hunts for. The
+     title says why. See the guard in voidInvoice. */
+  .ctd-invbtn:disabled { opacity: .4; cursor: not-allowed; }
+  .ctd-invbtn:disabled:hover { background: transparent; border-color: transparent; color: var(--text-tertiary); }
 
   /* The reason a void was raised, under the row it belongs to. A struck-through
      line with no explanation is the thing nobody can ask about later. */
   .ctd-voidnote {
-    grid-column: 3 / -1;
-    margin: 0; font-size: 12px; line-height: 1.45; color: var(--text-tertiary);
+    margin: 0; padding: 0 16px 14px;
+    font-size: 12px; line-height: 1.45; color: var(--text-tertiary);
     text-wrap: pretty;
+  }
+
+  /* WHAT ARRIVED AGAINST A DEMAND, and the paper for it. Payments were
+     recorded and then shown nowhere in the app — the only trace was the
+     outstanding figure getting smaller. One line each, because one demand can
+     be settled in several instalments of cash. */
+  .ctd-paid {
+    list-style: none; margin: 0; padding: 0 16px 14px;
+    display: flex; flex-direction: column; gap: var(--space-2);
+  }
+  .ctd-paid__row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .ctd-paid__ic { flex: none; color: var(--success-600); }
+  .ctd-paid__txt { font-size: 12.5px; color: var(--text-secondary); }
+  /* THE PAPERS SIT ON THE CARD’S RIGHT EDGE, in line with Record payment and
+     Void in the foot below them. They used to run on from the end of the
+     sentence that describes the payment, where they read as part of the
+     sentence and put the only buttons on the card in two different places. */
+  .ctd-paid__actions {
+    margin-inline-start: auto; flex: none;
+    display: flex; align-items: center; gap: var(--space-1);
+  }
+  .ctd-paid__receipt {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
+    padding: 4px var(--space-2); border-radius: var(--radius-control);
+    border: 1px solid var(--border-default); background: var(--surface-card);
+    white-space: nowrap;
+    transition: border-color .15s, color .15s, background-color .15s;
+  }
+  .ctd-paid__receipt:hover { border-color: var(--green-100); color: var(--text-brand); background: var(--brand-subtle); }
+  .ctd-paid__receipt:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .ctd-paid__receipt svg { flex: none; color: var(--text-tertiary); }
+  .ctd-paid__receipt:hover svg { color: var(--text-brand-muted); }
+  @media (prefers-reduced-motion: reduce) { .ctd-paid__receipt { transition: none; } }
+
+  /* ---------- THE ⋯ MENU MUST NOT BE CLIPPED ----------
+     `.vwd-panel` (pd.css) carries `overflow: hidden` so a panel with tabbed
+     regions inside it keeps its rounded corners. On THIS page the panel wraps
+     the header and nothing else — the cards sit outside it — so the clip
+     protects nothing and does real harm: the actions menu drops below the
+     panel's edge and everything under the first item is cut off. That is what
+     hid Renew, Settle early, Close lease and Cancel.
+
+     Overridden here rather than in pd.css because the other detail screens
+     genuinely do need the clip; their panels hold the tab track and the body. */
+  .vwd-panel { overflow: visible; }
+
+  /* ---------- THE INSURANCE DEPOSIT ----------
+     One block that always says where the tenant’s money stands. Quiet while it
+     is simply being held; amber the moment the tenancy has ended and nobody has
+     decided what happens to it — that is the only state here that is a job
+     rather than a fact, and it is the one the whole lifecycle exists for. */
+  .ctd-dep {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+    background: var(--surface-card);
+  }
+  .ctd-dep.is-due { border-color: var(--warning-100); background: var(--warning-50); }
+  .ctd-dep__ic {
+    flex: none; inline-size: 40px; block-size: 40px; border-radius: var(--radius-lg);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-sunken); color: var(--text-brand-muted);
+  }
+  .ctd-dep.is-due .ctd-dep__ic { background: var(--surface-card); color: var(--warning-600); }
+  .ctd-dep__body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .ctd-dep__top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .ctd-dep__amount {
+    font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .ctd-dep__line {
+    margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary);
+    text-wrap: pretty;
+  }
+  .ctd-dep__line--soft { font-size: 12.5px; color: var(--text-tertiary); }
+  /* What was kept out of it — the one figure on this block somebody argues
+     about, so it is the one that is not the same weight as the sentence. */
+  .ctd-dep__kept { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 767px) {
+    .ctd-dep { flex-direction: column; gap: 10px; }
+  }
+
+  /* ---------- THE LANDLORD'S MONEY ----------
+     What happened to the rent after it arrived. Only on tenancies the agency
+     collects; see the note on OwnerMoney. */
+  .ctd-om__actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .ctd-om { list-style: none; margin: 0; padding: 0; }
+  .ctd-om__row {
+    display: grid;
+    grid-template-columns: 26px 96px 1fr auto auto 84px;
+    gap: var(--space-3); align-items: center;
+    padding-block: var(--space-3);
+    border-block-start: 1px dashed var(--border-subtle);
+    font-size: 13px;
+  }
+  .ctd-om__row:first-child { border-block-start: none; }
+  .ctd-om__icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    inline-size: 24px; block-size: 24px; border-radius: var(--radius-pill);
+    background: var(--surface-sunken); color: var(--text-tertiary);
+  }
+  /* Money in reads first; the two kinds that leave the balance stay quiet. */
+  .ctd-om__row--in .ctd-om__icon { background: var(--brand-subtle); color: var(--text-brand); }
+  .ctd-om__date { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ctd-om__what { color: var(--text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ctd-om__amt { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: end; }
+  .ctd-om__row--out .ctd-om__amt { color: var(--text-secondary); font-weight: 600; }
+  .ctd-om__bal {
+    min-inline-size: 96px; text-align: end;
+    color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .ctd-om__doc { display: flex; justify-content: flex-end; }
+
+  /* The answer, under the working that produced it. */
+  .ctd-om__foot {
+    display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4);
+    margin-block-start: var(--space-4); padding-block-start: var(--space-3);
+    border-block-start: 1px solid var(--border-subtle);
+    font-size: 13px; color: var(--text-secondary);
+  }
+  .ctd-om__foot b { font-size: 18px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .ctd-om__foot b.is-owing { color: var(--text-brand); }
+
+  @media (max-width: 767px) {
+    .ctd-om__row { grid-template-columns: 26px 1fr auto; row-gap: var(--space-1); }
+    /* The carried balance goes first on a phone — the movement is what matters
+       and the total is on the line underneath the list. */
+    .ctd-om__bal { display: none; }
+    .ctd-om__date { grid-column: 2; font-size: 12px; color: var(--text-tertiary); }
+    .ctd-om__doc { grid-column: 2 / -1; justify-content: flex-start; }
   }
 
   /* A void invoice is struck through and muted — still listed, plainly no
      longer collectable. Nothing is removed from the page. */
-  .ctd-inv.is-void .ctd-inv__number,
-  .ctd-inv.is-void .ctd-inv__desc,
-  .ctd-inv.is-void .ctd-inv__amount { text-decoration: line-through; color: var(--text-tertiary); }
+  /* A withdrawn demand: struck through, never removed. The reason travels with
+     it in .ctd-voidnote — a struck line with no explanation is the thing nobody
+     can ask about later. */
+  .ctd-inv.is-void .ctd-inv__title,
+  .ctd-inv.is-void .ctd-inv__total { text-decoration: line-through; color: var(--text-tertiary); }
   .ctd-inv.is-void { background: var(--gray-25); }
+  .ctd-inv.is-void .ctd-inv__foot { background: transparent; }
 
   .ctd-showall {
     display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
-    margin-top: 12px; padding: 7px 12px;
+    margin-block-start: 12px; padding: 7px 12px;
     border: 1px solid var(--border-default); background: var(--surface-card);
     border-radius: var(--radius-control); cursor: pointer;
     font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-secondary);
@@ -185,9 +442,8 @@
      the amount column — because nothing here has been charged. See the
      note beside it in contract-detail-app, and `latePenaltyFor`. */
   .ctd-penalty {
-    grid-column: 3 / -1;
-    display: flex; align-items: center; gap: var(--space-2);
-    margin-block-start: var(--space-2);
+    display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+    margin: 0 16px 14px;
     padding: var(--space-2) var(--space-3);
     background: var(--warning-50); border-radius: var(--radius-control);
     font-size: 12.5px;
@@ -204,3 +460,607 @@
   }
   .ctd-penalty__btn:hover { background: var(--brand-subtle); }
   .ctd-penalty__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* ---------- DOCUMENTS TAB ----------
+     Every paper this contract has produced. Rows are links to a printable
+     receipt; nothing is stored here — see the note on Documents. */
+  .ctd-docs { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .ctd-doc {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3); border-radius: var(--radius-control);
+    background: var(--surface-sunken); text-decoration: none; color: inherit;
+    transition: background-color .15s;
+  }
+  a.ctd-doc:hover { background: var(--brand-subtle); }
+  a.ctd-doc:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-doc__ic {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    inline-size: 32px; block-size: 32px; border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-brand-muted);
+  }
+  .ctd-doc__txt { display: flex; flex-direction: column; gap: 1px; min-inline-size: 0; flex: 1 1 auto; }
+  .ctd-doc__who { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+  .ctd-doc__what {
+    font-size: 12px; color: var(--text-tertiary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ctd-doc__on { flex: none; font-size: 12.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ctd-doc__go { flex: none; color: var(--text-tertiary); }
+  [dir="rtl"] .ctd-doc__go { transform: scaleX(-1); }
+  /* The contract itself — a row that names the gap rather than a dead button. */
+  .ctd-doc--pending { background: none; border: 1px dashed var(--border-subtle); }
+  .ctd-doc--pending .ctd-doc__ic { background: var(--surface-sunken); color: var(--text-tertiary); }
+  .ctd-doc--pending .ctd-doc__who { color: var(--text-secondary); }
+
+  /* ---------- ACTIVITY TAB ----------
+     This contract's slice of the audit log. Read-only, like the log itself. */
+  .ctd-acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .ctd-act { display: flex; gap: var(--space-3); padding-block: var(--space-3); position: relative; }
+  .ctd-act__dot {
+    flex: none; inline-size: 9px; block-size: 9px; margin-block-start: 5px;
+    border-radius: var(--radius-pill); background: var(--brand-primary);
+  }
+  /* The thread down the left, so a run of events reads as a sequence. */
+  .ctd-act:not(:last-child)::before {
+    content: ""; position: absolute; inset-block-start: 18px; inset-block-end: -4px;
+    inset-inline-start: 4px; inline-size: 1px; background: var(--border-subtle);
+  }
+  .ctd-act__body { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+  .ctd-act__what { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+  .ctd-act__meta { font-size: 12.5px; color: var(--text-secondary); }
+  .ctd-act__who { font-size: 12px; color: var(--text-tertiary); }
+
+  @media (prefers-reduced-motion: reduce) { .ctd-doc { transition: none; } }
+
+  /* The landlord's receipt does not exist until somebody records the day he
+     took the money, so until then this is a button that makes it — not a link
+     to a paper that would carry the tenant's date. See the note on the row. */
+  .ctd-paid__make {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    padding: 4px var(--space-2); border-radius: var(--radius-control);
+    white-space: nowrap;
+    border: 1px dashed var(--border-default); background: none; cursor: pointer;
+    transition: border-color .15s, color .15s, background-color .15s;
+  }
+  .ctd-paid__make:hover { border-color: var(--border-strong); color: var(--text-brand); background: var(--brand-subtle); }
+  .ctd-paid__make:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .ctd-paid__make svg { flex: none; }
+  @media (prefers-reduced-motion: reduce) { .ctd-paid__make { transition: none; } }
+
+  /* ============================================================
+     PROPERTY CARD  —  the subject of the document, with a picture
+
+     The property used to be one link inside the Terms field grid. It is what
+     the whole contract is ABOUT, and a photograph answers "which flat is this"
+     far faster than a line of text, so it leads the overview instead.
+     ============================================================ */
+
+  /* `align-items: stretch` and `height: 100%` are what let the photograph grow
+     when this card is stretched to match a taller one beside it — see the note
+     on .ctd-cards__fill. Without them the picture stayed 108px tall and the
+     bottom half of the card was empty. */
+  .ctd-prop { display: flex; gap: var(--space-4); align-items: stretch; min-width: 0; height: 100%; }
+
+  .ctd-prop__img {
+    width: 132px; flex: none;
+    /* Grows with the card. The floor is the height it used to be fixed at; the
+       ceiling stops a very tall row turning the photograph into a ribbon. */
+    height: auto; min-height: 108px; max-height: 260px;
+    border-radius: var(--radius-image); object-fit: cover;
+    background: var(--surface-sunken);
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+  }
+
+  /* The stand-in when the property record has gone. Same box, same weight in
+     the layout — a card that reflows when a record is missing reads as broken
+     rather than as informative. */
+  .ctd-prop__ph {
+    width: 132px; flex: none;
+    height: auto; min-height: 108px; max-height: 260px;
+    border-radius: var(--radius-image);
+    display: grid; place-items: center;
+    color: var(--text-tertiary); background: var(--surface-sunken);
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+  }
+
+  .ctd-prop__body { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+
+  .ctd-prop__title {
+    font-family: var(--font-display);
+    font-size: 21px; line-height: 1.2; font-weight: 600;
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary); text-decoration: none;
+    margin-block-end: 2px;
+  }
+  a.ctd-prop__title:hover { color: var(--text-brand); }
+  a.ctd-prop__title:focus-visible {
+    outline: none; border-radius: var(--radius-control);
+    box-shadow: var(--shadow-focus-brand);
+  }
+
+  .ctd-prop__line {
+    margin: 0; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    font-size: 13.5px; line-height: 1.45; color: var(--text-secondary);
+  }
+  .ctd-prop__line > svg { flex: none; color: var(--text-tertiary); }
+
+  /* The reference the office actually quotes down a phone — mono so a digit
+     read aloud off the screen is the digit on the screen. */
+  .ctd-prop__ref { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .ctd-prop__unit {
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    padding: 2px var(--space-2); border-radius: var(--radius-pill);
+    background: var(--surface-sunken);
+  }
+
+  .ctd-prop__more {
+    margin-block-start: var(--space-2);
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 13.5px; align-self: flex-start;
+  }
+  .ctd-prop__more > svg { flex: none; }
+  .ctd-prop__more:focus-visible {
+    outline: none; border-radius: var(--radius-control);
+    box-shadow: var(--shadow-focus-brand);
+  }
+
+  @media (max-width: 560px) {
+    .ctd-prop { flex-direction: column; }
+    .ctd-prop__img, .ctd-prop__ph { width: 100%; height: 168px; }
+  }
+
+  /* ============================================================
+     SUMMARY RAIL  —  what it is worth, what is still owed
+
+     Sits in .pd-grid__aside — the property screen's sticky column, imported
+     alongside this file — so it holds its place while the document scrolls,
+     and collapses under the document at the same 1180px that one does.
+     ============================================================ */
+
+  /* NO `overflow: hidden` here, deliberately. The tinted band at the top and
+     the button at the bottom both run edge to edge, so the obvious way to keep
+     their corners inside the card is to clip them — but that also clips the
+     focus ring on the button, and a control you cannot see focus on is a bug.
+     The two children round their own outer corners instead. */
+  .ctd-rail__card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* The state, restated. It is already a badge in the page header; here it
+     carries the SENTENCE — a badge reading "Signed" does not say that both
+     parties signed, and that is the thing somebody is checking. */
+  .ctd-rail__state {
+    display: flex; gap: var(--space-3); align-items: flex-start;
+    padding: var(--space-4) var(--space-5);
+    border-block-end: 1px solid var(--border-subtle);
+    background: var(--surface-sunken);
+    /* One px inside the card's own border, so the tint does not sit on top of
+       it. Logical corners: these flip with the writing direction. */
+    border-start-start-radius: calc(var(--radius-card) - 1px);
+    border-start-end-radius: calc(var(--radius-card) - 1px);
+  }
+  .ctd-rail__stateic { flex: none; display: grid; place-items: center; color: var(--text-tertiary); margin-block-start: 1px; }
+  .ctd-rail__statetext { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ctd-rail__statename {
+    font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-primary);
+  }
+  .ctd-rail__statenote { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
+
+  /* Signed is the only state that takes a colour, and it is green. Draft,
+     completed and cancelled keep the neutral ground: a cancelled contract in
+     red would shout every time somebody opened one just to read what it said.
+     The banner above the tabs is what announces a cancellation. */
+  .ctd-rail__state--signed { background: var(--success-50); border-block-end-color: var(--success-100); }
+  .ctd-rail__state--signed .ctd-rail__stateic { color: var(--success-600); }
+
+  .ctd-rail__figs { margin: 0; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+  .ctd-rail__figs dt, .ctd-rail__figs dd { margin: 0; }
+
+  /* The headline. Display face and large, because it is the one number
+     somebody came to the rail for. */
+  .ctd-rail__lead {
+    display: flex; flex-direction: column; gap: 3px;
+    padding-block-end: var(--space-3); border-block-end: 1px solid var(--border-subtle);
+  }
+  .ctd-rail__lead dt { font-size: 12.5px; font-weight: 600; color: var(--text-tertiary); }
+  .ctd-rail__lead dd {
+    font-family: var(--font-display);
+    font-size: 30px; line-height: 1.1; font-weight: 600;
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ctd-rail__fig { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); }
+  .ctd-rail__fig dt { font-size: 13px; color: var(--text-secondary); }
+  .ctd-rail__fig dd { font-size: 13.5px; font-weight: 600; color: var(--text-primary); text-align: end; }
+
+  /* Owed money is the point of the rail, so it is the only figure that changes
+     colour — and only when there is some. */
+  .ctd-rail__fig--owed { padding-block-start: var(--space-3); border-block-start: 1px solid var(--border-subtle); }
+  .ctd-rail__fig--owed.is-owed dd { color: var(--text-error); }
+  .ctd-rail__fig--owed:not(.is-owed) dd { color: var(--text-secondary); font-weight: 500; }
+
+  /* A button, not a link: the invoices are a TAB on this page, not another
+     page, so it switches the tab rather than navigating away. */
+  .ctd-rail__link {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: var(--space-3) var(--space-5);
+    border: 0; border-block-start: 1px solid var(--border-subtle);
+    background: none; cursor: pointer;
+    font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-brand);
+    transition: background-color .15s, color .15s;
+    border-end-start-radius: calc(var(--radius-card) - 1px);
+    border-end-end-radius: calc(var(--radius-card) - 1px);
+  }
+  .ctd-rail__link > svg { flex: none; }
+  .ctd-rail__link:hover { background: var(--brand-subtle); }
+  /* The card no longer clips, so this ring is fully visible. */
+  .ctd-rail__link:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  @media (prefers-reduced-motion: reduce) { .ctd-rail__link { transition: none; } }
+
+  /* What the document IS — quieter than the money, and outside the card so it
+     does not read as another figure. */
+  .ctd-rail__meta {
+    margin: 0; padding: 0 var(--space-5);
+    display: flex; flex-direction: column; gap: var(--space-2);
+  }
+  .ctd-rail__meta > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); }
+  .ctd-rail__meta dt, .ctd-rail__meta dd { margin: 0; font-size: 12.5px; }
+  .ctd-rail__meta dt { color: var(--text-tertiary); }
+  .ctd-rail__meta dd { color: var(--text-secondary); font-weight: 600; text-align: end; font-variant-numeric: tabular-nums; }
+  .ctd-rail__mono { font-family: var(--font-mono); font-size: 12px; }
+
+  /* ============================================================
+     PARTIES  —  a divided list, not a stack of little cards
+
+     This card used to render three bordered, tinted boxes, each with its own
+     hover state, a 44px avatar, three 40px round buttons and a labelled Message
+     button. Boxes inside a box: it made the card twice the height of the
+     property card beside it, and gave a phone number the same visual weight as
+     the contract's status.
+
+     A hairline between rows says "these are a list" more quietly than four
+     borders and a fill. What the row gains instead is the things that were
+     missing — a coloured role pill, and the email address that was sitting on
+     the member record unused.
+     ============================================================ */
+
+  .ctd-pties { list-style: none; margin: 0; padding: 0; }
+
+  .ctd-pty {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--space-1) var(--space-3);
+    padding-block: var(--space-4);
+  }
+  .ctd-pty:first-child { padding-block-start: 0; }
+  .ctd-pty:last-child { padding-block-end: 0; }
+  .ctd-pty + .ctd-pty { border-block-start: 1px solid var(--border-subtle); }
+
+  .ctd-pty__avatar {
+    flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px;
+    border-radius: var(--radius-full);
+    background: var(--brand-subtle); color: var(--text-brand);
+    font-family: var(--font-display); font-size: 16px; font-weight: 600;
+    text-transform: uppercase;
+  }
+  /* The agent is us, not a customer. */
+  .ctd-pty--staff .ctd-pty__avatar { background: var(--surface-sunken); color: var(--text-secondary); }
+
+  .ctd-pty__body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ctd-pty__top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+  .ctd-pty__name {
+    font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ctd-pty__name a { color: inherit; text-decoration: none; }
+  .ctd-pty__name a:hover { color: var(--text-brand); text-decoration: underline; }
+  .ctd-pty__name a:focus-visible {
+    outline: none; border-radius: var(--radius-control); box-shadow: var(--shadow-focus-brand);
+  }
+
+  /* A counterparty with no member account. Most tenants and buyers never
+     register, so this reads as ordinary, not as missing data. */
+  .ctd-pty__ext {
+    flex: none;
+    font-size: 10.5px; font-weight: 600; color: var(--text-tertiary);
+    padding: 1px 6px; border-radius: var(--radius-pill); background: var(--surface-sunken);
+  }
+
+  /* Phone and email together, wrapping when the address is long. Both are real
+     links — which is exactly why there is no call button beside them. */
+  .ctd-pty__contacts {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 3px var(--space-3); margin-block-start: 2px;
+  }
+  .ctd-pty__c {
+    display: inline-flex; align-items: center; gap: 5px; min-width: 0;
+    font-size: 12.5px; color: var(--text-secondary); text-decoration: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .ctd-pty__c > svg { flex: none; color: var(--text-tertiary); }
+  .ctd-pty__c > span, .ctd-pty__c { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  a.ctd-pty__c:hover { color: var(--text-brand); text-decoration: underline; }
+  a.ctd-pty__c:hover > svg { color: var(--text-brand-muted); }
+  a.ctd-pty__c:focus-visible {
+    outline: none; border-radius: var(--radius-control); box-shadow: var(--shadow-focus-brand);
+  }
+  .ctd-pty__c--none { font-style: italic; color: var(--text-tertiary); }
+
+  /* What the platform has already said to this party, or is about to. */
+  .ctd-pty__note {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-block-start: var(--space-2);
+    font-size: 11.5px; line-height: 1.45; color: var(--text-tertiary); text-wrap: pretty;
+  }
+  .ctd-pty__note > svg { flex: none; margin-block-start: 1px; color: var(--text-brand-muted); }
+  .ctd-pty__note b { font-weight: 600; color: var(--text-secondary); }
+  .ctd-pty__note--warn { color: var(--warning-700); }
+  .ctd-pty__note--warn > svg { color: var(--warning-600); }
+
+  /* ---------- the actions ----------
+     Small, top-right, aligned with the role pill. Ghost buttons rather than
+     outlined circles: three outlines per row was most of what made the old
+     card look like a control panel. WhatsApp keeps its fill because it is the
+     one the office reaches for. */
+  .ctd-pty__acts { display: flex; align-items: center; gap: var(--space-1); }
+
+  .ctd-pty__ic {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex: none;
+    border: 0; border-radius: var(--radius-control);
+    background: none; color: var(--text-tertiary);
+    cursor: pointer; text-decoration: none;
+    transition: background-color .15s, color .15s;
+  }
+  .ctd-pty__ic:hover { background: var(--surface-sunken); color: var(--text-primary); }
+  .ctd-pty__ic:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-pty__ic:disabled, .ctd-pty__ic[aria-disabled="true"] { opacity: .35; pointer-events: none; }
+  .ctd-pty__ic--wa {
+    background: var(--brand-primary); color: var(--text-on-brand);
+    border-radius: var(--radius-full);
+  }
+  .ctd-pty__ic--wa:hover { background: var(--brand-primary-hover); color: var(--text-on-brand); }
+  @media (prefers-reduced-motion: reduce) { .ctd-pty__ic { transition: none; } }
+
+  /* The side nobody has filled in yet — a draft written before the buyer was
+     found. Dashed and quiet: a normal state, not an error. */
+  .ctd-pty--none {
+    display: flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-3); margin-block: var(--space-3);
+    border: 1px dashed var(--border-subtle); border-radius: var(--radius-md);
+    font-size: 13px; font-style: italic; color: var(--text-tertiary);
+  }
+  .ctd-pty--none > svg { flex: none; }
+
+  /* Touch: the house minimum is 44px, given only where the pointer is coarse
+     rather than making every desktop row taller for a finger it does not have. */
+  @media (pointer: coarse) {
+    .ctd-pty__ic { width: 44px; height: 44px; }
+  }
+  /* ============================================================
+     OVERVIEW GRID  —  cards two across
+
+     The overview used to be one column of full-width cards. Each of them is a
+     short list of fields, so at full width they all needed an internal
+     two-column grid to avoid a page of half-empty lines — which buried the
+     headings and made the page about twice as long as it had to be.
+
+     Two across instead: property beside parties, money beside dates. Each card
+     is one narrow column of fields under a title that says what it answers.
+     Anything that is not a field list — the deposit with its own action, the
+     note, the renewal chain — spans the pair.
+
+     This sits ON TOP OF .pd-grid__main (the property screen's left column,
+     which is a flex column), so the display is overridden here rather than a
+     second wrapper being introduced.
+     ============================================================ */
+
+  .ctd-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+    /* PAIRED CARDS ARE THE SAME HEIGHT — the grid default, stated here because
+       the obvious-looking `align-items: start` is what produced the dead space
+       under the property card in the first place. Two cards of different
+       natural heights left a ragged step between them and a hole in the page;
+       stretched, the shorter one simply has a little room at the bottom, which
+       reads as a card rather than as a gap. The real fix was making the parties
+       card shorter — see .ctd-pty — but this is what keeps the row square. */
+  }
+  .ctd-cards__wide { grid-column: 1 / -1; }
+
+  /* Two cards in a row are the same height, so the shorter one has slack inside
+     it. This hands that slack to the card's BODY instead of leaving it under
+     the last line — which is what lets the property photograph grow to fill it.
+     Without this the body is only as tall as its content and the card ends in a
+     block of empty white. */
+  .ctd-cards > .pd-card { display: flex; flex-direction: column; }
+  .ctd-cards > .pd-card > .pd-card__body { flex: 1; }
+
+  /* One column once a pair would be too narrow to read. This is BELOW the
+     1180px stop where the summary rail drops under the document: between the
+     two widths the main column has the whole page to itself and two cards
+     across it are wider than they were with the rail beside them. */
+  @media (max-width: 900px) {
+    .ctd-cards { grid-template-columns: 1fr; }
+  }
+
+  /* The internal editorial note. Prose, so it reads as a paragraph and not as
+     the value half of a field. */
+  .ctd-note {
+    margin: 0; font-size: 14px; line-height: 1.6;
+    color: var(--text-secondary); text-wrap: pretty;
+  }
+
+
+  /* ============================================================
+     FINANCIAL TERMS  —  a statement, not a field list
+
+     Six rows of icon + grey label + value gave the rent, the deposit, the
+     commission and the total identical weight, so the figure somebody opens the
+     card for looked exactly like the management fee. This reads like a
+     quotation instead: the agreed figure leads at display size, the charges sit
+     right-aligned underneath so the digits line up, and the computed total is
+     under a rule.
+     ============================================================ */
+
+  .ctd-money { display: flex; flex-direction: column; gap: var(--space-5); }
+
+  .ctd-money__lead { display: flex; flex-direction: column; gap: 2px; }
+  .ctd-money__leadlabel {
+    font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .ctd-money__leadfig {
+    font-family: var(--font-display);
+    font-size: 34px; line-height: 1.05; font-weight: 600;
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .ctd-money__leadsub { font-size: 13px; color: var(--text-secondary); }
+
+  .ctd-money__rows { margin: 0; display: flex; flex-direction: column; }
+  .ctd-money__row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--space-4);
+    padding-block: var(--space-3);
+    border-block-start: 1px solid var(--border-subtle);
+  }
+  .ctd-money__row dt, .ctd-money__row dd { margin: 0; min-width: 0; }
+  .ctd-money__row dt { font-size: 13.5px; color: var(--text-secondary); }
+  .ctd-money__row dd {
+    flex: none; font-size: 14px; font-weight: 600; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; text-align: end;
+  }
+  /* The rate, or "of each collection" — under the label, not beside the money,
+     so the figures column stays a clean edge. */
+  .ctd-money__note { display: block; margin-block-start: 2px; font-size: 11.5px; color: var(--text-tertiary); }
+
+  /* Arithmetic, so it earns the heavier rule and the bigger figure. */
+  .ctd-money__row--total {
+    border-block-start-width: 2px;
+    border-block-start-color: var(--border-default);
+    padding-block-start: var(--space-4);
+  }
+  .ctd-money__row--total dt { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .ctd-money__row--total dd {
+    font-family: var(--font-display); font-size: 20px; font-weight: 600;
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /* Who collects the rent. A tenancy the agency collects produces owner-ledger
+     lines and payouts; one the landlord collects produces none — so the two
+     read differently rather than as one more grey line. */
+  .ctd-money__where {
+    margin: 0; display: flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-3) var(--space-3);
+    border-radius: var(--radius-control);
+    background: var(--surface-sunken);
+    font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
+  }
+  .ctd-money__where > svg { flex: none; color: var(--text-tertiary); }
+  .ctd-money__where.is-agency { background: var(--brand-subtle); color: var(--text-brand); }
+  .ctd-money__where.is-agency > svg { color: var(--text-brand-muted); }
+
+  /* ============================================================
+     CONTRACT DATES  —  a timeline
+
+     Was a column of dates with a calendar icon beside each: the data, and none
+     of the meaning. Nothing said which had happened, which was next, or how far
+     through the term a tenancy is — the reader held today's date in their head
+     and compared, row by row, every time.
+
+     Each milestone now carries its state, and a running tenancy gets a bar.
+     ============================================================ */
+
+  .ctd-tl { list-style: none; margin: 0; padding: 0; }
+
+  .ctd-tl__step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding-block: var(--space-3);
+  }
+
+  /* The connector, drawn from each marker down to the next. `inset-inline-start`
+     rather than `left` so the line stays under the markers in Arabic. */
+  .ctd-tl__step:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 12px;
+    inset-block-start: calc(50% + 13px);
+    block-size: calc(100% - 26px);
+    inline-size: 2px;
+    background: var(--border-subtle);
+  }
+  .ctd-tl__step.is-done:not(:last-child)::before { background: var(--success-100); }
+
+  .ctd-tl__mark {
+    grid-column: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    inline-size: 26px; block-size: 26px;
+    border-radius: var(--radius-full);
+    background: var(--surface-sunken); color: var(--text-tertiary);
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+  }
+  .ctd-tl__step.is-done .ctd-tl__mark {
+    background: var(--success-50); color: var(--success-600);
+    box-shadow: inset 0 0 0 1px var(--success-100);
+  }
+  /* The one that has not happened yet and is next. A ring rather than a fill —
+     it is a thing to expect, not a thing achieved. */
+  .ctd-tl__step.is-next .ctd-tl__mark {
+    background: var(--surface-card); color: var(--text-brand);
+    box-shadow: inset 0 0 0 2px var(--brand-primary);
+  }
+
+  .ctd-tl__label { font-size: 13.5px; color: var(--text-secondary); }
+  .ctd-tl__step.is-done .ctd-tl__label,
+  .ctd-tl__step.is-next .ctd-tl__label { color: var(--text-primary); }
+  .ctd-tl__step.is-next .ctd-tl__label { font-weight: 600; }
+  .ctd-tl__step.is-ahead .ctd-tl__label { color: var(--text-tertiary); }
+
+  .ctd-tl__when {
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; white-space: nowrap; text-align: end;
+  }
+  .ctd-tl__step.is-ahead .ctd-tl__when { color: var(--text-tertiary); font-weight: 500; }
+
+  /* ---- how far through the term ---- */
+  .ctd-tl__progress {
+    margin-block-start: var(--space-4);
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column; gap: var(--space-2);
+  }
+  .ctd-tl__bar {
+    block-size: 6px; inline-size: 100%;
+    border-radius: var(--radius-pill);
+    background: var(--surface-sunken);
+    overflow: hidden;
+  }
+  .ctd-tl__fill {
+    display: block; block-size: 100%;
+    border-radius: var(--radius-pill);
+    background: var(--brand-primary);
+  }
+  .ctd-tl__prognote {
+    margin: 0; display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--space-3);
+    font-size: 12.5px; color: var(--text-secondary);
+  }
+  .ctd-tl__left { flex: none; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }

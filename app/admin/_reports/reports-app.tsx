@@ -9,9 +9,13 @@ import { fmtNum, localizeDigits } from "@/lib/fmt";
 import { useProperties } from "../_shared/properties-store";
 import { useContracts } from "../_shared/contracts-store";
 import { VIEWINGS } from "../_viewings/data";
+import { MoneyReport, REPORT_TABS, type ReportTabId } from "./money-report";
+import { REPORT_PERIODS, buildHeadline } from "./money-data";
+import { TODAY } from "../_shared/finance";
+import { formatMoney } from "@/lib/money";
+import { invoiceStatus, isActive, isAgencyMoney } from "../_data/contracts";
 import {
   C,
-  PERIODS,
   buildAgentRows,
   buildListingsTrend,
   buildMemberTrends,
@@ -525,18 +529,20 @@ function ExportToast({ toast, onDone }: { toast: ToastItem; onDone: () => void }
 
 export function ReportsApp() {
   const { t, lang } = useLang();
-  const [periodId, setPeriodId] = useState("Month");
+  const [periodId, setPeriodId] = useState("month");
+  /* Money first: it is the one somebody opens this screen for. */
+  const [tab, setTab] = useState<ReportTabId | "activity">("overview");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const { properties, members, agents } = useProperties();
   // Sold / rented figures are transactions, so they come from the contracts
   // store.
-  const { contracts } = useContracts();
+  const { contracts, invoices, payments, ledger } = useContracts();
 
-  const period = PERIODS.find((p) => p.short === periodId) ?? PERIODS[1];
+  const period = REPORT_PERIODS.find((p) => p.id === periodId) ?? REPORT_PERIODS[0];
   /** The period as a noun ("week") for the "vs previous …" sub-labels. */
-  const periodWord = t(`admin.reports.periodWord.${period.short}`);
+  const periodWord = t(`admin.reports.rangeWord.${period.id}`);
   const days = period.days;
-  const kpis = useMemo(() => buildPeriodKpis(properties, members, VIEWINGS, contracts, days, period.label), [properties, members, contracts, days, period.label]);
+  const kpis = useMemo(() => buildPeriodKpis(properties, members, VIEWINGS, contracts, days, "month"), [properties, members, contracts, days]);
   const perf = useMemo(() => buildListingsTrend(properties, days), [properties, days]);
   const status = useMemo(() => buildStatusSlices(properties, days), [properties, days]);
   const sr = useMemo(() => buildSalesRentals(contracts, days), [contracts, days]);
@@ -544,9 +550,36 @@ export function ReportsApp() {
   const agentRows = useMemo(() => buildAgentRows(agents, properties, VIEWINGS, contracts, days), [agents, properties, contracts, days]);
   const memberTrends = useMemo(() => buildMemberTrends(members, VIEWINGS, days), [members, days]);
 
-  const onExport = (kind: string) => {
-    setToasts((ts) => [...ts, { id: Date.now(), kind, rangeLabel: t("admin.reports.lastPeriod", { period: periodWord }) }]);
+  /* THE EXPORT WRITES WHAT IS ON SCREEN. The open report hands its rows up
+     through `csvRef` and this turns them into a file — so the CSV is literally
+     the table rather than a second rendering that can disagree with it. The
+     tabs that are charts rather than tables have nothing to hand up, and the
+     button is disabled there rather than producing an empty file. */
+  const csvRef = useRef<(() => string) | null>(null);
+  const onExport = () => {
+    const csv = csvRef.current?.();
+    if (!csv) return;
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chiya-${tab}-${TODAY}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setToasts((ts) => [...ts, { id: Date.now(), kind: "data", rangeLabel: t("admin.reports.lastPeriod", { period: periodWord }) }]);
   };
+
+  /* The four figures across the top, which do not change with the tab: they are
+     the state of the book, and every report under them is a way of reading it. */
+  const headline = useMemo(
+    () => buildHeadline(contracts, invoices, payments, ledger, days),
+    [contracts, invoices, payments, ledger, days],
+  );
+  const activeLeases = useMemo(() => contracts.filter((c) => c.kind === "rent" && isActive(c)).length, [contracts]);
+  const overdueCount = useMemo(
+    () => invoices.filter((i) => i.status === "issued" && isAgencyMoney(i) && invoiceStatus(i, payments) === "overdue").length,
+    [invoices, payments],
+  );
 
   return (
     <>
@@ -557,23 +590,96 @@ export function ReportsApp() {
         </div>
         <div className="rp-head__tools">
           <div className="rp-head__exports">
-            <button type="button" className="rp-xbtn" onClick={() => onExport("data")}>
-              <Icon name="download" size={17} /> {t("admin.reports.exportData")}
+            <button type="button" className="rp-xbtn" onClick={onExport} disabled={tab === "activity" || tab === "overview"}>
+              <Icon name="download" size={17} /> {t("admin.reports.exportCsv")}
             </button>
           </div>
         </div>
       </div>
 
-      <div className="rp-periodbar">
-        <Segmented
-          options={PERIODS.map((p) => p.short)}
-          labelFor={(o) => t(`admin.reports.period.${o}`)}
-          value={periodId}
-          onChange={setPeriodId}
-          ariaLabel={t("admin.reports.periodAria")}
+      {/* THE STATE OF THE BOOK, above every report. Four figures that do not
+          change with the tab — what came in, what is owed, what we earned, how
+          much is running. The reports underneath are ways of reading them.
+
+          ⚠ REVENUE AND COMMISSION ARE NOT THE SAME NUMBER. Revenue collected is
+          everything that arrived, the landlords' rent included; commission is
+          the slice that is actually the agency's. Showing only one would
+          overstate the business or understate the workload. */}
+      <section className="rp-kpis" aria-label={t("admin.reports.money.headlineAria")}>
+        <StatCard
+          label={t("admin.reports.money.earned")}
+          value={formatMoney(lang, headline.earned)}
+          icon="banknote"
+          tone="success"
+          sub={t("admin.reports.inLast", { period: periodWord })}
         />
+        <StatCard
+          label={t("admin.reports.money.owed")}
+          value={formatMoney(lang, headline.owed)}
+          icon="triangle-alert"
+          tone="gold"
+          sub={
+            overdueCount > 0
+              ? t(overdueCount === 1 ? "admin.reports.overdueOne" : "admin.reports.overdueMany", { count: fmtNum(lang, overdueCount) })
+              : t("admin.reports.money.noneLate")
+          }
+        />
+        <StatCard
+          label={t("admin.reports.money.heldOwners")}
+          value={formatMoney(lang, headline.heldForOwners)}
+          icon="wallet"
+          tone="info"
+          sub={t("admin.reports.money.heldOwnersSub")}
+        />
+        <StatCard
+          label={t("admin.reports.activeLeases")}
+          value={fmtNum(lang, activeLeases)}
+          icon="file-signature"
+          tone="brand"
+          sub={t("admin.reports.heldDepositsSub", { amount: formatMoney(lang, headline.heldDeposits) })}
+        />
+      </section>
+
+      {/* A CATALOGUE OF NAMED REPORTS, not one page of everything. Nobody asks
+          "show me the money" — they ask what rent is due, what came in last
+          month, what we earned, whose deposit we hold. Each is its own tab with
+          its own table and its own export.
+
+          Activity keeps the listings and agent charts, which answer a different
+          question for a different person; the period selector steers whichever
+          tab is open. */}
+      <div className="rp-tabbar">
+        <div className="rp-tabs" role="tablist" aria-label={t("admin.reports.tabsAria")}>
+          {([...REPORT_TABS, "activity"] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              className={"rp-tab" + (tab === id ? " is-active" : "")}
+              onClick={() => setTab(id)}
+            >
+              {t(`admin.reports.rep.${id}`)}
+            </button>
+          ))}
+        </div>
+        <div className="rp-periodbar">
+          <Segmented
+            options={REPORT_PERIODS.map((p) => p.id)}
+            labelFor={(o) => t(`admin.reports.range.${o}`)}
+            value={periodId}
+            onChange={setPeriodId}
+            ariaLabel={t("admin.reports.periodAria")}
+          />
+        </div>
       </div>
 
+      {tab !== "activity" && (
+        <MoneyReport tab={tab as ReportTabId} days={days} periodWord={periodWord} onCsvReady={(fn) => (csvRef.current = fn)} />
+      )}
+
+      {tab === "activity" && (
+      <>
       <section className="rp-kpis" aria-label={t("admin.reports.summaryAria")}>
         {kpis.map((c) => (
           <StatCard
@@ -601,6 +707,8 @@ export function ReportsApp() {
         <AgentPerformance agents={agentRows} />
         <MemberActivity trends={memberTrends} />
       </div>
+      </>
+      )}
 
       <div className="rp-toaster">
         {toasts.map((tt) => (

@@ -20,11 +20,20 @@ import "./cn.css";
  *   ?edit=L-2026-0004   reopen a DRAFT with its values loaded.
  *   ?amend=L-2026-0004  amend a SIGNED contract — same form, plus a banner
  *                       and a required reason. See §10.
+ *   ?renew=L-2026-0004  write the tenancy that FOLLOWS this one. A new
+ *                       contract seeded from the old, starting the day after
+ *                       it ends; signing it retires the old one.
  */
 export default async function AdminNewContractPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string | string[]; property?: string | string[]; edit?: string | string[]; amend?: string | string[] }>;
+  searchParams: Promise<{
+    type?: string | string[];
+    property?: string | string[];
+    edit?: string | string[];
+    amend?: string | string[];
+    renew?: string | string[];
+  }>;
 }) {
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
@@ -41,6 +50,7 @@ export default async function AdminNewContractPage({
         lockedPropertyId={one(sp.property)}
         editingId={one(sp.edit)}
         amendingId={one(sp.amend)}
+        renewingId={one(sp.renew)}
       />
     </Suspense>
   );

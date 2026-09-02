@@ -16,9 +16,11 @@
 
    · A DRAFT GENERATES NOTHING. Not one invoice, not a placeholder. Generation
      fires on the transition INTO signed and nowhere else.
-   · THE INSURANCE DEPOSIT IS NOT AN INVOICE. It is the tenant's money held
-     against damage — a liability, not a demand and not income. It is recorded
-     against the contract and surfaced as "Deposits held".
+   · BOTH DEPOSITS ARE INVOICED, AND NEITHER IS INCOME. A tenancy's insurance
+     deposit is the TENANT'S money held against damage (`payee: "tenant"`); a
+     sale's holding deposit is the SELLER'S, because it is part of the price
+     (`payee: "owner"`). Each is a demand — somebody has to be asked for it and
+     given a receipt — and `isAgencyMoney` keeps both out of every figure.
    · COMMISSION IS CHARGED ONCE, AT SIGNING. Never per cycle, never per
      instalment. Twelve rent invoices raise ONE commission between them.
    · NOTHING HERE IS THE AGENCY'S MONEY UNLESS IT SAYS SO. Rent and instalments
@@ -30,7 +32,7 @@
    writes the audit trail and moves the property lives in ./finance-actions.
    ========================================================================== */
 
-import { monthName } from "@/lib/fmt";
+import { localizeDigits, monthName } from "@/lib/fmt";
 import type { Lang } from "@/lib/i18n/config";
 import { addDays, addMonths, cycleDueDates, fromIso } from "@/lib/dates";
 import { isZero, multiply, percentOf, zeroMoney, type CurrencyCode, type Money } from "@/lib/money";
@@ -57,6 +59,7 @@ import {
   type InstallmentFrequency,
   type InstallmentsPaidTo,
   type InvoiceCategory,
+  type InvoiceLine,
   type InvoicePayee,
   type InvoiceRecord,
   type ManagementFee,
@@ -146,9 +149,8 @@ export interface ContractDraft {
    * damage. This one IS consideration: it is part of the price, and it is the
    * seller's from the moment it is paid.
    *
-   * ⚠ RECORDED AS A TERM, NOT INVOICED. `plannedInvoices` does not raise a line
-   * for it and this field does not change that. Whether it should is a real
-   * question and a separate decision — see the note there.
+   * INVOICED AT SIGNING, and taken off the price before any schedule is worked
+   * out — see `financedAmount`. It used to be a term nobody was ever asked for.
    */
   deposit?: Money;
 
@@ -166,6 +168,18 @@ export interface ContractDraft {
   externalPaperwork?: boolean;
   /** Free-text context for the admin. Never shown to a counterparty. */
   notes?: string;
+
+  /**
+   * THE TENANCY THIS ONE FOLLOWS.
+   *
+   * A renewal is a NEW contract, never an extension of the old one. Rent almost
+   * always changes, and so can the term, the deposit and which agent handles
+   * it — writing those over the old record would destroy what the parties
+   * actually agreed last year, which is the document a dispute is settled
+   * against. Both stay on the file, linked, and `previousContract` /
+   * `replacedBy` walk the chain in either direction.
+   */
+  replacesContractId?: string;
 
   /* ---- currency ----------------------------------------------------------
      See ContractRecord.agreedRate: the rate is a CONTRACTUAL TERM, not a market
@@ -347,9 +361,13 @@ export function toContractRecord(
     /* A sale's holding deposit — consideration, unlike the tenancy deposit
        above. Recorded as a term; see the note on ContractDraft.deposit. */
     ...(!lease && draft.deposit && !isZero(draft.deposit) ? { deposit: draft.deposit } : {}),
+    /* A down payment is a term of ANY sale, not a property of a schedule. On a
+       full-payment sale it raises nothing extra — see plannedInvoices — it only
+       states what was handed over on signing day, leaving the balance to fall
+       due at completion. `financedAmount` uses it wherever a schedule exists. */
+    ...(!lease && draft.downPayment && !isZero(draft.downPayment) ? { downPayment: draft.downPayment } : {}),
     ...(draft.template === "sale_installments"
       ? {
-          ...(draft.downPayment && !isZero(draft.downPayment) ? { downPayment: draft.downPayment } : {}),
           installmentCount: draft.installmentCount,
           installmentFrequency: draft.installmentFrequency,
           firstInstallmentOn: draft.firstInstallmentOn,
@@ -359,6 +377,8 @@ export function toContractRecord(
     /* The typed rate wins over the pre-filled one: `opts.agreedRate` is what
        settings said when the form opened, `draft.agreedRate` is what the parties
        agreed. Only the second is a contractual term. */
+    /* The chain, when this one follows another. See ContractDraft. */
+    ...(draft.replacesContractId ? { replacesContractId: draft.replacesContractId } : {}),
     ...currencyTerms(price, opts.createdOn, draft.agreedRate ?? opts.agreedRate, draft.dualCurrency ?? false),
   };
 }
@@ -403,12 +423,49 @@ export function billToFromExternal(p: ExternalParty): BillTo {
  * change what a document from last year says the moment somebody switched the
  * interface language — a document has to keep saying what it said.
  */
+/**
+ * WHAT ONE INVOICE LINE SAYS, IN THE LANGUAGE OF WHOEVER IS READING IT.
+ *
+ * The single place any screen turns a stored line into text. A generated line
+ * carries its catalog key and the facts that fill it, so the wording comes from
+ * the catalog while every fact in it stays exactly as it was frozen at issue —
+ * see the note on InvoiceLine.descriptionKey. A line somebody typed by hand has
+ * no key, and falls back to the sentence they wrote, verbatim.
+ *
+ * ⚠ NEVER READ `line.description` DIRECTLY ON A SCREEN. It is the frozen
+ * record, in the language it was written in, and reading it is how an Arabic
+ * invoice ends up with an English line down the middle of it.
+ */
+export function invoiceLineText(line: InvoiceLine | undefined, t: Translate, lang: Lang): string {
+  if (!line) return "";
+  if (!line.descriptionKey) return line.description;
+  /* The params are STORED CANONICAL and RENDERED LOCAL — the same rule the rest
+     of the app follows. "12" is filed as the number twelve and comes out as
+     ١٢ for a reader in Arabic; storing it pre-formatted would put one
+     reader’s digits into every other reader’s invoice. */
+  const params: Record<string, string | number> = {};
+  for (const [key, value] of Object.entries(line.descriptionParams ?? {})) {
+    params[key] = typeof value === "number" ? localizeDigits(lang, String(value)) : value;
+  }
+  /* A rent period is a rendered thing, not a stored string: the month names
+     have to come out in the reader’s language, so the cycle travels with the
+     line and the label is built here. */
+  if (line.descriptionPeriod) {
+    params.period = periodLabel(lang, t, line.descriptionPeriod.dueOn, line.descriptionPeriod.months);
+  }
+  return t(line.descriptionKey, params);
+}
+
 export function periodLabel(lang: Lang, t: Translate, dueOn: string, cycleMonths: number): string {
   const start = fromIso(dueOn);
-  const from = `${monthName(lang, start.getMonth())} ${start.getFullYear()}`;
+  /* The year goes through localizeDigits like every other figure on the screen:
+     an Arabic month beside a Latin year is the one half-translated thing the
+     eye catches every time. */
+  const year = (d: Date) => localizeDigits(lang, String(d.getFullYear()));
+  const from = `${monthName(lang, start.getMonth())} ${year(start)}`;
   if (cycleMonths <= 1) return from;
   const last = fromIso(addMonths(dueOn, cycleMonths - 1));
-  const to = `${monthName(lang, last.getMonth())} ${last.getFullYear()}`;
+  const to = `${monthName(lang, last.getMonth())} ${year(last)}`;
   return t("admin.fin.periodRange", { from, to });
 }
 
@@ -425,7 +482,14 @@ export interface PlannedInvoice {
   payee: InvoicePayee;
   dueOn: string;
   amount: Money;
+  /** The frozen text, in the language the agent who signed was working in. */
   description: string;
+  /** The same line as a catalog key and its stored facts, so it re-renders in
+      whatever language the reader picked. See InvoiceLine.descriptionKey. */
+  descriptionKey: string;
+  descriptionParams: Record<string, string | number>;
+  /** Rent only: the cycle, so the period reads in the reader’s language too. */
+  descriptionPeriod?: { dueOn: string; months: number };
   billToId?: string;
   billTo: BillTo;
 }
@@ -459,6 +523,8 @@ export type PlannableContract = Pick<
   | "termMonths"
   | "startsOn"
   | "rentPaidTo"
+  | "insuranceDeposit"
+  | "deposit"
   | "downPayment"
   | "installmentCount"
   | "installmentFrequency"
@@ -470,20 +536,25 @@ export type PlannableContract = Pick<
  * THE GENERATION RULE. Four shapes, and the difference between them is the
  * template plus one field.
  *
- *   sale_full                      1  — the agency's commission
- *   sale_installments, 24 monthly  25 — 24 instalments + 1 commission
- *   lease, landlord collects       2  — landlord's commission + tenant's
- *   lease, agency collects, 12mo   6  — 4 quarterly rent + 2 commission
- *                     quarterly
+ *   sale_full                      2  — seller's commission + buyer's
+ *   sale_installments, 24 monthly  26 — 24 instalments + 2 commission
+ *   lease, 12mo monthly           14  — 12 rent + 2 commission
+ *   lease, 12mo quarterly          6  —  4 rent + 2 commission
+ *
+ * RENT IS INVOICED ON EVERY TENANCY, whether the agency collects it or the
+ * landlord takes it himself. It did not used to be, and the note on the rent
+ * block below says what that cost. Who collects changes what happens to the
+ * money after it arrives, not whether it was owed.
  *
  * A QUARTERLY TWELVE-MONTH TERM PRODUCES FOUR RENT INVOICES, NOT TWELVE. The
  * cycle is how often rent falls due, the term is how long the tenancy runs, and
  * the count is the division — done once, in `cycleCount`, and never inline.
  *
- * BOTH PARTIES PAY COMMISSION ON A TENANCY, so a lease raises two commission
- * invoices rather than one — to two different people, for two different
- * reasons. A commission whose basis is `none` raises nothing at all, which is
- * how a sale (where the buyer pays no fee) comes out at one.
+ * BOTH PARTIES PAY COMMISSION, on a tenancy and on a sale alike, so either
+ * raises two commission invoices rather than one — to two different people, for
+ * two different reasons. A commission whose basis is `none` raises nothing at
+ * all, which is how a contract that waives one side comes out at one; every
+ * sale on the seed predates the buyer's side and does exactly that.
  */
 export function plannedInvoices(contract: PlannableContract, ctx: PlanContext): PlannedInvoice[] {
   /* Nothing is dated off the clock: an unsigned draft being previewed has no
@@ -511,21 +582,52 @@ export function plannedInvoices(contract: PlannableContract, ctx: PlanContext): 
       description: lease
         ? ctx.t("admin.fin.desc.commissionLandlord", { months: contract.termMonths ?? 0, property: ctx.propertyTitle })
         : ctx.t("admin.fin.desc.commissionSale", { property: ctx.propertyTitle }),
+      descriptionKey: lease ? "admin.fin.desc.commissionLandlord" : "admin.fin.desc.commissionSale",
+      descriptionParams: { months: contract.termMonths ?? 0, property: ctx.propertyTitle },
       billToId: ctx.ownerId,
       billTo: ctx.owner,
     });
   }
 
-  /* The tenant's side. Billed to the tenant, not the landlord — it is a
-     different party paying for a different thing, and one invoice covering both
-     would be addressed to somebody who only owes half of it. */
-  if (lease && tenant.basis !== "none" && !isZero(tenant.amount)) {
+  /* The other side — the tenant's, or the buyer's. Billed to them and not to
+     the owner: it is a different party paying for a different thing, and one
+     invoice covering both would be addressed to somebody who only owes half of
+     it. */
+  if (tenant.basis !== "none" && !isZero(tenant.amount)) {
     plan.push({
       category: "commission",
       payee: "agency",
       dueOn: commissionDue,
       amount: tenant.amount,
-      description: ctx.t("admin.fin.desc.commissionTenant", { property: ctx.propertyTitle }),
+      description: ctx.t(lease ? "admin.fin.desc.commissionTenant" : "admin.fin.desc.commissionBuyer", { property: ctx.propertyTitle }),
+      descriptionKey: lease ? "admin.fin.desc.commissionTenant" : "admin.fin.desc.commissionBuyer",
+      descriptionParams: { property: ctx.propertyTitle },
+      billToId: ctx.counterpartyId,
+      billTo: ctx.counterparty ?? ctx.owner,
+    });
+  }
+
+  /* ---- a sale's holding deposit ----
+
+     ⚠ IT USED TO BE A TERM AND NOTHING ELSE, exactly like the tenancy deposit.
+     The contract stated it, the buyer paid it, and no document ever asked for
+     it.
+
+     PAYEE "OWNER" — the seller's. Unlike a tenancy deposit this is not held
+     against anything: it is money down to take the property off the market and
+     it is PART OF THE PRICE, which is why `financedAmount` now takes it off
+     before the instalments are worked out. A buyer who has paid five thousand
+     down must not then be billed that five thousand again, spread invisibly
+     across every instalment. */
+  if (!lease && contract.deposit && !isZero(contract.deposit)) {
+    plan.push({
+      category: "deposit",
+      payee: "owner",
+      dueOn: anchor,
+      amount: contract.deposit,
+      description: ctx.t("admin.fin.desc.saleDeposit", { property: ctx.propertyTitle }),
+      descriptionKey: "admin.fin.desc.saleDeposit",
+      descriptionParams: { property: ctx.propertyTitle },
       billToId: ctx.counterpartyId,
       billTo: ctx.counterparty ?? ctx.owner,
     });
@@ -558,6 +660,8 @@ export function plannedInvoices(contract: PlannableContract, ctx: PlanContext): 
           count: schedule.length,
           property: ctx.propertyTitle,
         }),
+        descriptionKey: "admin.fin.desc.installment",
+        descriptionParams: { index: line.index, count: schedule.length, property: ctx.propertyTitle },
         billToId,
         billTo,
       });
@@ -565,8 +669,50 @@ export function plannedInvoices(contract: PlannableContract, ctx: PlanContext): 
     return plan;
   }
 
-  /* ---- rent, when the agency collects it ---- */
-  if (!lease || contract.rentPaidTo !== "agency") return plan;
+  /* ---- rent, on EVERY tenancy ----
+
+     ⚠ THIS USED TO READ `rentPaidTo !== "agency"` AND SKIP THE WHOLE BLOCK.
+     A tenancy where the landlord took the rent himself raised two commission
+     invoices and nothing else: no June rent, no July rent, nothing for the
+     whole year. As far as the system was concerned no rent was ever due on
+     that flat — so nobody could see who was late, the tenant could not be
+     handed a demand, and the late-rent clause the contract states had no
+     document to attach to.
+
+     INVOICING AND COLLECTING ARE TWO DIFFERENT QUESTIONS, and welding them
+     together was the mistake. The agency wrote the tenancy and manages it, so
+     rent falls due on the first of the month whichever pocket the cash lands
+     in. Who collects decides what happens to the money AFTERWARDS — the owner
+     ledger and the payout — and that is settled where it belongs, on the
+     payment (see ownerLedgerFor), not here. */
+  if (!lease) return plan;
+
+  /* ---- the insurance deposit ----
+
+     ⚠ IT USED TO BE A TERM AND NOTHING ELSE. The contract stated an amount, the
+     tenant handed over thousands, and no document ever demanded it, no payment
+     was ever recorded against it and there was nothing to give him. The agency
+     was holding money it had no record of receiving.
+
+     PAYEE "TENANT", which is neither of the other two answers on purpose: it
+     stays his money for the whole term. Whether any of it becomes the
+     landlord's is decided at the END, by closing the lease — see closeLease. */
+  if (contract.insuranceDeposit && !isZero(contract.insuranceDeposit)) {
+    plan.push({
+      category: "deposit",
+      payee: "tenant",
+      /* Due on the day the term starts: the keys and the deposit change hands
+         together, which is the whole point of holding one. */
+      dueOn: contract.startsOn ?? anchor,
+      amount: contract.insuranceDeposit,
+      description: ctx.t("admin.fin.desc.deposit", { property: ctx.propertyTitle }),
+      descriptionKey: "admin.fin.desc.deposit",
+      descriptionParams: { property: ctx.propertyTitle },
+      billToId: ctx.counterpartyId,
+      billTo: ctx.counterparty ?? ctx.owner,
+    });
+  }
+
   if (!contract.cycle || !contract.termMonths || !contract.startsOn) return plan;
 
   const step = CYCLE_MONTHS[contract.cycle];
@@ -577,8 +723,10 @@ export function plannedInvoices(contract: PlannableContract, ctx: PlanContext): 
   for (const dueOn of cycleDueDates(contract.startsOn, step, count)) {
     plan.push({
       category: "rent",
-      /* THE LANDLORD'S MONEY. We collect it; we never earn it. Marking these
-         "agency" would put the whole rent roll into revenue — see InvoicePayee. */
+      /* THE LANDLORD'S MONEY, whoever takes it in. Marking these "agency" would
+         put the whole rent roll into revenue — see InvoicePayee. `payee` says
+         whose money it is; `rentPaidTo` says who physically collects. The two
+         are separate questions and this is the one about ownership. */
       payee: "owner",
       dueOn,
       /* One cycle's rent — `price` already IS the per-cycle figure, derived from
@@ -589,6 +737,11 @@ export function plannedInvoices(contract: PlannableContract, ctx: PlanContext): 
         property: ctx.propertyTitle,
         period: periodLabel(ctx.lang, ctx.t, dueOn, step),
       }),
+      descriptionKey: "admin.fin.desc.rentPeriod",
+      descriptionParams: { property: ctx.propertyTitle },
+      /* The period is not stored as text: it is re-derived from the cycle at
+         render, so "Jul 2026" becomes "تموز ٢٠٢٦" for a reader in Arabic. */
+      descriptionPeriod: { dueOn, months: step },
       billToId,
       billTo,
     });
@@ -617,7 +770,18 @@ export function toInvoiceDrafts(plan: PlannedInvoice[], opts: { contractId: stri
     /* One line, no tax. Tax on a generated invoice would be a rate nobody was
        asked for; the seed's taxed invoice was hand-written, and AddInvoiceModal
        is where a person states one deliberately. */
-    lines: [{ id: "L1", description: p.description, quantity: 1, unitPrice: p.amount, taxRate: 0 }],
+    lines: [
+      {
+        id: "L1",
+        description: p.description,
+        descriptionKey: p.descriptionKey,
+        descriptionParams: p.descriptionParams,
+        ...(p.descriptionPeriod ? { descriptionPeriod: p.descriptionPeriod } : {}),
+        quantity: 1,
+        unitPrice: p.amount,
+        taxRate: 0,
+      },
+    ],
   }));
 }
 

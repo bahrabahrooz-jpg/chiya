@@ -246,3 +246,100 @@
     .rp-toast.is-in { transform: none; }
     .rp-hbar__fill { transition: none; }
   }
+
+  /* ============================================================
+     THE MONEY REPORT
+
+     Almost nothing new. The figures are StatCards, the bar lists are
+     .rp-hbars, the tables are .rp-table — all of them this screen's own,
+     already used by the activity report above. What is added here is a group
+     heading, the look-ahead rows, and three text modifiers.
+     ============================================================ */
+
+  /* ---------- TABS ---------- */
+  .rp-tabs { display: flex; gap: var(--space-2); margin-block-end: 18px; flex-wrap: wrap; }
+  .rp-tab {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    padding: 9px 16px; border-radius: var(--radius-pill);
+    border: 1px solid var(--border-subtle); background: var(--surface-card);
+    font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
+    transition: border-color .15s, color .15s, background-color .15s;
+  }
+  .rp-tab:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .rp-tab:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .rp-tab.is-active { background: var(--brand-primary); border-color: var(--brand-primary); color: var(--text-on-brand); }
+  .rp-tab svg { flex: none; }
+
+  /* ---------- A NAMED GROUP OF CARDS ----------
+     Two figures under a heading, rather than four in one row: the heading is
+     what says whose money the pair is. See the note in money-report. */
+  .rp-group { display: flex; flex-direction: column; gap: 14px; }
+  .rp-group__title {
+    margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .rp-kpis--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 700px) { .rp-kpis--two { grid-template-columns: 1fr; } }
+
+  /* ---------- WHAT IS COMING ----------
+     Rides on .rp-hbars for its spacing; only the row itself is new. */
+  .rp-coming__row {
+    display: flex; align-items: center; gap: var(--space-4);
+    padding: 10px 12px; margin-inline: -12px;
+    border-radius: var(--radius-control); text-decoration: none;
+  }
+  .rp-coming__when {
+    flex: none; inline-size: 116px;
+    font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .rp-coming__what { flex: 1 1 auto; font-size: 14px; color: var(--text-primary); text-wrap: pretty; }
+  .rp-coming__go { flex: none; color: var(--text-tertiary); opacity: 0; transition: opacity .15s; }
+  .rp-coming__row:hover { background: var(--surface-sunken); }
+  .rp-coming__row:hover .rp-coming__go { opacity: 1; }
+  .rp-coming__row:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  [dir="rtl"] .rp-coming__go { transform: scaleX(-1); }
+  @media (max-width: 560px) {
+    .rp-coming__row { flex-wrap: wrap; gap: var(--space-2); }
+    .rp-coming__when { inline-size: 100%; }
+  }
+
+  /* ---------- TEXT INSIDE THE TABLES ---------- */
+  .rp-link { color: inherit; text-decoration: none; font-weight: 600; }
+  .rp-link:hover { color: var(--text-brand); }
+  .rp-link:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
+  .rp-sub { display: block; font-size: 11.5px; color: var(--text-tertiary); margin-block-start: 2px; }
+  .rp-strong { font-weight: 700; color: var(--text-primary); }
+  .rp-warn { color: var(--warning-600); font-weight: 600; }
+  .rp-late { color: var(--error-600); font-weight: 600; }
+  .rp-empty { margin: 0; padding: 28px 0; text-align: center; font-size: 13.5px; color: var(--text-tertiary); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rp-tab, .rp-coming__go { transition: none; }
+  }
+
+  /* ---------- THE TAB BAR ----------
+     Named reports on the left, the period on the right — one row, so choosing
+     what to look at and choosing when sit together. */
+  .rp-tabbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-4); flex-wrap: wrap; margin-block-end: 22px;
+    padding-block-end: 14px; border-block-end: 1px solid var(--border-subtle);
+  }
+  .rp-tabbar .rp-tabs { margin-block-end: 0; }
+  .rp-tabbar .rp-periodbar { margin: 0; }
+
+  /* The total under a report's table. */
+  .rp-total {
+    display: flex; align-items: baseline; justify-content: flex-end; gap: var(--space-3);
+    margin: var(--space-4) 0 0; padding-block-start: var(--space-3);
+    border-block-start: 1px solid var(--border-subtle);
+    font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .rp-total b {
+    font-size: 18px; letter-spacing: normal; text-transform: none;
+    color: var(--text-primary); font-variant-numeric: tabular-nums;
+  }
+
+  .rp-xbtn:disabled { opacity: .45; cursor: not-allowed; }

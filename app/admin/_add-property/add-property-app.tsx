@@ -358,7 +358,25 @@ export function Stepper({ value, onChange, min = 0, suffix }: { value: number; o
   );
 }
 
-export function useTopbarClip(triggerRef: React.RefObject<HTMLElement | null>) {
+/**
+ * Where a dropdown panel goes, and KEEPING IT THERE.
+ *
+ * The panels are `position: fixed` so they escape the card's overflow, which
+ * means their coordinates are viewport coordinates and go stale the moment
+ * anything scrolls. Left unhandled, the panel stays put while the field slides
+ * away underneath it.
+ *
+ * ⚠ THE LISTENERS LIVE IN THE HOOK, NOT IN THE CALLERS. They used to be the
+ * caller's job — four dropdowns, each binding scroll and resize by hand, and
+ * the fourth (the date picker on the contract form) simply did not. That is
+ * the failure mode of a shared hook that returns a `calc` and trusts everybody
+ * to call it: it works everywhere except the one place somebody forgot, and
+ * nothing says so. Pass `open` and it is handled.
+ *
+ * `scroll` is captured, because the thing that scrolls is an ancestor
+ * (`.ax-content`), not the window.
+ */
+export function useTopbarClip(triggerRef: React.RefObject<HTMLElement | null>, open?: boolean) {
   const [coords, setCoords] = useState<{ top: number; left: number; width: number; right: number; clipTop: number } | null>(null);
   const calc = () => {
     if (!triggerRef.current) return;
@@ -368,6 +386,29 @@ export function useTopbarClip(triggerRef: React.RefObject<HTMLElement | null>) {
     const top = r.bottom + 8;
     setCoords({ top, left: r.left, width: r.width, right: window.innerWidth - r.right, clipTop: Math.max(0, navBottom - top) });
   };
+
+  /* Held in a ref, WRITTEN IN AN EFFECT, so the listener effect can depend on
+     `open` alone: `calc` is a new function every render, and re-binding scroll
+     on each would defeat the point of binding it once. */
+  const calcRef = useRef(calc);
+  useEffect(() => {
+    calcRef.current = calc;
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    const onMove = () => calcRef.current();
+    /* Recalculate once on open too, so a caller that forgets to call `calc`
+       before setting `open` still lands in the right place. */
+    onMove();
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
+    return () => {
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
+    };
+  }, [open]);
+
   return { coords, setCoords, calc };
 }
 
@@ -376,7 +417,7 @@ export function Dropdown({ id, options, value, onChange, placeholder, disabled }
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { coords, calc } = useTopbarClip(triggerRef);
+  const { coords, calc } = useTopbarClip(triggerRef, open);
 
   const openDropdown = () => {
     if (disabled) return;
@@ -393,15 +434,11 @@ export function Dropdown({ id, options, value, onChange, placeholder, disabled }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", calc, true);
-    window.addEventListener("resize", calc);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", calc, true);
-      window.removeEventListener("resize", calc);
     };
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]);  
 
   const selected = options.find((o) => o.value === value);
   return (
@@ -467,7 +504,7 @@ export function ComboSelect({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { coords, calc } = useTopbarClip(triggerRef);
+  const { coords, calc } = useTopbarClip(triggerRef, open);
 
   const openDropdown = () => {
     calc();
@@ -483,15 +520,11 @@ export function ComboSelect({
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", calc, true);
-    window.addEventListener("resize", calc);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", calc, true);
-      window.removeEventListener("resize", calc);
     };
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]);  
 
   return (
     <div className={"ap-combo__sel ap-combo__sel--" + side + (disabled ? " is-disabled" : "")}>
@@ -815,7 +848,7 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const { coords, calc } = useTopbarClip(triggerRef);
+  const { coords, calc } = useTopbarClip(triggerRef, open);
   const agents = useAssignableAgents();
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -843,16 +876,12 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", calc, true);
-    window.addEventListener("resize", calc);
     return () => {
       window.clearTimeout(t);
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", calc, true);
-      window.removeEventListener("resize", calc);
     };
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]);  
   return (
     <>
       <button type="button" ref={triggerRef} id={id} className={"ap-agentsel__trigger" + (open ? " is-open" : "")} onClick={toggle} aria-haspopup="listbox" aria-expanded={open}>

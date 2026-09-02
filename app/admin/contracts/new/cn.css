@@ -442,21 +442,14 @@
   .cn-dp__clear:hover { background: var(--surface-sunken); color: var(--text-secondary); }
   .cn-dp__today:focus-visible, .cn-dp__clear:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
 
-  /* ---------- GROUP DIVIDER ---------- */
-  .cn-divider {
-    display: flex; flex-direction: column; gap: var(--space-1);
-    margin-block: var(--space-10) var(--space-6);
-    padding-block-start: var(--space-6);
-    border-block-start: 1px solid var(--border-subtle);
-  }
-  .cn-divider__label {
-    font-size: var(--text-xs-size); font-weight: 700; text-transform: uppercase;
-    letter-spacing: var(--tracking-wider); color: var(--text-brand);
-  }
-  .cn-divider__note { font-size: var(--text-sm-size); color: var(--text-tertiary); }
-  /* A divider already drew the line; the section after it must not draw a
-     second one a few pixels below. */
-  .cn-divider + .cn-section { margin-block-start: 0; padding-block-start: 0; border-block-start: none; }
+  /* ---------- GROUP DIVIDER ----------
+     GONE. `.cn-divider` was a labelled rule marking a second KIND of thing
+     inside a section, and by the end it had exactly one caller: the penalties,
+     under the commissions they share a group with. A heading below a heading —
+     it made one topic read as two, and the rule's own note said what the hints
+     under the fields were already saying. Sections divide this form and the
+     rule above .cn-section draws the only line it needs; nothing divides a
+     section from the inside. */
 
   /* ---------- CHOICE CARDS ----------
      SLIMMER THAN THEY WERE. These still earn cards — picking "Our office"

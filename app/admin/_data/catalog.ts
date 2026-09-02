@@ -113,9 +113,15 @@ export type Availability = "available" | "reserved" | "sold" | "rented";
  * The agency's agreement with the OWNER — not a transaction.
  *
  * It is the reason the agency may market the property at all, and its
- * `commissionRate` is the default every deal struck on this property inherits.
- * A deal may be agreed at a different rate, but only with a stated reason
- * (ContractRecord.commissionOverrideReason), so a quiet discount leaves a trail.
+ * `commissionRate` is what the OWNER signed up to when they listed.
+ *
+ * NOT WHAT A CONTRACT ON THIS PROPERTY CHARGES. A deal is written at the house
+ * standard (DEFAULT_SALE_COMMISSION_RATE), the same on both sides, months after
+ * this was signed and by people who never saw it. The two used to be one number
+ * and the contract form defaulted from here; they are separate now, so a rate
+ * negotiated on a mandate does not quietly reprice a deal — and the seed's
+ * older contracts, which do still follow their mandates, are held to it by the
+ * cross-check in contracts.ts.
  */
 export interface ListingMandate {
   /** Sole agency. A non-exclusive mandate means rival agencies hold it too. */

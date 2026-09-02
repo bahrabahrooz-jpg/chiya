@@ -6,6 +6,7 @@ import { useLang } from "@/lib/i18n";
 import { localizeDigits } from "@/lib/fmt";
 import { formatMoney } from "@/lib/money";
 import { invoiceTotals, type InvoiceRecord } from "../../_data/contracts";
+import { invoiceLineText } from "./invoice-generation";
 import { useFinanceActions } from "./finance-actions";
 import { CancelButton, FinanceModal } from "./modal-shell";
 import { Labelled } from "./controls";
@@ -72,7 +73,7 @@ export function VoidInvoiceModal({ invoice, onClose, onVoided }: VoidInvoiceModa
         <div className="fm-invoice__top">
           <span className="fm-invoice__number">{localizeDigits(lang, invoice.number)}</span>
         </div>
-        <p className="fm-invoice__desc">{invoice.lines[0]?.description ?? ""}</p>
+        <p className="fm-invoice__desc">{invoiceLineText(invoice.lines[0], t, lang)}</p>
         <div className="fm-invoice__figures">
           <span className="fm-invoice__amount">{formatMoney(lang, total)}</span>
         </div>

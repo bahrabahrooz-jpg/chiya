@@ -85,6 +85,11 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 16px; min-width: 0; flex-wrap: wrap;
   }
+  /* Lists that reuse this chrome without a filter drawer (Payouts) lose the
+     drawer's top margin, and the tabs would then sit on the head's bottom
+     border. Put the same gap back when the tab row is the last thing in the
+     header — the Reviews and Messages lists do this over the Members chrome. */
+  .ct-tablecard__head > .ct-tabrow:last-child { padding-bottom: 16px; }
   .ct-tabs {
     display: inline-flex; align-items: center;
     background: var(--gray-100); border: 1px solid var(--border-subtle);
@@ -158,12 +163,18 @@
   .ct-filterbar {
     display: grid; grid-template-rows: 0fr;
     transition: grid-template-rows .22s ease;
+    /* Full-bleed to the card edges, and the top margin is what gives the tab
+       row its air above the head's bottom border — closed, this margin is the
+       only gap there is. Properties and Members space their toolbars the same
+       way; without it the tabs and the search box sit on the border. */
+    margin-inline-start: -24px; margin-inline-end: -24px; margin-top: 16px;
+    border-top: 1px solid transparent;
   }
-  .ct-filterbar.is-open { grid-template-rows: 1fr; }
+  .ct-filterbar.is-open { grid-template-rows: 1fr; border-top-color: var(--border-subtle); }
   .ct-filterbar__inner { overflow: hidden; min-height: 0; }
   .ct-filterbar__row {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: 14px 0 16px;
+    padding: 16px 24px;
   }
   .ct-filterbar__actions { margin-inline-start: auto; }
   .ct-clearbtn {
@@ -194,8 +205,9 @@
     display: grid;
     grid-template-columns:
       minmax(126px, 0.9fr)   /* contract id (+ renewal tag) */
-      minmax(210px, 2.2fr)   /* property */
-      minmax(150px, 1.4fr)   /* counterparty */
+      minmax(190px, 1.9fr)   /* property */
+      minmax(146px, 1.2fr)   /* seller / landlord */
+      minmax(146px, 1.2fr)   /* buyer / tenant */
       96px                   /* kind */
       132px                  /* status */
       150px                  /* value — sized for "943,200,000 IQD" */
@@ -204,7 +216,7 @@
     align-items: center;
     gap: 14px;
     padding: 0 20px;
-    min-width: 1180px;
+    min-width: 1320px;
     width: 100%;
   }
   .ct-thead {
@@ -251,15 +263,28 @@
     white-space: nowrap;
   }
 
-  /* counterparty cell */
-  .ct-col--party { min-width: 0; }
+  /* ---------- THE TWO PARTY CELLS ----------
+     One for the owner's side, one for the other, laid out identically so the
+     eye reads straight across a row. Name on top, role underneath: the heading
+     can only say "Seller / Landlord" because the column holds both, so the row
+     is the only place that can say which one THIS contract means. */
+  .ct-col--owner,
+  .ct-col--party { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .ct-party {
     display: flex; align-items: center; gap: 7px; min-width: 0;
     font-size: 13.5px; color: var(--text-secondary);
   }
   /* The name gives way before the chip does — a truncated name is still
      recognisable, a wrapped row is not. */
-  .ct-party__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ct-party__name {
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 13.5px; font-weight: 600; color: var(--text-primary); line-height: 1.3;
+  }
+  .ct-party__meta { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .ct-party__role {
+    font-size: 11.5px; font-weight: 600; color: var(--text-tertiary);
+    white-space: nowrap;
+  }
   .ct-party--none { color: var(--text-tertiary); font-style: italic; }
   /* Marks a counterparty with no account. Most buyers and tenants never
      register, so this has to read as normal, not as missing data. */
@@ -351,6 +376,42 @@
     .ct-tabsearch { flex: 1 1 0; max-width: none; min-width: 140px; }
     .ct-filterbar__actions { margin-inline-start: 0; }
     .ct-tablefooter { justify-content: center; }
+  }
+
+  /* ---------- THE DEPOSIT WORKLIST ----------
+     One toggle, not a dropdown. It answers a job — "which ended leases are
+     still holding somebody’s money" — rather than narrowing a list, and the
+     count is on it because the count is the reason to press it. The KPI card
+     above turns it on too; see the note there. */
+  .ct-flagbtn {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 38px; padding-inline: 12px;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-secondary);
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+    transition: background-color .15s, border-color .15s, color .15s;
+  }
+  .ct-flagbtn > svg { flex: none; color: var(--text-tertiary); }
+  .ct-flagbtn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .ct-flagbtn:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .ct-flagbtn.is-active {
+    background: var(--warning-50); border-color: var(--warning-100); color: var(--warning-700);
+  }
+  .ct-flagbtn.is-active > svg { color: var(--warning-600); }
+  .ct-flagbtn__count {
+    display: inline-flex; align-items: center; height: 20px; padding-inline: 7px;
+    border-radius: var(--radius-pill); background: var(--warning-100); color: var(--warning-600);
+    font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+
+  /* A KPI tile that is also the way into its own worklist. */
+  .ct-kpis > .ct-kpi--action { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .ct-kpis > .ct-kpi--action:hover { border-color: var(--border-strong); box-shadow: var(--shadow-card-hover); }
+  .ct-kpis > .ct-kpi--action:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ct-flagbtn, .ct-kpis > .ct-kpi--action { transition: none; }
   }
 
   /* ---------- NEW CONTRACT MENU ----------

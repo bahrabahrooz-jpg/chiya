@@ -107,7 +107,14 @@ export const DATE_RANGES: { value: string; days: number }[] = [
   { value: "365", days: 365 },
 ];
 
-export const EMPTY_FILTERS = { kind: "", agent: "", dateRange: "" };
+/**
+ * `depositsToClose` is a TOGGLE, not a value: an ended tenancy whose deposit is
+ * still in the agency’s account. It exists because the number was already on
+ * the KPI card and there was no way to see WHICH contracts it counted — you had
+ * to know the answer before you could look it up, which is the opposite of a
+ * worklist.
+ */
+export const EMPTY_FILTERS = { kind: "", agent: "", dateRange: "", depositsToClose: "" };
 export type ContractFilters = typeof EMPTY_FILTERS;
 
 /** Does a contract fall inside a date-range preset? Measured on the SIGNING
@@ -207,6 +214,22 @@ export interface ContractRow {
   contract: ContractRecord;
   propertyTitle: string;
   propertyId: string;
+  /**
+   * BOTH SIDES OF THE AGREEMENT, not only the side that pays.
+   *
+   * `ownerName` is the seller on a sale and the landlord on a tenancy — always
+   * the property's owner, and always a member, because a property cannot be
+   * listed without one. `counterparty` is the buyer or the tenant, and is the
+   * only one of the two that can be missing: a draft written before a buyer was
+   * found has nobody on the other side of it yet.
+   *
+   * The list named only the counterparty for a while, under the heading
+   * "Counterparty" — which left half of every agreement off the screen, and
+   * never said whether the person named was renting or buying. Both are named
+   * now, each in the role THIS contract gives them.
+   */
+  ownerId: string;
+  ownerName: string;
   counterparty: string | null;
   /** Set when the counterparty holds a member account, so the cell can link. */
   counterpartyId?: string;
@@ -259,6 +282,10 @@ export function toRow(
     contract: c,
     propertyTitle: propertyTitle(c.propertyId),
     propertyId: c.propertyId,
+    ownerId: c.ownerId,
+    /* Falls back to the id rather than to an empty cell: an owner whose name
+       will not resolve is a data problem worth seeing, not one worth hiding. */
+    ownerName: memberName(c.ownerId) ?? c.ownerId,
     counterparty: linked ?? c.buyerExternal?.name ?? null,
     counterpartyId: linked ? c.buyerId : undefined,
     agentName: agentName(c.agentId),

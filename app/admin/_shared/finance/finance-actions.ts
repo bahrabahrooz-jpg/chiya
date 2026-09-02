@@ -25,7 +25,7 @@ import {
   type PaymentMethod,
   type PaymentRecord,
 } from "../../_data/contracts";
-import { collectionEntries, splitCollection, type OwnerLedgerEntry } from "../../_data/owner-ledger";
+import { collectionEntries, depositClaimEntry, expenseEntry, payoutEntry, refundEntry, splitCollection, type OwnerLedgerEntry } from "../../_data/owner-ledger";
 import { nextContractId, nextRecordId, useContracts } from "../contracts-store";
 import { logAudit } from "../audit-log";
 import { useProperties } from "../properties-store";
@@ -111,7 +111,30 @@ export interface CancelResult {
   voided: number;
   /** Invoices left standing because the money is genuinely owed. */
   leftOwed: number;
+  /** A holding deposit handed back to the buyer, when that is what was chosen. */
+  refunded?: Money;
 }
+
+/**
+ * WHO KEEPS THE HOLDING DEPOSIT WHEN A SALE FALLS THROUGH.
+ *
+ * The deposit is the *arboun*: money down to take the property off the market,
+ * and the answer turns on who walked away. A buyer who pulls out forfeits it to
+ * the seller; a seller who pulls out gives it back. It is a decision somebody
+ * makes, never a default, which is why cancelling a sale asks — exactly as
+ * closing a tenancy asks what became of the insurance deposit.
+ *
+ * The three answers reduce to two money outcomes, and the third one is still
+ * worth recording separately: "nobody's fault" and "the seller pulled out" both
+ * return the money, but only one of them is an accusation. A statement a year
+ * later has to be able to say which.
+ *
+ * ⚠ NOTHING HERE DOUBLES ANYTHING. Iraqi practice has a seller who withdraws
+ * repay twice what he took, but that is a term the parties agree in the
+ * contract, not a rule this system can assume. If it belongs here it belongs as
+ * a clause with a figure, like every other penalty on the document.
+ */
+export type SaleDepositOutcome = "buyer_withdrew" | "seller_withdrew" | "no_fault";
 
 /**
  * WHAT HAPPENED TO THE INSURANCE DEPOSIT at the end of a tenancy.
@@ -124,6 +147,43 @@ export type DepositOutcome =
   | { kind: "returned" }
   | { kind: "partly_returned"; deduction: Money; reason: string }
   | { kind: "carried_forward"; toContractId: string };
+
+/**
+ * One hand-off of an owner's money, across however many months it settles.
+ *
+ * `lines` is PER CREDIT, not per contract — one month's rent that came in from a
+ * tenant, or one damages deduction off a deposit. That is the unit an agency
+ * works in and the unit the payouts list shows a row for. A landlord taking June
+ * and July on two flats is one visit, one receipt and four lines. See
+ * `payoutEntry` for why the link matters.
+ */
+export interface OwnerPayoutInput {
+  ownerId: string;
+  /** ISO — the day the money actually changed hands, not the day it was typed. */
+  on: string;
+  method: PaymentMethod;
+  /** Bank reference, cheque number, receipt number. Optional, like a payment's. */
+  reference: string;
+  /** `settles` is the ledger id of the credit being handed over. */
+  lines: { contractId: string; settles: string; invoiceId?: string; amount: Money }[];
+}
+
+/**
+ * One thing the agency paid for on an owner's behalf.
+ *
+ * ⚠ NOT AN INVOICE TO HIM. This is a cost taken off money already held, which
+ * is what full management means: the agency spends the owner's money within an
+ * agreed limit and accounts for it. Billing an owner who is holding nothing
+ * with us is a different act — see `issueExtraInvoice`.
+ */
+export interface OwnerExpenseInput {
+  contractId: string;
+  /** ISO — the day the contractor was paid, not the day it was typed. */
+  on: string;
+  amount: Money;
+  /** "Plumber — leaking tap, kitchen". Frozen onto the statement. */
+  what: string;
+}
 
 export interface EarlySettlementInput {
   contract: ContractRecord;
@@ -158,7 +218,7 @@ export interface FinanceActions {
   recordPayment: (input: PaymentInput) => void;
   issueExtraInvoice: (input: ExtraInvoiceInput) => InvoiceRecord | undefined;
   voidInvoice: (invoiceId: string, reason: string) => void;
-  cancelContract: (contractId: string, reason: string) => CancelResult;
+  cancelContract: (contractId: string, reason: string, deposit?: SaleDepositOutcome) => CancelResult;
   /**
    * The invoices a draft WOULD raise if it were signed.
    *
@@ -185,6 +245,16 @@ export interface FinanceActions {
   /** Close out a tenancy's insurance deposit. See DepositOutcome. */
   closeLease: (contractId: string, outcome: DepositOutcome) => void;
   /**
+   * Hand an owner the money we have been holding for him. Writes one ledger
+   * line per tenancy settled and returns how many — see OwnerPayoutInput.
+   */
+  payOwner: (input: OwnerPayoutInput) => number;
+  /**
+   * Record money the agency spent for an owner — a repair, a clean. Comes
+   * straight off what we owe him. See OwnerExpenseInput.
+   */
+  spendForOwner: (input: OwnerExpenseInput) => boolean;
+  /**
    * Add a late-rent charge to an overdue invoice, AS A DELIBERATE ACT.
    * Returns the invoice raised, or undefined when the contract states no
    * penalty or nothing is actually late. Nothing calls this on a timer.
@@ -209,6 +279,10 @@ export function useFinanceActions(): FinanceActions {
     issueInvoice,
     voidInvoice: storeVoid,
     recordPayment: storeRecordPayment,
+    recordPayout,
+    recordExpense,
+    recordDepositClaim,
+    recordRefund,
     updateContract,
     amendContract: storeAmend,
   } = useContracts();
@@ -340,10 +414,22 @@ export function useFinanceActions(): FinanceActions {
           targetId: record.id,
         });
       }
+      /* A RENEWAL RETIRES THE TENANCY IT FOLLOWS, and only once it is actually
+         signed. Saving a renewal as a draft must leave the old one running —
+         the tenant is still living there and the rent is still falling due
+         until the new paper is signed. The old contract goes to `completed`
+         rather than `cancelled`: it ran its full term and was honoured, which
+         is a different thing from being broken off, and the two read
+         differently on every list. The property is left alone; the new contract
+         holds it, and freeing it here would put the flat back on the market
+         between two tenancies that never had a gap. */
+      if (record.replacesContractId && record.status === "signed") {
+        updateContract(record.replacesContractId, { status: "completed" });
+      }
       const invoiceCount = generateOnSigning(record);
       return { contract: record, invoiceCount };
     },
-    [agreedRateFor, transitions, generateOnSigning, contracts],
+    [agreedRateFor, transitions, generateOnSigning, contracts, updateContract],
   );
 
   const signContract = useCallback(
@@ -391,19 +477,50 @@ export function useFinanceActions(): FinanceActions {
 
   /**
    * The ledger lines one collection produces — or none, when the money was ours
-   * to begin with.
+   * to begin with, or when it never came through us at all.
    *
    * ⚠ THESE CANNOT BE RECONSTRUCTED. Not written here means never written: the
    * fee rate can change mid-term, the exchange rate belongs to the day the cash
    * was taken, and a part payment splits differently from a full one. See the
    * header of ../../_data/owner-ledger.
+   *
+   * TWO TESTS, NOT ONE, AND THEY ASK DIFFERENT THINGS.
+   *
+   *   payee      whose money is it? Owner money is the landlord's or the
+   *              seller's; ours produces no ledger line because there is
+   *              nobody to owe it to.
+   *   who collected it? A tenancy where the landlord takes his own rent — or an
+   *              instalment sale where the buyer pays the seller direct — is
+   *              still invoiced and still marked paid, which is the whole point
+   *              of invoicing every one of them. But the cash went straight to
+   *              the owner. Writing "collected" for money that never entered the
+   *              agency's account would invent a debt to somebody who has
+   *              already been paid, and the payouts screen would then ask for it
+   *              to be handed over a second time.
+   *
+   * THE MANAGEMENT FEE COMES OUT OF RENT AND NOTHING ELSE. It is what the
+   * agency charges for collecting the rent, so a late-rent charge or an
+   * instalment of a sale price passes to the owner whole. Taking a slice of a
+   * penalty would be charging for work the fee does not describe.
    */
   const ownerLedgerFor = useCallback(
     (invoice: InvoiceRecord, payment: PaymentRecord, credited: Money): OwnerLedgerEntry[] | undefined => {
       if (invoice.payee !== "owner") return undefined;
       const contract = contracts.find((c) => c.id === invoice.contractId);
       if (!contract) return undefined;
-      const split = splitCollection(credited, contract.price, managementFeeAmount(contract));
+      /* A SALE'S HOLDING DEPOSIT IS ALWAYS OURS TO HOLD. `installmentsPaidTo`
+         says who takes the INSTALMENTS; no field says who takes the deposit,
+         and in practice it is the agency — the deposit is what the office
+         collects to take the property off the market, before any schedule
+         exists. If that ever stops being true it needs its own term on the
+         contract rather than an assumption here. */
+      const collectedByUs =
+        contract.kind === "rent"
+          ? contract.rentPaidTo === "agency"
+          : invoice.category === "deposit" || contract.installmentsPaidTo === "agency";
+      if (!collectedByUs) return undefined;
+      const feeBasis = invoice.category === "rent" ? managementFeeAmount(contract) : undefined;
+      const split = splitCollection(credited, contract.price, feeBasis);
       return collectionEntries({
         ownerId: contract.ownerId,
         contractId: contract.id,
@@ -508,6 +625,86 @@ export function useFinanceActions(): FinanceActions {
   );
 
   /**
+   * THE OTHER HALF OF THE RENT ROLL — the landlord comes in and takes his money.
+   *
+   * Until this existed the ledger only ever grew: every tenant payment added to
+   * what we owe an owner and nothing ever took it away, so the balance on the
+   * statement was the total ever collected rather than what is actually still
+   * in the drawer.
+   *
+   * ⚠ NO INVOICE IS RAISED, and that is not an omission. An invoice is a demand,
+   * and nobody is demanding anything of the landlord — this is his own money
+   * going back to him. The paper he signs for it is a RECEIPT, which is a
+   * separate task; what this writes is the record that the hand-off happened.
+   *
+   * Zero and negative lines are dropped rather than rejected: the screen
+   * pre-fills every tenancy the owner is owed on, and leaving one at zero is how
+   * somebody says "not that one today".
+   */
+  const payOwner = useCallback(
+    (input: OwnerPayoutInput): number => {
+      const entries = input.lines
+        .filter((l) => l.amount.amount > 0)
+        .map((l) =>
+          payoutEntry({
+            id: nextRecordId("LED"),
+            ownerId: input.ownerId,
+            contractId: l.contractId,
+            settles: l.settles,
+            ...(l.invoiceId ? { invoiceId: l.invoiceId } : {}),
+            on: input.on,
+            amount: l.amount,
+            /* Frozen at the moment of writing, like the fee line above: it
+               describes one event that happened once. */
+            description: input.reference.trim()
+              ? t("admin.fin.ledger.payoutRef", { method: t(`admin.fin.method.${input.method}`), reference: input.reference.trim() })
+              : t("admin.fin.ledger.payout", { method: t(`admin.fin.method.${input.method}`) }),
+          }),
+        );
+      if (!entries.length) return 0;
+      recordPayout(entries);
+      return entries.length;
+    },
+    [recordPayout, t],
+  );
+
+  /**
+   * THE AGENCY PAID SOMEBODY FOR THE LANDLORD — a plumber, a locksmith, a clean.
+   *
+   * Only where the agency is actually holding his money, which is the same test
+   * everything else on that ledger uses. On a tenancy the landlord collects
+   * himself there is nothing of his here to spend, so the cost has to be
+   * invoiced to him instead — a different act, and `issueExtraInvoice` is it.
+   *
+   * ⚠ NO INVOICE, NO PAYMENT RECORD. Nothing was demanded of anybody and no
+   * money arrived; money LEFT, against a balance we hold. The contractor is not
+   * a party to any contract here, which is why the supplier lives in the
+   * description rather than becoming a record of its own.
+   */
+  const spendForOwner = useCallback(
+    (input: OwnerExpenseInput): boolean => {
+      if (input.amount.amount <= 0 || !input.what.trim()) return false;
+      const contract = contracts.find((c) => c.id === input.contractId);
+      if (!contract) return false;
+      const collectedByUs = contract.kind === "rent" ? contract.rentPaidTo === "agency" : contract.installmentsPaidTo === "agency";
+      if (!collectedByUs) return false;
+
+      recordExpense(
+        expenseEntry({
+          id: nextRecordId("LED"),
+          ownerId: contract.ownerId,
+          contractId: contract.id,
+          on: input.on,
+          amount: input.amount,
+          description: input.what.trim(),
+        }),
+      );
+      return true;
+    },
+    [contracts, recordExpense],
+  );
+
+  /**
    * Cancel a contract — and be careful about what that does to the money.
    *
    * UNPAID IS NOT ONE CATEGORY. A demand that had not fallen due yet was for
@@ -521,13 +718,45 @@ export function useFinanceActions(): FinanceActions {
    * hand back cash that genuinely arrived.
    */
   const cancelContract = useCallback(
-    (contractId: string, reason: string): CancelResult => {
+    (contractId: string, reason: string, deposit?: SaleDepositOutcome): CancelResult => {
+      const contract = contracts.find((c) => c.id === contractId);
       const live = invoicesByContract(contractId, invoices).filter((i) => i.status === "issued");
+      const giveBack = deposit === "seller_withdrew" || deposit === "no_fault";
+
       let voided = 0;
       let leftOwed = 0;
+      let refunded: Money | undefined;
+
       for (const inv of live) {
-        if (!isZero(paidTotal(inv, payments))) continue; // money arrived — untouched
-        if (daysBetween(inv.dueOn, TODAY) >= 0) {
+        const paid = paidTotal(inv, payments);
+        if (!isZero(paid)) {
+          /* MONEY THAT ARRIVED IS NORMALLY UNTOUCHED — voiding writes a credit
+             note for the whole invoice and would hand back cash that genuinely
+             came in. The holding deposit is the one exception, and only when
+             somebody has decided it goes back: the buyer paid it to hold a
+             property he is not getting, and on a sale the seller walked away
+             from he is entitled to it. Recorded as a refund off the seller's
+             balance rather than by unpicking the invoice, because the demand
+             was real and so was the payment. */
+          if (giveBack && inv.category === "deposit" && contract) {
+            recordRefund(
+              refundEntry({
+                id: nextRecordId("LED"),
+                ownerId: contract.ownerId,
+                contractId,
+                on: TODAY,
+                amount: paid,
+                description: t("admin.fin.ledger.depositRefund", { reason }),
+              }),
+            );
+            refunded = paid;
+          }
+          continue;
+        }
+        /* An unpaid deposit on a sale that is going back is withdrawn outright,
+           even if it had fallen due: nobody owes a deposit on a deal that is
+           over. Every other due demand stays a debt — see the modal. */
+        if (daysBetween(inv.dueOn, TODAY) >= 0 && !(giveBack && inv.category === "deposit")) {
           leftOwed += 1; // due or overdue: a real debt, and it stays one
           continue;
         }
@@ -535,9 +764,9 @@ export function useFinanceActions(): FinanceActions {
         voided += 1;
       }
       transitions.cancelContract(contractId, reason, TODAY);
-      return { voided, leftOwed };
+      return { voided, leftOwed, ...(refunded ? { refunded } : {}) };
     },
-    [invoices, payments, storeVoid, transitions, t],
+    [contracts, invoices, payments, storeVoid, transitions, recordRefund, t],
   );
 
   /* ---------------------------------------------------------------------------
@@ -677,6 +906,14 @@ export function useFinanceActions(): FinanceActions {
    * agency; and carrying one forward moves nothing at all. The record of what
    * happened lives on the contract, which is why these fields are on the
    * store's lifecycle list rather than behind the frozen-terms rule.
+   *
+   * ⚠ A DEDUCTION NOW LANDS SOMEWHERE. It used to be recorded on the contract as
+   * an amount and a reason and go to nobody — the money sat in the agency's
+   * account belonging, on paper, to no one. It is the LANDLORD'S: his property
+   * was damaged and his cost to repair. So it is written onto his ledger and
+   * goes out to him through the payouts screen like any other credit. If the
+   * agency did the repair itself, the cost comes back off through
+   * `spendForOwner` — two plain movements, not one netted figure.
    */
   const closeLease = useCallback(
     (contractId: string, outcome: DepositOutcome) => {
@@ -716,8 +953,26 @@ export function useFinanceActions(): FinanceActions {
         },
       });
       updateContract(contractId, patch);
+
+      /* Only where the agency was holding the money in the first place. On a
+         tenancy the landlord collected himself the deposit never came through
+         us, so there is nothing here to move onto his ledger. */
+      if (outcome.kind === "partly_returned" && !isZero(outcome.deduction) && contract.rentPaidTo === "agency") {
+        recordDepositClaim(
+          depositClaimEntry({
+            id: nextRecordId("LED"),
+            ownerId: contract.ownerId,
+            contractId: contract.id,
+            on: TODAY,
+            amount: outcome.deduction,
+            /* Frozen with the reason the person typed: an owner querying this
+               line a year later is querying those words. */
+            description: t("admin.fin.ledger.depositClaim", { reason: outcome.reason }),
+          }),
+        );
+      }
     },
-    [contracts, updateContract],
+    [contracts, updateContract, recordDepositClaim, t],
   );
 
   /* ---------------------------------------------------------------------------
@@ -735,9 +990,14 @@ export function useFinanceActions(): FinanceActions {
    * silently, in the agency's favour, on the one class of record where the
    * agency profits from the answer.
    *
-   * The charge is the agency's own money — it is a fee the agency levies, not
-   * rent passing through — so it is `payee: "agency"`, unlike the invoice it
-   * hangs off.
+   * ⚠ THE CHARGE IS THE LANDLORD'S MONEY, not the agency's — `payee: "owner"`,
+   * the same as the rent invoice it hangs off. It used to be booked as agency
+   * income, and that was wrong: the late-rent charge comes from a clause in the
+   * TENANCY, which is an agreement between the landlord and the tenant. The
+   * agency wrote the paper and does the chasing, but the money compensates the
+   * landlord for being paid late, exactly as the rent does. Marking it "agency"
+   * put a slice of the rent roll's penalties into revenue and left the landlord
+   * short by every charge ever raised.
    */
   const addLatePenalty = useCallback(
     (invoiceId: string): InvoiceRecord | undefined => {
@@ -764,7 +1024,7 @@ export function useFinanceActions(): FinanceActions {
           number: "",
           contractId: contract.id,
           category: "fee",
-          payee: "agency",
+          payee: "owner",
           status: "draft",
           dueOn: TODAY,
           ...(invoice.billToId ? { billToId: invoice.billToId } : {}),
@@ -867,6 +1127,8 @@ export function useFinanceActions(): FinanceActions {
       moneyAmendable,
       amendContract: amendContractAction,
       closeLease,
+      payOwner,
+      spendForOwner,
       addLatePenalty,
       settleEarly,
     }),
@@ -882,6 +1144,8 @@ export function useFinanceActions(): FinanceActions {
       moneyAmendable,
       amendContractAction,
       closeLease,
+      payOwner,
+      spendForOwner,
       addLatePenalty,
       settleEarly,
     ],

@@ -1,0 +1,228 @@
+  /* ============================================================
+     PAYOUTS  (po- namespace)
+
+     The list chrome is the contracts list's, imported by page.tsx. Only the
+     columns, the statement and the payout modal's line rows are here.
+
+     Column rules are scoped under .po-scope so this stylesheet and
+     contracts.css can load on the same route without either template leaking
+     onto the other's table.
+     ============================================================ */
+
+  /* ---------- COLUMN TEMPLATE ----------
+     Four money columns, all sized for the worst case a dinar tenancy produces
+     ("943,200,000 IQD") without wrapping. A broken money column is a misread
+     money column. */
+  /* One row per month's rent. The three money columns run left to right in the
+     order the arithmetic happens — what came in, what we kept, what is his —
+     because that is the sentence a landlord checks. */
+  .po-scope .ct-thead,
+  .po-scope .ct-row {
+    grid-template-columns:
+      minmax(150px, 1.2fr)   /* owner + property */
+      minmax(180px, 1.6fr)   /* which month, and the contract */
+      110px                  /* collected on */
+      minmax(120px, .9fr)    /* came in */
+      minmax(110px, .8fr)    /* fee kept */
+      minmax(130px, 1fr)     /* his share */
+      140px                  /* status */
+      150px;                 /* actions */
+    min-width: 1240px;
+  }
+  .po-scope .ct-row { min-height: 74px; }
+
+  .po-col--owner { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .po-col--what { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .po-col--collectedon,
+  .po-col--gross,
+  .po-col--fee,
+  .po-col--status { min-width: 0; }
+  .po-col--net { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .po-what {
+    font-size: 13.5px; color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .po-owner__name {
+    font-size: 14px; font-weight: 700; letter-spacing: -.005em; color: var(--text-primary);
+    line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .po-owner__meta { font-size: 12px; color: var(--text-tertiary); white-space: nowrap; }
+
+  .po-money {
+    display: block;
+    font-size: 14px; font-weight: 600; color: var(--text-secondary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  /* What we kept, set apart from the two figures that are the landlord's. */
+  .po-money--fee { color: var(--text-tertiary); font-weight: 500; }
+  /* The one figure the screen exists for. */
+  .po-money--net { color: var(--text-primary); font-weight: 700; }
+
+  .po-col--actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+  .po-paybtn {
+    display: inline-flex; align-items: center; gap: var(--space-1);
+    padding: var(--space-2) var(--space-3); white-space: nowrap;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-primary);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: border-color .15s, color .15s, background-color .15s;
+  }
+  .po-paybtn:hover { border-color: var(--border-strong); color: var(--text-brand); background: var(--surface-sunken); }
+  .po-paybtn:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .po-paybtn svg { flex: none; }
+  [dir="rtl"] .po-paybtn svg { transform: scaleX(-1); }
+
+  /* ============================================================
+     ONE OWNER'S STATEMENT
+     ============================================================ */
+  .po-back {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    margin-block-end: var(--space-5);
+    font-size: 13px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
+  }
+  .po-back:hover { color: var(--text-brand); }
+  .po-back:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
+  [dir="rtl"] .po-back svg { transform: scaleX(-1); }
+
+  .po-statement {
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+    overflow: hidden; margin-block-end: var(--space-6);
+  }
+  .po-statement__head {
+    padding: var(--space-5); border-block-end: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column; gap: var(--space-4);
+  }
+  .po-statement__title {
+    margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 22px;
+    color: var(--text-primary);
+  }
+
+  /* The four sums, with the balance set apart — it is the answer, the other
+     three are how it was reached. */
+  .po-sums { display: flex; flex-wrap: wrap; gap: var(--space-6); margin: 0; }
+  .po-sums > div { display: flex; flex-direction: column; gap: 2px; }
+  .po-sums dt { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-tertiary); }
+  .po-sums dd {
+    margin: 0; font-size: 17px; font-weight: 700; color: var(--text-secondary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .po-sums__balance dd { color: var(--text-brand); font-size: 20px; }
+
+  .po-lines { list-style: none; margin: 0; padding: 0; }
+  .po-line {
+    display: grid;
+    grid-template-columns: 30px 108px 1fr auto auto 84px;
+    gap: var(--space-3); align-items: center;
+    padding: var(--space-3) var(--space-5);
+    border-block-start: 1px solid var(--border-subtle);
+    font-size: 13.5px;
+  }
+  .po-line:first-child { border-block-start: none; }
+  .po-line__icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    inline-size: 28px; block-size: 28px; border-radius: var(--radius-pill);
+    background: var(--surface-sunken); color: var(--text-tertiary);
+  }
+  .po-line--in .po-line__icon { background: var(--brand-subtle); color: var(--text-brand); }
+  .po-line__date { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .po-line__desc { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .po-line__what { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .po-line__where { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-tertiary); }
+  .po-line__amount {
+    font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; white-space: nowrap; text-align: end;
+  }
+  .po-line--out .po-line__amount { color: var(--text-secondary); }
+  /* The carried balance, quieter than the movement that changed it. */
+  .po-line__balance {
+    min-inline-size: 110px; text-align: end;
+    color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
+  /* The receipt link, on payout lines only — see the note in the component. */
+  .po-line__doc { display: flex; justify-content: flex-end; }
+  .po-line__receipt {
+    display: inline-flex; align-items: center; gap: var(--space-1);
+    font-size: 12px; font-weight: 600; color: var(--text-brand); text-decoration: none;
+    padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+  }
+  .po-line__receipt:hover { background: var(--brand-subtle); }
+  .po-line__receipt:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .po-line__receipt svg { flex: none; }
+
+  .po-outstanding {
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+    padding: var(--space-5);
+  }
+  .po-outstanding__title {
+    margin: 0 0 var(--space-4); font-family: var(--font-display); font-weight: 600;
+    font-size: 19px; color: var(--text-primary);
+  }
+  .po-outstanding__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .po-outstanding__list li {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+    padding: var(--space-3); border-radius: var(--radius-control); background: var(--surface-sunken);
+  }
+  .po-outstanding__list a { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-decoration: none; }
+  .po-outstanding__list a:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
+  .po-outstanding__prop { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .po-outstanding__list a:hover .po-outstanding__prop { color: var(--text-brand); }
+  .po-outstanding__id { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-tertiary); }
+  .po-outstanding__amt { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* An owner nothing has ever passed through — an ordinary state, not a fault. */
+  .po-missing {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 72px 24px; gap: var(--space-2);
+  }
+  .po-missing__art {
+    inline-size: 60px; block-size: 60px; border-radius: var(--radius-2xl); margin-block-end: var(--space-3);
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--green-50), var(--gray-50));
+    border: 1px solid var(--border-subtle); color: var(--text-brand);
+  }
+  .po-missing h1 { font-family: var(--font-display); font-weight: 600; font-size: 26px; color: var(--text-primary); margin: 0; }
+  .po-missing p { font-size: 14px; color: var(--text-secondary); margin: 0 0 var(--space-4); max-inline-size: 400px; }
+
+  /* ============================================================
+     RECORD PAYOUT — the modal's per-tenancy rows
+     ============================================================ */
+  .po-paylines { display: flex; flex-direction: column; gap: var(--space-2); }
+  .po-payline {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3); border-radius: var(--radius-control);
+    background: var(--surface-sunken);
+  }
+  .po-payline__txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+  .po-payline__title {
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .po-payline__meta { font-size: 12px; color: var(--text-tertiary); }
+  .po-payline__amount { flex: none; inline-size: 160px; }
+  .po-paylines__total {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+    padding: var(--space-3); border-block-start: 1px dashed var(--border-subtle);
+    font-size: 13.5px; color: var(--text-secondary);
+  }
+  .po-paylines__total b { font-size: 16px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .po-paybtn { transition: none; }
+  }
+
+  /* ---------- MOBILE ---------- */
+  @media (max-width: 767px) {
+    .po-line { grid-template-columns: 30px 1fr auto; row-gap: var(--space-1); }
+    .po-line__doc { grid-column: 2 / -1; justify-content: flex-start; }
+    /* The carried balance is the first thing to go: on a phone the movement
+       matters and the running total can be read off the header. */
+    .po-line__balance { display: none; }
+    .po-line__date { grid-column: 2; font-size: 12px; color: var(--text-tertiary); }
+    .po-sums { gap: var(--space-4); }
+    .po-payline { flex-wrap: wrap; }
+    .po-payline__amount { inline-size: 100%; }
+    .po-paybtn { min-block-size: 44px; }
+  }

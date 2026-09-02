@@ -1,0 +1,248 @@
+  /* ============================================================
+     CONTRACT DOCUMENT  (cd- namespace)
+
+     The paper the agency actually signs. Sized in millimetres and reading the
+     same on screen as on paper — the screen view IS the preview, so there is no
+     second layout to drift.
+
+     Modelled on the receipt sheet (../../../receipts/receipt.css) rather than
+     sharing it: the two are the same object at different sizes, and a receipt
+     that changed because a contract needed a wider table would be the wrong
+     kind of coupling.
+     ============================================================ */
+
+  .cd-page { max-inline-size: 210mm; margin-inline: auto; }
+
+  /* ---------- SCREEN FURNITURE (never prints) ---------- */
+  .cd-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-4); margin-block-end: var(--space-4); flex-wrap: wrap;
+  }
+  .cd-back {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    font-size: 13px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
+  }
+  .cd-back:hover { color: var(--text-brand); }
+  .cd-back:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
+  [dir="rtl"] .cd-back svg { transform: scaleX(-1); }
+
+  .cd-tools { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  /* The language of the PAPER, not of the console — see the note on the state. */
+  .cd-langs {
+    display: flex; padding: 3px; gap: 2px;
+    background: var(--surface-sunken); border-radius: var(--radius-control);
+  }
+  .cd-lang {
+    padding: 0 12px; block-size: 32px; border: none; background: transparent;
+    border-radius: 6px; cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    color: var(--text-tertiary); white-space: nowrap;
+    transition: background-color .15s, color .15s, box-shadow .15s;
+  }
+  .cd-lang:hover { color: var(--text-secondary); }
+  .cd-lang:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .cd-lang.is-active { background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs); }
+  @media (prefers-reduced-motion: reduce) { .cd-lang { transition: none; } }
+
+  /* The clause wording is pending legal review, and whoever is printing has to
+     know. It is said HERE and not on the sheet: the two people signing do not
+     need a disclaimer printed across their agreement. */
+  .cd-hint {
+    margin: 0 0 var(--space-5); padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--warning-100); border-radius: var(--radius-control);
+    background: var(--warning-50);
+    font-size: 13px; line-height: 1.5; color: var(--text-primary); text-wrap: pretty;
+  }
+
+  /* ---------- THE SHEET ----------
+     White in both themes on purpose: this is paper, and paper has no dark mode.
+     The dark-mode reader sees it exactly as it will print, which is the whole
+     point of showing it. Every colour below is therefore a literal, not a
+     token — a token would flip at night and print a dark slab. */
+  .cd-sheet {
+    background: #ffffff; color: #111111;
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 14mm 16mm;
+    display: flex; flex-direction: column; gap: 7mm;
+  }
+
+  .cd-band {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8mm; padding: 3mm 4mm;
+    background: #E7F0EA;                       /* light --green-50, frozen */
+    border-inline-start: 1.2mm solid #18402F;  /* light --green-700, frozen */
+    border-radius: 1.5mm;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .cd-band__org { display: flex; flex-direction: column; gap: 0.5mm; min-inline-size: 0; }
+  .cd-band__name {
+    font-family: var(--font-display); font-size: 17px; font-weight: 600;
+    letter-spacing: -.01em; color: #112E22;
+  }
+  .cd-band__eyebrow {
+    font-size: 8.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #4B6B56;
+  }
+  .cd-band__no {
+    flex: none; padding: 1.5mm 3mm; border-radius: 6mm;
+    background: #ffffff; border: 0.3mm solid #C6DDCF;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: #112E22; white-space: nowrap;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  /* ---------- TITLE ---------- */
+  .cd-head { text-align: center; padding-block: 2mm 1mm; }
+  .cd-title {
+    margin: 0; font-family: var(--font-display); font-weight: 600;
+    font-size: 26px; letter-spacing: -.012em; line-height: 1.15; color: #111111;
+  }
+  .cd-place { margin: 2mm 0 0; font-size: 12px; color: #555555; }
+
+  /* ---------- SECTIONS ----------
+     Numbered, because a signed document is referred to by section number when
+     two people are arguing about it over the phone. */
+  .cd-sec { display: flex; flex-direction: column; gap: 3mm; }
+  .cd-sec__head {
+    display: flex; align-items: center; gap: 3mm; margin: 0;
+    padding-block-end: 2mm; border-block-end: 0.3mm solid #d8d8d8;
+    font-family: var(--font-display); font-weight: 600; font-size: 15px;
+    letter-spacing: -.008em; color: #111111;
+  }
+  .cd-sec__n {
+    flex: none; inline-size: 6mm; block-size: 6mm; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #E7F0EA; color: #112E22;
+    font-family: var(--font-sans); font-size: 10px; font-weight: 700;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  /* ---------- PARTIES ---------- */
+  .cd-parties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4mm 8mm; }
+  .cd-party {
+    display: flex; flex-direction: column; gap: 1mm; min-inline-size: 0;
+    padding: 3mm 4mm; border: 0.3mm solid #e2e2e2; border-radius: 1.5mm;
+  }
+  .cd-party__role {
+    font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #777777;
+  }
+  .cd-party__name { font-size: 15px; font-weight: 700; color: #111111; }
+  .cd-party__line { font-size: 11.5px; color: #555555; }
+  /* Somebody other than the owner signed. Printed, never hidden — see Party. */
+  .cd-party__signer {
+    display: flex; flex-direction: column; gap: 0.5mm;
+    margin-block-start: 1.5mm; padding-block-start: 1.5mm;
+    border-block-start: 0.3mm dashed #d8d8d8;
+    font-size: 11px; color: #333333;
+  }
+  .cd-party__why { font-style: italic; color: #666666; text-wrap: pretty; }
+  .cd-brokered { margin: 0; font-size: 11.5px; color: #555555; text-wrap: pretty; }
+
+  /* ---------- TERM ROWS ---------- */
+  .cd-rows { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5mm 8mm; }
+  .cd-row { display: flex; align-items: baseline; gap: 3mm; min-inline-size: 0; }
+  .cd-row dt {
+    flex: none; inline-size: 38mm;
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #777777;
+  }
+  .cd-row dd { margin: 0; font-size: 12.5px; font-weight: 600; color: #111111; min-inline-size: 0; }
+  .cd-mono { font-family: var(--font-mono); }
+  .cd-num, .cd-row dd, .cd-table td { font-variant-numeric: tabular-nums; }
+
+  /* The figure written out. See the note in the component. */
+  .cd-words {
+    margin: 0; padding: 2.5mm 3mm; border-radius: 1.5mm; background: #f5f5f3;
+    font-size: 12px; font-style: italic; color: #333333; text-wrap: pretty;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  /* ---------- SCHEDULE TABLE ----------
+     Borders rather than fills, so it prints on any machine. */
+  .cd-table { inline-size: 100%; border-collapse: collapse; }
+  .cd-table th,
+  .cd-table td { border: 0.3mm solid #d8d8d8; padding: 2mm 3mm; text-align: start; }
+  .cd-table th {
+    font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #555555;
+    background: #f5f5f3;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .cd-table td { font-size: 12px; color: #111111; }
+  .cd-table .cd-num { text-align: end; white-space: nowrap; }
+
+  /* ---------- THE AGREED TERMS ---------- */
+  .cd-clauses { margin: 0; padding-inline-start: 6mm; display: flex; flex-direction: column; gap: 2mm; }
+  .cd-clauses li { font-size: 12.5px; line-height: 1.55; color: #111111; text-wrap: pretty; }
+  .cd-none { margin: 0; font-size: 12.5px; font-style: italic; color: #666666; }
+  .cd-notes {
+    margin: 2mm 0 0; padding: 2.5mm 3mm; border-radius: 1.5mm; background: #f5f5f3;
+    font-size: 12px; line-height: 1.5; color: #333333; text-wrap: pretty;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  /* ---------- SIGNATURES ----------
+     Three rules, a role and a name under each. A blank line anyone can sign is
+     worth nothing in an argument. */
+  .cd-signs {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8mm; margin-block-start: 4mm; padding-block-start: 4mm;
+    break-inside: avoid;
+  }
+  .cd-sign { display: flex; flex-direction: column; gap: 1mm; min-inline-size: 0; }
+  .cd-sign__rule { display: block; block-size: 0; border-block-start: 0.4mm solid #111111; margin-block-end: 2mm; }
+  .cd-sign__role {
+    font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #555555;
+  }
+  .cd-sign__name { font-size: 12px; font-weight: 600; color: #333333; }
+
+  .cd-contact {
+    margin: 0; padding-block-start: 3mm; border-block-start: 0.3mm solid #e2e2e2;
+    font-size: 10px; color: #666666;
+    display: flex; align-items: baseline; justify-content: center; gap: 2mm; flex-wrap: wrap;
+  }
+  /* A Latin run inside an Arabic line. Without an isolate the bidi algorithm
+     drags a leading "+" or a trailing ".com" to the wrong end. */
+  .cd-ltr { unicode-bidi: isolate; direction: ltr; }
+
+  /* ---------- NOT FOUND ---------- */
+  .cd-missing {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 72px 24px; gap: var(--space-2);
+  }
+  .cd-missing__art {
+    inline-size: 60px; block-size: 60px; border-radius: var(--radius-2xl); margin-block-end: var(--space-3);
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--green-50), var(--gray-50));
+    border: 1px solid var(--border-subtle); color: var(--text-brand);
+  }
+  .cd-missing h1 { font-family: var(--font-display); font-weight: 600; font-size: 26px; color: var(--text-primary); margin: 0; }
+  .cd-missing p { font-size: 14px; color: var(--text-secondary); margin: 0; max-inline-size: 420px; }
+
+  @media (max-width: 767px) {
+    .cd-parties, .cd-rows, .cd-signs { grid-template-columns: 1fr; }
+    .cd-row dt { inline-size: 32mm; }
+  }
+
+  /* ============================================================
+     PRINT
+
+     Hide everything, then bring back the sheet. Written this way rather than
+     naming the admin shell's own classes so it cannot break the day the shell
+     is restyled — a print stylesheet that knows about a sidebar is one that
+     stops working silently.
+     ============================================================ */
+  @media print {
+    body * { visibility: hidden; }
+    .cd-sheet, .cd-sheet * { visibility: visible; }
+    .cd-sheet {
+      position: absolute; inset-block-start: 0; inset-inline-start: 0;
+      inline-size: 100%; margin: 0; padding: 0;
+      border: none; border-radius: 0; box-shadow: none;
+      background: #ffffff; color: #000000;
+    }
+    .cd-toolbar, .cd-hint { display: none !important; }
+    /* A section must not be split across a page break with its heading orphaned
+       at the bottom of the first one. */
+    .cd-sec { break-inside: avoid; }
+    .cd-title, .cd-sec__head, .cd-row dd, .cd-clauses li, .cd-table td { color: #000000; }
+    @page { size: A4; margin: 14mm; }
+  }

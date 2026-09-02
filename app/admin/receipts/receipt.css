@@ -1,0 +1,254 @@
+  /* ============================================================
+     RECEIPT  (rc- namespace)
+
+     A page that exists to come out of a printer. Everything here is sized in
+     millimetres and reads the same on paper as on screen — the screen view IS
+     the preview, so there is no second layout to drift.
+     ============================================================ */
+
+  .rc-page { max-inline-size: 210mm; margin-inline: auto; }
+
+  .rc-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-4); margin-block-end: var(--space-4); flex-wrap: wrap;
+  }
+  .rc-back {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    font-size: 13px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
+  }
+  .rc-back:hover { color: var(--text-brand); }
+  .rc-back:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
+  [dir="rtl"] .rc-back svg { transform: scaleX(-1); }
+
+  /* ---------- THE PAPER’S LANGUAGE ----------
+     Screen furniture and screen furniture only — it never prints. What it
+     changes is the sheet below it, which IS the preview, so what you pick is
+     what comes out of the printer. Separate from the console’s own language
+     switcher on purpose: see the note on the state. */
+  .rc-tools { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .rc-langs {
+    display: flex; padding: 3px; gap: 2px;
+    background: var(--surface-sunken); border-radius: var(--radius-control);
+  }
+  .rc-lang {
+    padding: 0 12px; block-size: 32px; border: none; background: transparent;
+    border-radius: 6px; cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    color: var(--text-tertiary); white-space: nowrap;
+    transition: background-color .15s, color .15s, box-shadow .15s;
+  }
+  .rc-lang:hover { color: var(--text-secondary); }
+  .rc-lang:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .rc-lang.is-active { background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs); }
+  @media (prefers-reduced-motion: reduce) { .rc-lang { transition: none; } }
+
+  .rc-hint {
+    margin: 0 0 var(--space-5); font-size: 13px; color: var(--text-tertiary); text-wrap: pretty;
+  }
+
+  /* ---------- THE SHEET ----------
+     One A4 page holding two copies. White in both themes on purpose: this is
+     paper, and paper does not have a dark mode. The dark-mode reader sees the
+     sheet exactly as it will print, which is the point of showing it at all. */
+  .rc-sheet {
+    background: #ffffff; color: #111111;
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 12mm 14mm;
+    display: flex; flex-direction: column;
+  }
+
+  .rc-copy { display: flex; flex-direction: column; gap: 6mm; }
+
+  /* ---------- THE BAND ----------
+     Who issued the paper, and WHICH of the two copies this is. Tinted rather
+     than a solid brand slab: a printed sheet is read under office light and
+     costs toner, and a heavy block at the top of every receipt is a running
+     cost somebody pays for the rest of the year. print-color-adjust keeps the
+     tint when the browser is willing and the design survives without it.
+
+     ⚠ THE GREENS ARE WRITTEN OUT, NOT TOKENS, and that is the same rule the
+     rest of this sheet follows: --brand-subtle flips in dark mode and paper
+     does not. A token here would print a dark-green slab for anyone whose
+     admin is set to dark. These are the light-theme values of --green-50,
+     --green-100, --green-700 and --green-800, frozen because the sheet is
+     paper. */
+  .rc-band {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8mm; padding: 3mm 4mm;
+    background: #E7F0EA;
+    border-inline-start: 1.2mm solid #18402F;
+    border-radius: 1.5mm;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .rc-band__org { display: flex; flex-direction: column; gap: 0.5mm; min-inline-size: 0; }
+  .rc-band__name {
+    font-family: var(--font-display); font-size: 17px; font-weight: 600;
+    letter-spacing: -.01em; color: #112E22;
+  }
+  .rc-band__eyebrow {
+    font-size: 8.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+    color: #4B6B56;
+  }
+  /* The one word that tells the two halves apart, so it is the one word set in
+     a box — it has to survive being read at arm’s length off a stack. */
+  .rc-band__copy {
+    flex: none; padding: 1.5mm 3mm; border-radius: 6mm;
+    background: #ffffff; border: 0.3mm solid #C6DDCF;
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: #112E22; white-space: nowrap;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  /* ---------- THE PROPERTY STRIP ----------
+     The code and the address, together, above the money. A marketing title is
+     what the website calls the flat; these two are what a person standing
+     outside it can check. */
+  .rc-strip {
+    display: flex; align-items: baseline; gap: 3mm 8mm; flex-wrap: wrap;
+    padding: 2.5mm 3mm; border-radius: 1.5mm; background: #f5f5f3;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .rc-strip__pair { display: inline-flex; align-items: baseline; gap: 2mm; min-inline-size: 0; }
+  .rc-strip__k {
+    font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #777777;
+    white-space: nowrap;
+  }
+  .rc-strip b { font-size: 12px; font-weight: 700; color: #111111; }
+  /* The strip is the only place the property is named now — the body used to
+     repeat it three rows further down. */
+
+  /* ---------- THE PERIOD TABLE ----------
+     Rent only. What the money BUYS, not just that it arrived — see the note in
+     the component. Borders rather than fills so it prints on any machine. */
+  .rc-period { inline-size: 100%; border-collapse: collapse; }
+  .rc-period th,
+  .rc-period td {
+    border: 0.3mm solid #d8d8d8; padding: 2.5mm 3mm; text-align: start;
+    font-variant-numeric: tabular-nums;
+  }
+  .rc-period th {
+    font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #555555;
+    background: #f5f5f3;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .rc-period td { font-size: 12.5px; color: #111111; }
+  .rc-period__total { text-align: end; font-weight: 700; white-space: nowrap; }
+
+  /* Why money was kept out of a deposit, in the words somebody typed on the
+     day. It is on the paper the tenant signs, not only in the office’s file. */
+  .rc-reason {
+    margin: 0; padding: 2.5mm 3mm; border-radius: 1.5mm;
+    background: #f5f5f3; font-size: 11.5px; color: #333333; text-wrap: pretty;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .rc-reason__k {
+    display: block; margin-block-end: 1mm;
+    font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #777777;
+  }
+
+  /* How to reach the office, on the paper somebody is holding a year later. */
+  .rc-contact {
+    margin: 0; padding-block-start: 3mm; border-block-start: 0.3mm solid #e2e2e2;
+    font-size: 10px; color: #666666;
+    display: flex; align-items: baseline; justify-content: center;
+    gap: 2mm; flex-wrap: wrap; text-align: center;
+  }
+
+  /* A LATIN RUN INSIDE AN ARABIC LINE. Phone numbers and email addresses are
+     read left-to-right in every language, and without an isolate the bidi
+     algorithm drags a leading "+" or a trailing ".com" to the wrong end. */
+  .rc-ltr { unicode-bidi: isolate; direction: ltr; }
+
+  .rc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10mm; }
+  .rc-org { display: flex; flex-direction: column; gap: 1mm; min-inline-size: 0; }
+  .rc-org__name { font-family: var(--font-display); font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+  .rc-org__line { font-size: 11px; color: #555555; }
+  .rc-meta { display: flex; flex-direction: column; gap: 1mm; text-align: end; flex: none; }
+  .rc-meta__kind {
+    font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #111111;
+  }
+  .rc-meta__no { font-family: var(--font-mono); font-size: 12px; color: #333333; }
+  .rc-meta__date { font-size: 12px; color: #555555; }
+
+  .rc-body {
+    margin: 0; display: flex; flex-direction: column; gap: 4mm;
+    border-block: 1px solid #d8d8d8; padding-block: 5mm;
+  }
+  .rc-field { display: flex; flex-direction: column; gap: 1mm; min-inline-size: 0; }
+  .rc-field dt {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #777777;
+  }
+  .rc-field dd { margin: 0; font-size: 13px; color: #111111; }
+  .rc-field__strong { font-size: 16px; font-weight: 700; }
+  .rc-mono { font-family: var(--font-mono); font-size: 12.5px; }
+
+  /* The amount is the one thing a receipt is read for, so it is the one thing
+     sized to be found without reading anything else. */
+  .rc-field--amount dd { display: flex; flex-direction: column; gap: 1mm; }
+  .rc-amount { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .rc-words { font-size: 12px; font-style: italic; color: #444444; text-wrap: pretty; }
+
+  .rc-pair { display: flex; flex-wrap: wrap; gap: 4mm 10mm; }
+  .rc-pair .rc-field { flex: 0 1 auto; }
+
+  /* flex-START, not end: one column carries the clerk’s name under its label
+     and the other does not, so aligning the bottoms put the two signature rules
+     at different heights down the page. */
+  .rc-foot { display: flex; align-items: flex-start; gap: 10mm; flex-wrap: wrap; }
+  .rc-sign { display: flex; flex-direction: column; gap: 1mm; flex: 1 1 40mm; min-inline-size: 40mm; }
+  .rc-sign__rule { display: block; block-size: 0; border-block-start: 1px solid #111111; margin-block-end: 2mm; }
+  .rc-sign__label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #555555; }
+  .rc-sign__hint { font-size: 11px; color: #777777; }
+  .rc-copylabel {
+    margin-inline-start: auto; flex: none;
+    font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #999999;
+  }
+
+  /* ---------- THE CUT LINE ----------
+     An instruction to whoever picks the sheet up, so it prints. */
+  .rc-cut {
+    display: flex; align-items: center; gap: 4mm;
+    margin-block: 8mm; color: #999999;
+  }
+  .rc-cut::before,
+  .rc-cut::after { content: ""; flex: 1 1 auto; border-block-start: 1px dashed #bbbbbb; }
+  .rc-cut span { font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+
+  .rc-missing {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 72px 24px; gap: var(--space-2);
+  }
+  .rc-missing__art {
+    inline-size: 60px; block-size: 60px; border-radius: var(--radius-2xl); margin-block-end: var(--space-3);
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--green-50), var(--gray-50));
+    border: 1px solid var(--border-subtle); color: var(--text-brand);
+  }
+  .rc-missing h1 { font-family: var(--font-display); font-weight: 600; font-size: 26px; color: var(--text-primary); margin: 0; }
+  .rc-missing p { font-size: 14px; color: var(--text-secondary); margin: 0; max-inline-size: 420px; }
+
+  /* ============================================================
+     PRINT
+
+     Hide everything, then bring back the sheet. Written this way rather than
+     naming the admin shell's own classes so it cannot break the day the shell
+     is restyled — a print stylesheet that knows about a sidebar is one that
+     stops working silently.
+     ============================================================ */
+  @media print {
+    body * { visibility: hidden; }
+    .rc-sheet, .rc-sheet * { visibility: visible; }
+    .rc-sheet {
+      position: absolute; inset-block-start: 0; inset-inline-start: 0;
+      inline-size: 100%; margin: 0; padding: 0;
+      border: none; border-radius: 0; box-shadow: none;
+      background: #ffffff; color: #000000;
+    }
+    /* The toolbar and the hint are screen furniture. */
+    .rc-toolbar, .rc-hint { display: none !important; }
+    /* Force the ink. Browsers drop backgrounds by default; these are borders and
+       text, so the only thing to insist on is that nothing prints grey-on-grey. */
+    .rc-org__name, .rc-meta__kind, .rc-field dd, .rc-amount, .rc-period td { color: #000000; }
+    @page { size: A4; margin: 12mm; }
+  }

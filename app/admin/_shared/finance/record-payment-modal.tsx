@@ -17,6 +17,7 @@ import {
   type PaymentMethod,
 } from "../../_data/contracts";
 import { useContracts } from "../contracts-store";
+import { invoiceLineText } from "./invoice-generation";
 import { TODAY, useFinanceActions } from "./finance-actions";
 import { CancelButton, FinanceModal } from "./modal-shell";
 import { Computed, DateInput, FieldRow, Labelled, MoneyInput, SelectField, moneyToText, textToMoney } from "./controls";
@@ -149,7 +150,7 @@ export function RecordPaymentModal({ invoice, onClose, onRecorded }: RecordPayme
         <div className="fm-invoice__top">
           <span className="fm-invoice__number">{invoice.number ? localizeDigits(lang, invoice.number) : t("admin.ct.inv.unnumbered")}</span>
         </div>
-        <p className="fm-invoice__desc">{invoice.lines[0]?.description ?? ""}</p>
+        <p className="fm-invoice__desc">{invoiceLineText(invoice.lines[0], t, lang)}</p>
         <div className="fm-invoice__figures">
           <span className="fm-invoice__amount">{formatMoney(lang, total)}</span>
           <span className={"fm-invoice__due" + (lateDays > 0 ? " fm-invoice__due--late" : "")}>

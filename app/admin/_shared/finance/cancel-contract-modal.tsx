@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { useLang, interleave } from "@/lib/i18n";
 import { fmtNum } from "@/lib/fmt";
-import { isZero } from "@/lib/money";
+import { formatMoney, isZero } from "@/lib/money";
 import { daysBetween } from "@/lib/dates";
 import { paidTotal, type ContractRecord } from "../../_data/contracts";
 import { useContracts } from "../contracts-store";
-import { TODAY, useFinanceActions } from "./finance-actions";
+import { TODAY, useFinanceActions, type SaleDepositOutcome } from "./finance-actions";
 import { CancelButton, FinanceModal } from "./modal-shell";
-import { Labelled } from "./controls";
+import { Labelled, Segmented } from "./controls";
 
 /* =============================================================================
    Cancel a contract.
@@ -42,6 +42,8 @@ export function CancelContractModal({ contract, onClose, onCancelled }: CancelCo
   const { invoicesByContract, payments } = useContracts();
   const { cancelContract } = useFinanceActions();
   const [reason, setReason] = useState("");
+  /* Who pulled out. Only asked where the answer moves money — see below. */
+  const [deposit, setDeposit] = useState<SaleDepositOutcome>("buyer_withdrew");
 
   /* Counted here for the warning, and counted again by cancelContract when it
      actually runs. Both read the same three rules from the same records, so the
@@ -62,6 +64,11 @@ export function CancelContractModal({ contract, onClose, onCancelled }: CancelCo
     return { willVoid, willStay, paid };
   }, [contract.id, invoicesByContract, payments]);
 
+  /* A sale that states a holding deposit. On a tenancy the insurance deposit is
+     closed by its own act (see CloseLeaseModal), and a sale with no deposit has
+     nothing to decide. */
+  const asksDeposit = contract.kind === "sale" && !!contract.deposit && !isZero(contract.deposit);
+
   const canCancel = reason.trim().length > 0;
 
   return (
@@ -80,7 +87,7 @@ export function CancelContractModal({ contract, onClose, onCancelled }: CancelCo
             disabled={!canCancel}
             onClick={() => {
               if (!canCancel) return;
-              onCancelled(cancelContract(contract.id, reason.trim()));
+              onCancelled(cancelContract(contract.id, reason.trim(), asksDeposit ? deposit : undefined));
             }}
           >
             <Icon name="ban" size={16} />
@@ -98,6 +105,26 @@ export function CancelContractModal({ contract, onClose, onCancelled }: CancelCo
           onChange={(e) => setReason(e.target.value)}
         />
       </Labelled>
+
+      {/* WHO PULLED OUT — asked only on a sale that took a holding deposit,
+          because that is the only case where the answer moves money. The
+          deposit is the arboun: a buyer who walks away forfeits it to the
+          seller, a seller who walks away gives it back. Cancelling used to
+          decide this silently, in the seller's favour, whatever happened. */}
+      {asksDeposit && (
+        <Labelled label={t("admin.fin.cc.depositQ")} hint={t("admin.fin.cc.depositHint", { amount: formatMoney(lang, contract.deposit!) })}>
+          <Segmented
+            value={deposit}
+            ariaLabel={t("admin.fin.cc.depositQ")}
+            onChange={setDeposit}
+            options={[
+              { value: "buyer_withdrew", label: t("admin.fin.cc.dep.buyer") },
+              { value: "seller_withdrew", label: t("admin.fin.cc.dep.seller") },
+              { value: "no_fault", label: t("admin.fin.cc.dep.noFault") },
+            ]}
+          />
+        </Labelled>
+      )}
 
       <div className="fm-consequence">
         <Icon name="info" size={15} />

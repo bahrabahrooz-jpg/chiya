@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { formatMoney, type CurrencyCode, type Money } from "@/lib/money";
+import { formatMoney, isZero, type CurrencyCode, type Money } from "@/lib/money";
 import { toIso } from "@/lib/dates";
 import {
   CONTRACTS,
   INVOICES,
+  LEDGER,
   PAYMENTS,
   buildCreditNote,
   contractValue,
@@ -17,6 +18,7 @@ import {
   nextContractNumber,
   nextInvoiceNumber,
   outstandingForContract as outstandingForContractOf,
+  paidTotal,
   paymentsByInvoice as paymentsByInvoiceOf,
   previousContract as previousContractOf,
   receivablesAging as receivablesAgingOf,
@@ -67,8 +69,22 @@ import { logAudit } from "./audit-log";
    through a fallback, so a v4 record would technically load; the bump is for the
    ids. A v4 cache holds `CT-<timestamp>` contracts, and leaving those beside
    numbered ones would show two id formats in one list with no way to tell which
-   was which. */
-export const CONTRACTS_STORAGE_KEY = "chiya:admin-contracts:v5";
+   was which.
+   v6: owner-ledger PAYOUTS now name the collection they settle (`paymentId`,
+   `invoiceId`). A v5 payout carries neither, so the payouts screen — which
+   lines each month's rent up against the hand-off that cleared it — would read
+   every one of those months as still unpaid and invite somebody to hand the
+   money over a second time. Discarded rather than migrated: there is no way to
+   work out afterwards which collection an old payout was for.
+   v7: a payout now names the CREDIT it clears (`settles`) rather than the
+   payment, so it can settle a deposit deduction as readily as a month of rent —
+   and the ledger gained an `expense` kind and a `deposit` one. A v6 payout has
+   no `settles`, so it would match nothing and every month it cleared would read
+   as unpaid again. Same reasoning as v6: discarded, not migrated.
+   v8: the SEED gained rent payments and a seeded owner ledger. A v7 cache was
+   saved before either existed, so restoring it would show a book where no rent
+   has ever been collected while the code says otherwise. */
+export const CONTRACTS_STORAGE_KEY = "chiya:admin-contracts:v8";
 
 /* Same-tab change signal, like properties-store's STORE_EVENT: the browser
    `storage` event only fires in OTHER tabs. */
@@ -176,6 +192,17 @@ interface ContractsContextValue {
   issueInvoice: (invoice: InvoiceRecord, issuedOn?: string) => InvoiceRecord;
   voidInvoice: (id: string, reason: string, voidedOn?: string) => InvoiceRecord | undefined;
   recordPayment: (payment: PaymentRecord, ledgerEntries?: OwnerLedgerEntry[]) => void;
+  /** Money handed to an owner. The only thing that reduces what we owe one. */
+  recordPayout: (entries: OwnerLedgerEntry[]) => void;
+  /** Money the agency spent on an owner's behalf — a repair, a clean. */
+  recordExpense: (entry: OwnerLedgerEntry) => void;
+  /** The day an owner acknowledged rent a tenant paid him direct. See
+      PaymentRecord.ownerReceiptedOn — it is what lets his receipt exist. */
+  receiptOwner: (paymentId: string, on: string) => void;
+  /** A damages deduction moved from the tenant's deposit to the owner. */
+  recordDepositClaim: (entry: OwnerLedgerEntry) => void;
+  /** Money handed back to whoever paid it — a holding deposit on a dead sale. */
+  recordRefund: (entry: OwnerLedgerEntry) => void;
   /* derived selectors, all reading the live records */
   getContract: (id: string) => ContractRecord | undefined;
   contractsByProperty: (propertyId: string) => ContractRecord[];
@@ -210,10 +237,12 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
   const [contracts, setContracts] = useState<ContractRecord[]>(CONTRACTS);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>(INVOICES);
   const [payments, setPayments] = useState<PaymentRecord[]>(PAYMENTS);
-  /* No seeded ledger, and that is correct rather than an omission: the seed has
-     no payment against a rent invoice, so no money has ever passed through the
-     agency on an owner's behalf. Lines appear the first time one does. */
-  const [ledger, setLedger] = useState<OwnerLedgerEntry[]>([]);
+  /* The ledger IS seeded now — the seed has a rent payment on an
+     agency-collected tenancy (PAY-6009), so money really has passed through
+     the agency on a landlord's behalf and the lines saying so have to exist.
+     It also carries a rent payment the landlord took himself, which correctly
+     produces no lines at all. See LEDGER. */
+  const [ledger, setLedger] = useState<OwnerLedgerEntry[]>(LEDGER);
 
   /* Audit events name the record a human would recognise. Contracts have no
      title of their own, so they are logged by id — which is what the contract
@@ -353,6 +382,21 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
     (id: string, reason: string, voidedOn?: string): InvoiceRecord | undefined => {
       const original = invoices.find((i) => i.id === id);
       if (!original || original.status !== "issued") return undefined;
+      /**
+       * ⚠ MONEY THAT ARRIVED IS NEVER VOIDED AWAY.
+       *
+       * Voiding writes a credit note for the FULL invoice, so doing it to a
+       * demand somebody has already paid reverses a charge while the cash sits
+       * in the account — and `outstanding` skips voided invoices, so the party
+       * who paid becomes a creditor nothing on any screen counts. That is the
+       * quiet kind of wrong this app is built to avoid.
+       *
+       * The rule is not new: cancelContract has always stepped over paid
+       * invoices for exactly this reason. What was missing was the guard HERE,
+       * so the void button on a row could do what the bulk path refused to. The
+       * correct move on a paid demand is a refund, not a void.
+       */
+      if (!isZero(paidTotal(original, payments))) return undefined;
       const on = voidedOn ?? toIso(new Date());
       const creditNote = buildCreditNote(original, { id: nextId("INV"), number: nextInvoiceNumber(), on });
       const voided: InvoiceRecord = { ...original, status: "void", voidedOn: on, voidReason: reason, creditNoteId: creditNote.id };
@@ -368,7 +412,7 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       setInvoices((prev) => [creditNote, ...prev.map((i) => (i.id === id ? voided : i))]);
       return creditNote;
     },
-    [invoices],
+    [invoices, payments],
   );
 
   /**
@@ -398,6 +442,125 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
     },
     [invoices],
   );
+
+  /**
+   * Money handed to an owner — the mirror of the collection above, and the only
+   * thing that reduces what we owe one.
+   *
+   * TAKES A LIST because one hand-off can settle several tenancies at once: a
+   * landlord with three flats takes what he is owed on all three in one visit,
+   * and that is one act, one receipt, and three ledger lines. Writing them in
+   * one call keeps them from half-landing.
+   *
+   * Audited like every other movement. Money leaving the agency with no record
+   * of who released it is the one thing a finance module cannot do.
+   *
+   * ⚠ NOTHING IS RECONCILED AGAINST A BANK HERE. This records that a hand-off
+   * happened, exactly as recordPayment records that money arrived. Matching it
+   * to a client account is trust accounting, and that is a larger job.
+   */
+  const recordPayout = useCallback((entries: OwnerLedgerEntry[]) => {
+    if (!entries.length) return;
+    /* Summed PER CURRENCY and joined, never added across them. A landlord with
+       a dollar flat and a dinar one takes both in one visit, and one number
+       covering the two would need a rate that belongs to a day rather than to
+       an audit line. Same rule as every other total in this system. */
+    const byCurrency = new Map<CurrencyCode, number>();
+    for (const e of entries) {
+      byCurrency.set(e.amount.currency, (byCurrency.get(e.amount.currency) ?? 0) + Math.abs(e.amount.amount));
+    }
+    const total = [...byCurrency].map(([currency, amount]) => auditMoney({ amount, currency })).join(" + ");
+    logAudit({
+      category: "property",
+      actionKey: "audit.action.paidOwner",
+      /* The contract a human would recognise. Several lines settle under one
+         act, so the log names the first and counts the rest. */
+      target: entries[0].contractId,
+      targetId: entries[0].id,
+      metaKey: "audit.meta.paidOut",
+      metaParams: { amount: total, count: String(entries.length) },
+    });
+    setLedger((prev) => [...entries, ...prev]);
+  }, []);
+
+  /**
+   * Money the agency spent for an owner — a plumber, a clean.
+   *
+   * One line, not a list: a repair is one invoice from one contractor against
+   * one property, unlike a payout which can settle several months at once.
+   *
+   * Audited like every other movement. Money leaving the agency's account
+   * against somebody else's balance is exactly the act that has to be
+   * attributable to a person a year later.
+   */
+  const recordExpense = useCallback((entry: OwnerLedgerEntry) => {
+    logAudit({
+      category: "property",
+      actionKey: "audit.action.ownerExpense",
+      target: entry.contractId,
+      targetId: entry.id,
+      metaKey: "audit.meta.spentFor",
+      metaParams: { amount: auditMoney({ amount: Math.abs(entry.amount.amount), currency: entry.amount.currency }) },
+    });
+    setLedger((prev) => [entry, ...prev]);
+  }, []);
+
+  /**
+   * A damages deduction, moved off the tenant's deposit onto the landlord.
+   *
+   * Its own verb in the log because it is the one movement a tenant rings up
+   * about a year later — "you kept two hundred, where did it go" — and the
+   * answer has to name a person and a day.
+   */
+  /**
+   * Money given back to whoever paid it.
+   *
+   * Its own verb because it is the opposite of every other movement on this
+   * ledger: the balance goes down and nobody was paid. A year later somebody
+   * will ask why the seller's figure dropped without a hand-off, and the log
+   * has to answer.
+   */
+  const recordRefund = useCallback((entry: OwnerLedgerEntry) => {
+    logAudit({
+      category: "property",
+      actionKey: "audit.action.refunded",
+      target: entry.contractId,
+      targetId: entry.id,
+      metaKey: "audit.meta.spentFor",
+      metaParams: { amount: auditMoney({ amount: Math.abs(entry.amount.amount), currency: entry.amount.currency }) },
+    });
+    setLedger((prev) => [entry, ...prev]);
+  }, []);
+
+  /**
+   * The owner has acknowledged rent his tenant paid him direct.
+   *
+   * The ONE thing that may be written to a payment after the fact, and it adds
+   * a date rather than changing one: the payment itself — what arrived, when,
+   * from whom — stays frozen, exactly like an issued invoice. What this records
+   * is a second, later event about the same money.
+   */
+  const receiptOwner = useCallback((paymentId: string, on: string) => {
+    logAudit({
+      category: "property",
+      actionKey: "audit.action.ownerReceipted",
+      target: paymentId,
+      targetId: paymentId,
+    });
+    setPayments((prev) => prev.map((p) => (p.id === paymentId ? { ...p, ownerReceiptedOn: on } : p)));
+  }, []);
+
+  const recordDepositClaim = useCallback((entry: OwnerLedgerEntry) => {
+    logAudit({
+      category: "property",
+      actionKey: "audit.action.depositClaim",
+      target: entry.contractId,
+      targetId: entry.id,
+      metaKey: "audit.meta.spentFor",
+      metaParams: { amount: auditMoney(entry.amount) },
+    });
+    setLedger((prev) => [entry, ...prev]);
+  }, []);
 
   /* ---- derived selectors (live records passed through the pure helpers) ---- */
   const selectors = useMemo(
@@ -460,9 +623,14 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       issueInvoice,
       voidInvoice,
       recordPayment,
+      recordPayout,
+      recordExpense,
+      receiptOwner,
+      recordDepositClaim,
+      recordRefund,
       ...selectors,
     }),
-    [contracts, invoices, payments, ledger, createContract, updateContract, amendContract, issueInvoice, voidInvoice, recordPayment, selectors],
+    [contracts, invoices, payments, ledger, createContract, updateContract, amendContract, issueInvoice, voidInvoice, recordPayment, recordPayout, recordExpense, receiptOwner, recordDepositClaim, recordRefund, selectors],
   );
 
   return <ContractsContext.Provider value={value}>{children}</ContractsContext.Provider>;

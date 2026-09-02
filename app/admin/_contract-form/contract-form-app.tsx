@@ -8,24 +8,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLang } from "@/lib/i18n";
 import { fmtDate, fmtNum, localizeDigits } from "@/lib/fmt";
-import { fromIso } from "@/lib/dates";
-import { formatMoney, isZero, money, moneyToWords, percentOf, sumMoney, zeroMoney, type CurrencyCode, type Money } from "@/lib/money";
+import { addDays, fromIso } from "@/lib/dates";
+import { formatMoney, isZero, money, moneyToWords, multiply, percentOf, splitIntoInstallments, sumMoney, zeroMoney, type CurrencyCode, type Money } from "@/lib/money";
 import { rateFor, usePlatformSettings } from "@/lib/platform-settings";
-import { DEFAULT_MANDATE_RATE, projectNameOf } from "../_data/catalog";
+import { projectNameOf } from "../_data/catalog";
 import {
   CYCLE_MONTHS,
   DEFAULT_NOTICE_DAYS,
+  DEFAULT_SALE_COMMISSION_RATE,
   INSTALLMENT_MONTHS,
   PLATFORM_CURRENCY,
   clauseKeysFor,
   deriveEndsOn,
+  financedAmount,
   installmentSchedule,
   type CommissionBasis,
   type ContractKind,
   type ContractTemplate,
   type InstallmentFrequency,
   type InstallmentsPaidTo,
-  type LateRentBasis,
   type RentCycle,
   type RentPaidTo,
 } from "../_data/contracts";
@@ -42,7 +43,6 @@ import {
   ChoiceCards,
   ConsequenceBar,
   DateInput,
-  GroupDivider,
   MoneyField,
   NumberInput,
   Pair,
@@ -135,10 +135,12 @@ export interface ContractFormProps {
   editingId?: string;
   /** A SIGNED contract being amended. See the banner and §10. */
   amendingId?: string;
+  /** A tenancy that is ending — seeds a NEW contract that follows it. */
+  renewingId?: string;
   basePath?: string;
 }
 
-export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId, basePath = "/admin/contracts" }: ContractFormProps) {
+export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId, renewingId, basePath = "/admin/contracts" }: ContractFormProps) {
   const { t, lang } = useLang();
   const router = useRouter();
   const { settings } = usePlatformSettings();
@@ -148,10 +150,25 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
   const [toasts, pushToast, dismissToast] = useFinanceToasts();
 
   const existing = useMemo(
-    () => contracts.find((c) => c.id === (amendingId ?? editingId)),
-    [contracts, amendingId, editingId],
+    () => contracts.find((c) => c.id === (amendingId ?? editingId ?? renewingId)),
+    [contracts, amendingId, editingId, renewingId],
   );
   const amending = !!amendingId && !!existing;
+
+  /**
+   * A RENEWAL — the same form, seeded from the tenancy that is ending.
+   *
+   * It writes a NEW contract, never an extension: rent almost always changes,
+   * and overwriting the old record would destroy the document a dispute would
+   * be settled against. Everything carries over — the property, the parties,
+   * the agent, the commission, the clauses — because almost none of it changes
+   * and retyping twenty answers is how a renewal gets postponed.
+   *
+   * TWO THINGS DELIBERATELY DO NOT CARRY: the term starts the day after the old
+   * one ends, and the signing date is blank. Those are the two facts that are
+   * genuinely new, and inheriting either would date the renewal to last year.
+   */
+  const renewing = !!renewingId && !!existing;
 
   /* ---------------------------------------------------------------------------
      State. Money is held as the TEXT somebody typed, never as a number: "1,4"
@@ -216,7 +233,12 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
   const [rentText, setRentText] = useState(existing?.monthlyRent ? moneyToText(existing.monthlyRent) : "");
   const [cycle, setCycle] = useState<RentCycle>(existing?.cycle ?? "monthly");
   const [termText, setTermText] = useState(String(existing?.termMonths ?? 12));
-  const [startsOn, setStartsOn] = useState(existing?.startsOn ?? "");
+  /* A renewal starts the day after the old term ends — no gap, no overlap. Any
+     other default would have somebody typing a date they had just read off the
+     screen above. */
+  const [startsOn, setStartsOn] = useState(
+    renewing && existing?.endsOn ? addDays(existing.endsOn, 1) : (existing?.startsOn ?? ""),
+  );
   const [depositText, setDepositText] = useState(existing?.insuranceDeposit ? moneyToText(existing.insuranceDeposit) : "");
   /**
    * NEITHER IS ASKED FOR ANY MORE, and both are still carried.
@@ -235,9 +257,17 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
 
   const [ownerBasis, setOwnerBasis] = useState<CommissionBasis>(existing?.ownerCommission?.basis ?? (kind === "rent" ? "half_month" : "percent"));
   const [ownerValue, setOwnerValue] = useState(String(existing?.ownerCommission?.value ?? existing?.commissionRate ?? ""));
-  const [tenantBasis, setTenantBasis] = useState<CommissionBasis>(existing?.tenantCommission?.basis ?? (kind === "rent" ? "half_month" : "none"));
+  /* The counterparty's side: half a month on a tenancy, a percentage of the
+     price on a sale. A sale REOPENED from before buyers were charged keeps the
+     "none" it was written with — an amendment does not quietly add a fee the
+     parties never signed. */
+  const [tenantBasis, setTenantBasis] = useState<CommissionBasis>(existing?.tenantCommission?.basis ?? (kind === "rent" ? "half_month" : "percent"));
   const [tenantValue, setTenantValue] = useState(String(existing?.tenantCommission?.value ?? ""));
-  const [overrideReason, setOverrideReason] = useState(existing?.commissionOverrideReason ?? "");
+  /* NO LONGER ASKED, AND STILL CARRIED — the same rule as the handover date and
+     the payment method above. The row that collected it is gone (see the note
+     where it stood), so an existing contract keeps the reason it was written
+     with rather than losing it because a field left the screen. */
+  const overrideReason = existing?.commissionOverrideReason ?? "";
 
   /* step 3 — clauses and signing */
   const [clauses, setClauses] = useState<Record<string, string>>(() => {
@@ -247,12 +277,21 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
       seed[key] = v === undefined ? "" : String(v);
     }
     if (kind === "rent" && !seed.noticeDays) seed.noticeDays = String(DEFAULT_NOTICE_DAYS);
-    if (kind === "rent" && !seed.lateRentBasis) seed.lateRentBasis = "per_day";
+    /* THE FORM ONLY STATES AN AMOUNT PER DAY. A contract written with a
+       PERCENTAGE per day keeps neither the basis nor the figure behind it: "2"
+       meant two percent of the rent, and the field it would land in now reads
+       it as two dollars. Cleared, so the calculated day takes over — which is
+       what the row shows and what the record then stores. */
+    if (kind === "rent" && seed.lateRentBasis === "percent_per_day") seed.lateRentPenalty = "";
+    if (kind === "rent") seed.lateRentBasis = "per_day";
     return seed;
   });
   const setClause = (key: string, value: string) => setClauses((c) => ({ ...c, [key]: value }));
 
-  const [signingDate, setSigningDate] = useState(existing?.signedOn ?? "");
+  /* Blank on a renewal: it has not been signed yet, and inheriting last year's
+     date would sign it into the past. Blank is also what makes it a draft until
+     somebody fills it in — see the hint on the field. */
+  const [signingDate, setSigningDate] = useState(renewing ? "" : (existing?.signedOn ?? ""));
   const handoverOn = existing?.handoverOn ?? "";
   const [city, setCity] = useState(existing?.city ?? "");
   const [copies, setCopies] = useState(String(existing?.copies ?? 3));
@@ -309,6 +348,17 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
     [properties, lockedPropertyId, kind],
   );
 
+  /**
+   * WHERE THE PAPER IS SIGNED — the property's city unless somebody types over
+   * it.
+   *
+   * The field has always DISPLAYED the property's city as its value while the
+   * state behind it stayed empty, so a form showing "Erbil" was refused by
+   * `Next` for a missing city and saved a contract with none. The check and the
+   * record read this now, which is the same thing the field shows.
+   */
+  const signedCity = city || property?.city || "";
+
   const lease = kind === "rent";
   const template: ContractTemplate = lease ? "lease" : salePayment;
 
@@ -351,13 +401,37 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
    * which let somebody type a move-out date that contradicted the term they had
    * just agreed — or leave it blank, and print a clause with a hole in it.
    *
-   * Derived here and used as the field's value when nobody has overridden it.
-   * An override is still allowed, because a few days' grace after the end is
-   * ordinary and the contract has to be able to say so.
+   * Derived here and written straight onto the record. NEITHER KIND ASKS FOR IT
+   * ANY MORE — both rows are gone, and the notes standing where they were say
+   * why. Nothing overrides it now: the day the keys move is the handover date,
+   * which is a question the form asks once, at the top of the money step.
    */
   const mustBeOutBy = lease
     ? (startsOn && termMonths > 0 ? deriveEndsOn(startsOn, termMonths) : "")
     : (handoverOn || signingDate);
+
+  /**
+   * WHAT ONE LATE DAY COSTS — worked out from the rent, exactly like a
+   * commission.
+   *
+   * It used to be an empty box beside a dropdown asking whether the number in
+   * it meant dinars a day or a percentage of the rent a day. Two questions to
+   * answer before the field said anything, and the answer to both was always
+   * the same in practice: a day of the rent. So it is calculated — the month's
+   * rent over a thirty-day month — shown in the field, and typed over when the
+   * parties agreed something else. The same rule the commissions follow.
+   *
+   * THIRTY DAYS, NOT THE CALENDAR'S. A late day in February would otherwise
+   * cost more than one in March, off the same rent, on a charge that has to be
+   * defensible in one printed sentence.
+   */
+  const LATE_DAYS_PER_MONTH = 30;
+  const dailyLate = monthlyRent ? multiply(monthlyRent, 1 / LATE_DAYS_PER_MONTH) : zeroMoney(currency);
+  /** What somebody typed, or the calculated day — this is what the field shows
+      AND what the record stores. A figure on screen that the contract does not
+      carry is a missing clause one step later. */
+  const lateTyped = String(clauses.lateRentPenalty ?? "").trim();
+  const lateText = lateTyped || (isZero(dailyLate) ? "" : moneyToText(dailyLate));
 
   const owner = useMemo(() => members.find((m) => m.id === (property?.ownerId ?? "")), [members, property]);
 
@@ -370,6 +444,22 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
     return name ? (agents.find((a) => a.name === name)?.id ?? "") : "";
   }, [property, agents]);
   const effectiveAgentId = propertyAgentId || agentId;
+
+  /**
+   * A PERCENTAGE WITH NO RATE IS NOT ZERO, IT IS THE STANDARD ONE.
+   *
+   * Both sale commissions are percentages and both fields start empty, so the
+   * fee came out at nothing until somebody typed a rate the office already has.
+   * ONE STANDARD, BOTH SIDES — see DEFAULT_SALE_COMMISSION_RATE. Only a sale
+   * ever starts on a percentage; a tenancy is stated in months.
+   *
+   * ⚠ THESE, NOT THE RAW FIELDS, ARE WHAT THE DRAFT SAVES. The rate on screen
+   * and the rate on the record have to be one number. They were two — the form
+   * showed the default and stored a zero — so a sale saved without touching the
+   * commission row came out at 0% with the right figure printed above it.
+   */
+  const ownerPct = ownerValue || (ownerBasis === "percent" ? String(DEFAULT_SALE_COMMISSION_RATE) : "");
+  const tenantPct = tenantValue || (tenantBasis === "percent" ? String(DEFAULT_SALE_COMMISSION_RATE) : "");
 
   const draft: ContractDraft = useMemo(() => {
     const commission = (basis: CommissionBasis, value: string) => ({
@@ -406,9 +496,13 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
         : {
             salePrice,
             ...(saleDeposit ? { deposit: saleDeposit } : {}),
+            /* Outside the block below: a down payment is a term of any sale, not
+               a property of a schedule. On a full-payment sale it changes no
+               invoice — see plannedInvoices — it simply records what was handed
+               over on the day. */
+            downPayment,
             ...(template === "sale_installments"
               ? {
-                  downPayment,
                   installmentCount,
                   installmentFrequency: instFreq,
                   firstInstallmentOn: firstInstOn,
@@ -416,32 +510,40 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                 }
               : {}),
           }),
-      ownerCommission: commission(ownerBasis, ownerValue),
-      tenantCommission: commission(lease ? tenantBasis : "none", tenantValue),
+      ownerCommission: commission(ownerBasis, ownerPct),
+      tenantCommission: commission(tenantBasis, tenantPct),
       ...(overrideReason.trim() ? { commissionOverrideReason: overrideReason.trim() } : {}),
-      /* The shown default is saved too. A date the form displays and the record
-         does not hold is the same missing clause, one step later. */
+      /* The derived date is saved, though nothing on the form asks for it. A
+         clause the document prints and the record does not hold is a hole in
+         the paper, found at the printer rather than here. */
       clauses: {
         ...clauses,
+        /* The calculated day goes on the record whether or not anybody typed
+           over it, and the basis with it: this form only ever states an amount
+           per day now, so a contract it saves says so rather than leaving
+           `latePenaltyFor` to assume. */
+        ...(lease ? { lateRentPenalty: lateText, lateRentBasis: "per_day" } : {}),
         ...(lease && !clauses.vacateByDate && mustBeOutBy ? { vacateByDate: mustBeOutBy } : {}),
         ...(!lease && !clauses.evacuationDate && mustBeOutBy ? { evacuationDate: mustBeOutBy } : {}),
       },
       signingDate,
       ...(handoverOn ? { handoverOn } : {}),
-      city,
+      city: signedCity,
       copies: Number(copies) || 0,
       organizerId,
       externalPaperwork,
       ...(notes.trim() ? { notes: notes.trim() } : {}),
+      /* The chain. Signing this retires the tenancy it names — see saveContract. */
+      ...(renewing && existing ? { replacesContractId: existing.id } : {}),
       dualCurrency,
     };
   }, [
     template, propertyId, property, signerOpen, signerName, signerPhone, signerId, signerReason,
     bSignerOpen, bSignerName, bSignerPhone, bSignerId, bSignerReason, partyMode, buyerId, extName,
     extPhone, extId, effectiveAgentId, lease, monthlyRent, cycle, termMonths, startsOn, insuranceDeposit, payMethod, rentPaidTo,
-    feeType, feeText, salePrice, saleDeposit, downPayment, installmentCount, instFreq, firstInstOn, instPaidTo, ownerBasis, ownerValue,
-    tenantBasis, tenantValue, overrideReason, clauses, mustBeOutBy, signingDate, handoverOn, city, copies, organizerId, currency,
-    externalPaperwork, notes, dualCurrency,
+    feeType, feeText, salePrice, saleDeposit, downPayment, installmentCount, instFreq, firstInstOn, instPaidTo, ownerBasis, ownerPct,
+    tenantBasis, tenantPct, overrideReason, clauses, mustBeOutBy, lateText, signingDate, handoverOn, signedCity, copies, organizerId, currency,
+    externalPaperwork, notes, dualCurrency, renewing, existing,
   ]);
 
   const price = draftPrice(draft);
@@ -458,27 +560,50 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
       case "fixed": return money(Number(value) || 0, currency);
     }
   };
-  /* The agency’s agreed rate on this property, or the house standard when the
-     listing carries no mandate of its own. */
-  const mandateRate = property?.mandate?.commissionRate ?? DEFAULT_MANDATE_RATE[kind];
-
-  /* A PERCENTAGE WITH NO RATE IS NOT ZERO, IT IS THE MANDATE.
-     The sale default is a percentage and the field started empty, so a seller's
-     commission came out at nothing until somebody noticed and typed the rate
-     the mandate already states. The mandate is the authority — see
-     ListingMandate.commissionRate, and the override-reason row below, which
-     exists precisely to catch a rate that differs from it. */
-  const ownerPct = ownerValue || (ownerBasis === "percent" ? String(mandateRate) : "");
-  const tenantPct = tenantValue || (tenantBasis === "percent" ? String(mandateRate) : "");
   const ownerFee = commissionOf(ownerBasis, ownerPct);
-  const tenantFee = lease ? commissionOf(tenantBasis, tenantPct) : zeroMoney(currency);
+  /* Both sides, on a tenancy AND on a sale — the buyer pays here too. */
+  const tenantFee = commissionOf(tenantBasis, tenantPct);
+
+  /**
+   * WHAT ONE INSTALMENT COSTS — the figure the deal is actually agreed on.
+   *
+   * "Thirty percent down, then twelve hundred a month" is how a payment plan is
+   * quoted in this market; nobody agrees to "forty-eight payments" and works
+   * the rest out afterwards. So it is shown beside the count, worked out as it
+   * is typed, the same way the tenancy shows its end date beside the term.
+   *
+   * SPLIT WITHOUT THE DATES, which is why this is not read off `schedule`
+   * below. The amounts depend on the balance and the count; only the DUE DATES
+   * need a first-due date. Gating the figure on the calendar left the section
+   * silent at exactly the moment somebody was typing the count to check it.
+   *
+   * Same two functions the schedule itself calls — `financedAmount` for the
+   * balance and `splitIntoInstallments` for the rounding — so the number on
+   * screen cannot disagree with the invoices signing raises.
+   */
+  /** What the schedule has to clear: the price less anything paid at signing. */
+  const financedBalance = useMemo(
+    /* The holding deposit comes off too — it is part of the price, and money
+       the buyer has already put down cannot be spread over the schedule as
+       well. See financedAmount. */
+    () => (salePrice ? financedAmount({ price: salePrice, downPayment, deposit: saleDeposit }) : undefined),
+    [salePrice, downPayment, saleDeposit],
+  );
+
+  const instAmounts = useMemo(() => {
+    /* A down payment typed larger than the price. The record refuses one, but
+       it is reachable mid-keystroke, and a negative instalment on screen reads
+       as arithmetic nobody can trust. Nothing is shown instead. */
+    if (template !== "sale_installments" || !financedBalance || financedBalance.amount <= 0 || installmentCount <= 0) return [];
+    return splitIntoInstallments(financedBalance, installmentCount);
+  }, [template, financedBalance, installmentCount]);
 
   const schedule = useMemo(
     () =>
       template === "sale_installments" && salePrice && installmentCount > 0 && firstInstOn
-        ? installmentSchedule({ price: salePrice, downPayment, installmentCount, installmentFrequency: instFreq, firstInstallmentOn: firstInstOn })
+        ? installmentSchedule({ price: salePrice, downPayment, deposit: saleDeposit, installmentCount, installmentFrequency: instFreq, firstInstallmentOn: firstInstOn })
         : [],
-    [template, salePrice, downPayment, installmentCount, instFreq, firstInstOn],
+    [template, salePrice, downPayment, saleDeposit, installmentCount, instFreq, firstInstOn],
   );
 
   /* THE plan — the same list signing issues, so the consequence bar cannot
@@ -537,7 +662,7 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
       }
       /* Signing moved onto this step with the dates, so its gaps did too. */
       if (!signingDate) gaps.push({ key: "admin.cn.missing.signedOn", id: "cn-signed" });
-      if (!city.trim()) gaps.push({ key: "admin.cn.missing.city", id: "cn-city" });
+      if (!signedCity.trim()) gaps.push({ key: "admin.cn.missing.city", id: "cn-city" });
       if (amending && !amendReason.trim()) gaps.push({ key: "admin.cn.missing.amendReason", id: "cn-amendwhy" });
       return gaps;
     }
@@ -812,9 +937,7 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
    * is a note on how it was reached.
    *
    * TYPING IN THE AMOUNT SWITCHES THE BASIS TO FIXED, because that is what
-   * typing a number over a calculated one means. The percentage keeps its own
-   * small box, since a rate and a sum are different quantities and one cannot
-   * stand in for the other.
+   * typing a number over a calculated one means.
    *
    * Written as a function rather than a component: a component declared inside
    * a render is a new type on every keystroke, and React would remount the
@@ -826,35 +949,32 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
     setBasis: (b: CommissionBasis) => void;
     value: string;
     setValue: (v: string) => void;
-    pct: string;
     amount: Money;
     label: string;
   }) => (
-    /* JUST THE MONEY.
-       The basis dropdown is gone. It listed how the figure was reached — half a
-       month, one month, a percentage — and once the figure itself is on screen
+    /* ONE BOX. THE MONEY.
+       The basis dropdown went first. It listed how the figure was reached — half
+       a month, one month, a percentage — and once the figure itself is on screen
        and editable, that is a note about arithmetic rather than a question
-       anybody needs to answer. The DEFAULT still does the work: a tenancy fills
-       with half a month’s rent, a sale with the property’s mandate rate, and
-       typing over either makes it a fixed amount, which is what typing a number
-       over a calculated one means.
+       anybody needs to answer.
 
-       A SALE KEEPS ITS PERCENTAGE BOX, because the rate is a term in its own
-       right there — the mandate states one, and the override row below asks for
-       a reason whenever this differs from it. */
-    <>
-      <MoneyField
-        quote={quote}
-        currency={currency}
-        id={a.id}
-        value={a.basis === "fixed" ? a.value : moneyToText(a.amount)}
-        onChange={(v) => { a.setBasis("fixed"); a.setValue(v); }}
-        parsed={a.amount}
-      />
-      {a.basis === "percent" && (
-        <NumberInput value={a.pct} onChange={a.setValue} width="sm" decimal suffix="%" />
-      )}
-    </>
+       THE RATE BOX WENT THE SAME WAY, for the same reason. It sat beside the
+       money on a sale, and the two were one answer written twice: change the
+       rate and the sum moved, type the sum and the rate stopped applying. Both
+       sides of a sale start at the house standard now
+       (DEFAULT_SALE_COMMISSION_RATE) and a tenancy at half a month's rent, so
+       the rate is a constant the office sets rather than a term negotiated on
+       each contract. What IS negotiated is the sum, and that is typed straight
+       in — which makes it a fixed amount, because that is what typing a number
+       over a calculated one means. */
+    <MoneyField
+      quote={quote}
+      currency={currency}
+      id={a.id}
+      value={a.basis === "fixed" ? a.value : moneyToText(a.amount)}
+      onChange={(v) => { a.setBasis("fixed"); a.setValue(v); }}
+      parsed={a.amount}
+    />
   );
 
   /* The chrome every step shares: what is missing (only after somebody has
@@ -896,13 +1016,27 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
           <span className="ap-crumbs__sep" aria-hidden="true">
             <Icon name="chevron-right" size={14} />
           </span>
-          <span className="ap-crumbs__current">{t(amending ? "admin.cn.amendTitle" : lease ? "admin.cn.titleLease" : "admin.cn.titleSale")}</span>
+          <span className="ap-crumbs__current">{t(amending ? "admin.cn.amendTitle" : renewing ? "admin.cn.renewTitle" : lease ? "admin.cn.titleLease" : "admin.cn.titleSale")}</span>
         </nav>
 
         <div className="ap-title">
-          <h1>{t(amending ? "admin.cn.amendTitle" : lease ? "admin.cn.titleLease" : "admin.cn.titleSale")}</h1>
+          <h1>{t(amending ? "admin.cn.amendTitle" : renewing ? "admin.cn.renewTitle" : lease ? "admin.cn.titleLease" : "admin.cn.titleSale")}</h1>
           <p>{t(lease ? "admin.cn.subLease" : "admin.cn.subSale")}</p>
         </div>
+
+        {/* WHAT IS ABOUT TO HAPPEN TO THE OLD TENANCY, before anything is
+            typed. A renewal looks exactly like a new contract on screen —
+            every field is filled in — so without this nobody would know the
+            document they are looking at is tied to another one, or that
+            signing it retires that one. */}
+        {renewing && existing && (
+          <AmendBanner
+            title={t("admin.cn.renew.bannerTitle", { id: localizeDigits(lang, existing.id) })}
+            body={t("admin.cn.renew.bannerBody", {
+              ends: existing.endsOn ? fmtDate(lang, fromIso(existing.endsOn)) : "—",
+            })}
+          />
+        )}
 
         {amending && existing && (
           <AmendBanner
@@ -1302,39 +1436,55 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                   {/* THREE COLUMNS ON A LEASE, because the dates line holds
                       three boxes — starts on, runs for, ends on — and they are
                       one sentence read left to right. Sized alike so they read
-                      that way; see .cn-grid--3. A sale has one date on the
-                      section and keeps the ordinary pair of columns. */}
-                  <Grid cols={lease ? 3 : 2}>
-                    {lease ? (
-                      <>
-                        <Wide>
-                          <Row label={t("admin.cn.f.term")} htmlFor="cn-starts" error={gapOn("cn-starts")}>
-                            <Pair equal>
-                              <DateInput id="cn-starts" value={startsOn} onChange={setStartsOn} />
-                              <NumberInput value={termText} onChange={setTermText} min={1} max={240} suffix={t("admin.cn.months")} />
-                            </Pair>
-                          </Row>
-                        </Wide>
-                        {/* Worked out, never typed — see ReadOut. */}
-                        <ReadOut label={t("admin.ct.f.endsOn")} value={endsOn ? fmtDate(lang, fromIso(endsOn)) : undefined} />
-                      </>
-                    ) : null}
+                      that way; see .cn-grid--3. A sale has no term, so it opens
+                      straight on the signature line below. */}
+                  {lease && (
+                    <Grid cols={3}>
+                      <Wide>
+                        <Row label={t("admin.cn.f.term")} htmlFor="cn-starts" error={gapOn("cn-starts")}>
+                          <Pair equal>
+                            <DateInput id="cn-starts" value={startsOn} onChange={setStartsOn} />
+                            <NumberInput value={termText} onChange={setTermText} min={1} max={240} suffix={t("admin.cn.months")} />
+                          </Pair>
+                        </Row>
+                      </Wide>
+                      {/* Worked out, never typed — see ReadOut. */}
+                      <ReadOut label={t("admin.ct.f.endsOn")} value={endsOn ? fmtDate(lang, fromIso(endsOn)) : undefined} />
+                    </Grid>
+                  )}
 
+                  {/* WHEN IT IS SIGNED AND WHERE, ON ONE LINE. "Signed in" spent
+                      its life four groups down with the copies and the organiser,
+                      which split one fact about one signature across the top and
+                      the bottom of the step. Its own grid rather than the term's:
+                      in three columns the pair would sit under a two-column box
+                      and leave a hole where the end date is. */}
+                  <Grid>
                     <Row label={t("admin.ct.f.signedOn")} hint={t("admin.cn.h.signingDate")} htmlFor="cn-signed" error={gapOn("cn-signed")}>
                       <DateInput id="cn-signed" value={signingDate} onChange={setSigningDate} />
+                    </Row>
+                    {/* A HINT ON BOTH SIDES OR ON NEITHER. The grid aligns the
+                        tops of its cells (see .cn-grid), so a hint under one
+                        label and not the other drops that control a line lower
+                        than the one beside it. This one earns its place anyway:
+                        the value arrives from the property, and the paper is not
+                        always signed in the city the property stands in. */}
+                    <Row label={t("admin.cn.f.city")} hint={t("admin.cn.h.city")} htmlFor="cn-city" error={gapOn("cn-city")}>
+                      <TextInput id="cn-city" value={signedCity} onChange={setCity} placeholder={t("admin.cn.ph.city")} />
                     </Row>
                   </Grid>
                 </Section>
 
                 {lease ? (
                   <>
-                    {/* THREE SECTIONS, AND THE SPLIT IS THE POINT.
-                        This was one "Rent and term" block holding money and dates
-                        together, with the collection arrangement in a section of
-                        its own and the two commissions further down again under a
-                        divider — so "what does the agency get out of this" was
-                        spread over three places on one step. Now: what is paid,
-                        then for how long, then everything we earn. */}
+                    {/* WHAT THE TENANT PAYS, AND NOTHING ELSE.
+                        This group used to be followed by a "Commission and
+                        collection" one holding three unrelated answers at once —
+                        who the rent is paid to, what we keep for collecting it,
+                        and what each side owes us at signing. The commissions are
+                        charges and sit with the other charges below; the
+                        collection arrangement is an arrangement and closes the
+                        step. */}
                     <Section title={t("admin.cn.g.rent")}>
                       {/* Every figure these rows used to derive under themselves —
                           the per-cycle invoice, the end date, the split — is in the
@@ -1365,66 +1515,6 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                         </Row>
                       </Grid>
                     </Section>
-
-
-                    {/* EVERYTHING THE AGENCY EARNS, IN ONE PLACE — who collects,
-                        what we keep for collecting, and what each side pays us. */}
-                    <Section title={t("admin.cn.g.earn")}>
-                      <Row label={t("admin.cn.f.rentPaidTo")}>
-                        <ChoiceCards value={rentPaidTo} options={rentPaidToChoices} onChange={setRentPaidTo} name={t("admin.cn.f.rentPaidTo")} />
-                      </Row>
-
-                      {/* The fee appears only when the agency collects. Removed,
-                          not disabled — there is nothing to fill in when the
-                          landlord takes the rent himself. */}
-                      {rentPaidTo === "agency" && (
-                        <Row label={t("admin.ct.f.managementFee")} hint={t("admin.cn.h.managementFee")} htmlFor="cn-fee">
-                          <Pair lead="auto">
-                            <SelectInput
-                              value={feeType}
-                              onChange={setFeeType}
-                              ariaLabel={t("admin.ct.f.managementFee")}
-                              options={[
-                                { value: "percent", label: t("admin.cn.fee.percent") },
-                                { value: "fixed", label: t("admin.cn.fee.fixed") },
-                              ]}
-                            />
-                            {feeType === "percent" ? (
-                              <NumberInput id="cn-fee" value={feeText} onChange={setFeeText} width="sm" decimal suffix="%" />
-                            ) : (
-                              <MoneyField quote={quote} currency={currency} id="cn-fee" value={feeText} onChange={setFeeText} parsed={toMoney(feeText)} />
-                            )}
-                          </Pair>
-                        </Row>
-                      )}
-
-                      <Grid>
-                        <Row label={t("admin.cn.f.landlordFee")} hint={t("admin.cn.h.landlordFee")} htmlFor="cn-obasis">
-{commissionRow({
-                            id: "cn-obasis",
-                            basis: ownerBasis,
-                            setBasis: setOwnerBasis,
-                            value: ownerValue,
-                            setValue: setOwnerValue,
-                            pct: ownerPct,
-                            amount: ownerFee,
-                            label: t(lease ? "admin.cn.f.landlordFee" : "admin.cn.f.sellerFee"),
-                          })}
-                        </Row>
-                        <Row label={t("admin.cn.f.tenantFee")} hint={t("admin.cn.h.tenantFee")} htmlFor="cn-tbasis">
-{commissionRow({
-                            id: "cn-tbasis",
-                            basis: tenantBasis,
-                            setBasis: setTenantBasis,
-                            value: tenantValue,
-                            setValue: setTenantValue,
-                            pct: tenantPct,
-                            amount: tenantFee,
-                            label: t("admin.cn.f.tenantFee"),
-                          })}
-                        </Row>
-                      </Grid>
-                    </Section>
                   </>
                 ) : (
                   <>
@@ -1444,6 +1534,18 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                         <MoneyField quote={quote} id="cn-saledep" value={saleDepositText} onChange={setSaleDepositText} currency={currency} parsed={saleDeposit} />
                       </Row>
 
+                      {/* MONEY DOWN ON THE DAY, ON EITHER KIND OF SALE. It lived
+                          in the schedule group below and so could only be stated
+                          on an instalment sale, which said a buyer paying in full
+                          never puts anything down on signing day. They routinely
+                          do — the balance simply falls due at completion instead
+                          of over a schedule. Asked above the choice because it is
+                          a fact about the deal; the choice underneath is about
+                          what is left after it. */}
+                      <Row label={t("admin.cn.f.downPayment")} hint={t("admin.cn.h.downPayment")} htmlFor="cn-down" optional={t("admin.fin.optional")}>
+                        <MoneyField quote={quote} id="cn-down" value={downText} onChange={setDownText} currency={currency} parsed={downPayment} />
+                      </Row>
+
                       <Row label={t("admin.cn.f.howPaid")}>
                         <ChoiceCards value={salePayment} options={salePaymentChoices} onChange={setSalePayment} name={t("admin.cn.f.howPaid")} />
                       </Row>
@@ -1451,42 +1553,66 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
 
                     {template === "sale_installments" && (
                       <Section title={t("admin.cn.g.schedule")}>
-                        <Row label={t("admin.cn.f.downPayment")} htmlFor="cn-down" optional={t("admin.fin.optional")}>
-                          <MoneyField quote={quote} id="cn-down" value={downText} onChange={setDownText} currency={currency} parsed={downPayment} />
-                        </Row>
-                        <Row label={t("admin.cn.f.instCount")} htmlFor="cn-count" error={gapOn("cn-count")}>
-                          <NumberInput id="cn-count" value={instCount} onChange={setInstCount} min={1} max={360} width="sm" suffix={t("admin.cn.payments")} />
-                        </Row>
+                        {/* THREE BOXES, ONE SENTENCE — "twelve payments, every
+                            month, four thousand each". Two are asked and the
+                            third is worked out, which is the tenancy's dates
+                            line exactly (start, term, end) and the rule the
+                            whole form follows: a figure lives in the row that
+                            produces it. Sized alike so the line reads as one
+                            answer rather than three unrelated fields, which is
+                            why neither control states a width here.
+
+                            The hint belongs to the count because it is the one
+                            sentence explaining the section: the schedule spreads
+                            what is LEFT after the down payment, never the
+                            price. */}
+                        <Grid cols={3}>
+                          <Row label={t("admin.cn.f.instCount")} hint={t("admin.cn.h.instCount")} htmlFor="cn-count" error={gapOn("cn-count")}>
+                            <NumberInput id="cn-count" value={instCount} onChange={setInstCount} min={1} max={360} suffix={t("admin.cn.payments")} />
+                          </Row>
+                          <Row label={t("admin.cn.f.instFreq")} htmlFor="cn-freq">
+                            <SelectInput
+                              id="cn-freq"
+                              value={instFreq}
+                              onChange={setInstFreq}
+                              options={(["monthly", "quarterly", "biannual"] as InstallmentFrequency[]).map((f) => ({
+                                value: f,
+                                label: t("admin.cn.freq." + f, { months: fmtNum(lang, INSTALLMENT_MONTHS[f]) }),
+                              }))}
+                            />
+                          </Row>
+                          {/* Worked out, never typed — see ReadOut and instAmounts. */}
+                          <ReadOut
+                            label={t("admin.cn.f.eachInstallment")}
+                            value={instAmounts.length ? formatMoney(lang, instAmounts[0]) : undefined}
+                          />
+                        </Grid>
+
                         {/* A date, but not a CONTRACT date — it only means
                             anything beside the count and the rhythm, and it
                             appears only once instalments are chosen, which is a
                             choice made in this section. Above in Dates it would
-                            sit over the answer that summons it. */}
+                            sit over the answer that summons it.
+
+                            Below the line above rather than in it: it is what
+                            the dated list underneath steps forward from, so it
+                            sits directly over the thing it builds. */}
                         <Row label={t("admin.cn.f.firstDue")} hint={t("admin.cn.h.firstDue")} htmlFor="cn-first" error={gapOn("cn-first")}>
-                          <DateInput id="cn-first" value={firstInstOn} onChange={setFirstInstOn} />
-                        </Row>
-                        <Row label={t("admin.cn.f.instFreq")} htmlFor="cn-freq">
-                          <SelectInput
-                            id="cn-freq"
-                            value={instFreq}
-                            onChange={setInstFreq}
-                            width="md"
-                            options={(["monthly", "quarterly", "biannual"] as InstallmentFrequency[]).map((f) => ({
-                              value: f,
-                              label: t("admin.cn.freq." + f, { months: fmtNum(lang, INSTALLMENT_MONTHS[f]) }),
-                            }))}
-                          />
-                        </Row>
-                        <Row label={t("admin.cn.f.firstDue")} htmlFor="cn-first">
                           <DateInput id="cn-first" value={firstInstOn} onChange={setFirstInstOn} />
                         </Row>
 
                         {schedule.length > 0 && (
                           <div className="cn-schedule">
+                            {/* THE TWO FACTS THE READ-OUT ABOVE CANNOT CARRY: the
+                                balance this list clears, and the odd last
+                                payment rounding leaves behind. It used to say
+                                "12 × $4,166.67" as well, which is now the
+                                figure beside the count — and a number read in
+                                two places is the summary panel's mistake
+                                repeated at close range. */}
                             <p className="cn-schedule__summary">
                               {t("admin.cn.d.installmentSummary", {
-                                count: fmtNum(lang, schedule.length),
-                                each: formatMoney(lang, schedule[0].amount),
+                                total: financedBalance ? formatMoney(lang, financedBalance) : "",
                                 last: formatMoney(lang, schedule[schedule.length - 1].amount),
                               })}
                             </p>
@@ -1517,55 +1643,6 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                   </>
                 )}
 
-                {/* SALES ONLY. A lease keeps its two commissions inside "What
-                    the agency earns" above, beside the collection arrangement
-                    they belong with. A sale has one commission and nothing to
-                    collect, so it stays a group of its own down here. */}
-                {!lease && (
-                  <>
-                  {/* ---------------- commission ---------------- */}
-                  <GroupDivider label={t("admin.cn.g.commission")} note={t("admin.cn.commissionNote")} />
-
-                  {/* BOTH SIDES ON ONE ROW. They were two sections, each holding a
-                      single field labelled "Worked out as" — identical twins one
-                      above the other, and the only thing telling them apart was a
-                      heading you had already scrolled past. Side by side, with the
-                      party as the label, the difference is the point. The divider
-                      above already says these are commissions, so there is no
-                      section heading here to say it again. */}
-                  <Grid>
-                    <Row
-                      label={t("admin.cn.f.sellerFee")}
-                      hint={t("admin.cn.h.sellerFee")}
-                      htmlFor="cn-obasis"
-                    >
-                      {commissionRow({
-                        id: "cn-obasis",
-                        basis: ownerBasis,
-                        setBasis: setOwnerBasis,
-                        value: ownerValue,
-                        setValue: setOwnerValue,
-                        pct: ownerPct,
-                        amount: ownerFee,
-                        label: t("admin.cn.f.sellerFee"),
-                      })}
-                    </Row>
-
-                    {!lease && ownerBasis === "percent" && Number(ownerPct) !== mandateRate && (
-                      <Full>
-                        <Row
-                          label={t("admin.cn.f.overrideReason")}
-                          hint={t("admin.cn.h.overrideReason", { mandate: fmtNum(lang, mandateRate) })}
-                          htmlFor="cn-override"
-                        >
-                          <TextInput id="cn-override" value={overrideReason} onChange={setOverrideReason} placeholder={t("admin.cn.ph.overrideReason")} />
-                        </Row>
-                      </Full>
-                    )}
-                  </Grid>
-                  </>
-                )}
-
                 {/* NO CURRENCY QUESTION AT ALL.
 
                     There used to be a tickbox here asking whether the parties
@@ -1585,88 +1662,196 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                     filled from settings on save, exactly as it was before this
                     screen ever offered to ask. See `agreedRateFor`. */}
 
-                {/* PENALTIES LIVE WITH THE MONEY. Every one of them is a sum —
-                    a charge per late day, a figure for pulling out, a daily rate
-                    for not vacating — so putting them on the signing step split
-                    the money across two screens and left the last step holding
-                    one topic and a wall of amounts it had nothing to do with. */}
-                <Section title={t("admin.cn.g.penalties")}>
-                  {lease ? (
-                    <Grid>
-                      {/* 1 — LATE RENT. Calculated and offered on an overdue
-                          invoice, never charged automatically. The hint says so,
-                          because the field name alone reads like an auto-charge. */}
-                      <Full>
+                {/* ONE GROUP FOR EVERY CHARGE ON TOP OF THE RENT OR THE PRICE.
+
+                    The commissions and the penalties were two stops on the step
+                    with the collection arrangement wedged between them, and they
+                    are the same kind of answer: a sum the office may bill that is
+                    not the rent and not the price. The commission is charged once
+                    at signing; the penalties are charged only if something goes
+                    wrong, which is what each penalty's own hint says.
+
+                    NO SECOND HEADING INSIDE IT. There was a labelled rule here —
+                    "If either side breaks the agreement" — splitting the group in
+                    two. It made one topic look like two, gave the same kind of
+                    question two different rhythms, and pushed the last three
+                    fields most of a screen further down to say something the
+                    hints under them were already saying. The group's own title
+                    covers both halves.
+
+                    PENALTIES LIVE WITH THE MONEY. Every one of them is a sum — a
+                    charge per late day, a figure for pulling out, a daily rate for
+                    not vacating — so putting them on the signing step split the
+                    money across two screens and left the last step holding one
+                    topic and a wall of amounts it had nothing to do with. */}
+                <Section title={t("admin.cn.g.commissionPenalties")}>
+                  {/* ONE GRID FOR THE WHOLE GROUP, so every field on it lands on
+                      the same two columns: the commissions on the first line, the
+                      two charges on the second, the notice period alone on the
+                      third. It was two grids with a rule between them, and the one
+                      full-width field in the lower half made an optional charge
+                      the widest box on the step.
+
+                      BOTH SIDES ON ONE ROW. They were two sections, each holding a
+                      single field labelled "Worked out as" — identical twins one
+                      above the other, and the only thing telling them apart was a
+                      heading you had already scrolled past. Side by side, with the
+                      party as the label, the difference is the point. */}
+                  <Grid>
+                    {lease ? (
+                      <>
+                        <Row label={t("admin.cn.f.landlordFee")} hint={t("admin.cn.h.landlordFee")} htmlFor="cn-obasis">
+                          {commissionRow({
+                            id: "cn-obasis",
+                            basis: ownerBasis,
+                            setBasis: setOwnerBasis,
+                            value: ownerValue,
+                            setValue: setOwnerValue,
+                            amount: ownerFee,
+                            label: t("admin.cn.f.landlordFee"),
+                          })}
+                        </Row>
+                        <Row label={t("admin.cn.f.tenantFee")} hint={t("admin.cn.h.tenantFee")} htmlFor="cn-tbasis">
+                          {commissionRow({
+                            id: "cn-tbasis",
+                            basis: tenantBasis,
+                            setBasis: setTenantBasis,
+                            value: tenantValue,
+                            setValue: setTenantValue,
+                            amount: tenantFee,
+                            label: t("admin.cn.f.tenantFee"),
+                          })}
+                        </Row>
+
+                        {/* LATE RENT — A DAY OF THE RENT, IN THE BOX, EDITABLE.
+                            One money field: the basis dropdown beside it asked
+                            whether the empty number meant currency or percent, and
+                            both answers described the same charge. See `dailyLate`.
+                            Calculated and offered on an overdue invoice, never
+                            charged automatically — the hint says so, because the
+                            field name alone reads like an auto-charge.
+
+                            ONE COLUMN, LIKE EVERY OTHER CHARGE HERE. It used to
+                            take the full width, which made the widest field on the
+                            group the one optional charge on it. */}
                         <Row label={t("admin.cn.f.lateRent")} hint={t("admin.cn.h.lateRent")} htmlFor="cn-late" optional={t("admin.fin.optional")}>
-                          <Pair lead="auto">
-                            {(clauses.lateRentBasis as LateRentBasis) === "percent_per_day" ? (
-                            <NumberInput id="cn-late" value={String(clauses.lateRentPenalty ?? "")} onChange={(v) => setClause("lateRentPenalty", v)} width="sm" decimal suffix="%" />
-                          ) : (
-                            <MoneyField quote={quote} currency={currency} id="cn-late" value={String(clauses.lateRentPenalty ?? "")} onChange={(v) => setClause("lateRentPenalty", v)} parsed={toMoney(String(clauses.lateRentPenalty ?? ""))} />
-                          )}
-                            <SelectInput
-                              value={(clauses.lateRentBasis as LateRentBasis) || "per_day"}
-                              onChange={(v) => setClause("lateRentBasis", v)}
-                              ariaLabel={t("admin.cn.f.lateRent")}
-                              options={[
-                                { value: "per_day", label: t("admin.cn.lateBasis.per_day", { currency }) },
-                                { value: "percent_per_day", label: t("admin.cn.lateBasis.percent_per_day") },
-                              ]}
-                            />
-                          </Pair>
+                          <MoneyField
+                            quote={quote}
+                            currency={currency}
+                            id="cn-late"
+                            value={lateText}
+                            onChange={(v) => setClause("lateRentPenalty", v)}
+                            parsed={toMoney(lateText)}
+                          />
                         </Row>
-                      </Full>
 
-                      {/* 3 — NOT VACATING. A date and a daily charge, clause text
-                          only, same as above. */}
-                      <Full>
-                        <Row label={t("admin.cn.f.vacate")} hint={t("admin.cn.h.vacate")} htmlFor="cn-vacate" optional={t("admin.fin.optional")}>
-                          <Pair lead="1fr">
-                            <DateInput id="cn-vacate" value={(clauses.vacateByDate as string) || mustBeOutBy} onChange={(v) => setClause("vacateByDate", v)} />
-                            <MoneyField quote={quote} currency={currency} id="cn-vacatefee" value={String(clauses.dailyVacatePenalty ?? "")} onChange={(v) => setClause("dailyVacatePenalty", v)} parsed={toMoney(String(clauses.dailyVacatePenalty ?? ""))} />
-                          </Pair>
+                        {/* PULLING OUT. Clause text only: nothing in the system
+                            ever raises an invoice for it. Beside the late day
+                            because they are the same question asked twice — what
+                            it costs to break this — and the two answers are read
+                            against each other. */}
+                        <Row label={t("admin.cn.f.regret")} hint={t("admin.cn.h.regret")} htmlFor="cn-regret" optional={t("admin.fin.optional")}>
+                          <MoneyField quote={quote} currency={currency} id="cn-regret" value={String(clauses.regretPenalty ?? "")} onChange={(v) => setClause("regretPenalty", v)} parsed={toMoney(String(clauses.regretPenalty ?? ""))} />
                         </Row>
-                      </Full>
 
-                      {/* 2 — PULLING OUT. Clause text only: nothing in the system
-                          ever raises an invoice for it. */}
-                      <Row label={t("admin.cn.f.regret")} hint={t("admin.cn.h.regret")} htmlFor="cn-regret" optional={t("admin.fin.optional")}>
-                        <MoneyField quote={quote} currency={currency} id="cn-regret" value={String(clauses.regretPenalty ?? "")} onChange={(v) => setClause("regretPenalty", v)} parsed={toMoney(String(clauses.regretPenalty ?? ""))} />
-                      </Row>
+                        {/* NOT VACATING IS NO LONGER ASKED. It was a date and a
+                            daily charge for staying on past the end — and the date
+                            is the term end, which the form already works out three
+                            groups up, so the row asked for an answer it had and
+                            invited somebody to type one that contradicted it. The
+                            CLAUSE is untouched: `vacateByDate` is still written on
+                            the record from the derived end date (see the draft),
+                            and a contract that already carries a daily charge keeps
+                            it through a reopened draft or an amendment. */}
 
-                      <Row label={t("admin.cn.f.noticeDays")} hint={t("admin.cn.h.noticeDays")} htmlFor="cn-notice">
-                        <NumberInput id="cn-notice" value={clauses.noticeDays ?? ""} onChange={(v) => setClause("noticeDays", v)} min={0} max={365} width="sm" suffix={t("admin.cn.days")} />
-                      </Row>
-                    </Grid>
-                  ) : (
-                    <Grid>
-                      <Row label={t("admin.cn.f.breach")} hint={t("admin.cn.h.breach")} htmlFor="cn-breach" optional={t("admin.fin.optional")}>
-                        <MoneyField quote={quote} currency={currency} id="cn-breach" value={String(clauses.breachPenalty ?? "")} onChange={(v) => setClause("breachPenalty", v)} parsed={toMoney(String(clauses.breachPenalty ?? ""))} />
-                      </Row>
-                      <Row label={t("admin.cn.f.registration")} hint={t("admin.cn.h.registration")} htmlFor="cn-reg" optional={t("admin.fin.optional")}>
-                        <MoneyField quote={quote} currency={currency} id="cn-reg" value={String(clauses.registrationDeposit ?? "")} onChange={(v) => setClause("registrationDeposit", v)} parsed={toMoney(String(clauses.registrationDeposit ?? ""))} />
-                      </Row>
-                      <Full>
-                        <Row label={t("admin.cn.f.evacuation")} hint={t("admin.cn.h.evacuation")} htmlFor="cn-evac" optional={t("admin.fin.optional")}>
-                          <Pair lead="1fr">
-                            <DateInput id="cn-evac" value={(clauses.evacuationDate as string) || mustBeOutBy} onChange={(v) => setClause("evacuationDate", v)} />
-                            <MoneyField quote={quote} currency={currency} id="cn-delayfee" value={String(clauses.dailyDelayPenalty ?? "")} onChange={(v) => setClause("dailyDelayPenalty", v)} parsed={toMoney(String(clauses.dailyDelayPenalty ?? ""))} />
-                          </Pair>
+                        {/* A LENGTH OF TIME, NOT A SUM — so it starts its own line
+                            under the two charges rather than pairing with one of
+                            them, and it stays one column wide. */}
+                        <Row label={t("admin.cn.f.noticeDays")} hint={t("admin.cn.h.noticeDays")} htmlFor="cn-notice">
+                          <NumberInput id="cn-notice" value={clauses.noticeDays ?? ""} onChange={(v) => setClause("noticeDays", v)} min={0} max={365} width="sm" suffix={t("admin.cn.days")} />
                         </Row>
-                      </Full>
-                    </Grid>
-                  )}
+                      </>
+                    ) : (
+                      <>
+                        <Row label={t("admin.cn.f.sellerFee")} hint={t("admin.cn.h.sellerFee")} htmlFor="cn-obasis">
+                          {commissionRow({
+                            id: "cn-obasis",
+                            basis: ownerBasis,
+                            setBasis: setOwnerBasis,
+                            value: ownerValue,
+                            setValue: setOwnerValue,
+                            amount: ownerFee,
+                            label: t("admin.cn.f.sellerFee"),
+                          })}
+                        </Row>
+
+                        {/* THE BUYER PAYS TOO. Beside the seller's and worked the
+                            same way, because it is the same question asked of the
+                            other party — and reading the two together is how
+                            anybody checks what the office earns on the deal. Same
+                            standard rate on both sides, and each typed over on
+                            its own when the parties agreed something else. */}
+                        <Row label={t("admin.cn.f.buyerFee")} hint={t("admin.cn.h.buyerFee")} htmlFor="cn-tbasis">
+                          {commissionRow({
+                            id: "cn-tbasis",
+                            basis: tenantBasis,
+                            setBasis: setTenantBasis,
+                            value: tenantValue,
+                            setValue: setTenantValue,
+                            amount: tenantFee,
+                            label: t("admin.cn.f.buyerFee"),
+                          })}
+                        </Row>
+
+                        {/* "WHY THE RATE DIFFERS" IS NO LONGER ASKED.
+                            It appeared whenever the seller's rate was not the
+                            mandate on the listing, and it had exactly one way in:
+                            the rate box beside the money. With that box gone the
+                            rate is a house constant, the mandate is what a seller
+                            agreed to at listing rather than what this contract
+                            charges, and the row could only ever have fired on
+                            every sale at once or never.
+
+                            THE FIELD IS STILL CARRIED. `commissionOverrideReason`
+                            rides through from an existing contract, exactly as
+                            the handover date and the payment method do, so
+                            reopening a draft or amending a signed sale keeps the
+                            reason it was written with instead of dropping it —
+                            and the audit line that reads it (see
+                            logCommissionOverride) still has something to say. */}
+
+                        {/* The two sums a sale can be broken for, side by side —
+                            same reason the tenancy pairs its two. */}
+                        <Row label={t("admin.cn.f.breach")} hint={t("admin.cn.h.breach")} htmlFor="cn-breach" optional={t("admin.fin.optional")}>
+                          <MoneyField quote={quote} currency={currency} id="cn-breach" value={String(clauses.breachPenalty ?? "")} onChange={(v) => setClause("breachPenalty", v)} parsed={toMoney(String(clauses.breachPenalty ?? ""))} />
+                        </Row>
+                        <Row label={t("admin.cn.f.registration")} hint={t("admin.cn.h.registration")} htmlFor="cn-reg" optional={t("admin.fin.optional")}>
+                          <MoneyField quote={quote} currency={currency} id="cn-reg" value={String(clauses.registrationDeposit ?? "")} onChange={(v) => setClause("registrationDeposit", v)} parsed={toMoney(String(clauses.registrationDeposit ?? ""))} />
+                        </Row>
+
+                        {/* NOT HANDING OVER IS NO LONGER ASKED — the sale's twin
+                            of the tenancy row above, and gone for the same
+                            reason. It was a date and a daily charge for missing
+                            it, and the date is the handover day, which the form
+                            works out from the handover or the signing date (see
+                            mustBeOutBy). The row pre-filled that answer and then
+                            invited somebody to type one contradicting it. The
+                            CLAUSE is untouched: `evacuationDate` is still written
+                            on the record from the derived date (see the draft),
+                            and a sale that already carries a daily charge keeps
+                            it through a reopened draft or an amendment. */}
+                      </>
+                    )}
+                  </Grid>
                 </Section>
 
-                {/* WHAT THE PAPER ITSELF SAYS — where it was signed, how many
-                    originals exist, who arranged it, and where the signed one is
-                    kept. Facts about the document rather than about the deal,
-                    which is why they sit apart from the dates above. */}
+                {/* WHAT THE PAPER ITSELF SAYS — how many originals exist, who
+                    arranged it, and anything else worth writing down. Facts about
+                    the document rather than about the deal. WHERE it was signed
+                    is no longer one of them: it is half of the signature line and
+                    it sits with the other half, at the top of the step. */}
                 <Section title={t("admin.cn.g.paperwork")}>
                   <Grid>
-                    <Row label={t("admin.cn.f.city")} htmlFor="cn-city" error={gapOn("cn-city")}>
-                      <TextInput id="cn-city" value={city || property?.city || ""} onChange={setCity} placeholder={t("admin.cn.ph.city")} />
-                    </Row>
                     <Row label={t("admin.cn.f.copies")} htmlFor="cn-copies">
                       <NumberInput id="cn-copies" value={copies} onChange={setCopies} min={1} max={9} width="sm" suffix={t("admin.cn.copiesUnit")} />
                     </Row>
@@ -1688,6 +1873,46 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                     </Full>
                   </Grid>
                 </Section>
+
+                {/* LAST, BECAUSE IT IS ABOUT AFTERWARDS.
+                    Everything above is what the contract SAYS — the term, the
+                    rent, what is charged and what the paper looks like. This is
+                    what the office DOES once it is signed: take the rent in and
+                    pass it on, or leave the landlord to collect it himself. It
+                    sat in the middle of the money, above the commissions, where
+                    it read as one more figure in the deal instead of the standing
+                    arrangement it is. */}
+                {lease && (
+                  <Section title={t("admin.cn.g.collection")}>
+                    <Row label={t("admin.cn.f.rentPaidTo")}>
+                      <ChoiceCards value={rentPaidTo} options={rentPaidToChoices} onChange={setRentPaidTo} name={t("admin.cn.f.rentPaidTo")} />
+                    </Row>
+
+                    {/* The fee appears only when the agency collects. Removed,
+                        not disabled — there is nothing to fill in when the
+                        landlord takes the rent himself. */}
+                    {rentPaidTo === "agency" && (
+                      <Row label={t("admin.ct.f.managementFee")} hint={t("admin.cn.h.managementFee")} htmlFor="cn-fee">
+                        <Pair lead="auto">
+                          <SelectInput
+                            value={feeType}
+                            onChange={setFeeType}
+                            ariaLabel={t("admin.ct.f.managementFee")}
+                            options={[
+                              { value: "percent", label: t("admin.cn.fee.percent") },
+                              { value: "fixed", label: t("admin.cn.fee.fixed") },
+                            ]}
+                          />
+                          {feeType === "percent" ? (
+                            <NumberInput id="cn-fee" value={feeText} onChange={setFeeText} width="sm" decimal suffix="%" />
+                          ) : (
+                            <MoneyField quote={quote} currency={currency} id="cn-fee" value={feeText} onChange={setFeeText} parsed={toMoney(feeText)} />
+                          )}
+                        </Pair>
+                      </Row>
+                    )}
+                  </Section>
+                )}
 
                 {amending && (
                   <Section title={t("admin.cn.g.amendment")}>
@@ -1767,6 +1992,13 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                         <RevItem k={t("admin.ct.f.price")} v={salePrice ? formatMoney(lang, salePrice) : undefined} price tnum />
                         <RevItem k={t("admin.cn.f.howPaid")} v={t("admin.cn.pay." + (template === "sale_installments" ? "installments" : "full"))} />
                         <RevItem k={t("admin.cn.f.deposit.sale")} v={saleDeposit && !isZero(saleDeposit) ? formatMoney(lang, saleDeposit) : undefined} tnum />
+                        {/* Only when there is one. On a full-payment sale a down
+                            payment is the exception rather than a blank waiting
+                            to be filled, and an empty line here would read as a
+                            gap rather than as "none was taken". */}
+                        {downPayment && !isZero(downPayment) && (
+                          <RevItem k={t("admin.cn.f.downPayment")} v={formatMoney(lang, downPayment)} tnum />
+                        )}
                         {template === "sale_installments" && (
                           <RevItem
                             k={t("admin.cn.g.schedule")}
@@ -1777,7 +2009,13 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                       </>
                     )}
                     <RevItem k={t(lease ? "admin.cn.f.landlordFee" : "admin.cn.f.sellerFee")} v={formatMoney(lang, ownerFee)} tnum />
-                    {lease && <RevItem k={t("admin.cn.f.tenantFee")} v={formatMoney(lang, tenantFee)} tnum />}
+                    {/* Both sides on both kinds. Hidden when the contract waives
+                        this one — an old sale being amended states no buyer's
+                        fee, and a line reading "—" would look like a gap rather
+                        than the term it is. */}
+                    {tenantBasis !== "none" && (
+                      <RevItem k={t(lease ? "admin.cn.f.tenantFee" : "admin.cn.f.buyerFee")} v={formatMoney(lang, tenantFee)} tnum />
+                    )}
                     {/* Only on a contract that actually carries a frozen rate —
                         an amended one, or a draft written before all listings
                         moved to dollars. Shown as the familiar quote, never the

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
@@ -146,15 +146,31 @@ function ContractTableRow({ row, basePath }: { row: ContractRow; basePath: strin
         <span className="ct-prop__id">{localizeDigits(lang, row.propertyId)}</span>
       </div>
 
+      {/* BOTH SIDES, EACH IN ITS OWN ROLE.
+          The list used to name the buyer or tenant and nobody else, under the
+          heading "Counterparty" — which left half of every agreement off the
+          screen and never said which half was on it. Two columns now, and the
+          role under each name is read off the contract's own kind, because
+          "Landlord" and "Seller" are not the same job and a column heading
+          cannot say which one a row means. */}
+      <div className="ct-col--owner">
+        <span className="ct-celllabel">{t("admin.ct.th.owner")}</span>
+        <span className="ct-party__name">{row.ownerName}</span>
+        <span className="ct-party__role">{t(c.kind === "sale" ? "admin.pd.seller" : "admin.pd.landlord")}</span>
+      </div>
+
       <div className="ct-col--party">
         <span className="ct-celllabel">{t("admin.ct.th.counterparty")}</span>
         {row.counterparty ? (
-          <span className="ct-party">
+          <>
             <span className="ct-party__name">{row.counterparty}</span>
-            {!row.counterpartyId && <span className="ct-party__ext">{t("admin.pd.externalParty")}</span>}
-          </span>
+            <span className="ct-party__meta">
+              <span className="ct-party__role">{t(c.kind === "sale" ? "admin.pd.buyer" : "admin.pd.tenant")}</span>
+              {!row.counterpartyId && <span className="ct-party__ext">{t("admin.pd.externalParty")}</span>}
+            </span>
+          </>
         ) : (
-          <span className="ct-party ct-party--none">{t("admin.pd.noCounterparty")}</span>
+          <span className="ct-party ct-party--none">{t(c.kind === "sale" ? "admin.pd.noCounterparty" : "admin.ct.noTenantYet")}</span>
         )}
       </div>
 
@@ -267,9 +283,16 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
       if (activeTab !== "all" && c.status !== activeTab) return false;
       if (filters.kind && c.kind !== filters.kind) return false;
       if (filters.agent && c.agentId !== filters.agent) return false;
+      /* The worklist filter — an ended tenancy still holding somebody’s deposit.
+         Same derived flag the row badge uses, so the count, the chip and the
+         rows can never disagree. */
+      if (filters.depositsToClose && !r.depositHeld) return false;
       if (!matchesDateRange(c, filters.dateRange)) return false;
       if (sq) {
-        const hay = [c.id, r.propertyTitle, r.propertyId, r.counterparty ?? "", r.agentName].join(" ").toLowerCase();
+        /* Both parties are searchable, not just the one who pays — the owner is
+           on the row now, and a name on screen that the search box cannot find
+           reads as a broken search box. */
+        const hay = [c.id, r.propertyTitle, r.propertyId, r.ownerName, r.counterparty ?? "", r.agentName].join(" ").toLowerCase();
         if (!hay.includes(sq)) return false;
       }
       return true;
@@ -342,9 +365,35 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
       </header>
 
       <div className="ct-kpis">
-        {KPI_CARDS.map((c) => (
+        {KPI_CARDS.map((c) => {
+          /* THE NUMBER WAS ALREADY HERE AND LED NOWHERE. "2 deposits to close"
+             told you a job existed and gave you no way to find which contracts
+             it meant — you had to already know the answer to look it up. The
+             card is now the way in. */
+          const opensWorklist = c.key === "depositsHeld" && kpis.depositsToClose > 0;
+          const openWorklist = () => {
+            setFilter("depositsToClose", "1");
+            setActiveTab("all");
+            setFiltersOpen(true);
+          };
+          return (
           <StatCard
             key={c.key}
+            {...(opensWorklist
+              ? {
+                  className: "ct-kpi--action",
+                  role: "button",
+                  tabIndex: 0,
+                  title: t("admin.ct.filter.depositsToClose"),
+                  onClick: openWorklist,
+                  onKeyDown: (e: ReactKeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openWorklist();
+                    }
+                  },
+                }
+              : {})}
             label={t(`admin.ct.kpi.${c.key}`)}
             value={kpiValue(c.key)}
             icon={c.icon}
@@ -359,7 +408,8 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
                   : t(`admin.ct.kpiSub.${c.key}`)
             }
           />
-        ))}
+          );
+        })}
       </div>
 
       <section className="ct-tablecard">
@@ -447,6 +497,22 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
                   placeholder={t("admin.ct.filter.signed")}
                   ariaLabel={t("admin.ct.filter.signed")}
                 />
+                {/* A TOGGLE, not a dropdown — it has one meaningful state, and
+                    burying "an ended lease still holding money" inside a select
+                    would hide the only filter on this screen that is a job
+                    rather than a way of narrowing a list. */}
+                {kpis.depositsToClose > 0 && (
+                  <button
+                    type="button"
+                    className={"ct-flagbtn" + (filters.depositsToClose ? " is-active" : "")}
+                    aria-pressed={!!filters.depositsToClose}
+                    onClick={() => setFilter("depositsToClose", filters.depositsToClose ? "" : "1")}
+                  >
+                    <Icon name="wallet" size={15} />
+                    {t("admin.ct.filter.depositsToClose")}
+                    <span className="ct-flagbtn__count">{fmtNum(lang, kpis.depositsToClose)}</span>
+                  </button>
+                )}
                 <div className="ct-filterbar__actions">
                   <button type="button" className="ct-clearbtn" onClick={clearFilters}>
                     <Icon name="x" size={14} />
@@ -462,6 +528,7 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
           <div className="ct-thead" role="row">
             <span className="ct-th ct-col--id">{t("admin.ct.th.id")}</span>
             <span className="ct-th ct-col--property">{t("admin.ct.th.property")}</span>
+            <span className="ct-th ct-col--owner">{t("admin.ct.th.owner")}</span>
             <span className="ct-th ct-col--party">{t("admin.ct.th.counterparty")}</span>
             <span className="ct-th ct-col--kind">{t("admin.ct.th.kind")}</span>
             <span className="ct-th ct-col--status">{t("admin.ct.th.status")}</span>

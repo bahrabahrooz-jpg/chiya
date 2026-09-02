@@ -1,0 +1,192 @@
+  /* ============================================================
+     INVOICES PAGE  (inv- namespace)
+
+     The chrome is the contracts list's, imported by page.tsx — same header,
+     KPI strip, table card, filter row and footer, class for class. Only the
+     COLUMNS differ between the two lists, so only the columns are here.
+
+     Everything below is scoped under .inv-scope so the two stylesheets can
+     load together on this route without the invoice column template leaking
+     onto the contracts table.
+     ============================================================ */
+
+  /* ---------- COLUMN TEMPLATE ----------
+     Eight columns, and the two on the right are sized for their worst case:
+     an amount column that must hold "943,200,000 IQD" without wrapping (a
+     broken money column is a misread money column), and an action cell wide
+     enough for two 32px buttons plus the chevron. */
+  .inv-scope .ct-thead,
+  .inv-scope .ct-row {
+    grid-template-columns:
+      minmax(132px, 1fr)     /* invoice number + category */
+      minmax(150px, 1.3fr)   /* billed to */
+      minmax(186px, 1.7fr)   /* the contract's two parties */
+      minmax(180px, 1.7fr)   /* property / contract */
+      116px                  /* due date */
+      140px                  /* status */
+      minmax(150px, 1fr)     /* amount + still owed */
+      124px;                 /* actions */
+    min-width: 1360px;
+  }
+
+  /* Rows carry two lines in most of the cells, so they need the room the
+     contracts table gives its own two-line id cell. */
+  .inv-scope .ct-row { min-height: 74px; }
+
+  /* ---------- NUMBER + CATEGORY ---------- */
+  .inv-col--number { gap: var(--space-1); }
+  .inv-cat {
+    display: inline-flex; align-items: center; gap: var(--space-1);
+    font-size: 11.5px; font-weight: 600; color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+  .inv-cat svg { flex: none; color: var(--text-brand-muted); }
+  /* Whose money, beside what the demand is for — see the note in the row. */
+  .inv-payee {
+    flex: none; font-size: 10.5px; font-weight: 600; color: var(--text-tertiary);
+    padding: 1px 6px; border-radius: var(--radius-pill); background: var(--gray-100);
+    white-space: nowrap;
+  }
+
+  /* ---------- BILLED TO ----------
+     Just the party. The payee chip used to sit under this name and read as a
+     label about the person — "Kani Omar · Owner's money" says the tenant is an
+     owner. It is a fact about the demand and now sits with the demand's type. */
+  .inv-col--party { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .inv-party__name {
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+    line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ---------- THE CONTRACT'S TWO PARTIES ----------
+     Two stacked lines, the role first and the name after it. The role leads
+     because it is the fixed part: the eye runs down "Landlord / Tenant" on
+     every row and only stops to read a name when it is looking for one. Both
+     lines truncate rather than wrap — a party cell that grows a third line
+     pushes the money column off the bottom of the row. */
+  .inv-col--parties { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .inv-side { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+  .inv-side__role {
+    flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap;
+  }
+  .inv-side__who {
+    min-width: 0; font-size: 13px; font-weight: 600; color: var(--text-primary);
+    line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .inv-side__who--none { font-weight: 500; font-style: italic; color: var(--text-tertiary); }
+
+  /* ---------- PROPERTY / CONTRACT ---------- */
+  .inv-col--property { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+  /* ---------- DUE DATE, STATUS ---------- */
+  .inv-col--due { min-width: 0; }
+  .inv-col--status { min-width: 0; }
+
+  /* ---------- AMOUNT ----------
+     The total on top, what is still owed underneath and only when the two
+     differ — a part-paid demand is the one row somebody has to read twice, and
+     repeating the same figure on every other row would hide it. */
+  .inv-col--amount { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .inv-owed {
+    font-size: 11.5px; font-weight: 600; color: var(--warning-600);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
+  /* ---------- ROW ACTIONS ----------
+     Recording a payment and withdrawing a demand, the same two the contract
+     page offers on the same records. Icon-only because the column is 124px and
+     both carry a title and an aria-label. */
+  .inv-col--actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
+  .inv-actbtn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex: none;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-secondary);
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background-color .15s;
+  }
+  .inv-actbtn:hover { border-color: var(--border-strong); color: var(--text-brand); }
+  .inv-actbtn:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .inv-actbtn--danger:hover { border-color: var(--error-100); color: var(--error-600); background: var(--error-50); }
+  /* Dead, not hidden — a missing button is a thing somebody hunts for. The
+     title says why. See the guard in voidInvoice. */
+  .inv-actbtn:disabled { opacity: .4; cursor: not-allowed; }
+  .inv-actbtn:disabled:hover { background: var(--surface-card); border-color: var(--border-default); color: var(--text-secondary); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .inv-actbtn { transition: none; }
+  }
+
+  /* ---------- CHOOSE-A-CONTRACT PICKER ----------
+     Step one of Add invoice. Lives inside the finance modal shell, so only the
+     search box and the result rows are here. */
+  .inv-pick { display: flex; flex-direction: column; gap: var(--space-4); }
+  .inv-pick__search {
+    display: flex; align-items: center; gap: var(--space-2);
+    padding-inline: var(--space-3); block-size: 44px;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-tertiary);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .inv-pick__search:focus-within { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .inv-pick__search svg { flex: none; }
+  .inv-pick__search input {
+    flex: 1 1 auto; min-inline-size: 0;
+    border: none; background: none; outline: none;
+    font: inherit; font-size: 14px; color: var(--text-primary);
+  }
+  .inv-pick__search input::placeholder { color: var(--text-placeholder); }
+
+  /* Instruction and answer share this line — see the note in the component on
+     why they are never the same sentence. */
+  .inv-pick__hint {
+    margin: 0; padding-block: var(--space-6);
+    text-align: center; font-size: 13.5px; color: var(--text-tertiary); text-wrap: pretty;
+  }
+
+  .inv-pick__list {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: var(--space-2);
+    max-block-size: 340px; overflow-y: auto;
+  }
+  .inv-pick__row {
+    inline-size: 100%; display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3); text-align: start;
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-control);
+    background: var(--surface-card); cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+  }
+  .inv-pick__row:hover { border-color: var(--border-strong); background: var(--surface-sunken); }
+  .inv-pick__row:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .inv-pick__main { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; flex: 1 1 auto; }
+  .inv-pick__title {
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .inv-pick__meta {
+    font-size: 12px; color: var(--text-tertiary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* What is already billed — the line that stops the same repair being charged
+     twice. Brand-muted rather than grey: it is the one thing on the row worth
+     reading before clicking it. */
+  .inv-pick__billed { font-size: 12px; font-weight: 600; color: var(--text-brand-muted); }
+  .inv-pick__go { flex: none; color: var(--text-tertiary); }
+  [dir="rtl"] .inv-pick__go { transform: scaleX(-1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .inv-pick__row, .inv-pick__search { transition: none; }
+  }
+
+  /* ---------- MOBILE ----------
+     The table keeps scrolling horizontally, exactly as the contracts one does;
+     what changes is the tap target. Two 32px buttons are fine under a mouse and
+     too small under a thumb. */
+  @media (max-width: 767px) {
+    .inv-scope .ct-thead,
+    .inv-scope .ct-row { grid-template-columns:
+      minmax(132px, 1fr) minmax(150px, 1.3fr) minmax(186px, 1.7fr) minmax(180px, 1.7fr) 116px 140px minmax(150px, 1fr) 148px; }
+    .inv-actbtn { width: 44px; height: 44px; }
+    .inv-scope .ct-golink { width: 44px; height: 44px; }
+  }

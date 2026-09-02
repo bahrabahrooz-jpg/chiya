@@ -196,16 +196,12 @@ export function ReadOut({ label, value }: { label: string; value?: string }) {
    their own bases, and the one thing nobody could see was all of them at once.
    Every one of those figures is in ./summary now. */
 
-/** A labelled divider introducing a group that is a different KIND of thing —
-    the two commissions below the rent terms, for instance. */
-export function GroupDivider({ label, note }: { label: string; note?: string }) {
-  return (
-    <div className="cn-divider">
-      <span className="cn-divider__label">{label}</span>
-      {note && <span className="cn-divider__note">{note}</span>}
-    </div>
-  );
-}
+/* `GroupDivider` used to live here — a labelled rule introducing a second kind
+   of thing INSIDE a section, used once, over the penalties that share a group
+   with the commissions. It was a heading below a heading: it split five
+   questions of the same kind into two blocks with two rhythms, and the sentence
+   it carried ("charged only if it happens") is on every one of those fields as
+   a hint already. Sections divide this form; nothing divides a section. */
 
 /* ----------------------------------------------------------------------------
    What you picked
@@ -395,6 +391,13 @@ export function TextInput({
       id={id}
       type="text"
       className={"cn-input" + widthClass(width)}
+      /* THE BROWSER'S SAVED DETAILS ARE THE WRONG PERSON'S.
+         Every text field on this form asks about somebody ELSE — the tenant's
+         name, the proxy's phone, the id number on a passport, the city on the
+         paper. The browser reads `cn-city` and offers the operator's own saved
+         address; accept it once by reflex and a legal document carries the
+         wrong details. Off on all of them, not just the city. */
+      autoComplete="off"
       /* dir="auto", NOT "rtl".
          Party names really are written in Arabic or Kurdish script inside an
          English document, and these fields used to be forced right-to-left for
@@ -538,7 +541,7 @@ export function DateInput({
   const [view, setView] = useState(() => value || ANCHOR_ISO);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { coords, calc } = useTopbarClip(triggerRef);
+  const { coords, calc } = useTopbarClip(triggerRef, open);
 
   useEffect(() => {
     if (!open) return;
