@@ -4,7 +4,8 @@ import type { StatTone } from "@/components/data/stat-card";
 import { AGENTS } from "../_data/catalog";
 
 export { MEMBERS } from "../_data/catalog";
-export type { MemberRecord } from "../_data/catalog";
+export type { IdKind, MemberRecord } from "../_data/catalog";
+import type { IdKind } from "../_data/catalog";
 
 export const ITEMS_PER_PAGE = 10;
 
@@ -56,6 +57,19 @@ export const AM_AGENTS: AmAgent[] = AGENTS.filter((a) => a.verification === "Ver
   img: a.img || "",
 }));
 
+/* The two documents anybody signs a contract on here. Not free text: an office
+   that can type its own document names ends up with "ID", "id card", "Civil"
+   and "جنسية" meaning the same thing, and the contract then cannot say which
+   paper it was. Add a third the day a third is actually accepted. */
+export const ID_KINDS: IdKind[] = ["civil", "passport"];
+
+/* WHERE A MEMBER LIVES — the same three cities the properties use, because a
+   member living in a city the platform does not operate in is a typo far more
+   often than it is a fact, and matching the property list keeps a filter across
+   the two possible later. Free-text area, deliberately: the neighbourhoods are
+   not a closed set and never will be. */
+export const AM_CITIES = ["Erbil", "Sulaymaniyah", "Duhok"];
+
 export const MP_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 export const MP_MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const MP_WD = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -66,3 +80,12 @@ export const sameDay = (a: Date | null, b: Date | null) =>
 
 export const EMPTY_FILTERS = { q: "", role: "", status: "", date: null as Date | null };
 export type MemberFilters = typeof EMPTY_FILTERS;
+
+/* ----------------------------------------------------------------------------
+   Creating one
+   ------------------------------------------------------------------------- */
+
+/* The factory itself lives in ./new-member so the public site can create a
+   member without importing this file, which pulls the whole catalogue. Kept
+   exported from here because two admin screens already import it from here. */
+export { newMemberRecord } from "./new-member";

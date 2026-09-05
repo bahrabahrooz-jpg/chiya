@@ -32,7 +32,7 @@ import {
 import { useProperties } from "../_shared/properties-store";
 import { useContracts } from "../_shared/contracts-store";
 import { canPublish } from "../_data/property-state";
-import { STATUS_META as CONTRACT_STATUS_META } from "../_contracts/data";
+import { STATUS_META as CONTRACT_STATUS_META, displayStatus } from "../_contracts/data";
 import { contractValue, invoiceStatus, type ContractRecord } from "../_data/contracts";
 
 const ADMIN = { name: "Rêbîn Kawa", role: "Super Admin" };
@@ -1224,11 +1224,14 @@ function ContractsPanel({ p, agentSurface, onCreateContract }: { p: DetailProper
       <div className="pd-deals">
         {rows.map((c) => {
           const party = counterpartyOf(c, memberName);
-          /* Toned from the SHARED contract-status map, so a status badge looks
-             the same here as it does on the contracts list. Toning it by the
+          /* Toned from the SHARED contract-status map, and keyed by the same
+             DISPLAY status the contracts list prints, so one contract reads the
+             same word and the same colour on both screens. Toning it by the
              property availability instead (which this panel used to do) made
-             one contract read green on one screen and blue on the other. */
-          const tone = CONTRACT_STATUS_META[c.status];
+             one contract read green on one screen and blue on the other; keying
+             it by the stored status left an expired lease looking active. */
+          const ds = displayStatus(c);
+          const tone = CONTRACT_STATUS_META[ds];
           const contractInvoices = invoicesByContract(c.id);
           const owed = outstandingForContract(c.id);
           const href = `${base}/contracts/${encodeURIComponent(c.id)}`;
@@ -1257,7 +1260,7 @@ function ContractsPanel({ p, agentSurface, onCreateContract }: { p: DetailProper
                 </span>
                 <span className="pd-deal__spacer" />
                 <Badge variant={tone.variant} size="sm" icon={"icon" in tone ? tone.icon : undefined}>
-                  {t(`admin.ct.status.${c.status}`)}
+                  {t(`admin.ct.status.${ds}`)}
                 </Badge>
                 {/* formatMoney, never formatApprox: a contract value is
                     authoritative and must never render as an estimate. */}

@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { LANGS, dirFor, translate, useLang, type Lang } from "@/lib/i18n";
@@ -213,7 +214,12 @@ export function ContractDocApp({ id }: { id: string }) {
      moment somebody prints an Arabic lease from an English console — the same
      split, and the same reasoning, as the receipt. */
   const { t: ui, lang: uiLang } = useLang();
-  const [picked, setLang] = useState<Lang | null>(null);
+  /* ?lang= is how the Documents tab prints this sheet without anybody having
+     to come here and choose — the same contract receipt-app.tsx honours. Read
+     once, as the initial value, so the picker above still wins the moment
+     somebody touches it. */
+  const asked = useSearchParams().get("lang");
+  const [picked, setLang] = useState<Lang | null>(() => (LANGS.includes(asked as Lang) ? (asked as Lang) : null));
   const lang = picked ?? uiLang;
   const t = useCallback((key: string, params?: Record<string, string | number>) => translate(lang, key, params), [lang]);
 

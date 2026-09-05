@@ -1,5 +1,9 @@
 import type { IconName } from "@/components/ui/icon";
 import { ANCHOR_ISO } from "@/lib/dates";
+import type { Lang } from "@/lib/i18n";
+/* Read straight from the generator rather than through _shared/finance's
+   barrel: that module pulls in the modals, and this one is data only. */
+import { invoiceLineText, periodLabel, type Translate } from "../_shared/finance/invoice-generation";
 import {
   daysOverdue,
   invoiceStatus,
@@ -36,17 +40,97 @@ export {
   termStart,
 } from "../_data/contracts";
 export type { ContractKind, ContractRecord, InvoiceCategory, InvoiceRecord, InvoiceStatus, PaymentRecord } from "../_data/contracts";
-export { INVOICE_STATUS_META, KIND_META, STATUS_META } from "../_contracts/data";
+/* Aliased on the way through: `displayStatus` is already taken in this module
+   by the INVOICE one below, and the two answer different questions about
+   different records. The contract one is the five-word badge state — see
+   _data/contracts. */
+export { INVOICE_STATUS_META, KIND_META, STATUS_META, displayStatus as contractDisplayStatus } from "../_contracts/data";
+export type { ContractDisplayStatus } from "../_contracts/data";
 
 /**
- * How many invoice rows show before the list collapses.
+ * FOLDING THE FUTURE.
  *
- * An agency-collected tenancy raises thirteen invoices at signing — twelve rent
- * demands plus the commission — and thirteen near-identical rows bury the two
- * that actually need attention. Four is enough to show the shape of the
- * schedule and the first thing that is overdue; the rest are one click away.
+ * An agency-collected tenancy raises thirteen invoices at signing, and eleven
+ * of them are months nobody can do anything about yet. They used to be eleven
+ * full-weight rows between the demand that is overdue and the payment that
+ * just arrived — the two lines somebody actually opened this card for.
+ *
+ * So the run of not-yet-due rows folds, and ONLY that run: nothing overdue,
+ * nothing due, nothing paid and no void is ever hidden. Two stay visible so
+ * the schedule still shows its shape and what falls next, and the fold only
+ * happens when there is enough behind it to be worth a click.
  */
-export const INVOICE_COLLAPSE_AT = 4;
+export const NOT_DUE_SHOWN = 2;
+export const NOT_DUE_FOLD_AT = 4;
+
+/**
+ * Split one group's rows around the folded run: what shows above it, what is
+ * behind it, and what shows below. The rows are already in urgency order, so
+ * the run is contiguous — see `sortByUrgency`.
+ */
+export function foldNotDue(rows: InvoiceRow[], cancelled: boolean): { before: InvoiceRow[]; folded: InvoiceRow[]; after: InvoiceRow[] } {
+  const isNotDue = (r: InvoiceRow) => displayStatus(r, cancelled) === "not_due";
+  const start = rows.findIndex(isNotDue);
+  if (start < 0) return { before: rows, folded: [], after: [] };
+
+  let end = start;
+  while (end < rows.length && isNotDue(rows[end])) end += 1;
+  const run = rows.slice(start, end);
+  if (run.length <= NOT_DUE_FOLD_AT) return { before: rows, folded: [], after: [] };
+
+  return { before: rows.slice(0, start + NOT_DUE_SHOWN), folded: run.slice(NOT_DUE_SHOWN), after: rows.slice(end) };
+}
+
+/**
+ * WHAT ONE ROW CALLS ITSELF, once the block heading has already said what kind
+ * of demand it is.
+ *
+ * The frozen line says "Rent — Dream City Garden Flat · Sep 2026", which is
+ * right on an invoice and wrong twelve times down a schedule for one flat: the
+ * property is the page and the kind is the heading, so all that is left to tell
+ * the rows apart is the month. Anything without a period — a deposit, a
+ * commission — keeps its full line, because there is only ever one or two of
+ * them and the line is what distinguishes them.
+ */
+export function invoiceRowTitle(invoice: InvoiceRecord, kind: ContractKind, ownerId: string, t: Translate, lang: Lang): string {
+  const line = invoice.lines[0];
+
+  /* RENT SAYS WHICH MONTH, and nothing else — it is the only thing that differs
+     down twelve otherwise identical rows. The stored period is used where the
+     record carries one; where it does not, the month it falls due IS the period
+     it covers, so the label is derived rather than left to fall back on the
+     full sentence. An older record missing one optional field should not change
+     what a row reads like. */
+  if (invoice.category === "rent") {
+    const period = line?.descriptionPeriod;
+    const label = period ? periodLabel(lang, t, period.dueOn, period.months) : periodLabel(lang, t, invoice.dueOn, 1);
+    /* NAMED LIKE ITS NEIGHBOURS. A bare "Jun 2026" was the only row title on the
+       page that did not say what the demand IS — beside "Insurance deposit" and
+       "Tenant's commission" it read as a date somebody had left lying there.
+       The word goes through the catalog rather than being concatenated here, so
+       each language puts it where its own grammar wants it: English trails it
+       after the month and keeps the month leading for a reader scanning twelve
+       of these, Arabic and Kurdish lead with the noun as they must. */
+    return t("admin.ct.row.kind.rent", { period: label });
+  }
+
+  /* A DEPOSIT AND A COMMISSION SAY WHAT THEY ARE. Their frozen lines name the
+     property too — right on an invoice, wrong here, where the property is the
+     page. What actually separates the two commission rows on a signing is WHO
+     PAYS, so that is what the row leads with. */
+  if (invoice.category === "deposit") return t("admin.ct.row.kind.deposit");
+  if (invoice.category === "commission") {
+    const fromOwner = billedSide(invoice, ownerId) === "owner";
+    if (kind === "sale") return t(fromOwner ? "admin.ct.row.kind.commissionSeller" : "admin.ct.row.kind.commissionBuyer");
+    return t(fromOwner ? "admin.ct.row.kind.commissionLandlord" : "admin.ct.row.kind.commissionTenant");
+  }
+
+  /* Everything else keeps its frozen line. A late penalty reads "Late penalty —
+     4 days on INV-1041", which names no property and is the whole point of the
+     row; a hand-written extra charge is whatever somebody typed, and shortening
+     that would be guessing at what they meant. */
+  return invoiceLineText(line, t, lang);
+}
 
 /** The icon for one invoice's reason for existing. */
 export const CATEGORY_ICON: Record<InvoiceCategory, IconName> = {

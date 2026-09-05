@@ -173,7 +173,21 @@ export interface WhatsAppSettings {
 
 export const DEFAULT_WHATSAPP: WhatsAppSettings = {
   enabled: true,
-  dryRun: true,
+  /**
+   * OFF BY DEFAULT, so the log can do its job.
+   *
+   * Test mode collapses every past row onto the single word "sent" — see
+   * statusFor in ./outbox, which stops there rather than asking for a receipt.
+   * A log where every row reads the same cannot answer the one question an
+   * office brings to it: did this actually reach them? A delivery that failed
+   * looks exactly like one that worked, which is the failure mode worth caring
+   * about — nobody learns the tenant was never told.
+   *
+   * So the demo starts with receipts flowing and the simulated ones from
+   * `delivered()` land as a real mix. The toggle and its banner are still on
+   * the WhatsApp pane for anyone who wants the quiet state back.
+   */
+  dryRun: false,
   provider: "meta",
   businessNumber: "+964 750 123 4567",
   apiKey: "",
@@ -197,19 +211,31 @@ export const DEFAULT_WHATSAPP: WhatsAppSettings = {
  *   queued      composed, its moment has not arrived yet
  *   sent        handed over, no delivery receipt back (a dry run stops here)
  *   delivered   confirmed on the recipient's phone
- *   suppressed  deliberately not sent — sending off, template off, invoice void
- *   failed      could not be sent — no phone number on the record
+ *   suppressed  deliberately not sent — sending off, template off, invoice
+ *               void, or the recipient asked not to be reminded
+ *   failed      could not be sent — no number on the record, or a number that
+ *               is not on WhatsApp
  *
  * `suppressed` and `failed` are kept apart because one is a setting and the
  * other is missing data, and the person reading the log does something
- * different about each.
+ * different about each. That line is what decides where a new reason goes:
+ * `optedOut` is somebody's choice, so it suppresses; `noWhatsapp` is a record
+ * that cannot carry the message, so it fails.
  */
 export type MsgStatus = "queued" | "sent" | "delivered" | "suppressed" | "failed";
 
 export const MSG_STATUSES: MsgStatus[] = ["queued", "sent", "delivered", "suppressed", "failed"];
 
 /** Why a message is not simply on its way. Rendered as the row's second line. */
-export type MsgReason = "deliveryOff" | "templateOff" | "invoiceVoided" | "noPhone" | "dryRun" | "quietHours";
+export type MsgReason =
+  | "deliveryOff"
+  | "templateOff"
+  | "invoiceVoided"
+  | "noPhone"
+  | "noWhatsapp"
+  | "optedOut"
+  | "dryRun"
+  | "quietHours";
 
 export interface MessageLogRow {
   id: string;
@@ -267,6 +293,33 @@ export function phoneDigits(phone: string): string {
     and from the "—" placeholders the seed uses where nobody left a number. */
 export function isDialable(phone: string | undefined): phone is string {
   return !!phone && phoneDigits(phone).length >= 7;
+}
+
+/**
+ * WHAT STOPS AN AUTOMATIC MESSAGE REACHING SOMEBODY — asked once, here.
+ *
+ * The outbox needs it to write the log row, the members list needs it to mark
+ * the person, and the contract's party card needs it to explain a quiet
+ * tenancy. Three screens answering this separately is three screens that
+ * eventually disagree, so they all call this.
+ *
+ * ORDER IS THE ANSWER. A muted person with no number is reported as having no
+ * number, because that is the thing an office can fix; "they asked not to be
+ * reminded" reads like a decision somebody made and sends nobody looking for
+ * the missing field.
+ *
+ * `null` means nothing is in the way. It says nothing about the agency-wide
+ * switches — those are not facts about the person and stay in `statusFor`.
+ */
+export type ReachBlock = "noPhone" | "noWhatsapp" | "optedOut";
+
+export function reachBlock(p: { phone: string; whatsapp?: boolean; remindersOn?: boolean }): ReachBlock | null {
+  if (!isDialable(p.phone)) return "noPhone";
+  /* Undefined means an older record that predates the fields, and the ordinary
+     case is reachable — so absence reads as yes, never as a silent block. */
+  if (p.whatsapp === false) return "noWhatsapp";
+  if (p.remindersOn === false) return "optedOut";
+  return null;
 }
 
 /**

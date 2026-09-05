@@ -11,11 +11,14 @@
   /* Every figure on this screen is authoritative money or a date, so every one
      of them is tabular: a column that does not line up is a column someone has
      to read twice. */
-  .ctd-num, .ctd-inv__total, .ctd-inv__owed, .ctd-inv__when, .ctd-inv__issued, .ctd-inv__no {
+  .ctd-num, .ctd-row__amt, .ctd-row__when, .ctd-row__no, .ctd-inv__issued {
     font-variant-numeric: tabular-nums;
   }
 
-  .ctd-stack { display: flex; flex-direction: column; gap: 22px; }
+  /* .ctd-stack is gone: the tab content lives in .vwd-panel__body now, the same
+     grey region the property and member screens put theirs in, so the panel
+     wraps the whole screen instead of stopping under the tabs. That rule is in
+     pd.css and already declares this exact column and gap. */
 
   .ctd-link { color: var(--text-brand); font-weight: 600; text-decoration: none; }
   .ctd-link:hover { text-decoration: underline; }
@@ -31,6 +34,40 @@
     color: var(--text-tertiary); white-space: nowrap;
   }
 
+  /* ---------- HEADER: BOTH PARTIES ----------
+     Landlord → tenant on one line, inside the ordinary .pd-head__metaitem, so
+     the names sit at the same size and colour as the dates beside them.
+
+     The item is allowed to wrap: every other meta item is two or three words
+     and never needed to, but two full names and an arrow will not fit a phone,
+     and nowrap would push the header wider than the panel. */
+  .ctd-head__parties { white-space: normal; flex-wrap: wrap; }
+  /* One party: its role, then the name. Baseline-aligned, because the label is
+     four points smaller than the name it belongs to and centring would float
+     it above the letters. */
+  .ctd-head__party { display: inline-flex; align-items: baseline; gap: 5px; min-inline-size: 0; }
+  /* THE SAME SMALL CAPS AS .ctd-parties dt on the invoice rows, colon and all.
+     Not a second style for the same idea — "this word names the party beside
+     it" should look identical everywhere on the screen. Kept at 10px so the
+     header still reads as two names with the roles under them in weight, not
+     as four items of equal loudness. */
+  .ctd-head__role {
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-tertiary); white-space: nowrap;
+  }
+  /* The colon belongs to the layout, not to the three translation catalogues —
+     same reasoning as .ctd-parties dt::after. */
+  .ctd-head__role::after { content: ":"; }
+  /* Same arrow, and the same mirroring, as the payer → recipient arrow on an
+     invoice row: in Arabic and Kurdish the line reads right to left, and an
+     arrow pointing the other way points from the tenant to the landlord.
+     (The colour comes from .pd-head__metaitem svg — every icon on this line is
+     already tertiary.) */
+  [dir="rtl"] .ctd-head__arrow { transform: scaleX(-1); }
+  /* The side nobody has been found for yet — quieter than a name, because it
+     is not one. */
+  .ctd-head__none { color: var(--text-tertiary); }
+
   /* ---------- CANCELLED BANNER ----------
      Above everything, with the reason and the date. A cancelled contract is
      still a record — nothing below is hidden, so the banner is what tells you
@@ -42,10 +79,21 @@
     border-radius: var(--radius-card);
     background: var(--error-50);
   }
+  /* Inside the header panel it is a BAND, not a card. It sits between the white
+     hero and the grey tab strip, both of which run the full width of the panel,
+     so a rounded box with its own border floating between them would be the one
+     thing in there wearing a frame. Same fill, no corners, no side edges — it
+     reads as another region of the panel, which is what it is. */
+  .vwd-panel .ctd-banner {
+    margin: 0; padding: 14px 24px;
+    border-inline: none; border-block-end: none;
+    border-block-start: 1px solid var(--error-100);
+    border-radius: 0;
+  }
   .ctd-banner__icon {
     flex: none; width: 38px; height: 38px; border-radius: var(--radius-lg);
     display: flex; align-items: center; justify-content: center;
-    background: var(--surface-card); color: var(--error-600);
+    background: var(--surface-card); color: var(--text-error);
     box-shadow: inset 0 0 0 1px var(--error-100);
   }
   .ctd-banner__body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -69,6 +117,56 @@
      Separated by what the demand IS, ordered by when it has to be paid. The
      blocks do the separating; the chip row above only narrows to one of them.
      See the note on groupInvoiceRows, and the card anatomy further down. */
+
+  /* Summary strip — the figures the rows below add up to.
+     Full-bleed against the card's 22px body padding so it reads as part of the
+     card's head rather than as a box inside the list, with one hairline
+     separating it from the invoices it totals. */
+  /* ⚠ NO GREY BAND. The four figures sat on --surface-sunken, which made the
+     one part of the card carrying the actual answer — what this tenancy still
+     owes — look like a header bar rather than like money. They are on the
+     card's own white now; the hairlines between the cells and the rule under
+     them are what hold them together as a set, which is all the fill was
+     really doing. Same move as the drawer and the receipt lines. */
+  .ctd-invsum {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-block-start: -22px; margin-inline: -22px; margin-block-end: 20px;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+  /* 18px down each side of the figure, the same as the card head above it. It
+     was 13px, which was set when the strip had a grey fill to give it presence;
+     on white that fill is gone and the numbers were left crowded against the
+     head's divider on one side and the filter chips on the other, tighter
+     vertically than the 22px they already sit in horizontally. */
+  .ctd-invsum__cell {
+    min-width: 0; padding: 18px 22px;
+    border-inline-start: 1px solid var(--border-subtle);
+  }
+  .ctd-invsum__cell:nth-child(4n + 1) { border-inline-start: none; }
+  .ctd-invsum dt {
+    margin-block-end: 3px;
+    font-size: 12.5px; font-weight: 600; color: var(--text-tertiary);
+  }
+  .ctd-invsum dd {
+    margin: 0; font-size: 19px; font-weight: 650; line-height: 1.25;
+    color: var(--text-primary); overflow-wrap: anywhere;
+  }
+  /* Money that has arrived is green, money still owed is red — the same two
+     roles the rows use, so the strip and the list say the same thing twice. */
+  .ctd-invsum dd.is-good { color: var(--text-success); }
+  .ctd-invsum dd.is-owed { color: var(--text-error); }
+
+  /* Two across before the figures start wrapping mid-number. The dividers move
+     with the columns: the vertical rule leaves the new first column and a
+     horizontal one appears under the first pair. */
+  @media (max-width: 720px) {
+    .ctd-invsum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ctd-invsum__cell { padding: 16px; }
+    .ctd-invsum__cell:nth-child(4n + 1) { border-inline-start: 1px solid var(--border-subtle); }
+    .ctd-invsum__cell:nth-child(2n + 1) { border-inline-start: none; }
+    .ctd-invsum__cell:nth-child(n + 3) { border-block-start: 1px solid var(--border-subtle); }
+    .ctd-invsum dd { font-size: 17px; }
+  }
 
   /* Filter chips. A filter and not a tab strip, so "All" stays a real, and the
      default, choice — see the note in the component. */
@@ -104,175 +202,325 @@
     border-radius: var(--radius-pill); background: var(--warning-500);
   }
 
-  /* One block per kind of demand. */
-  .ctd-invgroups { display: flex; flex-direction: column; gap: 20px; }
-  .ctd-invgroup { display: flex; flex-direction: column; gap: 10px; }
-  .ctd-invgroup__head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-  .ctd-invgroup__ic { flex: none; color: var(--text-brand-muted); }
-  .ctd-invgroup__title {
-    font-family: var(--font-display); font-weight: 600; font-size: 15px;
-    letter-spacing: -.008em; line-height: 1.2; color: var(--text-primary); margin: 0;
-  }
-  .ctd-invgroup__count {
-    display: inline-flex; align-items: center; height: 20px; padding-inline: 8px;
-    border-radius: var(--radius-pill); background: var(--gray-100); color: var(--text-tertiary);
-    font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
-  }
-  /* The block already spaces its own children, so the button drops the standing
-     top margin it carries when it sits directly under a card. */
-  .ctd-invgroup > .ctd-showall { margin-block-start: 0; }
+  /* One block per kind of demand.
+
+     ⚠ THE GAP IS THE ONLY THING THAT SEPARATES THEM, and that is deliberate.
+     Each block used to open with a serif heading, an icon and a count pill —
+     the same word and the same number the filter chips above already carry, over
+     rows that each say what they are. On a tenancy that meant "Deposit · 1"
+     standing over one row reading "Insurance deposit", on every contract in the
+     system, because the shape never varies: one deposit, two commissions.
+
+     The gap is wider than the old one. It was 20px with a heading to announce
+     each block; with nothing to announce them, the space has to do the whole
+     job of saying "different kind of thing starts here". */
+  .ctd-invgroups { display: flex; flex-direction: column; gap: 26px; }
+  .ctd-invgroup { display: flex; flex-direction: column; }
 
   @media (prefers-reduced-motion: reduce) {
     .ctd-invchip { transition: none; }
   }
 
-  /* ---------- ONE CARD PER DEMAND ----------
-     It was a seven-column table wide enough to need its own horizontal
-     scrollbar, with the number, the party, the description, two dates, a
-     badge, the money and two buttons all at roughly the same weight.
-     Everything was on screen and nothing led the eye.
+  /* ---------- THE SCHEDULE ----------
+     One line per demand, and the lines share a grid so the money, the status
+     and the buttons stack into columns you can run an eye down.
 
-     Three bands now, in the order somebody reads them:
+     It was a card each. Fifteen cards for one tenancy, every one of them
+     carrying the property, both parties and the same two grey icon buttons at
+     roughly the weight of the amount — so the demand that was four days late
+     looked exactly like the eleven nobody can pay yet.
 
-       head   what it is, and what it costs — the two loudest things on the
-              card, on one line, money hard right
-       meta   when, and between whom — the circumstances, one quiet line
-       foot   the reference number and the buttons, on a tinted strip
+     THE COLOUR IS THE HIERARCHY. A 3px stripe at the start of the row and
+     nothing else: red for late, amber for what falls next, green for what has
+     been paid, and NOTHING AT ALL for a future month. Three coloured rows in
+     fifteen is what makes them findable; colour on all fifteen is wallpaper.
 
-     And it STACKS instead of scrolling sideways, which is what actually made
-     the old one unreadable on anything narrower than a desk monitor. */
-  .ctd-invs { display: flex; flex-direction: column; gap: 10px; }
-
-  .ctd-inv {
-    display: flex; flex-direction: column;
+     Everything that is filing rather than money — the number, the issue date,
+     the parties, the receipts, voiding — lives inside the row and opens when
+     somebody asks for it. */
+  /* ⚠ NOT `overflow: hidden`, however tempting for the corners: the receipt
+     buttons inside an open row raise a menu, and a clipping ancestor cuts it
+     off at the edge of the list. The corners are rounded on the surfaces that
+     actually meet them instead. */
+  .ctd-rows {
     border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
     background: var(--surface-card);
-    overflow: hidden;
+  }
+  /* The hairline between children. ⚠ Anything dropped into .ctd-rows must leave
+     border-block-start alone — this rule and a plain `.thing` selector carry the
+     same specificity, so a `border: none` further down the file silently wins
+     and the row above loses its divider. See .ctd-foldrow. */
+  .ctd-rows > * + * { border-block-start: 1px solid var(--border-subtle); }
+  /* Only what is painted needs rounding, and only the row is painted: the fold
+     strip has no fill of its own to spill past the card's corner. */
+  .ctd-rows > :first-child .ctd-row__main {
+    border-start-start-radius: var(--radius-md); border-start-end-radius: var(--radius-md);
+  }
+  .ctd-rows > :last-child .ctd-row__main,
+  .ctd-rows > :last-child .ctd-row__detail {
+    border-end-start-radius: var(--radius-md); border-end-end-radius: var(--radius-md);
   }
 
-  /* ---------- HEAD: what it is | what it costs ---------- */
-  .ctd-inv__head {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: var(--space-4); flex-wrap: wrap;
-    padding: 14px 16px 0;
+  /* The seven tracks every row shares. The three fixed middle columns are what
+     make a schedule out of a list: due dates under due dates, money under
+     money. `what` takes the slack, because a description is the only cell that
+     has no natural width. */
+  .ctd-row__main {
+    display: grid;
+    grid-template-columns: 3px minmax(0, 1fr) 150px 120px 134px 168px 76px;
+    align-items: center; gap: 0 20px;
+    padding-inline-end: 10px;
+    cursor: pointer;
   }
-  .ctd-inv__lead {
-    display: flex; align-items: center; gap: var(--space-2);
-    flex: 1 1 260px; min-width: 0; flex-wrap: wrap;
-  }
-  .ctd-inv__title {
-    font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--text-primary);
-    min-width: 0; overflow-wrap: anywhere;
-  }
-  .ctd-inv__money { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
-  .ctd-inv__total {
-    font-size: 19px; font-weight: 700; line-height: 1.1; color: var(--text-primary);
-    letter-spacing: -.01em; white-space: nowrap;
-  }
-  .ctd-inv__owed {
-    font-size: 11.5px; font-weight: 600; color: var(--warning-600);
-    white-space: nowrap; text-align: end;
-  }
+  .ctd-row__main:hover { background: var(--gray-25); }
+  .ctd-row.is-open .ctd-row__main { background: var(--gray-25); }
 
-  /* ---------- META: when, and between whom ----------
-     One line, because they are the same kind of fact — the circumstances of
-     the demand rather than the demand itself. It wraps rather than truncating:
-     a name cut in half is a name nobody can act on. */
-  .ctd-inv__meta {
-    display: flex; align-items: center; gap: var(--space-2) 14px;
-    flex-wrap: wrap; padding: 6px 16px 14px;
-    font-size: 12.5px; color: var(--text-tertiary);
+  .ctd-row__stripe { align-self: stretch; background: transparent; }
+  .ctd-row--overdue .ctd-row__stripe { background: var(--error-500); }
+  .ctd-row--due     .ctd-row__stripe { background: var(--warning-500); }
+  .ctd-row--paid    .ctd-row__stripe { background: var(--success-500); }
+  /* The one row that is actually wrong gets a wash as well as a stripe — it has
+     to be findable in a scroll, not just in a scan. */
+  .ctd-row--overdue { background: linear-gradient(to right, var(--error-50), transparent 38%); }
+  [dir="rtl"] .ctd-row--overdue { background: linear-gradient(to left, var(--error-50), transparent 38%); }
+
+  /* A two-column cell: the kind's mark, then everything the row says about
+     itself. A grid rather than the icon sitting inside the title line, so that
+     the "still owed" note on a part-paid row lines up under the TITLE and not
+     under the icon. */
+  .ctd-row__what {
+    min-width: 0; padding-block: 12px; padding-inline-start: 14px;
+    display: grid; grid-template-columns: 14px minmax(0, 1fr);
+    column-gap: var(--space-2); row-gap: 1px; align-items: baseline;
   }
-  .ctd-inv__when { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-  .ctd-inv__when > svg { flex: none; }
-  .ctd-inv__flow { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
-  .ctd-inv__party { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; }
-  /* The role is the fixed part and leads, so the eye runs down "TENANT" and
-     stops only when it is looking for a name. */
-  .ctd-inv__role {
-    flex: none; font-size: 10px; font-weight: 700; letter-spacing: .05em;
-    text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap;
+  /* ---------- WHICH KIND OF DEMAND ----------
+     The same mark the filter chip for this kind carries, so the strip at the
+     top of the card and the rows under it name their kinds in one language.
+     It replaced the block headings: three lists separated by a gap need
+     something on the rows themselves to say which is which.
+
+     Tertiary, not brand — it repeats on every row, and a column of green down
+     the start of the schedule would out-shout the stripe that says whether the
+     money actually arrived. Centred on the title's line, since an icon has no
+     baseline of its own. */
+  .ctd-row__kind { grid-area: 1 / 1; align-self: center; color: var(--text-tertiary); }
+  /* The title and the invoice number on one line — the number is a label on
+     the row, not a second title, so it stays small, monospaced and quiet. */
+  .ctd-row__titleline { grid-area: 1 / 2; display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+  .ctd-row__part { grid-area: 2 / 2; }
+  .ctd-row__no {
+    flex: none; font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
+    color: var(--text-tertiary); font-variant-numeric: tabular-nums;
   }
-  .ctd-inv__who { min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
-  .ctd-inv__arrow { flex: none; color: var(--text-tertiary); }
+  .ctd-row__title {
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* Only ever on a part-paid demand. On every other row it would repeat the
+     amount beside it. */
+  .ctd-row__part { font-size: 11.5px; font-weight: 600; color: var(--warning-600); }
+
+  .ctd-row__when { font-size: 12.5px; color: var(--text-secondary); }
+  .ctd-row__late { font-weight: 700; color: var(--error-600); }
+  /* In the drawer it is a fact about a settled demand, not an alarm about a
+     live one — same words, one step quieter. */
+  .ctd-row__facts .ctd-row__late { font-size: 11.5px; font-weight: 700; color: var(--warning-700); }
+  .ctd-row__amt {
+    text-align: end; font-size: 15px; font-weight: 700; letter-spacing: -.01em;
+    color: var(--text-primary); white-space: nowrap;
+  }
+  /* Money already in is a fact, not a demand: it steps back so the column reads
+     as what is still owed. */
+  .ctd-row--paid .ctd-row__amt, .ctd-row--void .ctd-row__amt { font-weight: 600; color: var(--text-tertiary); }
+  .ctd-row--void .ctd-row__title { font-weight: 500; color: var(--text-tertiary); text-decoration: line-through; }
+
+  .ctd-row__status { display: flex; }
+  /* ⚠ ITS OWN COLUMN, NEVER THE ACTION'S. A button standing where the status
+     stands makes the two read as one thing, and then a row with nothing to do
+     looks like a row with a missing button. The state is a fact about the
+     invoice; the button is a thing you do to it. */
+  /* ⚠ THE EMPTY CELL STAYS IN THE GRID. It used to collapse on any row with
+     nothing to do, which pulled the chevron forward out of its own column —
+     so on a paid row the arrow sat against the badge while on an unpaid one it
+     sat at the edge, and the list lost the straight right-hand edge that makes
+     it scannable. An empty track is what holds the column open. */
+  .ctd-row__act { display: flex; justify-content: flex-end; }
+  /* Record payment, the same on every row it appears on: a ghost button that
+     only takes an edge when the pointer is on its row, so an unpaid column
+     reads as a list rather than as a stack of boxes. It does NOT go green on
+     the overdue row — the stripe, the wash and the badge have said that
+     already, and a filled button there pulls the eye off the fact and onto the
+     control. */
+  .ctd-row__act .cx-btn--tertiary { color: var(--text-secondary); }
+  .ctd-row__act .cx-btn--tertiary svg { color: var(--text-tertiary); }
+  .ctd-row__main:hover .ctd-row__act .cx-btn--tertiary {
+    background: var(--surface-card); box-shadow: inset 0 0 0 1px var(--border-default); color: var(--text-primary);
+  }
+  .ctd-row__main:hover .ctd-row__act .cx-btn--tertiary:hover { background: var(--brand-subtle); box-shadow: inset 0 0 0 1px var(--green-100); color: var(--text-brand); }
+  .ctd-row__main:hover .ctd-row__act .cx-btn--tertiary:hover svg { color: var(--text-brand-muted); }
+  /* The menu and the chevron, paired at the end edge. */
+  .ctd-row__end { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+
+  /* ---------- THE ⋯ ON A ROW ----------
+     The rare actions and the destructive one. Recording a payment stays on the
+     line as a button with words on it — hiding the daily job behind a menu to
+     keep the row tidy is the wrong trade. */
+  .ctd-menu { position: relative; display: flex; }
+  .ctd-menu__btn {
+    inline-size: 34px; block-size: 34px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; background: transparent; border-radius: var(--radius-md);
+    color: var(--text-tertiary); cursor: pointer;
+    transition: background-color .15s, color .15s;
+  }
+  .ctd-menu__btn:hover, .ctd-menu__btn.is-open { background: var(--surface-sunken); color: var(--text-primary); }
+  .ctd-menu__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-menu__list {
+    position: absolute; z-index: 20; inset-block-start: calc(100% + 4px); inset-inline-end: 0;
+    min-inline-size: 190px; padding: var(--space-1);
+    display: flex; flex-direction: column; gap: 1px;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  }
+  .ctd-menu__item {
+    display: flex; align-items: center; gap: var(--space-2); inline-size: 100%;
+    padding: 8px 10px; border: none; border-radius: var(--radius-sm);
+    background: none; cursor: pointer; text-align: start; white-space: nowrap;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-primary);
+  }
+  .ctd-menu__item > svg { flex: none; color: var(--text-tertiary); }
+  .ctd-menu__item:hover { background: var(--surface-sunken); }
+  .ctd-menu__item:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-menu__item--danger:hover { background: var(--error-50); color: var(--error-600); }
+  .ctd-menu__item--danger:hover > svg { color: var(--error-600); }
+  /* Dead, not hidden — a missing action is a thing somebody hunts for, and the
+     title says why it cannot be done. */
+  .ctd-menu__item:disabled { color: var(--text-disabled); cursor: not-allowed; }
+  .ctd-menu__item:disabled > svg { color: var(--text-disabled); }
+  .ctd-menu__item:disabled:hover { background: none; color: var(--text-disabled); }
+  @media (prefers-reduced-motion: reduce) { .ctd-menu__btn { transition: none; } }
+
+  .ctd-row__toggle {
+    inline-size: 34px; block-size: 34px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; background: transparent; border-radius: var(--radius-md);
+    color: var(--text-tertiary); cursor: pointer;
+    transition: background-color .15s, color .15s;
+  }
+  .ctd-row__toggle:hover { background: var(--surface-sunken); color: var(--text-primary); }
+  .ctd-row__toggle:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-row__toggle > svg { transition: transform .15s; }
+  .ctd-row.is-open .ctd-row__toggle > svg { transform: rotate(180deg); }
+
+  /* ---------- WHAT OPENS ----------
+     The filing.
+
+     It was a grey slab of grey text: the parties, the payment and the papers
+     all at 12.5px in --text-tertiary, so three different kinds of fact read as
+     one paragraph and none of them led. Each band now carries its own weight —
+     labels small and quiet, names and money dark — and a green rail down the
+     start is what ties the drawer to the row it belongs to.
+
+     ⚠ THE GROUND IS THE SAME WHITE AS THE ROW ABOVE IT. It was tinted, which
+     forced every paper inside it to be drawn as a white card to stay legible:
+     boxes on a slab, three frames deep before you reach a name. The rail
+     already says where the drawer begins; the tint only bought the frames a
+     reason to exist. */
+  .ctd-row__detail {
+    padding: 14px 16px 16px; background: var(--surface-card);
+    border-block-start: 1px solid var(--border-subtle);
+    box-shadow: inset 3px 0 0 0 var(--green-100);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  [dir="rtl"] .ctd-row__detail { box-shadow: inset -3px 0 0 0 var(--green-100); }
+
+  /* ---------- WHO OWES WHOM, AND WHEN IT WAS ASKED FOR ----------
+     ⚠ ONE LINE THAT READS ACROSS. The role sat on top of the name in a little
+     column, twice, which turned four words into a two-by-two table and opened
+     the drawer on a header instead of on a fact. The role is the small fixed
+     part and the name carries the weight — that stays true, but they are read
+     "Tenant: Tara Botan", not stacked.
+
+     The issue date is the third thing on this line rather than a line of its
+     own: same demand, one sentence about it. */
+  .ctd-row__facts {
+    display: flex; align-items: baseline; gap: var(--space-2) var(--space-4);
+    flex-wrap: wrap;
+  }
+  .ctd-parties {
+    display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; margin: 0;
+  }
+  .ctd-parties__one { display: flex; align-items: baseline; gap: 5px; min-inline-size: 0; }
+  .ctd-parties dt {
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-tertiary); white-space: nowrap;
+  }
+  /* The colon belongs to the label, not to the translations — three catalogues
+     would otherwise each carry a punctuation mark that is the same in all of
+     them and is really a piece of this layout. */
+  .ctd-parties dt::after { content: ":"; }
+  .ctd-parties dd { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+  /* Centred, not baselined — an arrow has no baseline to sit on, and left to
+     the flex default it hangs below the names it points between. */
+  .ctd-parties__arrow { flex: none; align-self: center; color: var(--text-brand-muted); }
   /* Mirrored under dir=rtl: the money still travels from the payer to the
      recipient, and in Arabic that direction is right to left. */
-  [dir="rtl"] .ctd-inv__arrow { transform: scaleX(-1); }
-  .ctd-inv__held {
+  [dir="rtl"] .ctd-parties__arrow { transform: scaleX(-1); }
+  .ctd-parties__held {
     font-size: 11.5px; font-weight: 600; color: var(--text-tertiary);
-    padding: 2px 8px; border-radius: var(--radius-pill); background: var(--gray-100);
+    padding: 3px 9px; border-radius: var(--radius-pill); background: var(--surface-sunken);
     white-space: nowrap;
   }
 
-  /* ---------- FOOT: the quiet band ----------
-     A reference number nobody says out loud, the day it went out, and the two
-     things you can do to it. Tinted, so none of it competes with the money. */
-  .ctd-inv__foot {
-    display: flex; align-items: center; gap: var(--space-3);
-    padding-block: 6px; padding-inline: 16px 10px; min-block-size: 42px;
-    border-block-start: 1px solid var(--border-subtle);
-    background: var(--gray-25);
-  }
-  .ctd-inv__no {
-    font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
-    color: var(--text-tertiary); white-space: nowrap;
-  }
+  /* ---------- EVERY EXTENSION THIS DEMAND WAS GIVEN ----------
+     Quiet: a due date that moved is history, not a state of the invoice. The
+     reason carries the weight, because the dates are already on the row and the
+     reason is the only part that cannot be worked out from anything else. */
+  .ctd-moved { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .ctd-moved__row { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; font-size: 12.5px; }
+  .ctd-moved__ic { flex: none; color: var(--text-tertiary); align-self: center; }
+  .ctd-moved__when { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .ctd-moved__why { color: var(--text-secondary); font-weight: 600; }
+  /* ---------- THE SMALL PRINT ON THE DEMAND ----------
+     ⚠ IT HAS NO BAND OF ITS OWN. It was a band at the foot behind a divider,
+     which ended the drawer on a date instead of on the two buttons somebody
+     opened it to press; then a line under the names, which was a third band for
+     four words. It is on the names' own line now — see .ctd-row__facts. */
   .ctd-inv__issued { font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
+  /* One payment that arrived. A demand can be settled in several instalments of
+     cash, so each one is its own line and carries its own paper. The amount is
+     the loud half of the line and the circumstances are the quiet half — as one
+     even grey run, it read as a note rather than as money. */
+  /* ---------- ONE INSTALMENT AND ITS PAPERS ----------
+     A demand can be settled in several handfuls of cash, and each one produces
+     its own receipts. Listed as two runs — all the money, then all the papers —
+     four identical "Jun 30, 2026 · Cash" lines said nothing about which receipt
+     belonged to which half of the money.
 
-  /* ---------- ROW ACTIONS ----------
-     Record payment, and void. THERE IS NO EDIT AND NO DELETE HERE, on any row,
-     in any state — an issued invoice is corrected with a credit note, which is
-     what voiding writes. The absence is deliberate; see the header of
-     ../../_shared/contracts-store. */
-  /* Hard against the card’s end edge, so every button on the card — these and
-     the receipts above them — sits on one line down the right-hand side. */
-  .ctd-inv__actions {
-    margin-inline-start: auto; flex: none;
-    display: flex; align-items: center; gap: 4px; justify-content: flex-end;
+     ⚠ THE RULE ABOVE EACH GROUP AFTER THE FIRST IS THE POINT. Everything else
+     in this drawer lost its dividers on purpose, because a line between things
+     that already look different is noise. These groups are the opposite case:
+     they are genuinely alike, down to the date and the amount, and nothing
+     short of a drawn line separates them. */
+  .ctd-paygroup { display: flex; flex-direction: column; gap: 8px; }
+  .ctd-paygroup + .ctd-paygroup {
+    margin-block-start: 4px; padding-block-start: 12px;
+    border-block-start: 1px solid var(--border-subtle);
   }
-  .ctd-invbtn {
-    width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
-    border: 1px solid transparent; background: transparent;
-    border-radius: var(--radius-md); cursor: pointer; color: var(--text-tertiary);
-    transition: background-color .15s, color .15s, border-color .15s;
+  /* Says why the drawer is repeating itself, once, before it starts. */
+  .ctd-instal {
+    margin: 0; font-size: 11.5px; font-weight: 600; color: var(--text-tertiary);
   }
-  .ctd-invbtn:hover { background: var(--brand-subtle); border-color: var(--green-100); color: var(--text-brand); }
-  .ctd-invbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
-  .ctd-invbtn--danger:hover { background: var(--error-50); border-color: var(--error-100); color: var(--error-600); }
-  .ctd-invbtn--danger:focus-visible { box-shadow: var(--shadow-focus-error); }
-  /* Dead, not hidden — a missing button is a thing somebody hunts for. The
-     title says why. See the guard in voidInvoice. */
-  .ctd-invbtn:disabled { opacity: .4; cursor: not-allowed; }
-  .ctd-invbtn:disabled:hover { background: transparent; border-color: transparent; color: var(--text-tertiary); }
+  .ctd-pay { display: flex; align-items: baseline; gap: 7px; }
+  .ctd-pay__ic { flex: none; color: var(--success-600); align-self: center; }
+  .ctd-pay__amt {
+    font-size: 14px; font-weight: 700; color: var(--text-success);
+    font-variant-numeric: tabular-nums;
+  }
+  .ctd-pay__rest { font-size: 12.5px; color: var(--text-secondary); }
 
-  /* The reason a void was raised, under the row it belongs to. A struck-through
-     line with no explanation is the thing nobody can ask about later. */
-  .ctd-voidnote {
-    margin: 0; padding: 0 16px 14px;
-    font-size: 12px; line-height: 1.45; color: var(--text-tertiary);
-    text-wrap: pretty;
-  }
-
-  /* WHAT ARRIVED AGAINST A DEMAND, and the paper for it. Payments were
-     recorded and then shown nowhere in the app — the only trace was the
-     outstanding figure getting smaller. One line each, because one demand can
-     be settled in several instalments of cash. */
-  .ctd-paid {
-    list-style: none; margin: 0; padding: 0 16px 14px;
-    display: flex; flex-direction: column; gap: var(--space-2);
-  }
-  .ctd-paid__row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-  .ctd-paid__ic { flex: none; color: var(--success-600); }
-  .ctd-paid__txt { font-size: 12.5px; color: var(--text-secondary); }
-  /* THE PAPERS SIT ON THE CARD’S RIGHT EDGE, in line with Record payment and
-     Void in the foot below them. They used to run on from the end of the
-     sentence that describes the payment, where they read as part of the
-     sentence and put the only buttons on the card in two different places. */
-  .ctd-paid__actions {
-    margin-inline-start: auto; flex: none;
-    display: flex; align-items: center; gap: var(--space-1);
-  }
-  .ctd-paid__receipt {
+  /* A single receipt link, small and inline — the deposit card and the owner
+     ledger each hang one off a line rather than listing papers, so they get a
+     link rather than the full .ctd-doc row. */
+  .ctd-rcptlink {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 12px; font-weight: 600; color: var(--text-secondary); text-decoration: none;
     padding: 4px var(--space-2); border-radius: var(--radius-control);
@@ -280,11 +528,208 @@
     white-space: nowrap;
     transition: border-color .15s, color .15s, background-color .15s;
   }
-  .ctd-paid__receipt:hover { border-color: var(--green-100); color: var(--text-brand); background: var(--brand-subtle); }
-  .ctd-paid__receipt:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
-  .ctd-paid__receipt svg { flex: none; color: var(--text-tertiary); }
-  .ctd-paid__receipt:hover svg { color: var(--text-brand-muted); }
-  @media (prefers-reduced-motion: reduce) { .ctd-paid__receipt { transition: none; } }
+  .ctd-rcptlink:hover { border-color: var(--green-100); color: var(--text-brand); background: var(--brand-subtle); }
+  .ctd-rcptlink:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .ctd-rcptlink svg { flex: none; color: var(--text-tertiary); }
+  .ctd-rcptlink:hover svg { color: var(--text-brand-muted); }
+  @media (prefers-reduced-motion: reduce) { .ctd-rcptlink { transition: none; } }
+
+  /* ---------- ONE RECEIPT, ONE LINE ----------
+     They were bordered tiles carrying an icon in a box, the party's name and
+     the payment date — three facts already on the row and in the parties above,
+     in a shape that pushed the two buttons that matter down and apart. A paper
+     needs to say which of the two it is and hand you what you do with it.
+
+     NO FRAME EITHER. The line sits on the drawer's own white, flush with the
+     parties above it, and the buttons at its end are the only drawn shapes in
+     the band. A box around a line that already runs the full width of the
+     drawer draws a boundary with nothing on the other side of it. */
+  .ctd-rcpt {
+    display: flex; align-items: center; gap: var(--space-2);
+    padding-block: 2px;
+  }
+  .ctd-rcpt__ic { flex: none; color: var(--text-brand-muted); }
+  .ctd-rcpt__name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .ctd-rcpt__meta { font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .ctd-rcpt .ctd-rcpt__actions, .ctd-rcpt__make { margin-inline-start: auto; }
+  /* The half of the file that does not exist yet. It was a dashed box; with no
+     boxes left to dash, the clock and the amber carry it — an icon that is not
+     a receipt, beside a name with no date after it. */
+  .ctd-rcpt--pending .ctd-rcpt__ic { color: var(--warning-600); }
+  .ctd-rcpt--pending .ctd-rcpt__name { color: var(--text-secondary); }
+  .ctd-rcpt__make {
+    flex: none; display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 700; color: var(--text-brand);
+    padding: 5px var(--space-2); border-radius: var(--radius-control);
+    white-space: nowrap; border: 1px solid var(--green-100);
+    background: var(--surface-card); cursor: pointer;
+    transition: border-color .15s, color .15s, background-color .15s;
+  }
+  .ctd-rcpt__make:hover { background: var(--brand-subtle); border-color: var(--green-200); }
+  .ctd-rcpt__make:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .ctd-rcpt__make svg { flex: none; }
+  @media (prefers-reduced-motion: reduce) { .ctd-rcpt__make { transition: none; } }
+
+  @media (max-width: 640px) {
+    .ctd-rcpt { flex-wrap: wrap; }
+    .ctd-rcpt .ctd-rcpt__actions, .ctd-rcpt__make { margin-inline-start: 0; }
+  }
+
+  /* ---------- PRINTING A RECEIPT, FROM HERE ----------
+     The paper is a document with buttons on it, not a link to a screen. The
+     sheet is handed to a person, and which language that person reads has
+     nothing to do with the console's setting — see the header of
+     ../../_contract-detail/receipt-actions.
+
+     ⚠ A SPLIT CONTROL: TWO BUTTONS THAT LOOK LIKE ONE. The label half does the
+     ordinary thing, the caret half opens the language menu, and a hairline
+     between them says so. It was a single button wearing a chevron, which
+     promised a choice and then made it compulsory. The seam is what turns the
+     chevron from decoration into a second target — so it is drawn, and both
+     halves light up independently on hover. */
+  .ctd-rcpt__actions { flex: none; display: flex; align-items: center; gap: 6px; }
+  .ctd-rcpt__split { position: relative; display: inline-flex; align-items: stretch; }
+  .ctd-rcpt__btn, .ctd-rcpt__caretbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border-default); background: var(--surface-card);
+    color: var(--text-secondary); cursor: pointer; text-decoration: none;
+    font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    transition: border-color .15s, color .15s, background-color .15s;
+  }
+  /* The two halves share the seam, so only the outer corners are round and the
+     inner border is drawn once rather than twice. */
+  .ctd-rcpt__btn {
+    padding: 6px 10px;
+    border-start-start-radius: var(--radius-control); border-end-start-radius: var(--radius-control);
+    border-inline-end: none;
+  }
+  .ctd-rcpt__caretbtn {
+    padding: 6px 7px;
+    border-start-end-radius: var(--radius-control); border-end-end-radius: var(--radius-control);
+    color: var(--text-tertiary);
+  }
+  .ctd-rcpt__btn:hover, .ctd-rcpt__caretbtn:hover, .ctd-rcpt__caretbtn.is-open {
+    border-color: var(--green-100); background: var(--brand-subtle); color: var(--text-brand);
+  }
+  /* The seam belongs to the caret's start edge — the label half gave its own
+     end border up so the line is never two pixels thick, and a hover on either
+     half must not take the divider away with it. */
+  .ctd-rcpt__caretbtn { border-inline-start: 1px solid var(--border-default); }
+  .ctd-rcpt__split:hover .ctd-rcpt__caretbtn { border-inline-start-color: var(--green-100); }
+  .ctd-rcpt__btn:focus-visible, .ctd-rcpt__caretbtn:focus-visible {
+    outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand);
+    /* Above its neighbour, or the ring is clipped by the half beside it. */
+    position: relative; z-index: 1;
+  }
+  .ctd-rcpt__btn:disabled, .ctd-rcpt__caretbtn:disabled { opacity: .55; cursor: progress; }
+  .ctd-rcpt__btn > svg, .ctd-rcpt__caretbtn > svg { flex: none; }
+  .ctd-rcpt__caretbtn.is-open > svg { transform: rotate(180deg); }
+
+  .ctd-rcpt__menu {
+    position: absolute; z-index: 20; inset-block-start: calc(100% + 5px); inset-inline-end: 0;
+    min-inline-size: 168px; padding: var(--space-1);
+    display: flex; flex-direction: column; gap: 1px;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  }
+  .ctd-rcpt__menuhead {
+    padding: 6px 9px 5px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .ctd-rcpt__lang {
+    display: block; inline-size: 100%; text-align: start;
+    padding: 7px 9px; border: none; border-radius: var(--radius-sm);
+    background: none; cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-primary);
+  }
+  .ctd-rcpt__lang:hover { background: var(--brand-subtle); color: var(--text-brand); }
+  .ctd-rcpt__lang:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  /* The console's own language, marked but not preselected — it is the likely
+     answer, not the automatic one. */
+  .ctd-rcpt__lang.is-current { color: var(--text-brand); }
+
+  /* Off-screen, not display:none — a frame the browser has not laid out has
+     nothing to print. */
+  .ctd-rcpt__frame {
+    position: absolute; inset-inline-start: -9999px; inset-block-start: 0;
+    inline-size: 0; block-size: 0; border: 0;
+  }
+
+  @media (max-width: 720px) {
+    .ctd-row__detail .ctd-doc { flex-wrap: wrap; }
+    .ctd-rcpt__actions { inline-size: 100%; justify-content: flex-start; }
+  }
+  @media (prefers-reduced-motion: reduce) { .ctd-rcpt__btn, .ctd-rcpt__caretbtn { transition: none; } }
+
+  /* ---------- FOLDING THE FUTURE ----------
+     ⚠ A LINK, NOT A ROW. It was a grey bar the full width of the card, which
+     gave the last thing in a schedule of money the same weight as the money —
+     and it carried a total of rent nobody has been asked for yet, sitting in
+     the column where every other figure is a real demand. Now it is two words
+     in brand green on the card's own white, centred so it cannot be mistaken
+     for a line of the schedule.
+
+     ⚠ THE DIVIDER LIVES ON THE STRIP, NOT ON THE BUTTON. `.ctd-rows > * + *`
+     draws the hairline between children, and a `border: none` on the button
+     itself has the same specificity and comes later in this file — so it won
+     and the fold ran straight on from the last invoice with nothing between
+     them. A wrapper with no border declaration of its own cannot take the line
+     away by accident.
+
+     ⚠ AND IT IS NOT CENTRED. Centring left it hanging in the middle of an empty
+     strip, attached to nothing.
+
+     37px is where a row's content actually begins: 3px of stripe, the grid's
+     20px gap, and the 14px .ctd-row__what carries as its own padding. The first
+     try stopped at 23px and forgot that last 14, which put the link a visible
+     notch to the start of every title above it. Lining up with the kind icons
+     is the point — they are the leftmost thing on every row. */
+  .ctd-foldrow { padding-inline: 37px 16px; }
+  .ctd-fold {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding-block: 12px; border: none; background: none;
+    color: var(--text-brand); font-family: var(--font-sans);
+    font-size: 12.5px; font-weight: 700; cursor: pointer;
+    border-radius: var(--radius-control);
+    transition: color .15s;
+  }
+  .ctd-fold:hover { color: var(--brand-primary-hover); text-decoration: underline; }
+  .ctd-fold:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-fold > svg { flex: none; transition: transform .15s; }
+  .ctd-fold[aria-expanded="true"] > svg { transform: rotate(180deg); }
+
+  /* Two lines on a narrow screen rather than a sideways scroll: what it is and
+     what it costs on the first, when and where it stands on the second. */
+  @media (max-width: 900px) {
+    .ctd-row__main { grid-template-columns: 3px minmax(0, 1fr) auto 40px; gap: 0 10px; }
+    .ctd-row__what { grid-row: 1; grid-column: 2; padding-block: 10px 0; }
+    .ctd-row__amt { grid-row: 1; grid-column: 3; }
+    .ctd-row__end { grid-row: 1 / span 3; grid-column: 4; }
+    .ctd-row__toggle { block-size: 44px; }
+    .ctd-row__when { grid-row: 2; grid-column: 2; padding-block-end: 10px; }
+    .ctd-row__status { grid-row: 2; grid-column: 3; justify-content: flex-end; padding-block-end: 10px; }
+    .ctd-row__act { grid-row: 3; grid-column: 2 / span 2; justify-content: flex-start; padding-block-end: 12px; }
+    /* Safe to drop here, unlike on the wide grid: every cell is placed by hand
+       in this layout, so nothing slides up into a vacated track. */
+    .ctd-row__act:empty { display: none; }
+    /* The grid gap narrows to 10px here, so the row's content starts at
+       3 + 10 + 14 = 27px and the fold has to follow it or the alignment it was
+       moved for is lost. */
+    .ctd-foldrow { padding-inline: 27px 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ctd-row__toggle, .ctd-row__toggle > svg, .ctd-fold, .ctd-fold > svg { transition: none; }
+  }
+
+
+  /* The reason a void was raised, under the row it belongs to. A struck-through
+     line with no explanation is the thing nobody can ask about later. */
+  .ctd-voidnote {
+    margin: 0;
+    font-size: 12px; line-height: 1.45; color: var(--text-tertiary);
+    text-wrap: pretty;
+  }
 
   /* ---------- THE ⋯ MENU MUST NOT BE CLIPPED ----------
      `.vwd-panel` (pd.css) carries `overflow: hidden` so a panel with tabbed
@@ -385,26 +830,6 @@
     .ctd-om__doc { grid-column: 2 / -1; justify-content: flex-start; }
   }
 
-  /* A void invoice is struck through and muted — still listed, plainly no
-     longer collectable. Nothing is removed from the page. */
-  /* A withdrawn demand: struck through, never removed. The reason travels with
-     it in .ctd-voidnote — a struck line with no explanation is the thing nobody
-     can ask about later. */
-  .ctd-inv.is-void .ctd-inv__title,
-  .ctd-inv.is-void .ctd-inv__total { text-decoration: line-through; color: var(--text-tertiary); }
-  .ctd-inv.is-void { background: var(--gray-25); }
-  .ctd-inv.is-void .ctd-inv__foot { background: transparent; }
-
-  .ctd-showall {
-    display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
-    margin-block-start: 12px; padding: 7px 12px;
-    border: 1px solid var(--border-default); background: var(--surface-card);
-    border-radius: var(--radius-control); cursor: pointer;
-    font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-secondary);
-  }
-  .ctd-showall:hover { border-color: var(--border-strong); color: var(--text-primary); }
-  .ctd-showall:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
-
   /* ---------- EMPTY / NOT FOUND ---------- */
   .ctd-empty {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -425,14 +850,9 @@
   .ctd-missing h1 { font-family: var(--font-display); font-weight: 600; font-size: 26px; color: var(--text-primary); margin: 0; }
   .ctd-missing p { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 420px; }
 
-  @media (prefers-reduced-motion: reduce) {
-    .ctd-showall { transition: none; }
-  }
-
   /* ---------- MOBILE ---------- */
   @media (max-width: 767px) {
     .ctd-banner { flex-direction: column; gap: 10px; }
-    .ctd-showall { align-self: stretch; justify-content: center; }
   }
 
   /* ---------- LATE-RENT PENALTY: offered, never applied ----------
@@ -458,13 +878,182 @@
     font-size: 12.5px; font-weight: 700; color: var(--text-brand);
     padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
   }
+  /* Once the charge has been raised the strip stops being an offer and becomes
+     a statement — green, no button, and it names the invoice it produced. An
+     offer that stays on screen after it has been taken is how the same lateness
+     gets charged twice. */
+  .ctd-penalty--done { background: var(--success-50); }
+  .ctd-penalty--done .ctd-penalty__ic { color: var(--success-600); }
+  .ctd-penalty--done .ctd-penalty__txt { color: var(--text-secondary); }
+
   .ctd-penalty__btn:hover { background: var(--brand-subtle); }
   .ctd-penalty__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
 
   /* ---------- DOCUMENTS TAB ----------
-     Every paper this contract has produced. Rows are links to a printable
-     receipt; nothing is stored here — see the note on Documents. */
-  .ctd-docs { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+     TWO LISTS, NOT ONE, and the gap between them is the design. The upper list
+     holds what a person filed — deletable, fallible, owned by whoever uploaded
+     it. The lower one holds what the system printed from money that already
+     moved — always current, never removable. They are told apart by weight:
+     a filed file sits on a bordered card, a printed one on a flat tint, so a
+     removable scan can never read as heavy as a receipt that has to survive an
+     audit. */
+
+  /* A titled group inside the card. Two of them stack with a rule between. */
+  .ctd-grp + .ctd-grp { margin-block-start: var(--space-6); padding-block-start: var(--space-6); border-block-start: 1px solid var(--border-subtle); }
+  .ctd-grp__head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--space-4); margin-block-end: var(--space-3);
+  }
+  .ctd-grp__titles { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+  .ctd-grp__title {
+    margin: 0; font-family: var(--font-sans); font-size: 13px; font-weight: 700;
+    letter-spacing: var(--tracking-wider); text-transform: uppercase; color: var(--text-secondary);
+    display: flex; align-items: center; gap: var(--space-2);
+  }
+  .ctd-grp__count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-inline-size: 20px; padding-inline: 6px; block-size: 18px;
+    border-radius: var(--radius-pill); background: var(--surface-sunken);
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0; color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+  .ctd-grp__desc { margin: 0; font-size: 12.5px; color: var(--text-tertiary); max-inline-size: 60ch; }
+  .ctd-grp__note { margin: var(--space-2) 0 0; font-size: 12.5px; color: var(--text-tertiary); }
+
+  /* ---- filed by a person ----
+     A bordered card rather than a tint: these carry an owner and a delete, so
+     they are objects, not links. */
+  .ctd-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .ctd-file {
+    display: flex; align-items: center; gap: var(--space-1);
+    padding-inline-end: var(--space-2); border-radius: var(--radius-control);
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .ctd-file:has(.ctd-file__open:not(.ctd-file__open--static)):hover {
+    border-color: var(--border-strong); box-shadow: var(--shadow-card);
+  }
+  /* The whole row opens the file — see FileRow. A button rather than a link
+     because there is no URL for a blob a viewer is holding in memory. */
+  .ctd-file__open {
+    display: flex; align-items: center; gap: var(--space-3); flex: 1 1 auto;
+    min-inline-size: 0; padding: var(--space-3); border: none; background: none;
+    text-align: start; cursor: pointer; border-radius: var(--radius-control);
+  }
+  .ctd-file__open:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-file__ic {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    inline-size: 34px; block-size: 34px; border-radius: var(--radius-control);
+    background: var(--brand-subtle); color: var(--text-brand);
+  }
+  .ctd-file__txt { display: flex; flex-direction: column; gap: 1px; min-inline-size: 0; flex: 1 1 auto; }
+  .ctd-file__name {
+    font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ctd-file__meta {
+    font-size: 12px; color: var(--text-tertiary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* What the paper IS, said once, as a chip — the filename says the format. */
+  .ctd-file__kind {
+    flex: none; padding: 3px 9px; border-radius: var(--radius-pill);
+    background: var(--surface-sunken); color: var(--text-secondary);
+    font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  }
+  /* The split buttons come in from the invoices card with their own margin
+     rule; inside a document row they are simply the last cell. */
+  .ctd-file .ctd-rcpt__actions { flex: none; margin-inline-end: var(--space-2); }
+
+  .ctd-file__btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    inline-size: 32px; block-size: 32px; border: none; background: none;
+    border-radius: var(--radius-control); color: var(--text-tertiary); cursor: pointer;
+    transition: background-color .15s, color .15s;
+  }
+  .ctd-file__btn:hover { background: var(--brand-subtle); color: var(--text-brand); }
+  .ctd-file__btn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-file__btn--danger:hover { background: var(--error-50); color: var(--error-600); }
+  .ctd-file__btn--danger:focus-visible { box-shadow: var(--shadow-focus-error); }
+
+  /* Empty: names the papers that belong here rather than reporting emptiness. */
+  .ctd-fempty {
+    display: flex; align-items: flex-start; gap: var(--space-3);
+    padding: var(--space-4); border-radius: var(--radius-control);
+    border: 1px dashed var(--border-default); background: var(--surface-sunken);
+  }
+  .ctd-fempty__ic {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    inline-size: 34px; block-size: 34px; border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-tertiary);
+  }
+  .ctd-fempty__txt { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+  .ctd-fempty__title { font-size: 13.5px; font-weight: 600; color: var(--text-secondary); }
+  .ctd-fempty__hint { font-size: 12.5px; color: var(--text-tertiary); }
+
+  /* The file picker inside the upload modal — one target, not a button beside
+     a filename, so the hit area matches what it looks like. */
+  .ctd-drop {
+    display: flex; align-items: center; gap: var(--space-3); inline-size: 100%;
+    padding: var(--space-4); border-radius: var(--radius-control);
+    border: 1px dashed var(--border-default); background: var(--surface-sunken);
+    text-align: start; cursor: pointer; transition: border-color .15s, background-color .15s;
+  }
+  .ctd-drop:hover { border-color: var(--border-strong); background: var(--brand-subtle); }
+  .ctd-drop:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ctd-drop__ic {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    inline-size: 38px; block-size: 38px; border-radius: var(--radius-control);
+    background: var(--surface-card); color: var(--text-brand);
+  }
+  .ctd-drop__txt { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+  .ctd-drop__name {
+    font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ctd-drop__hint { font-size: 12px; color: var(--text-tertiary); }
+
+  /* ---- printed by the system ----
+     THE SAME ROW AS THE FILES ABOVE, on purpose. This section has been a tinted
+     block and then a ruled statement with its own date column and a green
+     banner, and each of those turned one tab into two unrelated screens. One
+     row shape, one place for the date, one place for the actions; the only
+     thing that differs is what the buttons at the end can do. Those rows reuse
+     .ctd-file wholesale — the extra classes below are the two cells a printed
+     paper has and a filed one does not. */
+
+  /* Not a button: a printed row's actions ARE its affordance, so the body of
+     the row is inert rather than a second, vaguer way to reach the same page. */
+  .ctd-file__open--static { cursor: default; }
+  .ctd-file__amt {
+    flex: none; font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .ctd-file__on {
+    flex: none; inline-size: 88px; text-align: end; font-size: 12.5px; color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
+  /* ---- the viewer ---- */
+  .ctd-view {
+    border-radius: var(--radius-control); border: 1px solid var(--border-subtle);
+    background: var(--surface-sunken); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    min-block-size: 320px;
+  }
+  .ctd-view__img { display: block; max-inline-size: 100%; max-block-size: 62vh; object-fit: contain; }
+  .ctd-view__frame { inline-size: 100%; block-size: 62vh; border: none; background: var(--surface-card); }
+  .ctd-view__none {
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+    padding: var(--space-10) var(--space-6); text-align: center;
+  }
+  .ctd-view__noneic {
+    display: inline-flex; align-items: center; justify-content: center;
+    inline-size: 48px; block-size: 48px; border-radius: var(--radius-pill);
+    background: var(--surface-card); border: 1px solid var(--border-subtle); color: var(--text-tertiary);
+  }
+  .ctd-view__none p { margin: 0; font-size: 13.5px; color: var(--text-secondary); max-inline-size: 40ch; }
+  .ctd-docs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
   .ctd-doc {
     display: flex; align-items: center; gap: var(--space-3);
     padding: var(--space-3); border-radius: var(--radius-control);
@@ -493,40 +1082,80 @@
   .ctd-doc--pending .ctd-doc__who { color: var(--text-secondary); }
 
   /* ---------- ACTIVITY TAB ----------
-     This contract's slice of the audit log. Read-only, like the log itself. */
-  .ctd-acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-  .ctd-act { display: flex; gap: var(--space-3); padding-block: var(--space-3); position: relative; }
-  .ctd-act__dot {
-    flex: none; inline-size: 9px; block-size: 9px; margin-block-start: 5px;
-    border-radius: var(--radius-pill); background: var(--brand-primary);
-  }
-  /* The thread down the left, so a run of events reads as a sequence. */
-  .ctd-act:not(:last-child)::before {
-    content: ""; position: absolute; inset-block-start: 18px; inset-block-end: -4px;
-    inset-inline-start: 4px; inline-size: 1px; background: var(--border-subtle);
-  }
-  .ctd-act__body { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
-  .ctd-act__what { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
-  .ctd-act__meta { font-size: 12.5px; color: var(--text-secondary); }
-  .ctd-act__who { font-size: 12px; color: var(--text-tertiary); }
+     THE SAME TIMELINE THE PROPERTY AND MEMBER SCREENS DRAW (.pd-timeline in
+     app/admin/properties/[id]/pd.css). This was a 9px dot on a hairline of its
+     own invention, so the console held two pictures of one idea and a reader
+     had to learn each screen's version. Same geometry here: a 28px filled
+     marker carrying the event's icon, a 2px thread behind it, the title and
+     time on one line and the detail beneath.
 
-  @media (prefers-reduced-motion: reduce) { .ctd-doc { transition: none; } }
+     ⚠ TONE COMES FROM TOKENS, NOT FROM HEX. The property screen inlines a hex
+     per tone from a JS map; it predates the token file and should be brought
+     over, not copied out. The five tones here are the status roles the rest of
+     the system already uses, so dark mode follows for free — which the hex
+     version does not. */
 
-  /* The landlord's receipt does not exist until somebody records the day he
-     took the money, so until then this is a button that makes it — not a link
-     to a paper that would carry the tenant's date. See the note on the row. */
-  .ctd-paid__make {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12px; font-weight: 600; color: var(--text-secondary);
-    padding: 4px var(--space-2); border-radius: var(--radius-control);
-    white-space: nowrap;
-    border: 1px dashed var(--border-default); background: none; cursor: pointer;
-    transition: border-color .15s, color .15s, background-color .15s;
+  .ctd-tline { list-style: none; margin: 0; padding: 0; position: relative; }
+  /* The thread, behind the markers. Logical inset so it stays under them in
+     Arabic instead of jumping to the far side of the card. */
+  .ctd-tline::before {
+    content: ""; position: absolute;
+    inset-inline-start: 13px; inset-block: 6px;
+    inline-size: 2px; background: var(--border-subtle);
   }
-  .ctd-paid__make:hover { border-color: var(--border-strong); color: var(--text-brand); background: var(--brand-subtle); }
-  .ctd-paid__make:focus-visible { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
-  .ctd-paid__make svg { flex: none; }
-  @media (prefers-reduced-motion: reduce) { .ctd-paid__make { transition: none; } }
+
+  .ctd-tli { position: relative; display: flex; gap: var(--space-4); padding-block-end: var(--space-5); }
+  .ctd-tli:last-child { padding-block-end: 0; }
+
+  .ctd-tli__dot {
+    position: relative; z-index: 1; flex: none;
+    inline-size: 28px; block-size: 28px; border-radius: var(--radius-pill);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-on-brand);
+    /* The ring is the CARD's colour, not white: it is the thread being masked
+       out behind the marker, and a white ring on a dark card is a hole. */
+    border: 2px solid var(--surface-card);
+    background: var(--tl-tone);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--tl-tone) 16%, transparent);
+  }
+
+  /* Meaning, not category: green is the contract going right, red is it going
+     wrong, amber is somebody departing from the routine. */
+  .ctd-tli--neutral { --tl-tone: var(--text-tertiary); }
+  .ctd-tli--success { --tl-tone: var(--success-600); }
+  .ctd-tli--info { --tl-tone: var(--info-600); }
+  .ctd-tli--warning { --tl-tone: var(--warning-600); }
+  .ctd-tli--error { --tl-tone: var(--error-600); }
+
+  .ctd-tli__body { min-inline-size: 0; flex: 1 1 auto; padding-block-start: 2px; }
+  .ctd-tli__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+  .ctd-tli__title { font-size: 14.5px; font-weight: 700; color: var(--text-primary); }
+  .ctd-tli__time {
+    flex: none; font-size: 12.5px; color: var(--text-tertiary);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .ctd-tli__desc { margin: 3px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
+  .ctd-tli__who { display: block; margin-block-start: 3px; font-size: 12px; color: var(--text-tertiary); }
+
+
+
+  @media (max-width: 560px) {
+    .ctd-grp__head { flex-direction: column; align-items: stretch; }
+    .ctd-file__open { flex-wrap: wrap; }
+    .ctd-file__txt { flex: 1 1 100%; order: 2; }
+    .ctd-file__kind { order: 3; }
+    /* The amount and the date drop under the description rather than
+       squeezing it to nothing; the buttons take the next line of their own. */
+    .ctd-file__amt, .ctd-file__on { order: 3; }
+    .ctd-file__on { inline-size: auto; }
+    .ctd-file { flex-wrap: wrap; }
+    .ctd-file .ctd-rcpt__actions { inline-size: 100%; justify-content: flex-end; margin-inline: var(--space-3) var(--space-1); padding-block-end: var(--space-3); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ctd-doc, .ctd-file, .ctd-file__btn, .ctd-drop { transition: none; }
+  }
+
 
   /* ============================================================
      PROPERTY CARD  —  the subject of the document, with a picture
@@ -651,12 +1280,19 @@
   }
   .ctd-rail__statenote { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
 
-  /* Signed is the only state that takes a colour, and it is green. Draft,
+  /* Two states take a colour: active is green, expired is red. Draft,
      completed and cancelled keep the neutral ground: a cancelled contract in
-     red would shout every time somebody opened one just to read what it said.
-     The banner above the tabs is what announces a cancellation. */
-  .ctd-rail__state--signed { background: var(--success-50); border-block-end-color: var(--success-100); }
-  .ctd-rail__state--signed .ctd-rail__stateic { color: var(--success-600); }
+     red would shout every time somebody opened one just to read what it said,
+     and the banner above the tabs is what announces a cancellation.
+
+     Expired earns the red because it is the one state nobody chose. Cancelled
+     and completed are decisions somebody took; a term that ran out with the
+     tenant still in the property is an accident, and it wore the same green as
+     a running lease for as long as the rail keyed off the STORED status. */
+  .ctd-rail__state--active { background: var(--success-50); border-block-end-color: var(--success-100); }
+  .ctd-rail__state--active .ctd-rail__stateic { color: var(--success-600); }
+  .ctd-rail__state--expired { background: var(--error-50); border-block-end-color: var(--error-100); }
+  .ctd-rail__state--expired .ctd-rail__stateic { color: var(--error-600); }
 
   .ctd-rail__figs { margin: 0; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
   .ctd-rail__figs dt, .ctd-rail__figs dd { margin: 0; }
@@ -726,9 +1362,10 @@
      the contract's status.
 
      A hairline between rows says "these are a list" more quietly than four
-     borders and a fill. What the row gains instead is the things that were
-     missing — a coloured role pill, and the email address that was sitting on
-     the member record unused.
+     borders and a fill. What is left on the row is who they are — a coloured
+     role pill and a name — and the one green circle that messages them. The
+     number and the address went with the boxes: they were reprints of the
+     member record, and the circle reaches the person without either.
      ============================================================ */
 
   .ctd-pties { list-style: none; margin: 0; padding: 0; }
@@ -736,9 +1373,9 @@
   .ctd-pty {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: start;
+    align-items: center;
     gap: var(--space-1) var(--space-3);
-    padding-block: var(--space-4);
+    padding-block: var(--space-3);
   }
   .ctd-pty:first-child { padding-block-start: 0; }
   .ctd-pty:last-child { padding-block-end: 0; }
@@ -747,20 +1384,29 @@
   .ctd-pty__avatar {
     flex: none;
     display: inline-flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px;
+    width: 34px; height: 34px;
     border-radius: var(--radius-full);
     background: var(--brand-subtle); color: var(--text-brand);
-    font-family: var(--font-display); font-size: 16px; font-weight: 600;
+    font-family: var(--font-display); font-size: 15px; font-weight: 600;
     text-transform: uppercase;
   }
-  /* The agent is us, not a customer. */
+  /* A REAL PORTRAIT WHERE THE SYSTEM HOLDS ONE, which in practice means the
+     agent. `object-fit` is the whole rule: portraits are not all square and a
+     squashed face is worse than no face. The tint underneath still shows for
+     the moment before it loads. */
+  .ctd-pty__avatar--photo { object-fit: cover; }
+  /* The agent is us, not a customer — but that is said by the amber pill and
+     by the fact that theirs is the only row with a face on it. The grey disc
+     that used to say it read as "not filled in yet". */
   .ctd-pty--staff .ctd-pty__avatar { background: var(--surface-sunken); color: var(--text-secondary); }
 
   .ctd-pty__body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-  .ctd-pty__top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  /* The pill's own line: the chips that qualify it sit beside it, and wrap
+     under it on a narrow card rather than squeezing the pill. */
+  .ctd-pty__top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
 
   .ctd-pty__name {
-    font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--text-primary);
+    font-size: 15px; min-width: 0; font-weight: 600; line-height: 1.3; color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .ctd-pty__name a { color: inherit; text-decoration: none; }
@@ -777,25 +1423,17 @@
     padding: 1px 6px; border-radius: var(--radius-pill); background: var(--surface-sunken);
   }
 
-  /* Phone and email together, wrapping when the address is long. Both are real
-     links — which is exactly why there is no call button beside them. */
-  .ctd-pty__contacts {
-    display: flex; flex-wrap: wrap; align-items: center;
-    gap: 3px var(--space-3); margin-block-start: 2px;
+  /* THE LANGUAGE THIS ONE PERSON IS WRITTEN TO IN — present only where they
+     chose one, so the chip means "different from the agency default" rather
+     than restating a setting on three rows. Brand-tinted, unlike the grey
+     "external" pill beside it: this is a fact somebody set on purpose, not the
+     absence of an account. */
+  .ctd-pty__lang {
+    flex: none;
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10.5px; font-weight: 600; color: var(--text-brand-muted);
+    padding: 1px 6px; border-radius: var(--radius-pill); background: var(--brand-subtle);
   }
-  .ctd-pty__c {
-    display: inline-flex; align-items: center; gap: 5px; min-width: 0;
-    font-size: 12.5px; color: var(--text-secondary); text-decoration: none;
-    font-variant-numeric: tabular-nums;
-  }
-  .ctd-pty__c > svg { flex: none; color: var(--text-tertiary); }
-  .ctd-pty__c > span, .ctd-pty__c { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  a.ctd-pty__c:hover { color: var(--text-brand); text-decoration: underline; }
-  a.ctd-pty__c:hover > svg { color: var(--text-brand-muted); }
-  a.ctd-pty__c:focus-visible {
-    outline: none; border-radius: var(--radius-control); box-shadow: var(--shadow-focus-brand);
-  }
-  .ctd-pty__c--none { font-style: italic; color: var(--text-tertiary); }
 
   /* What the platform has already said to this party, or is about to. */
   .ctd-pty__note {
@@ -808,16 +1446,16 @@
   .ctd-pty__note--warn { color: var(--warning-700); }
   .ctd-pty__note--warn > svg { color: var(--warning-600); }
 
-  /* ---------- the actions ----------
-     Small, top-right, aligned with the role pill. Ghost buttons rather than
-     outlined circles: three outlines per row was most of what made the old
-     card look like a control panel. WhatsApp keeps its fill because it is the
-     one the office reaches for. */
-  .ctd-pty__acts { display: flex; align-items: center; gap: var(--space-1); }
+  /* ---------- the action ----------
+     ONE per row, and it is the WhatsApp circle. There were three ghost buttons
+     over a printed number and address; a row that offers four ways to reach the
+     same person is a control panel, not a list of who signed. Centred against
+     the row rather than pinned to its top, now that there is only one. */
+  .ctd-pty__acts { display: flex; align-items: center; gap: var(--space-1); align-self: center; }
 
   .ctd-pty__ic {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 32px; height: 32px; flex: none;
+    width: 28px; height: 28px; flex: none;
     border: 0; border-radius: var(--radius-control);
     background: none; color: var(--text-tertiary);
     cursor: pointer; text-decoration: none;
@@ -826,18 +1464,29 @@
   .ctd-pty__ic:hover { background: var(--surface-sunken); color: var(--text-primary); }
   .ctd-pty__ic:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
   .ctd-pty__ic:disabled, .ctd-pty__ic[aria-disabled="true"] { opacity: .35; pointer-events: none; }
-  .ctd-pty__ic--wa {
-    background: var(--brand-primary); color: var(--text-on-brand);
-    border-radius: var(--radius-full);
-  }
-  .ctd-pty__ic--wa:hover { background: var(--brand-primary-hover); color: var(--text-on-brand); }
+  /* THE ONE ACTION, AND IT IS NOT A BUTTON-SHAPED THING.
+
+     It was a filled green disc. --brand-primary is #18402F, a green so dark it
+     reads as brown at 28px, and three of them down the card looked like three
+     bullet holes. The fill was never doing any work either: there is one action
+     on the row, so nothing needs separating from anything.
+
+     Bare glyph, in --text-brand-muted — the house token for a green icon on a
+     light surface, and the one that lifts to a legible green in dark mode.
+     (NOT --brand-primary-hover: in light mode the hover green is DARKER than
+     the primary, so following "use the hover green" literally would have made
+     the thing browner, not greener.) The fill comes back on hover, quietly, as
+     --brand-subtle — which is where a background actually earns its place: as
+     the answer to "did my pointer land on it". */
+  .ctd-pty__ic--wa { color: var(--text-brand-muted); border-radius: var(--radius-control); }
+  .ctd-pty__ic--wa:hover { background: var(--brand-subtle); color: var(--text-brand); }
   @media (prefers-reduced-motion: reduce) { .ctd-pty__ic { transition: none; } }
 
   /* The side nobody has filled in yet — a draft written before the buyer was
      found. Dashed and quiet: a normal state, not an error. */
   .ctd-pty--none {
     display: flex; align-items: center; gap: var(--space-2);
-    padding: var(--space-3); margin-block: var(--space-3);
+    padding: var(--space-2) var(--space-3); margin-block: var(--space-2);
     border: 1px dashed var(--border-subtle); border-radius: var(--radius-md);
     font-size: 13px; font-style: italic; color: var(--text-tertiary);
   }
@@ -864,11 +1513,18 @@
      This sits ON TOP OF .pd-grid__main (the property screen's left column,
      which is a flex column), so the display is overridden here rather than a
      second wrapper being introduced.
+
+     BOTH CLASSES ARE IN THE SELECTOR ON PURPOSE. pd.css also carries
+     `.vwd-panel__body .pd-grid__main { display: flex }` — two classes deep,
+     and this screen's tab content lives inside .vwd-panel__body — so a lone
+     `.ctd-cards` lost the display outright and the pairs silently stacked no
+     matter how wide the window was. Matching that weight is what makes the
+     grid real. Keep both classes on the media query below as well.
      ============================================================ */
 
-  .ctd-cards {
+  .pd-grid__main.ctd-cards {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 22px;
     /* PAIRED CARDS ARE THE SAME HEIGHT — the grid default, stated here because
        the obvious-looking `align-items: start` is what produced the dead space
@@ -888,12 +1544,27 @@
   .ctd-cards > .pd-card { display: flex; flex-direction: column; }
   .ctd-cards > .pd-card > .pd-card__body { flex: 1; }
 
-  /* One column once a pair would be too narrow to read. This is BELOW the
-     1180px stop where the summary rail drops under the document: between the
-     two widths the main column has the whole page to itself and two cards
-     across it are wider than they were with the rail beside them. */
-  @media (max-width: 900px) {
-    .ctd-cards { grid-template-columns: 1fr; }
+  /* PAIRED ONLY WHERE THE COLUMN IS ACTUALLY WIDE ENOUGH, which is not one
+     stop but two — because the summary rail is 366px of the window until it
+     drops under the document at 1180px, and a viewport width says nothing
+     about the main column on its own.
+
+       main column = window - 80px sidebar - 64px padding - 388px rail
+       below 1180  = window - 144px, the rail having gone underneath
+
+     A card reads down to about 370px; under that the money card's figures and
+     the property title start wrapping into ribbons. Turn that into windows:
+
+       >= 1300px  rail beside the document, column ~770px  -> a pair
+       1181-1299  rail beside it, column under 770px       -> one column
+       900-1180   rail underneath, column is the page      -> a pair
+       < 900px    -> one column
+
+     The middle band is the odd-looking one and it is the honest answer: a
+     1200px window genuinely has less room for these cards than an 1100px one,
+     because the wider window is still paying for the rail. */
+  @media (min-width: 900px) and (max-width: 1180px), (min-width: 1300px) {
+    .pd-grid__main.ctd-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   /* The internal editorial note. Prose, so it reads as a paragraph and not as
@@ -915,130 +1586,78 @@
      under a rule.
      ============================================================ */
 
-  .ctd-money { display: flex; flex-direction: column; gap: var(--space-5); }
+  /* ONE ROW SHAPE FOR BOTH CARDS. Financial Terms and Contract Dates hold the
+     same kind of thing — a named fact with one value — so they are the same
+     list: an icon to find the row by, the label on the left, the value on the
+     right. Between them these two cards have been a display-size quotation and
+     a connected vertical timeline, and both made a reader who came to check ONE
+     term work harder than a flat list does. Equal weight is not a failure to
+     prioritise here; it is what checking needs. */
 
-  .ctd-money__lead { display: flex; flex-direction: column; gap: 2px; }
-  .ctd-money__leadlabel {
-    font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-    color: var(--text-tertiary);
-  }
-  .ctd-money__leadfig {
-    font-family: var(--font-display);
-    font-size: 34px; line-height: 1.05; font-weight: 600;
-    letter-spacing: var(--tracking-tight);
-    color: var(--text-primary);
-    font-variant-numeric: tabular-nums;
-  }
-  .ctd-money__leadsub { font-size: 13px; color: var(--text-secondary); }
-
-  .ctd-money__rows { margin: 0; display: flex; flex-direction: column; }
-  .ctd-money__row {
+  .ctd-trows { margin: 0; display: flex; flex-direction: column; }
+  .ctd-trow {
     display: flex; align-items: baseline; justify-content: space-between;
     gap: var(--space-4);
     padding-block: var(--space-3);
-    border-block-start: 1px solid var(--border-subtle);
   }
-  .ctd-money__row dt, .ctd-money__row dd { margin: 0; min-width: 0; }
-  .ctd-money__row dt { font-size: 13.5px; color: var(--text-secondary); }
-  .ctd-money__row dd {
-    flex: none; font-size: 14px; font-weight: 600; color: var(--text-primary);
-    font-variant-numeric: tabular-nums; text-align: end;
+  .ctd-trow + .ctd-trow { border-block-start: 1px solid var(--border-subtle); }
+  .ctd-trow__label {
+    margin: 0; display: flex; align-items: center; gap: var(--space-2);
+    min-inline-size: 0; font-size: 13.5px; color: var(--text-secondary);
   }
-  /* The rate, or "of each collection" — under the label, not beside the money,
-     so the figures column stays a clean edge. */
-  .ctd-money__note { display: block; margin-block-start: 2px; font-size: 11.5px; color: var(--text-tertiary); }
+  /* Muted and small: it is a landmark for the eye running down the column, not
+     a picture of the concept. A row is found by its label. */
+  .ctd-trow__ic { flex: none; color: var(--text-tertiary); align-self: center; }
+  .ctd-trow__val {
+    margin: 0; flex: none; text-align: end;
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  /* A date that has not happened is not a figure — it is a sentence about why
+     the cell is empty, so it drops the weight and the tabular figures. */
+  .ctd-trow__val.is-empty { font-weight: 500; color: var(--text-tertiary); font-variant-numeric: normal; }
+  /* The working for the figure beside it — "(2.5% of the price)". Inline after
+     the value rather than under the label, so the number and its explanation
+     are one thought. */
+  .ctd-trow__note {
+    display: inline; margin-inline-start: 6px;
+    font-size: 12px; font-weight: 500; color: var(--text-tertiary);
+    font-variant-numeric: normal;
+  }
 
-  /* Arithmetic, so it earns the heavier rule and the bigger figure. */
-  .ctd-money__row--total {
-    border-block-start-width: 2px;
-    border-block-start-color: var(--border-default);
-    padding-block-start: var(--space-4);
+  /* THE ONE LINE THAT IS ARITHMETIC. Everything above it is a term somebody
+     agreed and is worth the same as its neighbours; this is computed from two
+     of them, so it is lifted out of the list and shows its working. */
+  .ctd-total {
+    margin-block-start: var(--space-4);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border-radius: var(--radius-control);
+    background: var(--brand-subtle);
   }
-  .ctd-money__row--total dt { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-  .ctd-money__row--total dd {
-    font-family: var(--font-display); font-size: 20px; font-weight: 600;
-    letter-spacing: var(--tracking-tight);
+  .ctd-total__label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .ctd-total__figs { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: end; }
+  .ctd-total__fig {
+    font-family: var(--font-display); font-size: 22px; line-height: 1.1; font-weight: 600;
+    letter-spacing: var(--tracking-tight); color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
   }
+  .ctd-total__note { font-size: 12px; color: var(--text-secondary); }
 
   /* Who collects the rent. A tenancy the agency collects produces owner-ledger
      lines and payouts; one the landlord collects produces none — so the two
      read differently rather than as one more grey line. */
   .ctd-money__where {
-    margin: 0; display: flex; align-items: center; gap: var(--space-2);
-    padding: var(--space-3) var(--space-3);
+    margin: var(--space-4) 0 0; display: flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-3);
     border-radius: var(--radius-control);
     background: var(--surface-sunken);
     font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
   }
   .ctd-money__where > svg { flex: none; color: var(--text-tertiary); }
-  .ctd-money__where.is-agency { background: var(--brand-subtle); color: var(--text-brand); }
+  .ctd-money__where.is-agency { background: var(--surface-sunken); color: var(--text-brand); }
   .ctd-money__where.is-agency > svg { color: var(--text-brand-muted); }
-
-  /* ============================================================
-     CONTRACT DATES  —  a timeline
-
-     Was a column of dates with a calendar icon beside each: the data, and none
-     of the meaning. Nothing said which had happened, which was next, or how far
-     through the term a tenancy is — the reader held today's date in their head
-     and compared, row by row, every time.
-
-     Each milestone now carries its state, and a running tenancy gets a bar.
-     ============================================================ */
-
-  .ctd-tl { list-style: none; margin: 0; padding: 0; }
-
-  .ctd-tl__step {
-    position: relative;
-    display: grid;
-    grid-template-columns: 26px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--space-3);
-    padding-block: var(--space-3);
-  }
-
-  /* The connector, drawn from each marker down to the next. `inset-inline-start`
-     rather than `left` so the line stays under the markers in Arabic. */
-  .ctd-tl__step:not(:last-child)::before {
-    content: "";
-    position: absolute;
-    inset-inline-start: 12px;
-    inset-block-start: calc(50% + 13px);
-    block-size: calc(100% - 26px);
-    inline-size: 2px;
-    background: var(--border-subtle);
-  }
-  .ctd-tl__step.is-done:not(:last-child)::before { background: var(--success-100); }
-
-  .ctd-tl__mark {
-    grid-column: 1;
-    display: inline-flex; align-items: center; justify-content: center;
-    inline-size: 26px; block-size: 26px;
-    border-radius: var(--radius-full);
-    background: var(--surface-sunken); color: var(--text-tertiary);
-    box-shadow: inset 0 0 0 1px var(--border-subtle);
-  }
-  .ctd-tl__step.is-done .ctd-tl__mark {
-    background: var(--success-50); color: var(--success-600);
-    box-shadow: inset 0 0 0 1px var(--success-100);
-  }
-  /* The one that has not happened yet and is next. A ring rather than a fill —
-     it is a thing to expect, not a thing achieved. */
-  .ctd-tl__step.is-next .ctd-tl__mark {
-    background: var(--surface-card); color: var(--text-brand);
-    box-shadow: inset 0 0 0 2px var(--brand-primary);
-  }
-
-  .ctd-tl__label { font-size: 13.5px; color: var(--text-secondary); }
-  .ctd-tl__step.is-done .ctd-tl__label,
-  .ctd-tl__step.is-next .ctd-tl__label { color: var(--text-primary); }
-  .ctd-tl__step.is-next .ctd-tl__label { font-weight: 600; }
-  .ctd-tl__step.is-ahead .ctd-tl__label { color: var(--text-tertiary); }
-
-  .ctd-tl__when {
-    font-size: 13px; font-weight: 600; color: var(--text-primary);
-    font-variant-numeric: tabular-nums; white-space: nowrap; text-align: end;
-  }
-  .ctd-tl__step.is-ahead .ctd-tl__when { color: var(--text-tertiary); font-weight: 500; }
 
   /* ---- how far through the term ---- */
   .ctd-tl__progress {
@@ -1064,3 +1683,11 @@
     font-size: 12.5px; color: var(--text-secondary);
   }
   .ctd-tl__left { flex: none; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 520px) {
+    .ctd-trow { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .ctd-trow__val { text-align: start; }
+    .ctd-trow__note { display: block; margin-inline-start: 0; }
+    .ctd-total { flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+    .ctd-total__figs { align-items: flex-start; text-align: start; }
+  }

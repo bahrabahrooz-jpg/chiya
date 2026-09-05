@@ -32,6 +32,10 @@ import {
 } from "../_data/contracts";
 import { useContracts } from "../_shared/contracts-store";
 import { useProperties } from "../_shared/properties-store";
+/* The members page's add modal and its record factory, so a member created in
+   the middle of a contract is the same member as one created from the list. */
+import { AddMemberModal } from "../_members/add-member-modal";
+import { newMemberRecord } from "../_members/data";
 import { useFinanceActions } from "../_shared/finance";
 import { draftEndsOn, draftPrice, type ContractDraft } from "../_shared/finance/invoice-generation";
 import { FinanceToaster, useFinanceToasts } from "../_shared/finance/toaster";
@@ -144,7 +148,7 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
   const { t, lang } = useLang();
   const router = useRouter();
   const { settings } = usePlatformSettings();
-  const { properties, members, agents } = useProperties();
+  const { properties, members, agents, addMember } = useProperties();
   const { contracts } = useContracts();
   const actions = useFinanceActions();
   const [toasts, pushToast, dismissToast] = useFinanceToasts();
@@ -198,6 +202,12 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
   const [partyMode, setPartyMode] = useState<"member" | "external">(existing?.buyerExternal ? "external" : "member");
   const [buyerId, setBuyerId] = useState(existing?.buyerId ?? "");
   const [partyQuery, setPartyQuery] = useState("");
+  /* The add-member modal, opened from either half of the counterparty field.
+     Creating the member here and selecting them is the whole point — a contract
+     is the moment somebody's details are actually in front of you, and sending
+     the user to /admin/members to type them in and then back again is how the
+     free-text box wins. */
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
   /**
    * The chosen counterparty owns the property that was chosen afterwards.
    *
@@ -1303,10 +1313,29 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                           </div>
                         )}
                       </Row>
+                      {/* TWO WAYS OUT OF "THEY ARE NOT IN THE LIST", and they
+                          are not the same choice.
+
+                          Adding them as a member is offered FIRST and is the
+                          one to take: a member record can hold a language, a
+                          consent and an ID, so the invoices this contract
+                          raises can actually reach them. A name typed onto the
+                          contract can hold none of that — the reminders go out
+                          in the agency's default language and nobody can mute
+                          them, because there is nothing to mute.
+
+                          The second is still here because it is sometimes the
+                          truth: a tenant who will not register is a real
+                          tenant, and a form that refuses to write the contract
+                          gets worked around on paper. */}
                       {!selectedMember && (
                         <p className="cn-aside">
                           {t("admin.cn.notRegistered")}{" "}
-                          <button type="button" className="cn-aside__link" onClick={() => setPartyMode("external")}>
+                          <button type="button" className="cn-aside__link" onClick={() => setAddMemberOpen(true)}>
+                            {t("admin.cn.addMember")}
+                          </button>
+                          {" · "}
+                          <button type="button" className="cn-aside__link cn-aside__link--quiet" onClick={() => setPartyMode("external")}>
                             {t("admin.cn.enterDetails")}
                           </button>
                         </p>
@@ -1331,8 +1360,17 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                           <TextInput id="cn-extid" value={extId} onChange={setExtId} placeholder={t("admin.cn.ph.idNumber")} />
                         </Row>
                       </Grid>
+                      {/* The way back, plus the offer again — somebody halfway
+                          through typing a name and a number has already done
+                          most of the work of adding a member, and this is the
+                          last moment before that work becomes a string on one
+                          contract instead of a person on the platform. */}
                       <p className="cn-aside">
-                        <button type="button" className="cn-aside__link" onClick={() => setPartyMode("member")}>
+                        <button type="button" className="cn-aside__link" onClick={() => setAddMemberOpen(true)}>
+                          {t("admin.cn.addMember")}
+                        </button>
+                        {" · "}
+                        <button type="button" className="cn-aside__link cn-aside__link--quiet" onClick={() => setPartyMode("member")}>
                           {t("admin.cn.searchInstead")}
                         </button>
                       </p>
@@ -2128,6 +2166,33 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
           )}
 
       </div>
+
+      {/* Adding the counterparty without leaving the contract.
+
+          The same modal the members page uses, so a tenant created here gets
+          the same record — language, consent, ID and all. It SELECTS them on
+          the way out: the reason somebody opened it was to fill this field, and
+          leaving them to search for the person they just typed in is how a
+          shortcut turns back into a chore. Also switches the field out of
+          free-text mode, in case they got there through the other door. */}
+      <AddMemberModal
+        open={addMemberOpen}
+        onClose={() => setAddMemberOpen(false)}
+        /* Whatever they had already typed comes with them — the name and number
+           are usually half-entered by the time somebody realises this person
+           should be a member. */
+        initial={{ name: extName, phone: extPhone, idNumber: extId, idKind: extId.trim() ? "civil" : null }}
+        onSubmit={(v) => {
+          const created = newMemberRecord(v);
+          addMember(created);
+          setAddMemberOpen(false);
+          setPartyMode("member");
+          setBuyerId(created.id);
+          setPartyQuery("");
+          setOwnerClash(false);
+          pushToast({ tone: "success", icon: "user-plus", title: t("admin.cn.memberAdded"), msg: created.name });
+        }}
+      />
 
       <FinanceToaster toasts={toasts} onDismiss={dismissToast} />
     </div>

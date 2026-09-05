@@ -23,7 +23,6 @@ import {
   PROPERTIES,
   STATUSES,
   STATUS_TABS,
-  VIEWINGS,
   VIEWINGS_PER_PAGE,
   VIEWING_SLOTS,
   VIEWING_STATUS,
@@ -44,6 +43,7 @@ import {
   type ViewingFilters,
   type ViewingRecord,
 } from "./data";
+import { addViewing, deleteViewing, replaceViewing, updateViewing, useViewingRecords } from "./viewings-store";
 import { useProperties } from "../_shared/properties-store";
 
 /* ---------------- anchored panel positioning ---------------- */
@@ -663,6 +663,7 @@ function ScheduleModalInner({ editViewing, viewings, onClose, onSuccess, lockedA
     const agt = AGENTS.find((a) => a.id === form.agent);
     const record: ViewingRecord = {
       id: editViewing ? editViewing.id : "VW-" + (Date.now() % 1000000),
+      propertyId: prop?.id ?? editViewing?.propertyId ?? "",
       property: prop ? { title: prop.title, location: prop.location, img: prop.img } : (editViewing?.property ?? { title: "", location: "", img: "" }),
       member: mem?.name ?? editViewing?.member ?? "",
       agent: agt?.name ?? editViewing?.agent ?? "",
@@ -988,7 +989,18 @@ function ViewingRow({ v, openMenu, setOpenMenu, onEdit, onView, onChangeStatus, 
         <span className="vw-celllabel">{t("admin.members.th.member")}</span>
         <div className="vw-person">
           <Avatar name={v.member} size="sm" />
-          <span className="vw-person__name">{v.member}</span>
+          <div className="vw-person__body">
+            <span className="vw-person__name">{v.member}</span>
+            {/* Says the request arrived on its own rather than through somebody
+                in the office. "Has anyone spoken to this person yet?" is the
+                first thing staff ask about a request, and this is the answer. */}
+            {v.source === "website" && (
+              <span className="vw-person__src">
+                <Icon name="globe" size={11} />
+                {t("admin.viewings.viaWebsite")}
+              </span>
+            )}
+          </div>
         </div>
       </div>
       {!hideAgent && (
@@ -1373,7 +1385,12 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
   // Agent surface: the assigned agent is locked to the signed-in agent, so
   // schedule/edit can't reassign the viewing to someone else.
   const lockedAgentId = useMemo(() => (scopeAgent ? (AGENTS.find((a) => a.name === scopeAgent)?.id ?? null) : null), [scopeAgent]);
-  const [viewings, setViewings] = useState<ViewingRecord[]>(() => (scopeAgent ? VIEWINGS.filter((v) => v.agent === scopeAgent) : VIEWINGS));
+  /* The diary comes from the shared store, not from component state seeded with
+     VIEWINGS. That is what lets a member's booking on the public property page
+     appear here: the website writes to the same store and this list re-renders.
+     Held in state it was a private copy nothing outside the admin could reach. */
+  const allViewings = useViewingRecords();
+  const viewings = useMemo(() => (scopeAgent ? allViewings.filter((v) => v.agent === scopeAgent) : allViewings), [allViewings, scopeAgent]);
   const [filters, setFilters] = useState<ViewingFilters>(EMPTY_FILTERS);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [statusTarget, setStatusTarget] = useState<ViewingRecord | null>(null);
@@ -1413,16 +1430,16 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
 
   const handleScheduled = (record: ViewingRecord, isEdit: boolean) => {
     if (isEdit) {
-      setViewings((prev) => prev.map((v) => (v.id === record.id ? record : v)));
+      replaceViewing(record);
       setToast({ title: t("admin.viewings.toast.updatedTitle"), message: t("admin.viewings.toast.updatedMsg") });
     } else {
-      setViewings((prev) => [record, ...prev]);
+      addViewing(record);
       setToast({ title: t("admin.viewings.toast.scheduledTitle"), message: t("admin.viewings.toast.scheduledMsg") });
     }
   };
   const handleStatusConfirm = (status: string) => {
     const target = statusTarget!;
-    setViewings((prev) => prev.map((v) => (v.id === target.id ? { ...v, status } : v)));
+    updateViewing(target.id, { status });
     setStatusTarget(null);
     setToast({
       title: t("admin.viewings.toast.statusTitle"),
@@ -1431,7 +1448,7 @@ export function ViewingsApp({ scopeAgent, basePath = "/admin/viewings" }: { scop
   };
   const handleDeleteConfirm = () => {
     const target = deleteTarget!;
-    setViewings((prev) => prev.filter((v) => v.id !== target.id));
+    deleteViewing(target.id);
     setDeleteTarget(null);
     setToast({
       title: t("admin.viewings.toast.deletedTitle"),

@@ -17,6 +17,7 @@
    ========================================================================== */
 
 import type { IconName } from "@/components/ui/icon";
+import type { Lang } from "@/lib/i18n/config";
 import { ANCHOR_DATE, ANCHOR_ISO, addDays, addMonths } from "@/lib/dates";
 import { money, type CurrencyCode, type Money } from "@/lib/money";
 
@@ -213,6 +214,9 @@ export interface PropertyRecord {
   details?: PropertyDetails;
 }
 
+/** How a person is identified on paper. `null` = nothing captured yet. */
+export type IdKind = "civil" | "passport";
+
 export interface MemberRecord {
   id: string;
   name: string;
@@ -226,6 +230,79 @@ export interface MemberRecord {
   joinedOn: string;
   status: string;
   img: string | null;
+
+  /* --------------------------------------------------------------------------
+     REACHING THIS PERSON, AND IDENTIFYING THEM.
+
+     Everything below is a fact about the PERSON, not about one deal, which is
+     why it lives here and not on a contract. A screen that needs to message
+     somebody reads it from the member; the member is corrected in one place and
+     every tenancy they are on follows.
+
+     The one field that does NOT work that way is `idNumber`. A contract keeps
+     its own copy of the ID as signed (see the signer overrides and
+     `buyerExternal` in ../_data/contracts) because that copy is a record of
+     paper and must not move when somebody fixes a typo on a profile two years
+     later. THIS is the live master; THAT is the snapshot. They are allowed to
+     disagree, and when they do the contract is right about the past.
+     ----------------------------------------------------------------------- */
+
+  /**
+   * `phone` is reachable on WhatsApp.
+   *
+   * One number, not two. Practically every number here is a WhatsApp number,
+   * and a second field would go stale the first time somebody changed SIM. Off
+   * means the number is good for calling and useless for messaging — the outbox
+   * says so on the row instead of leaving a message that looks sent.
+   */
+  whatsapp: boolean;
+
+  /**
+   * The language THIS person is written to in. `null` follows the agency
+   * default (`WhatsAppSettings.sendLanguage`), which is what nearly everybody
+   * should be — set it only where somebody genuinely differs, so changing the
+   * agency default still moves everyone it ought to move.
+   *
+   * Nothing to do with the language the admin is reading the screen in.
+   */
+  msgLang: Lang | null;
+
+  /**
+   * Automatic reminders and notices reach this person.
+   *
+   * Off is a real case, not an edge one: where a landlord and tenant settle the
+   * rent between themselves in cash, a monthly "your rent is due" from us is
+   * noise about money we never touch. Off suppresses the SCHEDULED messages and
+   * nothing else — a person can still press send by hand from the contract,
+   * because a human deciding to write to somebody is not the thing being muted.
+   */
+  remindersOn: boolean;
+
+  /** Civil ID or passport — whichever they produced. Optional everywhere: a
+      tenant is usually added off a phone call and identified at signing. */
+  idKind: IdKind | null;
+  idNumber?: string;
+
+  /** Where the person lives, from the same city list the properties use. Not a
+      postal address — city and area are what an office needs to place someone. */
+  city?: string;
+  area?: string;
+
+  /**
+   * How this person came to be a member.
+   *
+   * `undefined` reads as "admin" — somebody at the agency typed them in, which
+   * is every seeded record and everything the add-member form creates. "website"
+   * means they registered themselves on the public site and no one has spoken
+   * to them yet.
+   *
+   * It matters because the two arrive with different amounts of truth behind
+   * them. A staff-entered member was usually sitting across a desk with an ID
+   * in their hand. A self-registered one typed a name into a form, and the row
+   * should not pretend otherwise — that is the whole reason the field exists
+   * rather than everyone appearing identical on the members list.
+   */
+  source?: "admin" | "website";
 }
 
 export interface AgentRecord {
@@ -497,22 +574,53 @@ interface MemberSpec {
   status?: string; // default Active
   daysAgo: number; // joined
   phone: string;
+  /** Defaults below are the ordinary case — a spec only states the exception. */
+  whatsapp?: boolean; // default true
+  msgLang?: Lang; // default null = follow the agency's send language
+  remindersOn?: boolean; // default true
+  idKind?: IdKind;
+  idNumber?: string;
+  city?: string;
+  area?: string;
 }
 const MEMBER_SPECS: MemberSpec[] = [
-  { id: "M-5014", name: "Dara Kamal", daysAgo: 12, phone: "+964 750 214 3308" }, // prospective buyer (viewings only)
-  { id: "M-5013", name: "Shilan Aziz", daysAgo: 420, phone: "+964 770 331 5124" },
-  { id: "M-5012", name: "Hersh Qadir", status: "Suspended", daysAgo: 510, phone: "+964 751 448 2019" },
-  { id: "M-5011", name: "Nma Rashid", daysAgo: 260, phone: "+964 773 902 6641" },
-  { id: "M-5010", name: "Tara Botan", daysAgo: 190, phone: "+964 750 605 7812" },
-  { id: "M-5009", name: "Aland Tariq", daysAgo: 75, phone: "+964 770 128 9903" },
-  { id: "M-5008", name: "Sara Amin", daysAgo: 44, phone: "+964 751 776 4530" }, // prospective tenant (viewings only)
-  { id: "M-5007", name: "Awat Faraj", daysAgo: 610, phone: "+964 773 350 1287" },
-  { id: "M-5006", name: "Berivan Salar", daysAgo: 150, phone: "+964 750 491 8256" },
-  { id: "M-5005", name: "Rebwar Tofiq", status: "Suspended", daysAgo: 330, phone: "+964 770 883 4471" },
-  { id: "M-5004", name: "Chiman Rasul", daysAgo: 490, phone: "+964 751 267 9145" },
-  { id: "M-5003", name: "Kani Omar", daysAgo: 220, phone: "+964 773 514 6098" },
-  { id: "M-5002", name: "Zana Ibrahim", daysAgo: 700, phone: "+964 750 739 2264" }, // all four roles via links
-  { id: "M-5001", name: "Avan Mustafa", daysAgo: 28, phone: "+964 770 460 1173" },
+  // No ID on file, and that is the point: a prospective buyer who has been to
+  // two viewings has produced nothing but a phone number, so every screen that
+  // shows identity has to survive having none.
+  { id: "M-5014", name: "Dara Kamal", daysAgo: 12, phone: "+964 750 214 3308", city: "Erbil", area: "Ankawa" }, // prospective buyer (viewings only)
+  { id: "M-5013", name: "Shilan Aziz", daysAgo: 420, phone: "+964 770 331 5124", idKind: "civil", idNumber: "00227431905", city: "Erbil", area: "Italian Village" },
+  // THE NUMBER THAT IS NOT ON WHATSAPP. A landline-ish old number kept for
+  // calling. Suspended on purpose so the flag can be seen on the members list
+  // and the profile without turning a live tenancy's whole reminder column red.
+  { id: "M-5012", name: "Hersh Qadir", status: "Suspended", daysAgo: 510, phone: "+964 751 448 2019", whatsapp: false, idKind: "civil", idNumber: "00194028836", city: "Sulaymaniyah", area: "Bakhtiari" },
+  { id: "M-5011", name: "Nma Rashid", daysAgo: 260, phone: "+964 773 902 6641", idKind: "civil", idNumber: "00301155742", city: "Erbil", area: "Dream City" },
+  { id: "M-5010", name: "Tara Botan", daysAgo: 190, phone: "+964 750 605 7812", idKind: "civil", idNumber: "00288610394", city: "Duhok", area: "Zakho Road" },
+  // THE MUTED PERSON — the reason the switch exists. Tenant on CT-0204, where
+  // the landlord collects the rent in cash himself; a monthly "your rent is
+  // due" from us would be a demand for money we never touch. His profile and
+  // the contract's party card both say so, so nobody re-enables it by accident.
+  { id: "M-5009", name: "Aland Tariq", daysAgo: 75, phone: "+964 770 128 9903", remindersOn: false, idKind: "civil", idNumber: "00312907458", city: "Erbil", area: "Empire World" },
+  { id: "M-5008", name: "Sara Amin", daysAgo: 44, phone: "+964 751 776 4530", city: "Sulaymaniyah", area: "Ashti" }, // prospective tenant (viewings only)
+  // THE MEMBER WITH NO NUMBER ON FILE. One record carries this scenario so the
+  // screens that reach people can be seen failing to: his payment notice lands
+  // in the message log as "Failed — no number on the record", and his property
+  // and contract cards show the no-phone state instead of a WhatsApp button.
+  // A landlord rather than a tenant on purpose — he is owed one notice per
+  // payment, so the failure reads as one row and not as a red column.
+  // He is also written to in Arabic, so the log shows a language that is not
+  // the agency default even on a row that never leaves.
+  { id: "M-5007", name: "Awat Faraj", daysAgo: 610, phone: "", msgLang: "ar", idKind: "civil", idNumber: "00151882073", city: "Erbil", area: "Ankawa" },
+  { id: "M-5006", name: "Berivan Salar", daysAgo: 150, phone: "+964 750 491 8256", idKind: "civil", idNumber: "00295337120", city: "Duhok", area: "Malta" },
+  { id: "M-5005", name: "Rebwar Tofiq", status: "Suspended", daysAgo: 330, phone: "+964 770 883 4471", idKind: "civil", idNumber: "00243718865", city: "Sulaymaniyah", area: "Sarchinar" },
+  // THE PASSPORT. Every other record here is a civil ID; one is not, because a
+  // buyer living abroad signs on a passport and the ID row has to label itself.
+  { id: "M-5004", name: "Chiman Rasul", daysAgo: 490, phone: "+964 751 267 9145", idKind: "passport", idNumber: "A12934776", city: "Erbil", area: "Italian Village" },
+  // WRITTEN TO IN KURDISH. The tenant on CT-0205, the one agency-collected
+  // tenancy — so his twelve reminders are the proof that the language on the
+  // PERSON beats the agency default, right there in the message log.
+  { id: "M-5003", name: "Kani Omar", daysAgo: 220, phone: "+964 773 514 6098", msgLang: "ku", idKind: "civil", idNumber: "00276440918", city: "Erbil", area: "Dream City" },
+  { id: "M-5002", name: "Zana Ibrahim", daysAgo: 700, phone: "+964 750 739 2264", msgLang: "ar", idKind: "civil", idNumber: "00108552367", city: "Erbil", area: "Empire World" }, // all four roles via links
+  { id: "M-5001", name: "Avan Mustafa", daysAgo: 28, phone: "+964 770 460 1173", idKind: "civil", idNumber: "00329076154", city: "Sulaymaniyah", area: "Ashti" },
 ];
 export const MEMBERS: MemberRecord[] = MEMBER_SPECS.map((s) => ({
   id: s.id,
@@ -526,6 +634,13 @@ export const MEMBERS: MemberRecord[] = MEMBER_SPECS.map((s) => ({
   joinedOn: isoFromDaysAgo(s.daysAgo),
   status: s.status ?? "Active",
   img: null, // members never carry a photo — initials avatars everywhere
+  whatsapp: s.whatsapp ?? true,
+  msgLang: s.msgLang ?? null,
+  remindersOn: s.remindersOn ?? true,
+  idKind: s.idKind ?? null,
+  ...(s.idNumber ? { idNumber: s.idNumber } : {}),
+  ...(s.city ? { city: s.city } : {}),
+  ...(s.area ? { area: s.area } : {}),
 }));
 
 /* ----------------------------------------------------------------------------
@@ -707,14 +822,22 @@ const PROP_SPECS: PropSpec[] = [
   { id: "CH-3186", title: "Bakhtiari Pearl Flat", area: "Bakhtiari", type: "Apartment", listing: "sale", status: "Sold", agent: "Sara Hama", owner: "Chiman Rasul", buyer: "Avan Mustafa", price: 195000, beds: 2, baths: 1, size: 120, daysAgo: 160, updatedDaysAgo: 4, mandateRate: 3 },
   { id: "CH-3185", title: "Gulan Tower Office", area: "Gulan", type: "Office", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Awat Faraj", buyer: "Zana Ibrahim", companyOwner: true, price: 540000, beds: 0, baths: 2, size: 320, daysAgo: 240, updatedDaysAgo: 18, img: 1, exclusive: true },
   { id: "CH-3184", title: "Malta Summit Grounds", area: "Malta", type: "Land", listing: "sale", status: "Sold", agent: "Rawa Jamal", owner: "Zana Ibrahim", buyer: "Rebwar Tofiq", price: 260000, beds: 0, baths: 0, size: 1600, daysAgo: 400, updatedDaysAgo: 140 },
-  /* -------- Rented (4, rent only) — updated: today / week / month / year --------
+  /* -------- Rented (5, rent only) — updated: today / week / month / year --------
      Tenants link like buyers but are optional: CH-3183 is deliberately rented to
      an off-platform tenant so the "looker with viewings but no tenancy" members
-     (Dara, Sara) stay prospective. */
+     (Dara, Sara) stay prospective.
+
+     CH-3176 is the fifth and the odd one: its tenancy EXPIRED two months ago and
+     nobody closed it, so the property is still marked rented and cannot be
+     re-listed. That is not a mistake in the seed — it is the mistake the seed is
+     there to show. See CT-0213. Its id sits out of the descending run because
+     the rented range (3183–3180) was already full; a new scenario needed a new
+     record rather than the repurposing of a curated one. */
   { id: "CH-3183", title: "Empire World Loft", area: "Empire World", type: "Apartment", listing: "rent", status: "Rented", agent: "Lana Aziz", owner: "Nma Rashid", price: 1600, beds: 2, baths: 2, size: 125, daysAgo: 80, updatedDaysAgo: 0 },
   { id: "CH-3182", title: "Sarchnar Cypress Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Rented", agent: "Sara Hama", owner: "Kani Omar", tenant: "Aland Tariq", price: 2600, beds: 4, baths: 4, size: 420, daysAgo: 110, updatedDaysAgo: 5, img: 1 },
   { id: "CH-3181", title: "Ankawa Tower Suite", area: "Ankawa", type: "Apartment", listing: "rent", status: "Rented", agent: "Karwan Mahmoud", owner: "Awat Faraj", tenant: "Kani Omar", price: 3400, beds: 3, baths: 3, size: 280, daysAgo: 140, updatedDaysAgo: 25, img: 1, mandateRate: 4 },
   { id: "CH-3180", title: "Nizarke Sunset Terrace", area: "Nizarke", type: "House", listing: "rent", status: "Rented", agent: "Rawa Jamal", owner: "Tara Botan", tenant: "Zana Ibrahim", price: 850, beds: 3, baths: 2, size: 230, daysAgo: 380, updatedDaysAgo: 258 },
+  { id: "CH-3176", title: "Bakhtiari Court House", area: "Bakhtiari", type: "House", listing: "rent", status: "Rented", agent: "Sara Hama", owner: "Nma Rashid", tenant: "Chiman Rasul", price: 1100, beds: 3, baths: 2, size: 220, daysAgo: 440, updatedDaysAgo: 428, img: 2 },
   /* -------- Draft (3: sale+agent, rent+no agent, sale+no agent) -------- */
   { id: "CH-3179", title: "Gulan Emerald Suite", area: "Gulan", type: "Apartment", listing: "sale", status: "Draft", agent: "Karwan Mahmoud", owner: "Zana Ibrahim", price: 610000, beds: 3, baths: 3, size: 340, daysAgo: 1, updatedDaysAgo: 1, img: 2 },
   { id: "CH-3178", title: "Salim Street Studio", area: "Salim Street", type: "Apartment", listing: "rent", status: "Draft", agent: null, owner: "Zana Ibrahim", price: 600, beds: 1, baths: 1, size: 90, daysAgo: 9, updatedDaysAgo: 9 },

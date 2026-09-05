@@ -34,8 +34,16 @@
   }
 
   /* ---------- KPI SUMMARY (4 cards) ----------
-     Four, not five: the money card carries a full amount ("$720,900"), and a
-     fifth column would squeeze it into two lines on a laptop. */
+     FOUR, AND THE GRID IS WHY IT MUST STAY FOUR.
+
+     The money card carries a full amount ("$720,900"), so a fifth column would
+     squeeze it onto two lines on a laptop — and dropping to four columns with
+     five cards, which is what happened when a deposits card was added here,
+     leaves the fifth stranded alone on a second row at every width. Four goes
+     4 / 2 / 1 cleanly from desktop to phone. Five divides into nothing.
+
+     If a fifth number ever needs a home, it goes in the filter bar as a toggle
+     or on the finance report — not here. See KPI_CARDS in _contracts/data. */
   .ct-kpis {
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 18px; margin-bottom: 30px;
@@ -405,7 +413,9 @@
     font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
   }
 
-  /* A KPI tile that is also the way into its own worklist. */
+  /* Every KPI tile is the way into its own worklist — see the note on
+     KPI_CARDS. A card that shows a number you cannot go and look at is not a
+     card, it is a decoration. */
   .ct-kpis > .ct-kpi--action { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
   .ct-kpis > .ct-kpi--action:hover { border-color: var(--border-strong); box-shadow: var(--shadow-card-hover); }
   .ct-kpis > .ct-kpi--action:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }

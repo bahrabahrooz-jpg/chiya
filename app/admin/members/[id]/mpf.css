@@ -500,6 +500,11 @@
   }
   .adh__copy:hover { background: var(--gray-100); color: var(--text-brand); }
   .adh__copy:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  /* A row that is present and empty. Lighter and italic so it reads as "we do
+     not have this" at a glance rather than as a value — the row still has to be
+     there, because a hidden one looks like a field the platform does not hold. */
+  .adh__detail__none { font-style: italic; color: var(--text-tertiary); font-weight: 400; }
+
   .adh__detailchips { display: flex; flex-wrap: wrap; gap: 6px; }
   .adh__chip {
     display: inline-flex; align-items: center; padding: 3px 8px;
@@ -513,6 +518,18 @@
   .adh__chip--seller   { background: #FDF2FA; color: #C11574; border-color: #FCCEEE; }
   .adh__chip--landlord { background: #EEF4FF; color: #3538CD; border-color: #C7D7FE; }
   .adh__chip--tenant   { background: #FEF6EE; color: #B93815; border-color: #F9DBAF; }
+
+  /* ---- the messaging chips ----
+     A number WhatsApp cannot use is a warning; somebody who asked not to be
+     reminded is not. Muted is grey on purpose: the setting is working, and
+     colouring a working setting red sends people to undo it. */
+  .adh__chip--warn {
+    background: var(--warning-50); color: var(--warning-700); border-color: var(--warning-100);
+  }
+  .adh__chip--muted {
+    background: var(--surface-sunken); color: var(--text-tertiary); border-color: var(--border-subtle);
+  }
+
   @media (max-width: 720px) {
     .adh__details { grid-template-columns: 1fr; }
   }

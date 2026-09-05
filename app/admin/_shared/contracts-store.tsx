@@ -17,6 +17,7 @@ import {
   invoicesByContract as invoicesByContractOf,
   nextContractNumber,
   nextInvoiceNumber,
+  outstanding,
   outstandingForContract as outstandingForContractOf,
   paidTotal,
   paymentsByInvoice as paymentsByInvoiceOf,
@@ -41,9 +42,12 @@ import { logAudit } from "./audit-log";
 
    IMMUTABILITY IS STRUCTURAL. There is deliberately no `updateInvoice` and no
    `deleteInvoice`. A draft is built by the caller and handed to issueInvoice();
-   after that the only thing that can happen to an invoice is voidInvoice(),
-   which leaves the record in place and writes a reversing credit note. If you
-   find yourself wanting to edit an issued invoice, the answer is a credit note.
+   after that an invoice can only be voided — which leaves the record in place
+   and writes a reversing credit note — or POSTPONED, which moves its due date
+   and appends to a trail and may touch nothing else. Those two are the whole
+   surface, and both are named mutations with their own guards rather than a
+   general patch. If you find yourself wanting to change what an issued invoice
+   CHARGES, the answer is a credit note.
 
    The same goes for contracts: `updateContract` refuses anything but a draft
    (see below), and there is no delete at all.
@@ -83,8 +87,22 @@ import { logAudit } from "./audit-log";
    as unpaid again. Same reasoning as v6: discarded, not migrated.
    v8: the SEED gained rent payments and a seeded owner ledger. A v7 cache was
    saved before either existed, so restoring it would show a book where no rent
-   has ever been collected while the code says otherwise. */
-export const CONTRACTS_STORAGE_KEY = "chiya:admin-contracts:v8";
+   has ever been collected while the code says otherwise.
+   v9: the two tenancies the app had never invoiced — CT-0204 and CT-0206 — got
+   the rent schedules the generator says every tenancy has, along with the
+   twelve payments that settle them. A v8 cache holds neither, and because the
+   message log is DERIVED from these records rather than stored, restoring one
+   leaves the log with three months of history and three of its five states
+   permanently empty. The screen looks broken and the data is the reason, which
+   is precisely the case a version bump exists for.
+
+   v10 adds CT-0213, the EXPIRED tenancy, with its commission invoice and the
+   payment that settled it. A v9 cache holds none of the three, and the failure
+   is the same shape as the one above: the Expired status chip, the End the
+   tenancy action and the second deposit-to-settle all had nothing to act on, so
+   three working features read as broken ones. Bumped alongside the properties
+   store, which gained the property CT-0213 sits on. */
+export const CONTRACTS_STORAGE_KEY = "chiya:admin-contracts:v10";
 
 /* Same-tab change signal, like properties-store's STORE_EVENT: the browser
    `storage` event only fires in OTHER tabs. */
@@ -191,6 +209,9 @@ interface ContractsContextValue {
   amendContract: (id: string, patch: Partial<ContractRecord>, amendment: ContractAmendment) => void;
   issueInvoice: (invoice: InvoiceRecord, issuedOn?: string) => InvoiceRecord;
   voidInvoice: (id: string, reason: string, voidedOn?: string) => InvoiceRecord | undefined;
+  /** Move a live demand's due date, keeping the trail. The ONLY field on an
+      issued invoice that may change — see postponeInvoice. */
+  postponeInvoice: (id: string, to: string, reason: string, on?: string) => InvoiceRecord | undefined;
   recordPayment: (payment: PaymentRecord, ledgerEntries?: OwnerLedgerEntry[]) => void;
   /** Money handed to an owner. The only thing that reduces what we owe one. */
   recordPayout: (entries: OwnerLedgerEntry[]) => void;
@@ -416,6 +437,51 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
   );
 
   /**
+   * Give a demand more time.
+   *
+   * ⚠ THE ONE NARROW EXCEPTION TO INVOICE IMMUTABILITY, and it is narrow on
+   * purpose: `dueOn` moves and a line is appended to the trail. Nothing else on
+   * the record can be reached from here — not the amount, not the party, not
+   * the lines. Extending the terms of collection is not reissuing the document,
+   * which is why this is not a credit note: voiding and re-raising a demand
+   * because a tenant asked for a week would burn an invoice number, break the
+   * link to any penalty hanging off it, and tell a landlord reading the file
+   * that his rent was cancelled.
+   *
+   * REFUSED ON ANYTHING THAT IS NOT A LIVE, UNSETTLED DEMAND, and refused
+   * backwards: a date earlier than the one it already carries is not an
+   * extension, it is a rewrite of when the money was owed.
+   */
+  const postponeInvoice = useCallback(
+    (id: string, to: string, reason: string, on?: string): InvoiceRecord | undefined => {
+      const original = invoices.find((i) => i.id === id);
+      if (!original || original.status !== "issued" || original.creditNoteFor) return undefined;
+      if (!(to > original.dueOn)) return undefined;
+      /* A demand that has been settled has nothing left to fall due. A PART-paid
+         one still does, so it is allowed. */
+      if (isZero(outstanding(original, payments))) return undefined;
+
+      const agreedOn = on ?? toIso(new Date());
+      const moved: InvoiceRecord = {
+        ...original,
+        dueOn: to,
+        postponements: [...(original.postponements ?? []), { from: original.dueOn, to, on: agreedOn, reason }],
+      };
+      logAudit({
+        category: "property",
+        actionKey: "audit.action.postponedInvoice",
+        target: original.number || original.id,
+        targetId: original.id,
+        metaKey: "audit.meta.postponed",
+        metaParams: { from: original.dueOn, to },
+      });
+      setInvoices((prev) => prev.map((i) => (i.id === id ? moved : i)));
+      return moved;
+    },
+    [invoices, payments],
+  );
+
+  /**
    * Record money received — and, when it was somebody else's money, the fact
    * that we are now holding it.
    *
@@ -622,6 +688,7 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       amendContract,
       issueInvoice,
       voidInvoice,
+      postponeInvoice,
       recordPayment,
       recordPayout,
       recordExpense,
@@ -630,7 +697,7 @@ export function ContractsProvider({ children }: { children: React.ReactNode }) {
       recordRefund,
       ...selectors,
     }),
-    [contracts, invoices, payments, ledger, createContract, updateContract, amendContract, issueInvoice, voidInvoice, recordPayment, recordPayout, recordExpense, receiptOwner, recordDepositClaim, recordRefund, selectors],
+    [contracts, invoices, payments, ledger, createContract, updateContract, amendContract, issueInvoice, voidInvoice, postponeInvoice, recordPayment, recordPayout, recordExpense, receiptOwner, recordDepositClaim, recordRefund, selectors],
   );
 
   return <ContractsContext.Provider value={value}>{children}</ContractsContext.Provider>;

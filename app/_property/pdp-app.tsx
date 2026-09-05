@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { toast } from "@/components/feedback/toast";
 import { useLang } from "@/lib/i18n";
-import { useAuth } from "@/lib/auth";
+import { openAuth, useAuth } from "@/lib/auth";
 import { useSaveGate, type SavedProperty } from "@/lib/favorites";
 import { formatPrice } from "@/lib/money";
 import { useApproxPrice } from "@/lib/use-approx-price";
@@ -17,8 +17,12 @@ import { ActionPanel, BookModal } from "./pdp-aside";
 import { PdpSimilar } from "./pdp-similar";
 
 /** Renders the detail page for the property resolved by the /property/[id]
-    route. The data is built on the server (buildPdp) and passed in, so the admin
-    catalog stays out of the client bundle. */
+    route. The page's own data is built on the server (buildPdp) and passed in.
+    The booking modal is the one exception: it reads and writes the agency's
+    live viewings diary, which is a client store built on the admin catalogue,
+    so that catalogue is in this page's bundle. The homepage, search and agent
+    pages already carry it via lib/public-catalog, so it is a shared chunk
+    rather than a new download for anyone browsing the site. */
 export function PdpApp({ data }: { data: PdpData }) {
   return (
     <PdpProvider value={data}>
@@ -35,6 +39,16 @@ function PdpAppInner() {
   const { user } = useAuth();
   const { properties: savedProps, isPropertySaved, saveProperty } = useSaveGate();
   const [bookOpen, setBookOpen] = useState(false);
+
+  /* Requesting a viewing needs an account, for the same reason listing a
+     property does: the request goes to a real person at the agency who has to
+     call somebody back. Booking anonymously produced a diary entry with a date,
+     a time and nobody attached to it. Signed in, the member record supplies the
+     name and phone, so nothing has to be asked for twice. */
+  const requestBook = () => {
+    if (!user) return openAuth("login", { note: t("auth.gate.bookViewing") });
+    setBookOpen(true);
+  };
 
   const favMain = isPropertySaved(property.id);
   const favorites = savedProps.map((p) => p.id);
@@ -121,7 +135,7 @@ function PdpAppInner() {
         <div className="pdp-body">
           <PdpMain />
           <aside className="pdp-aside pdp-aside--desktop">
-            <ActionPanel onBook={() => setBookOpen(true)} onCall={onCall} onWhatsApp={onWhatsApp} />
+            <ActionPanel onBook={requestBook} onCall={onCall} onWhatsApp={onWhatsApp} />
           </aside>
         </div>
 
@@ -138,7 +152,7 @@ function PdpAppInner() {
             <Icon name="message-circle" size={18} />
             {t("pdp.whatsapp")}
           </button>
-          <button className="pdp-mobar__btn pdp-mobar__btn--book" type="button" onClick={() => setBookOpen(true)}>
+          <button className="pdp-mobar__btn pdp-mobar__btn--book" type="button" onClick={requestBook}>
             <Icon name="calendar-check" size={18} />
             {t("pdp.book")}
           </button>

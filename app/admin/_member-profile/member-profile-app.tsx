@@ -470,6 +470,81 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
           </span>
         </div>
       </div>
+
+      {/* IDENTITY AND LOCATION — ALWAYS ROWS, even when empty.
+          These started out conditional, which was wrong: a hidden row is
+          indistinguishable from a platform that cannot hold the fact at all, so
+          somebody looking for a tenant's civil ID could not tell whether it was
+          missing or unsupported. Both questions get asked of this screen, and
+          both deserve an answer. "Not on file" is an answer; nothing is not.
+
+          The ID row says WHICH paper it is, because a civil ID number and a
+          passport number look nothing alike and an unlabelled string is how one
+          ends up typed into the field for the other. Monospaced, like every
+          other reference number in the admin. */}
+      <div className="adh__detail">
+        <span className="adh__detail__icon">
+          <Icon name="id-card" size={17} />
+        </span>
+        <div className="adh__detail__text">
+          <span className="adh__detail__label">
+            {member.idNumber ? t(member.idKind === "passport" ? "admin.members.idKind.passport" : "admin.members.idKind.civil") : t("admin.members.idTitle")}
+          </span>
+          <span className="adh__detail__value">
+            {member.idNumber ? (
+              <>
+                <span className="cx-mono" dir="ltr">
+                  {member.idNumber}
+                </span>
+                <button type="button" className="adh__copy" title={t("admin.members.copyId")} aria-label={t("admin.members.copyId")} onClick={() => copy("admin.members.idNumber", member.idNumber!)}>
+                  <Icon name="copy" size={13} />
+                </button>
+              </>
+            ) : (
+              <span className="adh__detail__none">{t("admin.members.notOnFile")}</span>
+            )}
+          </span>
+        </div>
+      </div>
+
+      <div className="adh__detail">
+        <span className="adh__detail__icon">
+          <Icon name="map-pin" size={17} />
+        </span>
+        <div className="adh__detail__text">
+          <span className="adh__detail__label">{t("admin.members.location")}</span>
+          <span className="adh__detail__value">
+            {member.city ? (
+              <span>{member.area ? `${member.area} · ${member.city}` : member.city}</span>
+            ) : (
+              <span className="adh__detail__none">{t("admin.members.notOnFile")}</span>
+            )}
+          </span>
+        </div>
+      </div>
+
+      {/* HOW WE WRITE TO THEM — always shown, unlike the two above.
+          The absence of this row would be indistinguishable from "nobody has
+          told us", and this is the setting somebody comes to the profile to
+          check after a tenant says they never got a reminder. */}
+      <div className="adh__detail">
+        <span className="adh__detail__icon">
+          <Icon name="message-circle" size={17} />
+        </span>
+        <div className="adh__detail__text">
+          <span className="adh__detail__label">{t("admin.members.msgTitle")}</span>
+          <div className="adh__detailchips">
+            <span className={"adh__chip" + (member.whatsapp ? "" : " adh__chip--warn")}>
+              {t(member.whatsapp ? "admin.members.chip.whatsapp" : "admin.members.chip.noWhatsapp")}
+            </span>
+            <span className="adh__chip">{member.msgLang ? t(`lang.${member.msgLang}`) : t("admin.members.chip.langDefault")}</span>
+            {/* Only the OFF state is a chip. "Reminders on" is what everybody
+                is, and a chip saying so on every profile would push the one
+                that matters out of the corner of the eye. */}
+            {!member.remindersOn && <span className="adh__chip adh__chip--muted">{t("admin.members.chip.muted")}</span>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1118,13 +1193,51 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
           }}
         />
       )}
+      {/* EVERY FIELD GOES IN AND EVERY FIELD COMES BACK.
+
+          This used to hand the modal only name/phone/email and read only those
+          three back, which was silently destructive once the record grew: the
+          switches opened at their defaults whatever the member had chosen, so
+          editing a muted person's phone number turned their reminders back on
+          and nobody was told. A partial edit form is worse than none.
+
+          Kept in sync with the members list's own edit (see
+          `contactFields` in ../_members/members-app) — the same record is
+          editable from two screens and they must write the same fields. */}
       <AddMemberModal
         open={modal === "edit"}
         mode="edit"
-        initial={{ name: m.name, phone: m.phone, email: m.email }}
+        initial={{
+          name: m.name,
+          phone: m.phone,
+          email: m.email,
+          whatsapp: m.whatsapp,
+          msgLang: m.msgLang,
+          remindersOn: m.remindersOn,
+          idKind: m.idKind,
+          idNumber: m.idNumber,
+          city: m.city,
+          area: m.area,
+        }}
         onClose={() => setModal(null)}
         onSubmit={(v) => {
-          setM((prev) => ({ ...prev, name: v.name.trim() || prev.name, phone: v.phone.trim() || prev.phone, email: v.email.trim() || prev.email }));
+          setM((prev) => ({
+            ...prev,
+            /* Name, phone and email keep their "blank means unchanged" guard —
+               they are required by the form, so a blank one is a bug rather
+               than an intention. The rest are answers in their own right: an
+               ID cleared on purpose has to clear. */
+            name: v.name.trim() || prev.name,
+            phone: v.phone.trim() || prev.phone,
+            email: v.email.trim() || prev.email,
+            whatsapp: v.whatsapp,
+            msgLang: v.msgLang,
+            remindersOn: v.remindersOn,
+            idKind: v.idKind,
+            idNumber: v.idNumber || undefined,
+            city: v.city || undefined,
+            area: v.area || undefined,
+          }));
           setModal(null);
           pushToast({ tone: "brand", icon: "badge-check", title: t("admin.mp.toast.updatedTitle"), msg: t("admin.mp.toast.updatedMsg", { name: v.name.trim() || m.name }) });
         }}

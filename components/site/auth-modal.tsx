@@ -340,7 +340,7 @@ function ForgotFlow({ onBackToLogin }: { onBackToLogin: () => void }) {
  * auth-modal.js (bespoke sheet, not the design-system Modal).
  */
 export function AuthModalHost() {
-  const { open, mode, intent, login, closeAuth, setMode } = useAuth();
+  const { open, mode, intent, login, register, closeAuth, setMode } = useAuth();
   const { t } = useLang();
   const router = useRouter();
   const isClient = useIsClient();
@@ -367,15 +367,21 @@ export function AuthModalHost() {
   if (!open || !isClient) return null;
 
   const isLogin = mode === "login";
-  const onAuthed = (user: AuthUser) => {
+  /* `isNew` decides whether this creates a member record in the agency's books
+     or just reconnects the session to one. Signing in must never mint a second
+     record for somebody who already exists, so the two paths cannot share a
+     call. register() is itself idempotent on email, which is what makes the
+     Google button below safe to send down the new-account path every time. */
+  const onAuthed = (user: AuthUser, isNew = false) => {
     const next = intent?.next;
     const toastMsg = intent?.toast || welcomeMsg(t, user);
-    login(user);
+    if (isNew) register(user);
+    else login(user);
     toast({ title: toastMsg, variant: "success" });
     if (next) router.push(next);
   };
   const onGoogle = () =>
-    onAuthed({ name: "Chiya Member", email: "member@gmail.com", phone: "", type: "customer" });
+    onAuthed({ name: "Chiya Member", email: "member@gmail.com", phone: "", type: "customer" }, true);
 
   return createPortal(
     <div className="cxa-overlay" role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && closeAuth()}>
@@ -402,7 +408,7 @@ export function AuthModalHost() {
                 </div>
               )}
 
-              {isLogin ? <LoginForm onAuthed={onAuthed} onForgot={() => setForgot(true)} /> : <RegisterForm onAuthed={onAuthed} />}
+              {isLogin ? <LoginForm onAuthed={onAuthed} onForgot={() => setForgot(true)} /> : <RegisterForm onAuthed={(u) => onAuthed(u, true)} />}
 
               <div className="cxa-or">
                 <span>{t("auth.or")}</span>

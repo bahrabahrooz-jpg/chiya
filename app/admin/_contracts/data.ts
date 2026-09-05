@@ -8,13 +8,12 @@ import {
   contractValue,
   daysToExpiry,
   depositNeedsClosing,
-  depositsHeld,
   isActive,
   noticeDaysOf,
   signedValueInMonth,
+  type ContractDisplayStatus,
   type ContractKind,
   type ContractRecord,
-  type ContractStatus,
 } from "../_data/contracts";
 
 /* Records, types and selectors come from the shared data layer so this page,
@@ -24,20 +23,16 @@ export {
   contractValue,
   contractsByAgent,
   contractsByProperty,
+  displayStatus,
   getContractById,
   invoicesByContract,
   isActive,
   outstandingForContract,
 } from "../_data/contracts";
-export type { ContractRecord, ContractKind, ContractStatus } from "../_data/contracts";
+export type { ContractRecord, ContractKind, ContractStatus, ContractDisplayStatus } from "../_data/contracts";
 export { AGENTS, PROPERTIES, memberById, agentById } from "../_data/catalog";
 
 export const ITEMS_PER_PAGE = 10;
-
-/** How far ahead the "expiring soon" card looks. Sixty days is roughly the
-    notice period a tenancy renewal needs to be agreed in — long enough to act,
-    short enough that the number means something. */
-export const EXPIRY_WINDOW_DAYS = 60;
 
 /* ----------------------------------------------------------------------------
    Status and kind badges
@@ -50,14 +45,23 @@ export interface StatusMeta {
 }
 
 /**
- * Contract status tones. They deliberately match the property availability
- * tones a contract in that state produces (see availabilityForContract in
- * _data/property-state) — a signed sale is red on both screens, a draft is
- * amber on both — so the colour means the same thing wherever it is seen.
+ * Contract status tones, keyed by the DISPLAY status — the five words a person
+ * reads, not the four the record stores. See `displayStatus` in
+ * _data/contracts for why those are two different lists.
+ *
+ * They deliberately match the property availability tones a contract in that
+ * state produces (see availabilityForContract in _data/property-state) — an
+ * active sale is red on both screens, a draft is amber on both — so the colour
+ * means the same thing wherever it is seen.
+ *
+ * `expired` is the only one in error red. It is not a bad contract; it is an
+ * unfinished job, and it was invisible for as long as it wore the same green
+ * badge as a lease that is actually running.
  */
-export const STATUS_META: Record<ContractStatus, StatusMeta> = {
+export const STATUS_META: Record<ContractDisplayStatus, StatusMeta> = {
   draft: { variant: "warning", dot: true },
-  signed: { variant: "success", icon: "file-signature" },
+  active: { variant: "success", icon: "file-signature" },
+  expired: { variant: "error", icon: "calendar-x" },
   completed: { variant: "info", icon: "circle-check" },
   cancelled: { variant: "neutral", icon: "ban" },
 };
@@ -81,12 +85,16 @@ export const INVOICE_STATUS_META: Record<string, StatusMeta> = {
    Filters
    ------------------------------------------------------------------------- */
 
-/** The list's status chips — every contract lands under exactly one, and
-    every chip is reachable, because the four statuses are mutually exclusive. */
-export const STATUS_TABS: ({ id: "all" } | { id: ContractStatus })[] = [
+/** The list's status chips — every contract lands under exactly one, and every
+    chip is reachable, because the five display statuses are mutually exclusive.
+    They are the same five words the badge uses and the same words the KPI cards
+    count, which is the whole point: a card that says "12 active" must have a
+    chip you can press to see those twelve. */
+export const STATUS_TABS: ({ id: "all" } | { id: ContractDisplayStatus })[] = [
   { id: "all" },
   { id: "draft" },
-  { id: "signed" },
+  { id: "active" },
+  { id: "expired" },
   { id: "completed" },
   { id: "cancelled" },
 ];
@@ -99,8 +107,16 @@ export const KIND_OPTIONS: ContractKind[] = ["sale", "rent"];
  * Ranges rather than a single day: nobody looks for contracts signed on one
  * particular date, they look for "this quarter". The values are day counts back
  * from the anchor, and `matchesDateRange` is the one place that reads them.
+ *
+ * `month` is the odd one out and carries no day count, because it is the
+ * CALENDAR month rather than a rolling window. It exists so the "Signed this
+ * month" card has somewhere to click into: the card sums `signedOn` by calendar
+ * month (see signedValueInMonth), and "last 30 days" would have shown a
+ * different set of rows than the figure above it counted.
  */
-export const DATE_RANGES: { value: string; days: number }[] = [
+export const MONTH_RANGE = "month";
+export const DATE_RANGES: { value: string; days?: number }[] = [
+  { value: MONTH_RANGE },
   { value: "30", days: 30 },
   { value: "90", days: 90 },
   { value: "180", days: 180 },
@@ -108,13 +124,15 @@ export const DATE_RANGES: { value: string; days: number }[] = [
 ];
 
 /**
- * `depositsToClose` is a TOGGLE, not a value: an ended tenancy whose deposit is
- * still in the agency’s account. It exists because the number was already on
- * the KPI card and there was no way to see WHICH contracts it counted — you had
- * to know the answer before you could look it up, which is the opposite of a
- * worklist.
+ * `expiring` and `depositsToClose` are TOGGLES, not values — the two jobs on
+ * this screen rather than two ways of narrowing a list.
+ *
+ * Both exist because the number was already on a KPI card and there was no way
+ * to see WHICH contracts it counted — you had to know the answer before you
+ * could look it up, which is the opposite of a worklist. Every card on this
+ * screen now sets one of these or a status chip.
  */
-export const EMPTY_FILTERS = { kind: "", agent: "", dateRange: "", depositsToClose: "" };
+export const EMPTY_FILTERS = { kind: "", agent: "", dateRange: "", expiring: "", depositsToClose: "" };
 export type ContractFilters = typeof EMPTY_FILTERS;
 
 /** Does a contract fall inside a date-range preset? Measured on the SIGNING
@@ -123,6 +141,10 @@ export type ContractFilters = typeof EMPTY_FILTERS;
 export function matchesDateRange(c: ContractRecord, range: string, asOf: string = ANCHOR_ISO): boolean {
   if (!range) return true;
   if (!c.signedOn) return false;
+  /* The calendar month, matched on the ISO prefix, exactly as
+     signedValueInMonth slices it — one definition, so the card's figure and the
+     rows it filters to can never drift apart. */
+  if (range === MONTH_RANGE) return c.signedOn.slice(0, 7) === asOf.slice(0, 7);
   const days = DATE_RANGES.find((r) => r.value === range)?.days;
   if (!days) return true;
   const ago = Math.round((new Date(asOf).getTime() - new Date(c.signedOn).getTime()) / 86_400_000);
@@ -136,6 +158,9 @@ export function matchesDateRange(c: ContractRecord, range: string, asOf: string 
 export interface ContractKpis {
   active: number;
   drafts: number;
+  /** Active contracts inside their OWN notice window — see isExpiringSoon. The
+      card and the row flag read the same function, so the count and the rows
+      can never disagree. */
   expiring: number;
   /**
    * TENANCIES THAT ENDED WHILE WE WERE STILL HOLDING THE DEPOSIT.
@@ -145,17 +170,14 @@ export interface ContractKpis {
    * with nothing anywhere saying so — until they ring up a year later. Derived
    * from dates and the deposit's own status; nothing rewrites a record at
    * midnight to produce it. See depositNeedsClosing.
+   *
+   * Not a card. The MONEY held sits on the finance report, where the rest of
+   * the agency's balances are (see heldDeposits in _reports/money-data); the
+   * COUNT is a filter toggle on this screen, because it is a job rather than a
+   * headline. It had a card here for a while and that card is what pushed the
+   * row to five — a number that never divides into a grid.
    */
   depositsToClose: number;
-  /**
-   * TOTAL DEPOSIT MONEY THE AGENCY IS SITTING ON.
-   *
-   * ⚠ A LIABILITY, NOT REVENUE, AND NEVER ADDED TO ONE. It is the tenants'
-   * money in our account. It is given its own card, away from every income
-   * figure, precisely so the two can never be read as one number — the failure
-   * mode is not a wrong total, it is a total that looks entirely plausible.
-   */
-  depositsHeld: Money;
   signedThisMonth: Money;
   /** Contracts signed this month in some OTHER currency, and therefore not in
       the figure above. Shown as a footnote rather than converted — see
@@ -174,35 +196,42 @@ export function buildKpis(contracts: ContractRecord[], currency: CurrencyCode = 
   return {
     active: contracts.filter((c) => isActive(c, asOf)).length,
     drafts: contracts.filter((c) => c.status === "draft").length,
-    expiring: contracts.filter((c) => {
-      if (!isActive(c, asOf)) return false;
-      const left = daysToExpiry(c, asOf);
-      return left !== undefined && left >= 0 && left <= EXPIRY_WINDOW_DAYS;
-    }).length,
+    expiring: contracts.filter((c) => isExpiringSoon(c, asOf)).length,
     depositsToClose: contracts.filter((c) => depositNeedsClosing(c, asOf)).length,
-    depositsHeld: depositsHeld(currency, contracts),
     signedThisMonth: signed.total,
     excludedFromSigned: signed.excluded,
   };
 }
 
 export interface KpiCardDef {
-  key: "active" | "drafts" | "expiring" | "depositsHeld" | "signedThisMonth";
+  key: "active" | "drafts" | "expiring" | "signedThisMonth";
   icon: IconName;
   tone: StatTone;
 }
-/* Expiring takes the gold (amber) tone rather than drafts: a draft is ordinary
-   work in progress, while a term running out is the only one of the four that
-   is a deadline. StatTone has no "warning", and gold is the closest thing to
-   one the card component offers. */
+
+/**
+ * FOUR CARDS, AND EVERY ONE OF THEM IS A FILTER YOU CAN PRESS.
+ *
+ * That is the rule this row is built on, and it is why there are four. A fifth
+ * card (deposits held) wrapped onto a second line at every width, because five
+ * divides into nothing; it has gone to the finance report where the money
+ * belongs. Four goes 4 / 2 / 1 cleanly from desktop to phone.
+ *
+ * The older row also counted things the table could not show. "Active
+ * contracts" was a number with no matching status, no matching badge and no
+ * matching chip — you could read it and had no way to go and look at it. Each
+ * key below now names a status chip or a filter toggle, and the click-through
+ * is wired in contracts-app.
+ *
+ * Expiring takes the gold (amber) tone rather than drafts: a draft is ordinary
+ * work in progress, while a term running out is the only one of the four that
+ * is a deadline. StatTone has no "warning", and gold is the closest thing to
+ * one the card component offers.
+ */
 export const KPI_CARDS: KpiCardDef[] = [
   { key: "active", icon: "file-signature", tone: "brand" },
   { key: "drafts", icon: "file-pen", tone: "info" },
   { key: "expiring", icon: "calendar-clock", tone: "gold" },
-  /* Deposits held earns a card rather than a footnote because it is money in
-     the agency's account that belongs to somebody else. Its sub-line carries
-     the count that actually needs acting on. */
-  { key: "depositsHeld", icon: "wallet", tone: "gold" },
   { key: "signedThisMonth", icon: "banknote", tone: "success" },
 ];
 
@@ -260,9 +289,15 @@ export interface ContractRow {
  * Is this tenancy inside its own notice window?
  *
  * The contract states how much notice a renewal needs (`noticeDays`, default
- * 30). A lease asking for ninety days is not "expiring soon" when the KPI's
- * sixty-day window says so — it is already late. So the row flag reads the
- * contract, while the KPI card keeps its single window for a headline number.
+ * 30), and this reads that number off the contract rather than applying one
+ * global window to all of them. A lease asking for ninety days' notice is not
+ * "expiring soon" at sixty — it is already late.
+ *
+ * THE ONE DEFINITION. The KPI card, the filter toggle and the row badge all
+ * call this. They used to disagree: the card counted a flat sixty-day window
+ * while the row flagged the contract's own, so the card could say four and the
+ * list show six. A headline number that does not match the rows under it is
+ * worse than no headline number.
  */
 export function isExpiringSoon(c: ContractRecord, asOf: string = ANCHOR_ISO): boolean {
   if (!isActive(c, asOf)) return false;

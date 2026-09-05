@@ -621,6 +621,14 @@
   }
   .cn-aside__link:hover { text-decoration: underline; }
   .cn-aside__link:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); border-radius: var(--radius-sm); }
+  /* THE SECOND WAY OUT, kept quieter than the first. Both links are real and
+     both work; adding the person as a member is the one that leaves a record
+     able to hold a language, a consent and an ID, so it gets the brand colour
+     and the free-text fallback gets the body colour. Still a link, still the
+     same size — this is a preference being expressed, not an option being
+     hidden. */
+  .cn-aside__link--quiet { color: var(--text-secondary); font-weight: 500; }
+  .cn-aside__link--quiet:hover { color: var(--text-primary); }
 
   /* ---------- INSTALMENT SCHEDULE ---------- */
   .cn-schedule {

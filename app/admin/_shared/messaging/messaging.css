@@ -48,6 +48,9 @@
   }
   a.wa-recipient__phone:hover { color: var(--text-brand); text-decoration: underline; }
   .wa-recipient__phone--none { font-family: var(--font-sans); font-style: italic; color: var(--text-tertiary); }
+  /* A good number that WhatsApp cannot use. Warned rather than struck through:
+     it still dials, and the footnote says what to do with it. */
+  .wa-recipient__phone--nowa { color: var(--warning-700); }
 
   /* ---- the contract page's contact card ----
 
@@ -398,6 +401,14 @@
   .wa-col--status { min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
   .wa-reason { font-size: 10.5px; line-height: 1.35; color: var(--text-tertiary); }
 
+  /* "In 9 days", where a history row wears its badge. Plain text rather than a
+     pill: every row in the view says the same KIND of thing, and twenty pills
+     down a column read as twenty states to compare. */
+  .wa-countdown {
+    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
   /* ---- the row panel: one message in full ---- */
   .wa-detail { display: flex; flex-direction: column; gap: var(--space-4); }
   .wa-facts {
@@ -414,8 +425,9 @@
 
 
   /* A count beside each log tab. The invoices list gets away without one — its
-     four states are self-evident from the money — but "suppressed" and
-     "failed" are states an office needs the SIZE of at a glance.  */
+     four states are self-evident from the money — but "Not sent" and "Failed"
+     are states an office needs the SIZE of at a glance, and the counts are the
+     whole reason these are tabs rather than a status select. */
   .wa-tabcount {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 20px; height: 18px; padding: 0 6px; margin-inline-start: 6px;
@@ -424,6 +436,11 @@
     font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
   }
   .ct-tab.is-active .wa-tabcount { background: var(--brand-subtle); color: var(--text-brand); }
+  /* A zero is still worth showing — "Failed 0" is the good news — but it should
+     not compete with the tabs that have something behind them. The selected tab
+     keeps full weight even when empty, or clicking it would look like a miss. */
+  .ct-tab.is-empty:not(.is-active) { color: var(--text-tertiary); }
+  .ct-tab.is-empty:not(.is-active) .wa-tabcount { opacity: .7; }
   /* ------------------------------------------------------------
      6. RESPONSIVE
      ------------------------------------------------------------ */

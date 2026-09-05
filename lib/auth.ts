@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { findRegistrationByEmail, registerMember } from "@/app/admin/_members/registrations";
 
 /**
  * Chiya Estate — auth modal store (login / register).
@@ -20,6 +21,22 @@ export interface AuthUser {
   email: string;
   phone: string;
   type: UserType;
+
+  /**
+   * The member record this account belongs to, in the agency's own books.
+   *
+   * A website account and a member record are two different things and used to
+   * be entirely unconnected: registering here created neither a member nor any
+   * trace the agency could see. `register()` now creates the member and stamps
+   * its id here, which is what lets a booking made on a property page arrive in
+   * the admin diary attached to a person rather than to a bare name.
+   *
+   * Optional because an account saved before this existed has no id, and
+   * because the demo sign-in path accepts any credentials — somebody who signs
+   * in with an address that never registered has no record to point at. Every
+   * consumer must handle its absence; nothing may assume it is there.
+   */
+  memberId?: string;
 }
 
 export interface AuthIntent {
@@ -90,14 +107,46 @@ export function setAuthMode(mode: AuthMode) {
   state = { ...state, mode };
   emit();
 }
+/**
+ * Sign in an existing account.
+ *
+ * Reconnects the session to a member record when the email matches one that
+ * registered before, so a returning member keeps the same identity — and the
+ * same viewing history — instead of arriving as a stranger. No match is a
+ * perfectly normal outcome in the demo, where sign-in accepts anything typed
+ * into it; the session simply carries no member id and the booking gate says so.
+ */
 export function login(user: AuthUser) {
+  const linked: AuthUser = user.memberId ? user : { ...user, ...matchMemberId(user.email) };
   try {
-    localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+    localStorage.setItem(AUTH_KEY, JSON.stringify(linked));
   } catch {
     /* noop */
   }
-  state = { ...state, user, open: false, intent: null };
+  state = { ...state, user: linked, open: false, intent: null };
   emit();
+}
+
+function matchMemberId(email: string): { memberId?: string } {
+  const found = email ? findRegistrationByEmail(email) : null;
+  return found ? { memberId: found.id } : {};
+}
+
+/**
+ * Create an account — and, with it, the member record the agency works from.
+ *
+ * This is the seam that used to be missing. Registration collected a name, an
+ * email and a phone, kept them in this browser, and told the business nothing;
+ * the Members list only grew when staff typed somebody in themselves. Now the
+ * same three fields become a real member marked as self-registered, and the
+ * session points at it.
+ *
+ * Separate from login() on purpose: signing in must never mint a second record
+ * for somebody who already exists.
+ */
+export function register(user: AuthUser) {
+  const member = registerMember({ name: user.name, email: user.email, phone: user.phone });
+  login({ ...user, memberId: member.id });
 }
 export function logout() {
   try {
@@ -117,6 +166,7 @@ export function useAuth() {
     closeAuth: useCallback(() => closeAuth(), []),
     setMode: useCallback((mode: AuthMode) => setAuthMode(mode), []),
     login: useCallback((user: AuthUser) => login(user), []),
+    register: useCallback((user: AuthUser) => register(user), []),
     logout: useCallback(() => logout(), []),
   };
 }

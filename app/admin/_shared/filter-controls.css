@@ -65,8 +65,12 @@
   .mp-custdrop__item.is-selected svg { color: var(--text-brand); flex: none; }
 
   /* ---------- DATE PICKER CALENDAR (portalled) ---------- */
+  /* The panel is portalled with an inline `width` copied from its trigger, so a
+     narrow trigger used to squeeze the seven day columns into each other. The
+     min-width beats that inline style and is the floor a month grid needs; a
+     wider trigger still stretches the panel to match it. */
   .mp-cal {
-    position: fixed; z-index: 130; width: 272px; padding: 12px;
+    position: fixed; z-index: 130; width: 272px; min-width: 272px; padding: 12px;
     background: var(--surface-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
     animation: mp-pop .14s cubic-bezier(.2,.7,.2,1);

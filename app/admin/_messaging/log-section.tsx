@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { isRtl, useLang } from "@/lib/i18n";
 import { fmtDate, fmtNum, localizeDigits } from "@/lib/fmt";
-import { fromIso } from "@/lib/dates";
-import { AdminSelect } from "../_shared/filter-controls";
+import { addDays, daysBetween, fromIso, toIso } from "@/lib/dates";
+import { AdminDatePicker, AdminSelect } from "../_shared/filter-controls";
 import { CancelButton, FinanceModal } from "../_shared/finance/modal-shell";
 import {
+  NOW_ISO,
   TEMPLATE_IDS,
   hourLabel,
   isDialable,
@@ -19,9 +20,17 @@ import {
   useWhatsAppSettings,
   waLink,
   type MessageLogRow,
-  type MsgStatus,
 } from "../_shared/messaging";
-import { ITEMS_PER_PAGE, STATUS_META, STATUS_TABS, TEMPLATE_ICON, buildLogKpis } from "./data";
+import {
+  ITEMS_PER_PAGE,
+  LOG_TABS,
+  STATUS_META,
+  TEMPLATE_ICON,
+  buildLogKpis,
+  isUpcoming,
+  withinDates,
+  type LogTab,
+} from "./data";
 
 /* ============================================================================
    The message log — who was told what, and whether it arrived.
@@ -38,8 +47,32 @@ import { ITEMS_PER_PAGE, STATUS_META, STATUS_TABS, TEMPLATE_ICON, buildLogKpis }
    move the timing, fix a missing phone number — are all somewhere else, and the
    row links to the contract that explains it.
 
-   THE QUEUED ROWS SORT TO THE TOP. They are the ones somebody can still act on.
+   ONE ROW OF TABS — see LogTab in ./data for why. Upcoming is what the office
+   is about to say and opens first, because it is the half somebody can still
+   do something about; the four outcome tabs beside it are what it already
+   said, named by how each one went rather than filed behind the word
+   "History". Each tab is one flat table over the same columns, and the date
+   filter narrows whichever one is showing.
    ========================================================================== */
+
+/* ---------------- how far off a scheduled message is ---------------- */
+
+/**
+ * "Today" / "Tomorrow" / "In 9 days", against the demo clock.
+ *
+ * A date alone does not answer the question somebody opens this view with. The
+ * three named cases exist because "in 0 days" and "in 1 day" are how a computer
+ * says today and tomorrow, and neither is how anybody reads a diary.
+ */
+function useCountdown() {
+  const { t, lang } = useLang();
+  return (on: string) => {
+    const days = daysBetween(NOW_ISO, on);
+    if (days <= 0) return t("admin.wa.up.today");
+    if (days === 1) return t("admin.wa.up.tomorrow");
+    return t("admin.wa.up.inDays", { count: fmtNum(lang, days) });
+  };
+}
 
 /* ---------------- pagination ---------------- */
 /* The contracts list's footer, class for class, over the same stylesheet. */
@@ -60,7 +93,9 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
   return (
     <div className="ct-tablefooter">
       <span className="ct-pagination__info">
-        {t("admin.ct.showingRange", { start: fmtNum(lang, start), end: fmtNum(lang, end), total: fmtNum(lang, totalItems) })}
+        {/* The footer's chrome is the contracts list's, but not its noun — that
+            string counts contracts, and these are messages. */}
+        {t("admin.wa.showingRange", { start: fmtNum(lang, start), end: fmtNum(lang, end), total: fmtNum(lang, totalItems) })}
       </span>
       <div className="ct-pagination">
         <button type="button" className="ct-page-btn ct-page-btn--nav" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>
@@ -89,9 +124,16 @@ function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPa
 
 /* ---------------- one row ---------------- */
 
-function LogRow({ row, onOpen }: { row: MessageLogRow; onOpen: (row: MessageLogRow) => void }) {
+function LogRow({ row, view, onOpen }: { row: MessageLogRow; view: LogTab; onOpen: (row: MessageLogRow) => void }) {
   const { t, lang } = useLang();
+  const countdown = useCountdown();
   const meta = STATUS_META[row.status];
+  /* On a forecast row the "Waiting" badge is the one thing already known — the
+     row is in the Upcoming view, under a month heading, and there is nothing
+     else it could be. So the column spends itself on how far off it is instead.
+     A future row wearing any OTHER status has stopped being a forecast and
+     become a warning, and keeps its badge. */
+  const showCountdown = view === "upcoming" && row.status === "queued";
 
   return (
     <div
@@ -149,9 +191,13 @@ function LogRow({ row, onOpen }: { row: MessageLogRow; onOpen: (row: MessageLogR
       </div>
 
       <div className="wa-col--status">
-        <Badge variant={meta.variant} size="sm" icon={meta.icon}>
-          {t(`admin.wa.status.${row.status}`)}
-        </Badge>
+        {showCountdown ? (
+          <span className="wa-countdown">{countdown(row.on)}</span>
+        ) : (
+          <Badge variant={meta.variant} size="sm" icon={meta.icon}>
+            {t(`admin.wa.status.${row.status}`)}
+          </Badge>
+        )}
         {row.reason && <span className="wa-reason">{t(`admin.wa.reason.${row.reason}`)}</span>}
       </div>
 
@@ -252,6 +298,8 @@ function MessagePanel({ row, onClose }: { row: MessageLogRow; onClose: () => voi
   );
 }
 
+/* ---------------- one month of the forecast ---------------- */
+
 /* ---------------- the pane ---------------- */
 
 export function LogSection() {
@@ -259,39 +307,71 @@ export function LogSection() {
   const all = useMessageLog();
   const { dryRun } = useWhatsAppSettings();
 
-  const [tab, setTab] = useState<MsgStatus | "all">("all");
+  /* UPCOMING OPENS FIRST. What the office is about to say is the half somebody
+     can still change; what it already said is a lookup. */
+  const [view, setView] = useState<LogTab>("upcoming");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [templateFilter, setTemplateFilter] = useState("");
   const [audienceFilter, setAudienceFilter] = useState("");
+  const [from, setFrom] = useState<Date | null>(null);
+  const [to, setTo] = useState<Date | null>(null);
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<MessageLogRow | null>(null);
 
-  const kpis = useMemo(() => buildLogKpis(all), [all]);
+  /* One rent cycle ahead — see the note on LogKpis.next30. */
+  const horizonEnd = addDays(NOW_ISO, 30);
+  const kpis = useMemo(() => buildLogKpis(all, horizonEnd), [all, horizonEnd]);
 
+  const { history, upcoming } = useMemo(() => {
+    const history: MessageLogRow[] = [];
+    const upcoming: MessageLogRow[] = [];
+    for (const r of all) (isUpcoming(r) ? upcoming : history).push(r);
+    return { history, upcoming };
+  }, [all]);
+
+  /* Counted over the whole tab rather than the filtered rows: a tab has to say
+     how much sits behind it before you go in, or the row stops being a map. */
+  const tabCount = (id: LogTab) => (id === "upcoming" ? upcoming.length : history.filter((r) => r.status === id).length);
+
+  /* THE TAB IS THE STATUS FILTER, for every tab but the first. Upcoming is the
+     whole forecast whatever badge each row wears; each outcome tab is the
+     finished messages that went that way. */
+  const source = view === "upcoming" ? upcoming : history.filter((r) => r.status === view);
+
+  /* One filter pass over whichever tab is showing. */
+  const fromIsoDay = from ? toIso(from) : null;
+  const toIsoDay = to ? toIso(to) : null;
   const rows = useMemo(() => {
     const sq = q.trim().toLowerCase();
-    return all.filter((r) => {
-      if (tab !== "all" && r.status !== tab) return false;
+    return source.filter((r) => {
       if (templateFilter && r.templateId !== templateFilter) return false;
       if (audienceFilter && r.audience !== audienceFilter) return false;
+      if (!withinDates(r.on, fromIsoDay, toIsoDay)) return false;
       if (sq) {
         const hay = [r.toName, r.toPhone, r.body, r.propertyTitle ?? "", r.contractId ?? ""].join(" ").toLowerCase();
         if (!hay.includes(sq)) return false;
       }
       return true;
     });
-  }, [all, tab, q, templateFilter, audienceFilter]);
+  }, [source, q, templateFilter, audienceFilter, fromIsoDay, toIsoDay]);
 
-  const activeFilterCount = [templateFilter, audienceFilter].filter(Boolean).length;
-  const isFiltered = tab !== "all" || !!q.trim() || activeFilterCount > 0;
+  /* The badge counts what the DRAWER holds. Status is not in it and never was:
+     it is the tab row, which shows its own state. */
+  const activeFilterCount = [templateFilter, audienceFilter, fromIsoDay, toIsoDay].filter(Boolean).length;
+  const isFiltered = !!q.trim() || activeFilterCount > 0;
   const paged = rows.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const countFor = (id: MsgStatus | "all") => (id === "all" ? all.length : all.filter((r) => r.status === id).length);
+  const switchView = (next: LogTab) => {
+    setView(next);
+    setPage(1);
+  };
 
   const reset = () => {
     setTemplateFilter("");
     setAudienceFilter("");
+    setFrom(null);
+    setTo(null);
     setPage(1);
   };
 
@@ -312,7 +392,20 @@ export function LogSection() {
               : t("admin.wa.kpi.rate", { pct: fmtNum(lang, kpis.deliveryRate) })
           }
         />
-        <StatCard label={t("admin.wa.kpi.queued")} value={fmtNum(lang, kpis.queued)} icon="clock" tone="info" sub={t("admin.wa.kpi.queuedSub")} />
+        {/* ONE RENT CYCLE, not the whole schedule — see LogKpis.next30. The
+            sub-line counts people rather than repeating the messages: it is how
+            many humans to ring if something in here is wrong. */}
+        <StatCard
+          label={t("admin.wa.kpi.next30")}
+          value={fmtNum(lang, kpis.next30.messages)}
+          icon="clock"
+          tone="info"
+          sub={
+            kpis.next30.messages === 0
+              ? t("admin.wa.kpi.next30None")
+              : t(kpis.next30.people === 1 ? "admin.wa.kpi.next30PeopleOne" : "admin.wa.kpi.next30People", { count: fmtNum(lang, kpis.next30.people) })
+          }
+        />
         <StatCard
           label={t("admin.wa.kpi.suppressed")}
           value={fmtNum(lang, kpis.suppressed)}
@@ -327,34 +420,40 @@ export function LogSection() {
         <header className="ct-tablecard__head">
           <div className="ct-tablecard__titlerow">
             <div className="ct-tablecard__heading">
-              <h2 className="ct-tablecard__title">{t("admin.wa.tableTitle")}</h2>
-              <span className="ct-tablecard__count">{fmtNum(lang, isFiltered ? rows.length : all.length)}</span>
+              <h2 className="ct-tablecard__title">{t(view === "upcoming" ? "admin.wa.up.title" : "admin.wa.tableTitle")}</h2>
+              <span className="ct-tablecard__count">{fmtNum(lang, isFiltered ? rows.length : source.length)}</span>
             </div>
             {isFiltered && (
               <div className="ct-tablecard__resultnote">
-                <span>{t("admin.props.shownOf", { shown: fmtNum(lang, rows.length), total: fmtNum(lang, all.length) })}</span>
+                <span>{t("admin.props.shownOf", { shown: fmtNum(lang, rows.length), total: fmtNum(lang, source.length) })}</span>
               </div>
             )}
           </div>
 
           <div className="ct-tabrow">
+            {/* ONE ROW, NOT TWO. Upcoming leads, then the four things a message
+                that has already had its moment can have done. The counts are why
+                each outcome is a tab of its own rather than a value inside a
+                select: "Failed 1" has to be readable the moment the page opens,
+                because nobody goes looking for a failure they do not already
+                suspect. */}
             <div className="ct-tabs" role="tablist" aria-label={t("admin.wa.tabsAria")}>
-              {STATUS_TABS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === id}
-                  className={"ct-tab" + (tab === id ? " is-active" : "")}
-                  onClick={() => {
-                    setTab(id);
-                    setPage(1);
-                  }}
-                >
-                  {id === "all" ? t("admin.props.tab.all") : t(`admin.wa.status.${id}`)}
-                  <span className="wa-tabcount">{fmtNum(lang, countFor(id))}</span>
-                </button>
-              ))}
+              {LOG_TABS.map((id) => {
+                const count = tabCount(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={view === id}
+                    className={"ct-tab" + (view === id ? " is-active" : "") + (count === 0 ? " is-empty" : "")}
+                    onClick={() => switchView(id)}
+                  >
+                    {t(id === "upcoming" ? "admin.wa.view.upcoming" : `admin.wa.status.${id}`)}
+                    <span className="wa-tabcount">{fmtNum(lang, count)}</span>
+                  </button>
+                );
+              })}
             </div>
             <div className="ct-tabrow__right">
               <div className="ct-tabsearch">
@@ -388,6 +487,8 @@ export function LogSection() {
           <div className={"ct-filterbar" + (filtersOpen ? " is-open" : "")}>
             <div className="ct-filterbar__inner">
               <div className="ct-filterbar__row">
+                {/* No status select here — it is the tab row, where its counts
+                    are visible without opening anything. */}
                 <AdminSelect
                   value={templateFilter}
                   onChange={(v) => {
@@ -411,6 +512,30 @@ export function LogSection() {
                   placeholder={t("admin.wa.filter.audience")}
                   ariaLabel={t("admin.wa.filter.audience")}
                 />
+                {/* Two single-day pickers rather than one range control: each
+                    end stands alone, so "from July" and "up to July" are both
+                    whole answers. `today` is the demo clock, not the wall
+                    clock, or the calendar would open on the wrong year. */}
+                <AdminDatePicker
+                  value={from}
+                  onChange={(v) => {
+                    setFrom(v);
+                    setPage(1);
+                  }}
+                  placeholder={t("admin.wa.filter.from")}
+                  today={fromIso(NOW_ISO)}
+                  ariaLabel={t("admin.wa.filter.from")}
+                />
+                <AdminDatePicker
+                  value={to}
+                  onChange={(v) => {
+                    setTo(v);
+                    setPage(1);
+                  }}
+                  placeholder={t("admin.wa.filter.to")}
+                  today={fromIso(NOW_ISO)}
+                  ariaLabel={t("admin.wa.filter.to")}
+                />
                 <div className="ct-filterbar__actions">
                   <button type="button" className="ct-clearbtn" onClick={reset}>
                     <Icon name="x" size={14} />
@@ -426,20 +551,24 @@ export function LogSection() {
           <div className="ct-thead" role="row">
             <span className="ct-th wa-col--who">{t("admin.wa.th.to")}</span>
             <span className="ct-th wa-col--tpl">{t("admin.wa.th.template")}</span>
-            <span className="ct-th wa-col--body">{t("admin.wa.th.message")}</span>
+            <span className="ct-th wa-col--body">{t(view === "upcoming" ? "admin.wa.th.willSay" : "admin.wa.th.message")}</span>
             <span className="ct-th wa-col--when">{t("admin.wa.th.when")}</span>
-            <span className="ct-th wa-col--status">{t("admin.wa.th.status")}</span>
+            <span className="ct-th wa-col--status">{t(view === "upcoming" ? "admin.wa.th.goesOut" : "admin.wa.th.status")}</span>
             <span className="ct-th inv-col--actions" />
           </div>
+
           {paged.length > 0 ? (
-            paged.map((r) => <LogRow key={r.id} row={r} onOpen={setOpen} />)
+            paged.map((r) => <LogRow key={r.id} row={r} view={view} onOpen={setOpen} />)
           ) : (
+            /* An empty outcome tab is usually GOOD NEWS — "nothing failed" — so
+               each one says its own thing rather than falling back on the log's
+               generic "no messages yet", which reads as a fault. */
             <div className="ct-noresults">
               <span className="ct-noresults__art">
-                <Icon name={isFiltered ? "search-x" : "inbox"} size={26} strokeWidth={1.6} />
+                <Icon name={isFiltered ? "search-x" : view === "upcoming" ? "calendar-clock" : STATUS_META[view].icon} size={26} strokeWidth={1.6} />
               </span>
-              <h3>{t(isFiltered ? "admin.wa.empty.title" : "admin.wa.emptyAll.title")}</h3>
-              <p>{t(isFiltered ? "admin.wa.empty.sub" : "admin.wa.emptyAll.sub")}</p>
+              <h3>{t(isFiltered ? "admin.wa.empty.title" : view === "upcoming" ? "admin.wa.emptyUp.title" : `admin.wa.emptyStatus.${view}.title`)}</h3>
+              <p>{t(isFiltered ? "admin.wa.empty.sub" : view === "upcoming" ? "admin.wa.emptyUp.sub" : `admin.wa.emptyStatus.${view}.sub`)}</p>
             </div>
           )}
         </div>

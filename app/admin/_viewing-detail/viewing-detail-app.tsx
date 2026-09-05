@@ -799,6 +799,7 @@ export function ViewingDetailApp({ agentSurface }: { agentSurface?: boolean } = 
   };
   const editRecord: ViewingRecord = {
     id: v.id,
+    propertyId: v.property.id,
     property: { title: v.property.name, location: v.property.location, img: v.property.img },
     member: v.member.name,
     agent: v.agent.name,

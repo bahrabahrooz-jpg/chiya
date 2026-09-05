@@ -51,12 +51,44 @@ export const AGENT_IMG: Record<string, string> = Object.fromEntries(AGENTS.map((
 /* ---------------- viewings (generated from real properties / members / agents) ---------------- */
 export interface ViewingRecord {
   id: string;
+  /** Catalogue id of the property being viewed. The nested `property` below is
+      a display snapshot; THIS is the link, and it is what lets a member's own
+      viewings list open the listing they booked. */
+  propertyId: string;
   property: { title: string; location: string; img: string };
   member: string;
   agent: string;
   date: string;
   time: string;
   status: string;
+
+  /* --------------------------------------------------------------------------
+     WHO ASKED, AND FROM WHERE.
+
+     `member` is a NAME because that is what the row shows and what the seed was
+     written against. A name is not an identity — two people share one often
+     enough — so a booking made by a signed-in member also carries `memberId`,
+     and that is the field anything needing the person's phone, WhatsApp state
+     or history should follow back to the member record.
+
+     Seed rows have no `memberId`: they predate the website booking path and
+     their members are matched by name, which the seed's own integrity check
+     enforces. Absence therefore means "booked before this existed, or booked by
+     staff on someone's behalf" — never "unknown person".
+     ----------------------------------------------------------------------- */
+  memberId?: string;
+
+  /**
+   * Where the request came in.
+   *
+   * `undefined` reads as "admin" — staff put it in the diary themselves, which
+   * is every seed row and every row the schedule form creates. "website" means
+   * a member booked it on the public property page, and the row says so,
+   * because "did someone from the office speak to this person yet?" is the
+   * first question staff ask about a request and the answer is different for
+   * the two.
+   */
+  source?: "admin" | "website";
 }
 
 const GEN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -111,6 +143,7 @@ function buildViewings(): ViewingRecord[] {
     if (!VERIFIED_CAT_AGENTS.some((a) => a.name === s.agent)) throw new Error(`viewings: agent "${s.agent}" is not a verified agent`);
     return {
       id: s.id,
+      propertyId: s.propertyId,
       property: { title: p.title, location: `${p.area}, ${p.city}`, img: p.img },
       member: s.member,
       agent: s.agent,
@@ -286,27 +319,50 @@ export interface PropertyReservedIndex {
   dayStatus: Map<string, DayStatus>;
 }
 const SLOT_HOLDING_STATUS = new Set(["Requested", "Confirmed"]);
-export function buildPropertyReservedIndex(list: ViewingRecord[], propertyTitle: string | null, excludeId?: string): PropertyReservedIndex {
+
+/* The shared core. `matches` is the only thing that varies between the admin's
+   scheduler and the public booking modal, and the two must agree on everything
+   else — which statuses hold a slot, what counts as a slot at all, when a day
+   reads as full. Two copies of this drifted apart would let the public page
+   offer an hour the office had already given away. */
+function reservedIndexBy(list: ViewingRecord[], matches: (v: ViewingRecord) => boolean, excludeId?: string): PropertyReservedIndex {
   const byDate = new Map<string, Set<string>>();
-  if (propertyTitle) {
-    for (const v of list) {
-      if (v.id === excludeId) continue;
-      if (v.property.title !== propertyTitle) continue;
-      if (!SLOT_HOLDING_STATUS.has(v.status)) continue;
-      const d = parseViewDate(v.date);
-      const slot = timeLabelToSlot(v.time);
-      if (!d || !isViewingSlot(slot)) continue;
-      const iso = toISODate(d);
-      let set = byDate.get(iso);
-      if (!set) byDate.set(iso, (set = new Set()));
-      set.add(slot);
-    }
+  for (const v of list) {
+    if (v.id === excludeId) continue;
+    if (!matches(v)) continue;
+    if (!SLOT_HOLDING_STATUS.has(v.status)) continue;
+    const d = parseViewDate(v.date);
+    const slot = timeLabelToSlot(v.time);
+    if (!d || !isViewingSlot(slot)) continue;
+    const iso = toISODate(d);
+    let set = byDate.get(iso);
+    if (!set) byDate.set(iso, (set = new Set()));
+    set.add(slot);
   }
   const dayStatus = new Map<string, DayStatus>();
   for (const [iso, set] of byDate) {
     dayStatus.set(iso, set.size >= VIEWING_SLOTS.length ? "full" : "partial");
   }
   return { byDate, dayStatus };
+}
+
+export function buildPropertyReservedIndex(list: ViewingRecord[], propertyTitle: string | null, excludeId?: string): PropertyReservedIndex {
+  if (!propertyTitle) return reservedIndexBy([], () => false);
+  return reservedIndexBy(list, (v) => v.property.title === propertyTitle, excludeId);
+}
+
+/**
+ * The same index, matched on the catalogue id instead of the title.
+ *
+ * This is the one the PUBLIC property page uses. It cannot match on title: the
+ * website shows a translated title in Arabic and Kurdish while the diary stores
+ * the canonical English one, so a title comparison would find nothing the
+ * moment a visitor switched language and would quietly offer every slot as
+ * free. The id is the same in every language.
+ */
+export function buildPropertyReservedIndexById(list: ViewingRecord[], propertyId: string | null, excludeId?: string): PropertyReservedIndex {
+  if (!propertyId) return reservedIndexBy([], () => false);
+  return reservedIndexBy(list, (v) => v.propertyId === propertyId, excludeId);
 }
 
 export function viewingToReschedule(v: ViewingRecord): RescheduleForm {

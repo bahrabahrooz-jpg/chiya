@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { LANGS, isRtl, useLang, type Lang } from "@/lib/i18n";
 import { localizeDigits } from "@/lib/fmt";
+import type { Money } from "@/lib/money";
 import { CancelButton, FinanceModal } from "../finance/modal-shell";
 import { Labelled, Segmented } from "../finance/controls";
 import type { ContractRecord } from "../../_data/contracts";
@@ -47,26 +48,53 @@ export interface SendMessageModalProps {
   contract: ContractRecord;
   /** Who the sender pressed the button next to. They can still switch. */
   audience: MsgAudience;
-  /** Resolved by the caller, which already has both parties on screen. */
-  tenant: { name: string; phone: string };
-  landlord: { name: string; phone: string };
+  /**
+   * Resolved by the caller, which already has both parties on screen.
+   *
+   * `msgLang` and `whatsapp` come off the member record where there is one.
+   * Undefined means the platform knows this person only as a name typed onto a
+   * contract, and the modal falls back to the agency's own answers.
+   */
+  tenant: { name: string; phone: string; msgLang?: Lang | null; whatsapp?: boolean };
+  landlord: { name: string; phone: string; msgLang?: Lang | null; whatsapp?: boolean };
   propertyTitle: string;
+  /**
+   * ONE INVOICE, when the message is about one — a reminder sent from an
+   * invoice row rather than from the contract as a whole.
+   *
+   * Without it the reminder fills {amount} and {due_date} from the CONTRACT,
+   * which on a tenancy means the monthly rent and the day the lease ends: a
+   * chase for September that quotes the wrong date and cannot be acted on. With
+   * it, the tokens say what is actually owed on the demand being chased.
+   */
+  invoice?: { owed: Money; dueOn: string };
+  /** Which template to open on. Defaults to free text, which is what somebody
+      writing from the contract header wants. */
+  template?: MsgTemplateId;
   onClose: () => void;
   onSent: (info: { name: string }) => void;
 }
 
-export function SendMessageModal({ contract, audience: initialAudience, tenant, landlord, propertyTitle, onClose, onSent }: SendMessageModalProps) {
+export function SendMessageModal({ contract, audience: initialAudience, tenant, landlord, propertyTitle, invoice, template, onClose, onSent }: SendMessageModalProps) {
   const { t, lang: uiLang } = useLang();
   const templates = useTemplates();
   const settings = useWhatsAppSettings();
   const tokenValues = useTokenValues();
 
   const [audience, setAudience] = useState<MsgAudience>(initialAudience);
-  const [templateId, setTemplateId] = useState<MsgTemplateId>("manual_notice");
-  /* The language the CUSTOMER reads, seeded from the platform's send language —
-     not from whatever the admin has the interface set to. An English-speaking
-     manager still writes to a Kurdish tenant in Kurdish. */
-  const [sendLang, setSendLang] = useState<Lang>(settings.sendLanguage);
+  const [templateId, setTemplateId] = useState<MsgTemplateId>(template ?? "manual_notice");
+  /* THE LANGUAGE THE CUSTOMER READS — never the one the admin has the interface
+     set to. An English-speaking manager still writes to a Kurdish tenant in
+     Kurdish, and now the record says which tenant that is.
+
+     Held as null rather than as a language so that it can be DERIVED: the
+     recipient's own preference where they stated one, the agency default where
+     they did not. Storing the resolved answer in state instead would freeze it
+     at mount, and switching from a Kurdish tenant to an Arabic landlord would
+     leave the sender composing in the wrong language with nothing on screen
+     admitting it. Once the sender picks a language by hand, their pick wins for
+     the rest of the modal — that is the one thing state is for here. */
+  const [langChoice, setLangChoice] = useState<Lang | null>(null);
   /* Null until the sender types: the composed text is derived from the three
      pickers above, and freezing it on mount would mean switching template or
      language changed nothing. Once they type, their words win. */
@@ -74,11 +102,18 @@ export function SendMessageModal({ contract, audience: initialAudience, tenant, 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const party = audience === "landlord" ? landlord : tenant;
-  const canSend = isDialable(party.phone);
+  const sendLang: Lang = langChoice ?? party.msgLang ?? settings.sendLanguage;
+  /* Two different failures, and the sender does something different about each:
+     a missing number is a record to go and fix, a number that is not on
+     WhatsApp is a person to phone instead. Both stop the send, because the
+     button opens wa.me and wa.me cannot deliver to either. */
+  const noNumber = !isDialable(party.phone);
+  const notOnWhatsApp = !noNumber && party.whatsapp === false;
+  const canSend = !noNumber && !notOnWhatsApp;
 
   const composed = useMemo(
-    () => renderBody(templates[templateId].body[sendLang], tokenValues({ contract, audience, lang: sendLang })),
-    [templates, templateId, sendLang, tokenValues, contract, audience],
+    () => renderBody(templates[templateId].body[sendLang], tokenValues({ contract, audience, lang: sendLang, invoice })),
+    [templates, templateId, sendLang, tokenValues, contract, audience, invoice],
   );
 
   const text = edited ?? composed;
@@ -141,7 +176,7 @@ export function SendMessageModal({ contract, audience: initialAudience, tenant, 
       footNote={
         <p className={"fm-note" + (canSend ? "" : " fm-note--warning")}>
           <Icon name={canSend ? "info" : "triangle-alert"} size={15} />
-          {canSend ? t("admin.wa.send.handoff") : t("admin.wa.send.noPhone")}
+          {canSend ? t("admin.wa.send.handoff") : notOnWhatsApp ? t("admin.wa.send.noWhatsapp") : t("admin.wa.send.noPhone")}
         </p>
       }
       actions={
@@ -164,12 +199,15 @@ export function SendMessageModal({ contract, audience: initialAudience, tenant, 
         </span>
         <span className="wa-recipient__body">
           <span className="wa-recipient__name">{party.name || t("admin.wa.party.unknown")}</span>
-          {canSend ? (
-            <a className="wa-recipient__phone" href={telLink(party.phone)} dir="ltr">
+          {/* THE NUMBER IS STILL SHOWN when it is not on WhatsApp — it dials.
+              Hiding it would take away the one thing left to do with a person
+              this modal cannot reach. */}
+          {noNumber ? (
+            <span className="wa-recipient__phone wa-recipient__phone--none">{t("admin.wa.noPhone")}</span>
+          ) : (
+            <a className={"wa-recipient__phone" + (notOnWhatsApp ? " wa-recipient__phone--nowa" : "")} href={telLink(party.phone)} dir="ltr">
               {party.phone}
             </a>
-          ) : (
-            <span className="wa-recipient__phone wa-recipient__phone--none">{t("admin.wa.noPhone")}</span>
           )}
         </span>
       </div>
@@ -191,7 +229,7 @@ export function SendMessageModal({ contract, audience: initialAudience, tenant, 
           value={sendLang}
           options={LANGS.map((l) => ({ value: l, label: t(`lang.${l}`) }))}
           onChange={(l) => {
-            setSendLang(l);
+            setLangChoice(l);
             setEdited(null);
           }}
           ariaLabel={t("admin.wa.send.language")}

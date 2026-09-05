@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { dirFor, translate, useLang, type Lang } from "@/lib/i18n";
@@ -405,7 +406,13 @@ export function ReceiptApp({ kind, id }: { kind: ReceiptKind; id: string }) {
   /* Derived, not synced. An override or nothing — so the paper follows the
      console for free until somebody deliberately picks otherwise, and there is
      no effect racing the console’s own switcher to set it back. */
-  const [picked, setLang] = useState<Lang | null>(null);
+  /* ?lang= is how the contract screen prints this sheet without anybody having
+     to come here and choose: the invoice row loads this page into a frame at
+     the language the clerk picked and prints it. Read once, as the initial
+     value, so the picker above still wins the moment somebody touches it. */
+  const search = useSearchParams();
+  const asked = search.get("lang");
+  const [picked, setLang] = useState<Lang | null>(() => (LANGS.includes(asked as Lang) ? (asked as Lang) : null));
   const lang = picked ?? uiLang;
   const t = useCallback((key: string, params?: Record<string, string | number>) => translate(lang, key, params), [lang]);
   const { settings } = usePlatformSettings();

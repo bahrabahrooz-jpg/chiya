@@ -119,6 +119,14 @@
   --surface-card:       var(--white);
   --surface-raised:     var(--white);
   --surface-sunken:     var(--gray-100);
+  /* ONE STEP AWAY FROM THE CARD, IN WHICHEVER DIRECTION THE THEME MOVES.
+     A row under the pointer, a panel nested inside a card: in daylight those
+     separate by going darker, at night they separate by going LIGHTER — a dark
+     panel on a dark page reads as a hole punched through the card rather than
+     as a surface of its own. --surface-sunken cannot do both, because it is
+     genuinely darker in both themes; this is the token to reach for when the
+     intent is "distinct from the card" rather than "below it". */
+  --surface-hover:      var(--gray-50);
   --surface-brand:      var(--green-700);
   --surface-brand-deep: var(--green-900);
   --surface-inverse:    var(--gray-900);
@@ -358,6 +366,8 @@
   --surface-card:       #1E2432;
   --surface-raised:     #252D3D;
   --surface-sunken:     #151922;
+  /* Lighter than the card, not darker — see the note on the light value. */
+  --surface-hover:      #252D3D;
   --surface-brand:      var(--green-700);
   --surface-brand-deep: #0C1812;
   --surface-inverse:    #E2E8F0;

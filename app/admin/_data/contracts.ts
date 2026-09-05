@@ -659,6 +659,41 @@ export function daysToExpiry(c: ContractRecord, asOf: string = ANCHOR_ISO): numb
   return daysBetween(asOf, c.endsOn);
 }
 
+/* ----------------------------------------------------------------------------
+   Display status — the word a person reads
+   ------------------------------------------------------------------------- */
+
+/**
+ * THE WORD ON THE BADGE. Five states, and none of them is "signed".
+ *
+ * `ContractStatus` above is what the RECORD stores, and it is right: four
+ * one-way states with real transitions between them. This is what a HUMAN is
+ * told, and the two are not the same question.
+ *
+ * "Signed" is an event, not a state — the Signed On column already carries the
+ * date. What somebody scanning the list actually asks is "is this lease live",
+ * and the stored status cannot answer it: a tenancy that ran out two years ago
+ * is still `signed`, so for a long time it wore a green Signed badge and looked
+ * perfectly healthy. The calendar knew better and nothing asked it.
+ *
+ *   draft      typed up, nobody signed. The only editable one.
+ *   active     signed and running today.
+ *   expired    the term ran out and nobody closed it. NEEDS A DECISION.
+ *   completed  handed over (sale) or closed properly (lease).
+ *   cancelled  called off.
+ *
+ * ⚠ NO SCHEDULER, same as everything else here. `expired` is computed when the
+ * screen renders; nothing rewrites a record at midnight.
+ */
+export type ContractDisplayStatus = "draft" | "active" | "expired" | "completed" | "cancelled";
+
+export function displayStatus(c: ContractRecord, asOf: string = ANCHOR_ISO): ContractDisplayStatus {
+  /* draft, completed and cancelled say the same thing on paper and on screen —
+     only `signed` splits, and it splits on the calendar. */
+  if (c.status !== "signed") return c.status;
+  return isActive(c, asOf) ? "active" : "expired";
+}
+
 /** How many rent cycles a term contains — 12 monthly cycles in a year, 4
     quarterly, 2 biannual, 1 yearly. */
 export const CYCLE_MONTHS: Record<RentCycle, number> = { monthly: 1, quarterly: 3, biannual: 6, yearly: 12 };
@@ -1067,6 +1102,19 @@ export type InvoiceLifecycle = "draft" | "issued" | "void";
  */
 export type InvoiceStatus = "not_due" | "due" | "paid" | "overdue" | "void";
 
+/** One agreed extension of a due date. See InvoiceRecord.postponements. */
+export interface Postponement {
+  /** The date it fell due before this extension. */
+  from: string;
+  /** The date it falls due after it. Always later than `from`. */
+  to: string;
+  /** The day the extension was agreed — not the day it moves to. */
+  on: string;
+  /** Why. Required: "moved to the 7th" with no reason cannot be defended to a
+      landlord asking why his rent is late. */
+  reason: string;
+}
+
 export interface InvoiceRecord {
   id: string;
   /**
@@ -1091,6 +1139,32 @@ export interface InvoiceRecord {
   billTo: BillTo;
 
   lines: InvoiceLine[];
+
+  /**
+   * EVERY TIME THIS DEMAND WAS GIVEN MORE TIME, oldest first.
+   *
+   * ⚠ THE ONE THING ON AN ISSUED INVOICE THAT MAY MOVE, and the boundary is the
+   * point: a postponement changes WHEN the money is expected, never how much is
+   * owed, by whom, or for what. Those are the charge, and the charge is frozen
+   * at issue like every other fact on the document (rule 2). Extending terms is
+   * not reissuing an invoice — in an office it is a sentence at the counter,
+   * and in the file it should be exactly this: a dated line saying who agreed
+   * to what.
+   *
+   * The trail is kept rather than overwritten, because "due Sep 30" tells you
+   * nothing, and "due Aug 30, moved twice" tells you what you are dealing with.
+   */
+  postponements?: Postponement[];
+
+  /**
+   * On a late-fee invoice: the demand whose lateness produced it.
+   *
+   * Stored as a link, not left to the description text, so the app can tell that
+   * a penalty for this invoice ALREADY EXISTS. Without it nothing stopped the
+   * same charge being raised twice for the same lateness, and the tenant owed it
+   * twice — see addLatePenalty.
+   */
+  penaltyForInvoiceId?: string;
 
   /* ---- void / credit note ---- */
   voidedOn?: string;
@@ -1421,6 +1495,11 @@ export function nextContractNumber(kind: ContractKind, year: number, contracts: 
      CT-0210  tenancy to an OFF-PLATFORM tenant (buyerExternal, no member id)
      CT-0211  completed sale, settled long ago
      CT-0212  DRAFT tenancy, agency-collected, with a management fee
+     CT-0213  EXPIRED tenancy — the term ran out and NOBODY DID ANYTHING. Not
+              renewed, not closed, deposit still held, property still marked
+              rented and therefore impossible to re-list. The only state in the
+              app a person does not cause: see displayStatus, and End the
+              tenancy in _shared/contract-transitions for the way out of it.
 
    Two things the seed deliberately does NOT do:
 
@@ -1592,10 +1671,18 @@ export const CONTRACTS: ContractRecord[] = [
     createdOn: "2025-08-10",
     signedOn: "2025-08-18",
     cycle: "monthly",
+    /* THE RENEWAL-DUE SCENARIO, and the reason the clause is stated rather than
+       left to the 30-day default: at the anchor this term has 50 days left, so
+       a 60-day notice period is what puts it inside its own window and lights
+       the "Renewal due" badge. Sixty is also what a let like this asks for in
+       practice — the tenant pays the landlord directly, so a renewal is the
+       agency's ONLY remaining income from the property and the conversation has
+       to start early enough to matter. See isExpiringSoon in _contracts/data. */
+    clauses: { noticeDays: 60 },
     ...term("2025-08-20", 12),
     rentPaidTo: "owner",
     dualCurrency: false,
-    notes: "Term runs out in under two months — the owner has been asked whether to renew.",
+    notes: "Inside its 60-day notice window — the owner has been asked whether to renew and has not answered.",
   },
   {
     /* The agency collects. That is what turns one fee into a thirteen-invoice
@@ -1788,6 +1875,41 @@ export const CONTRACTS: ContractRecord[] = [
     dualCurrency: false,
     notes: "Tenant has asked for a mid-July start; awaiting the owner's signature.",
   },
+  {
+    /* THE EXPIRED TENANCY, and the only record here whose state nobody chose.
+       Its term ran out on 2026-04-30, two months before the anchor. Nobody rang
+       the landlord inside the notice window, nobody signed a renewal, and
+       nobody recorded that the tenant left. So:
+
+         · the badge reads EXPIRED, derived from the date and nothing else
+         · the deposit is still `held` and still the tenant's money
+         · CH-3189 is still marked `rented`, so it cannot be re-listed
+
+       Nothing rewrote this record when the date passed — there is no scheduler
+       (see the note on endTenancy). It simply stopped being true, which is
+       exactly the failure the state exists to make visible.
+
+       It is deliberately NOT renewed and NOT completed: those two are the ways
+       OUT of here, and a seed where every lease already took one of them leaves
+       the Expired tab and the End the tenancy action with nothing to act on. */
+    id: "CT-0213",
+    template: "lease",
+    kind: "rent",
+    status: "signed",
+    propertyId: "CH-3176",
+    ownerId: "M-5011",
+    buyerId: "M-5004",
+    agentId: "A-2105",
+    ...fees(usd(1_100), 100, { basis: "half_month" }),
+    insuranceDeposit: usd(1_100),
+    createdOn: "2025-04-20",
+    signedOn: "2025-04-28",
+    cycle: "monthly",
+    ...term("2025-05-01", 12),
+    rentPaidTo: "owner",
+    dualCurrency: false,
+    notes: "Term ended 30 April. The tenant has not been reached and the deposit has not been settled.",
+  },
 ];
 
 /* -------------------------------- invoices ---------------------------------
@@ -1807,6 +1929,7 @@ const BT = {
   nma: { name: "Nma Rashid", phone: "+964 773 902 6641", email: "nma.rashid@gmail.com", address: "Apt 3A, Dream City, Erbil" },
   kani: { name: "Kani Omar", phone: "+964 773 514 6098", email: "kani.omar@gmail.com", address: "Villa 9, Sarchnar, Sulaymaniyah" },
   tara: { name: "Tara Botan", phone: "+964 750 605 7812", email: "tara.botan@gmail.com", address: "House 61, Nizarke, Duhok" },
+  aland: { name: "Aland Tariq", phone: "+964 770 128 9903", email: "aland.tariq@gmail.com", address: "Apt 7, Empire World, Erbil" },
 } satisfies Record<string, BillTo>;
 
 /** Shorthand for the common single-quantity line. */
@@ -2034,6 +2157,48 @@ export const INVOICES: InvoiceRecord[] = [
     label: "Rent — Zaytun Court",
     property: "Zaytun Court",
   }),
+  /* THE TENANCY WITH A PAST. Every other rent schedule here starts on or after
+     the seed anchor, so the whole rent roll is a forecast and the message log
+     has almost nothing behind it — three rows, on a screen whose job is to
+     answer "did it go out?". This one has been running since August 2025, which
+     is what gives the log eleven settled months to read.
+
+     It is also the muted tenant's tenancy (see M-5009 in ../_data/catalog): the
+     landlord takes the rent in cash, Aland asked not to be written to, and the
+     reminders that DO fall due against these demands are the ones the log shows
+     as "Not sent". Invoiced all the same — see the note on CT-0210 above. */
+  ...rentSchedule({
+    contractId: "CT-0204",
+    prefix: "INV-0204",
+    firstNumber: 1037,
+    issuedOn: "2025-08-18",
+    startsOn: "2025-08-20",
+    cycle: "monthly",
+    count: 12,
+    amount: usd(2_600),
+    billToId: "M-5009",
+    billTo: BT.aland,
+    label: "Rent — Sarchnar Cypress Villa",
+    property: "Sarchnar Cypress Villa",
+  }),
+  /* The renewal's own schedule. One demand has fallen due — the day the new
+     term started — and eleven have not. Its tenant is written to in Arabic, so
+     the one reminder it has produced is the log's proof that a person's own
+     language beats the agency default even on an ordinary row. */
+  ...rentSchedule({
+    contractId: "CT-0206",
+    prefix: "INV-0206",
+    firstNumber: 1049,
+    issuedOn: "2026-06-15",
+    startsOn: "2026-06-20",
+    cycle: "monthly",
+    count: 12,
+    amount: usd(900),
+    billToId: "M-5002",
+    billTo: BT.zana,
+    label: "Rent — Nizarke Sunset Terrace",
+    property: "Nizarke Sunset Terrace",
+  }),
   {
     /* Past due and unpaid: due 2026-06-18 against the 2026-06-30 anchor, so this
        reads as 12 days overdue. Nothing stores that — invoiceStatus() derives it. */
@@ -2097,6 +2262,30 @@ export const INVOICES: InvoiceRecord[] = [
     billTo: BT.nma,
     lines: [tline("L1", "admin.fin.desc.commissionLandlord", { months: 12, property: "Empire World Loft" }, "Agency commission — 12-month tenancy, Empire World Loft", usd(1_600))],
   },
+  {
+    /* The fee on the tenancy that later expired. Raised and paid at signing,
+       fourteen months ago, and entirely settled — which is the point of it
+       being here. An expired contract is not a contract in arrears: the money
+       was fine, the paperwork was fine, and it still ended up stuck. Give the
+       row an unpaid invoice and the screen teaches the wrong lesson about what
+       Expired means. */
+    /* 1061 continues the sequence rather than slotting in at its issue date:
+       the numbers here are grouped by kind (commission invoices, then the rent
+       schedules) and were never strictly date-ordered — INV-1037 predates
+       INV-1024 by ten months. Renumbering sixty documents to place one is not
+       an improvement. */
+    id: "INV-0213-C",
+    number: "INV-1061",
+    contractId: "CT-0213",
+    category: "commission",
+    payee: "agency",
+    status: "issued",
+    issuedOn: "2025-04-28",
+    dueOn: "2025-05-05",
+    billToId: "M-5011",
+    billTo: BT.nma,
+    lines: [tline("L1", "admin.fin.desc.commissionLandlord", { months: 12, property: "Bakhtiari Court House" }, "Agency commission — 12-month tenancy, Bakhtiari Court House", usd(1_100))],
+  },
 ];
 
 /* -------------------------------- payments --------------------------------- */
@@ -2143,6 +2332,46 @@ export const PAYMENTS: PaymentRecord[] = [
      nothing to hold and nothing to hand over. Both parties still get a paper —
      see the two receipt links on the invoice row. */
   { id: "PAY-6010", invoiceId: "INV-0210-R01", ...paidAs(usd(1_600)), receivedOn: "2026-06-30", method: "cash", reference: "", recordedBy: "u-lana" },
+
+  /* ---- eleven months of the Sarchnar tenancy, settled ----
+
+     ⚠ THE DATES ARE THE POINT, not the amounts. A reminder is only scheduled
+     for a demand that is still unpaid three days before it falls due (see
+     buildOutbox), so WHEN each of these landed decides whether the tenant was
+     ever written to. He pays his landlord in cash on the 15th, five days early,
+     for eight months running — and those eight months produce no reminder at
+     all, which is the behaviour worth being able to see. Then three late ones,
+     each of which does schedule a reminder, and every one of those reads
+     "Not sent" because he asked not to be messaged.
+
+     No ledger lines against any of them: the landlord collects, so the agency
+     never held this money. Same rule as PAY-6010 above. */
+  { id: "PAY-6011", invoiceId: "INV-0204-R01", ...paidAs(usd(2_600)), receivedOn: "2025-08-15", method: "cash", reference: "RCPT-2508-131", recordedBy: "u-sara" },
+  { id: "PAY-6012", invoiceId: "INV-0204-R02", ...paidAs(usd(2_600)), receivedOn: "2025-09-15", method: "cash", reference: "RCPT-2509-096", recordedBy: "u-sara" },
+  { id: "PAY-6013", invoiceId: "INV-0204-R03", ...paidAs(usd(2_600)), receivedOn: "2025-10-15", method: "cash", reference: "RCPT-2510-104", recordedBy: "u-sara" },
+  { id: "PAY-6014", invoiceId: "INV-0204-R04", ...paidAs(usd(2_600)), receivedOn: "2025-11-15", method: "cash", reference: "RCPT-2511-088", recordedBy: "u-rawa" },
+  { id: "PAY-6015", invoiceId: "INV-0204-R05", ...paidAs(usd(2_600)), receivedOn: "2025-12-15", method: "cash", reference: "RCPT-2512-142", recordedBy: "u-sara" },
+  { id: "PAY-6016", invoiceId: "INV-0204-R06", ...paidAs(usd(2_600)), receivedOn: "2026-01-15", method: "cash", reference: "RCPT-2601-057", recordedBy: "u-sara" },
+  { id: "PAY-6017", invoiceId: "INV-0204-R07", ...paidAs(usd(2_600)), receivedOn: "2026-02-15", method: "cash", reference: "RCPT-2602-063", recordedBy: "u-rawa" },
+  { id: "PAY-6018", invoiceId: "INV-0204-R08", ...paidAs(usd(2_600)), receivedOn: "2026-03-15", method: "cash", reference: "RCPT-2603-071", recordedBy: "u-sara" },
+  /* The three late months. Each was still outstanding on the 17th, so each
+     scheduled a reminder — and each of those reminders is a "Not sent" row. */
+  { id: "PAY-6019", invoiceId: "INV-0204-R09", ...paidAs(usd(2_600)), receivedOn: "2026-04-25", method: "cash", reference: "RCPT-2604-119", recordedBy: "u-sara" },
+  { id: "PAY-6020", invoiceId: "INV-0204-R10", ...paidAs(usd(2_600)), receivedOn: "2026-05-24", method: "cash", reference: "RCPT-2605-126", recordedBy: "u-rawa" },
+  { id: "PAY-6021", invoiceId: "INV-0204-R11", ...paidAs(usd(2_600)), receivedOn: "2026-06-25", method: "cash", reference: "RCPT-2606-133", recordedBy: "u-sara" },
+  /* The renewal's first month, paid four days after it fell due — so its
+     reminder had already gone out, in Arabic, to a tenant who reads it. */
+  { id: "PAY-6022", invoiceId: "INV-0206-R01", ...paidAs(usd(900)), receivedOn: "2026-06-24", method: "cash", reference: "RCPT-2606-138", recordedBy: "u-rawa" },
+  /* JULY'S RENT, PAID TWO DAYS EARLY, through the agency again. Ordinary in
+     itself — and it is the second payment on the one tenancy whose landlord has
+     no number on file, so the log carries two "Failed — no number" rows rather
+     than one. A single failure reads as a fluke; two read as a record that
+     needs fixing, which is what it is. Early, but not early enough to call off
+     the tenant's reminder: that was already scheduled for the 28th. */
+  { id: "PAY-6023", invoiceId: "INV-0205-R02", ...paidAs(usd(3_400)), receivedOn: "2026-06-29", method: "bank_transfer", reference: "TRF-260629-3308", recordedBy: "u-rebin" },
+  /* Settled at signing, fourteen months before the tenancy expired. Nothing is
+     owed on CT-0213 and nothing ever was — see the note on INV-0213-C. */
+  { id: "PAY-6024", invoiceId: "INV-0213-C", ...paidAs(usd(1_100)), receivedOn: "2025-05-02", method: "bank_transfer", reference: "TRF-250502-2907", recordedBy: "u-sara" },
 ];
 
 /* -------------------------- the owner ledger ------------------------------- */
@@ -2186,6 +2415,31 @@ export const LEDGER: OwnerLedgerEntry[] = [
     amount: usd(-272),
     on: "2026-06-03",
     description: "Management fee on INV-1009",
+  },
+  /* The same pair for July's collection. Two collections rather than one is
+     what makes the payouts screen show a running balance instead of a single
+     line — $6,800 collected, $544 in fees out, $6,256 still owed to him. */
+  {
+    id: "LED-5003",
+    ownerId: "M-5007",
+    contractId: "CT-0205",
+    invoiceId: "INV-0205-R02",
+    paymentId: "PAY-6023",
+    kind: "collected",
+    amount: usd(3_400),
+    on: "2026-06-29",
+    description: "Rent — Ankawa Tower Suite — Jul 2026",
+  },
+  {
+    id: "LED-5004",
+    ownerId: "M-5007",
+    contractId: "CT-0205",
+    invoiceId: "INV-0205-R02",
+    paymentId: "PAY-6023",
+    kind: "fee",
+    amount: usd(-272),
+    on: "2026-06-29",
+    description: "Management fee on INV-1010",
   },
 ];
 

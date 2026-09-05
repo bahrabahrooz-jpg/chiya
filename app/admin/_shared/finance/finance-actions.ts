@@ -218,6 +218,12 @@ export interface FinanceActions {
   recordPayment: (input: PaymentInput) => void;
   issueExtraInvoice: (input: ExtraInvoiceInput) => InvoiceRecord | undefined;
   voidInvoice: (invoiceId: string, reason: string) => void;
+  /**
+   * Give a live demand more time: moves its due date and appends to its trail,
+   * and can touch nothing else. Any penalty already raised stands — see the
+   * note on the action.
+   */
+  postponeInvoice: (invoiceId: string, to: string, reason: string) => InvoiceRecord | undefined;
   cancelContract: (contractId: string, reason: string, deposit?: SaleDepositOutcome) => CancelResult;
   /**
    * The invoices a draft WOULD raise if it were signed.
@@ -278,6 +284,7 @@ export function useFinanceActions(): FinanceActions {
     payments,
     issueInvoice,
     voidInvoice: storeVoid,
+    postponeInvoice: storePostpone,
     recordPayment: storeRecordPayment,
     recordPayout,
     recordExpense,
@@ -622,6 +629,25 @@ export function useFinanceActions(): FinanceActions {
       storeVoid(invoiceId, reason, TODAY);
     },
     [storeVoid],
+  );
+
+  /**
+   * "He asked for a week."
+   *
+   * The commonest sentence in a letting office, and until now the screen had no
+   * answer to it: an agent could leave the demand sitting there red, which says
+   * the tenant is in default when he is not, or void it, which says the rent was
+   * never owed. Both are lies about the same week.
+   *
+   * WHAT MOVES IS THE DATE AND NOTHING ELSE — see the guards in the store's
+   * postponeInvoice. Any penalty already raised STAYS raised: the invoice was
+   * genuinely late before the extension was agreed, and quietly withdrawing a
+   * charge because the date later changed would rewrite what happened. Waiving
+   * it is its own decision, taken by voiding that fee.
+   */
+  const postponeInvoice = useCallback(
+    (invoiceId: string, to: string, reason: string) => storePostpone(invoiceId, to, reason, TODAY),
+    [storePostpone],
   );
 
   /**
@@ -1009,6 +1035,15 @@ export function useFinanceActions(): FinanceActions {
       const penalty = latePenaltyFor(contract, daysOverdue(invoice, payments, TODAY));
       if (!penalty || isZero(penalty.amount)) return undefined;
 
+      /* ⚠ ONE PENALTY PER LATE DEMAND. Nothing used to stop this being pressed
+         twice — the offer was computed from the days late and knew nothing about
+         what it had already produced — so a second press charged the tenant
+         again for the same lateness, in a second invoice that looked exactly as
+         legitimate as the first. The link on the fee is what makes the check
+         possible; a withdrawn one does not block a fresh charge, because voiding
+         it is how somebody says "not this time". */
+      if (invoices.some((i) => i.penaltyForInvoiceId === invoice.id && i.status !== "void")) return undefined;
+
       logAudit({
         category: "property",
         actionKey: "audit.action.addedLatePenalty",
@@ -1027,6 +1062,7 @@ export function useFinanceActions(): FinanceActions {
           payee: "owner",
           status: "draft",
           dueOn: TODAY,
+          penaltyForInvoiceId: invoice.id,
           ...(invoice.billToId ? { billToId: invoice.billToId } : {}),
           billTo: invoice.billTo,
           lines: [
@@ -1130,6 +1166,7 @@ export function useFinanceActions(): FinanceActions {
       payOwner,
       spendForOwner,
       addLatePenalty,
+      postponeInvoice,
       settleEarly,
     }),
     [
@@ -1147,6 +1184,7 @@ export function useFinanceActions(): FinanceActions {
       payOwner,
       spendForOwner,
       addLatePenalty,
+      postponeInvoice,
       settleEarly,
     ],
   );

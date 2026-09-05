@@ -46,8 +46,9 @@ export interface ContractTransitions {
   signContract: (contractId: string, signedOn: string) => void;
   /** Abandon a contract — the property goes back where it was. */
   cancelContract: (contractId: string, reason: string, cancelledOn: string) => void;
-  /** A tenancy has run out — the property is free, but stays off the website. */
-  expireLease: (contractId: string) => void;
+  /** A tenancy ran its term and is not being renewed — the contract is
+      completed and the property is free, but stays off the website. */
+  endTenancy: (contractId: string) => void;
 }
 
 export function useContractTransitions(): ContractTransitions {
@@ -155,29 +156,50 @@ export function useContractTransitions(): ContractTransitions {
   );
 
   /**
-   * A tenancy past its end date frees the property.
+   * THE WAY OUT OF EXPIRED. A tenancy ran its full term and is not being
+   * renewed: the contract is finished and the property is free again.
    *
-   * NOT ON A TIMER. There is no scheduler in this app, and inventing one that
-   * rewrites records in the background would be worse than the gap — a lease
-   * quietly expiring at 3am and changing what the admin sees the next morning
-   * is the kind of thing nobody can debug. It is called from the contract
-   * screens, which is where a person is already looking at the tenancy.
+   * This is the counterpart to renewing, and the two are the only honest exits
+   * from an ended lease. For a long time only renewing existed — signing a
+   * replacement completed the old contract (see saveContract in
+   * finance/finance-actions) and a tenant who simply moved out left the lease
+   * stuck reading Expired forever, with the flat still marked rented and
+   * therefore impossible to re-list. The only button that cleared it was
+   * Cancel, which records that the agreement was broken off early. It was not.
+   * It succeeded. Writing the failure down as the price of tidying a list is
+   * how a book of records stops being one.
+   *
+   * ⚠ COMPLETED, NOT CANCELLED, and ⚠ NOT ON A TIMER. There is no scheduler in
+   * this app, and inventing one that rewrites records in the background would
+   * be worse than the gap — a lease quietly completing at 3am and changing what
+   * the admin sees the next morning is the kind of thing nobody can debug. A
+   * person presses this, on the screen where they are already looking at the
+   * tenancy.
+   *
+   * THE DEPOSIT IS NOT TOUCHED HERE. What became of the tenant's money is its
+   * own decision with its own three outcomes — see CloseLeaseModal. Ending the
+   * tenancy while the deposit is still held is a legitimate state, and the
+   * contracts list keeps flagging it until somebody settles it.
    */
-  const expireLease = useCallback(
+  const endTenancy = useCallback(
     (contractId: string) => {
       const contract = contracts.find((c) => c.id === contractId);
       if (!contract) return;
+      /* The status first and unconditionally: a missing or already-freed
+         property must not leave the contract stuck in Expired. The store logs
+         the audit event off the status patch. */
+      updateContract(contractId, { status: "completed" });
       const property = propertyFor(contract.propertyId);
       if (!property || property.availability !== "rented") return;
       // Publication is deliberately untouched, so there is no visibility event.
       updateProperty(property.id, onLeaseEnded(property));
     },
-    [contracts, propertyFor, updateProperty],
+    [contracts, propertyFor, updateContract, updateProperty],
   );
 
   return useMemo(
-    () => ({ createContract, signContract, cancelContract, expireLease }),
-    [createContract, signContract, cancelContract, expireLease],
+    () => ({ createContract, signContract, cancelContract, endTenancy }),
+    [createContract, signContract, cancelContract, endTenancy],
   );
 }
 

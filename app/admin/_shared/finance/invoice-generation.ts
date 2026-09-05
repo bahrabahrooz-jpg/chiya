@@ -397,15 +397,25 @@ export function toContractRecord(
  * file. The live link is kept separately as `billToId`.
  */
 export function billToFromMember(m: MemberRecord): BillTo {
-  /* No address: MemberRecord does not carry one. Blank rather than a
-     placeholder — an invoice that says nothing about the address is honest,
-     and one that says "N/A" reads as though somebody checked. */
-  return { name: m.name, phone: m.phone, email: m.email, address: "" };
+  /* NO ADDRESS, still. The member record now carries a city and an area, and
+     they are deliberately NOT used here: "Ankawa · Erbil" is where somebody
+     lives, not an address to send a document to, and an invoice that prints it
+     under "address" claims a precision nobody entered. Blank rather than a
+     placeholder — an invoice silent about the address is honest, and one that
+     says "N/A" reads as though somebody checked.
+
+     THE ID DOES TRAVEL, exactly as it does for a party with no account below.
+     It is the same fact about the same person and the document needs it for the
+     same reason; taking it only off the unregistered half would mean registering
+     somebody made their invoices identify them less. Frozen like the rest of
+     this block: correcting a typo on the profile leaves last year's invoice
+     saying what it said. */
+  return { name: m.name, phone: m.phone, email: m.email, address: "", ...(m.idNumber ? { idNumber: m.idNumber } : {}) };
 }
 
-/** The same snapshot for a counterparty with no account — most buyers and
-    tenants here. Their ID number is the only identifying detail captured
-    anywhere, so it travels onto the document. */
+/** The same snapshot for a counterparty with no account. Their ID number is the
+    only identifying detail the platform holds about them at all, so it travels
+    onto the document — see the note above about members. */
 export function billToFromExternal(p: ExternalParty): BillTo {
   return { name: p.name, phone: p.phone, email: "", address: "", ...(p.idNumber ? { idNumber: p.idNumber } : {}) };
 }

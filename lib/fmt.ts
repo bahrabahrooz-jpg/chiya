@@ -1,13 +1,23 @@
 /**
  * Locale-aware display formatting for the admin/agent consoles.
  *
- * Pure functions keyed off the active `Lang` (from `lib/i18n`). Arabic and
- * Kurdish (Sorani) render Eastern Arabic-Indic digits (٠–٩); English stays
- * Western. These format at DISPLAY time only — data is stored canonically in
- * English (e.g. dates like "Jun 30, 2026" round-tripped by the seed catalog),
- * so never feed a localized string back into a parser.
+ * Pure functions keyed off the active `Lang` (from `lib/i18n`). These format at
+ * DISPLAY time only — data is stored canonically in English (e.g. dates like
+ * "Jun 30, 2026" round-tripped by the seed catalog), so never feed a formatted
+ * string back into a parser.
  *
- * If prices/counts should stay Western digits in ar/ku, flip `usesArabicDigits`.
+ * ⚠ EVERY DIGIT ON THE PLATFORM IS WESTERN (0–9), IN ALL THREE LANGUAGES. Arabic
+ * and Kurdish used to render Eastern Arabic-Indic digits (٠–٩). They no longer
+ * do: money, dates, counts, percentages and reference numbers are all read,
+ * quoted down a telephone, typed into a bank slip and compared against a printed
+ * contract, and a receipt whose total is written ٣٠٠ is a receipt somebody has
+ * to transliterate before they can use it. The switch is `usesArabicDigits` —
+ * flipping it back turns the digits over everywhere at once, because every
+ * formatter here routes through `localizeDigits`.
+ *
+ * ⚠ AND EVERY DATE IS NUMERIC — "30/06/2026", day first, the same in all three
+ * languages. Month NAMES are still used where a month is a heading rather than
+ * a date (calendar pickers, chart axes); see `monthName`.
  */
 import type { Lang } from "@/lib/i18n";
 /* Type-only, so the "use client" module it lives in is erased at build time and
@@ -16,9 +26,21 @@ import type { CurrencyCode } from "@/lib/platform-settings";
 
 const AR_INDIC = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"] as const;
 
-/** Whether a language renders Eastern Arabic-Indic digits. */
+/**
+ * The languages that render Eastern Arabic-Indic digits (٠–٩). DELIBERATELY
+ * EMPTY — "ar" and "ku" were in it and were taken out.
+ *
+ * A list rather than a deleted branch, so the decision has somewhere to live and
+ * putting it back is adding two strings here rather than reconstructing a rule.
+ * Every formatter in this file routes through `localizeDigits`, so this one line
+ * governs money, dates, counts, percentages and reference numbers on all four
+ * surfaces at once.
+ */
+const ARABIC_INDIC_LANGS: readonly Lang[] = [];
+
+/** Whether a language renders Eastern Arabic-Indic digits. Nothing does. */
 export function usesArabicDigits(lang: Lang): boolean {
-  return lang === "ar" || lang === "ku";
+  return ARABIC_INDIC_LANGS.includes(lang);
 }
 
 /**
@@ -207,25 +229,36 @@ export function weekdayName(lang: Lang, dowIndex: number): string {
   return WD_ABBR[lang][dowIndex] ?? "";
 }
 
+/** Two digits, so a date column lines up: 6 → "06". */
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n);
+}
+
 /**
- * Format a Date for display. Styles:
- *  - "mdy":  "Jun 30, 2026" / "٣٠ حزيران ٢٠٢٦"  (RTL puts the day first)
- *  - "dmy":  "30 Jun 2026"  / "٣٠ حزيران ٢٠٢٦"
- *  - "wdmy": "Mon, 30 Jun 2026" with weekday
+ * Format a Date for display — ALL NUMERIC, day first, identical in all three
+ * languages:
+ *  - "mdy" / "dmy": "30/06/2026"
+ *  - "wdmy":        "Mon, 30/06/2026" — the weekday is still a word, because a
+ *                   weekday IS a name; only the month stopped being one.
+ *
+ * ⚠ THE MONTH IS A NUMBER NOW. It was a name — "Jun 30, 2026", "٣٠ حزيران
+ * ٢٠٢٦" — which meant a due date, the date printed on a receipt and the date on
+ * the contract beside it were three different shapes depending on which
+ * language the console happened to be in, and none of them could be compared
+ * down a column at a glance. Numbers are the same object in every language.
+ *
+ * ⚠ DAY FIRST, which is what Iraq and the Kurdistan Region write, and what the
+ * Arabic and Kurdish forms already did. English was the only one leading with
+ * the month, so one order for everybody costs English its old habit and buys
+ * three surfaces that agree. Zero-padded so the columns line up.
+ *
+ * Month names have NOT gone away — see `monthName`, which still dresses
+ * calendar-picker headings and chart axes, where a month is a heading and not
+ * a date.
  */
 export function fmtDate(lang: Lang, date: Date, style: "mdy" | "dmy" | "wdmy" = "mdy"): string {
-  const d = date.getDate();
-  const mo = monthName(lang, date.getMonth());
-  const y = date.getFullYear();
-  const rtl = usesArabicDigits(lang);
-  let out: string;
-  if (style === "wdmy") {
-    out = `${weekdayName(lang, date.getDay())}, ${d} ${mo} ${y}`;
-  } else if (style === "dmy" || rtl) {
-    out = `${d} ${mo} ${y}`;
-  } else {
-    out = `${mo} ${d}, ${y}`;
-  }
+  const numeric = `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`;
+  const out = style === "wdmy" ? `${weekdayName(lang, date.getDay())}, ${numeric}` : numeric;
   return localizeDigits(lang, out);
 }
 

@@ -1,0 +1,98 @@
+/* ============================================================
+   ERROR SCREENS  (nf- = not found / failure)
+   Shared by app/not-found.tsx and app/error.tsx — the public
+   site's two dead ends. Centred, quiet, and always offering a
+   way back into the site.
+   ============================================================ */
+
+.nf-main {
+  display: flex;
+  align-items: center;
+  /* Fills what is left between the interior header and the footer, so the
+     message sits in the middle of the viewport instead of hugging the header
+     on a tall screen. */
+  min-height: clamp(420px, 62vh, 720px);
+  padding-block: var(--space-16) var(--space-20);
+  background: var(--surface-page);
+}
+
+.nf-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-inline: auto;
+  max-width: 560px;
+}
+
+.nf-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-card-lg);
+  background: var(--brand-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-brand);
+  box-shadow: var(--shadow-card);
+}
+
+/* The code is a label, not a headline — it names the failure without shouting
+   a number at somebody who only wanted to see a flat. */
+.nf-code {
+  margin-block-start: var(--space-6);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-size);
+  line-height: var(--text-xs-line);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.nf-title {
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--display-sm-size);
+  line-height: var(--display-sm-line);
+  letter-spacing: var(--tracking-tight);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nf-body {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-md-size);
+  line-height: var(--text-md-line);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.nf-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--gap-control);
+  margin-block-start: var(--space-8);
+}
+
+.nf-ref {
+  margin: var(--space-8) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-size);
+  line-height: var(--text-xs-line);
+  color: var(--text-tertiary);
+  word-break: break-all;
+}
+
+/* On a phone the two buttons stack and go full width — a 44px target each,
+   rather than two half-width ones squeezed onto one line. */
+@media (max-width: 480px) {
+  .nf-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+}

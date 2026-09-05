@@ -17,14 +17,15 @@ import { useProperties } from "../_shared/properties-store";
 import {
   DATE_RANGES,
   EMPTY_FILTERS,
-  EXPIRY_WINDOW_DAYS,
   ITEMS_PER_PAGE,
   KIND_META,
   KIND_OPTIONS,
   KPI_CARDS,
+  MONTH_RANGE,
   STATUS_META,
   STATUS_TABS,
   buildKpis,
+  displayStatus,
   matchesDateRange,
   toRow,
   type ContractFilters,
@@ -96,7 +97,11 @@ function ContractTableRow({ row, basePath }: { row: ContractRow; basePath: strin
   const { t, lang } = useLang();
   const router = useRouter();
   const c = row.contract;
-  const st = STATUS_META[c.status];
+  /* The word a person reads, not the word the record stores — a lease whose
+     term ran out is Expired here even though the record still says signed.
+     See displayStatus in _data/contracts. */
+  const ds = displayStatus(c);
+  const st = STATUS_META[ds];
   const kind = KIND_META[c.kind];
   const href = `${basePath}/${encodeURIComponent(c.id)}`;
   const go = () => router.push(href);
@@ -182,7 +187,7 @@ function ContractTableRow({ row, basePath }: { row: ContractRow; basePath: strin
 
       <div className="ct-col--status">
         <Badge variant={st.variant} size="sm" dot={st.dot} icon={st.icon}>
-          {t(`admin.ct.status.${c.status}`)}
+          {t(`admin.ct.status.${ds}`)}
         </Badge>
       </div>
 
@@ -280,12 +285,17 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
     const sq = q.trim().toLowerCase();
     return allRows.filter((r) => {
       const c = r.contract;
-      if (activeTab !== "all" && c.status !== activeTab) return false;
+      /* Chips match on the DISPLAY status, so pressing "Expired" finds the
+         leases whose badges say Expired. Matching on c.status would have made
+         two of the six chips unreachable. */
+      if (activeTab !== "all" && displayStatus(c) !== activeTab) return false;
       if (filters.kind && c.kind !== filters.kind) return false;
       if (filters.agent && c.agentId !== filters.agent) return false;
-      /* The worklist filter — an ended tenancy still holding somebody’s deposit.
-         Same derived flag the row badge uses, so the count, the chip and the
-         rows can never disagree. */
+      /* The two worklist filters — a renewal that needs deciding, and an ended
+         tenancy still holding somebody’s deposit. Both read the same derived
+         flags the row badges use, so the KPI count, the chip and the rows can
+         never disagree. */
+      if (filters.expiring && !r.expiring) return false;
       if (filters.depositsToClose && !r.depositHeld) return false;
       if (!matchesDateRange(c, filters.dateRange)) return false;
       if (sq) {
@@ -312,11 +322,30 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
     [agents, baseList],
   );
 
-  /* Both money cards render with formatMoney, never formatApprox: one is what
-     the agency signed and the other is what it is holding for other people, and
-     both are figures somebody acts on. */
+  /* The money card renders with formatMoney, never formatApprox — a contract
+     value is a figure somebody acts on, not an impression. */
   const kpiValue = (key: (typeof KPI_CARDS)[number]["key"]) =>
-    key === "signedThisMonth" ? formatMoney(lang, kpis.signedThisMonth) : key === "depositsHeld" ? formatMoney(lang, kpis.depositsHeld) : fmtNum(lang, kpis[key]);
+    key === "signedThisMonth" ? formatMoney(lang, kpis.signedThisMonth) : fmtNum(lang, kpis[key]);
+
+  /**
+   * EVERY CARD IS A WAY IN.
+   *
+   * The rule for this row: a card that shows a number must be able to show you
+   * the rows behind it. Before, four of the five could not — "Active contracts"
+   * counted a state the table had no chip for and the badge never printed, so
+   * the only thing you could do with the number was read it.
+   *
+   * Two of the four press a status chip, two press a filter; each resets what
+   * the other one set, so pressing a second card never lands on an empty list
+   * left over from the first.
+   */
+  const showKpi = (key: (typeof KPI_CARDS)[number]["key"]) => {
+    setFilters({ ...EMPTY_FILTERS, ...(key === "expiring" ? { expiring: "1" } : key === "signedThisMonth" ? { dateRange: MONTH_RANGE } : {}) });
+    setActiveTab(key === "active" ? "active" : key === "drafts" ? "draft" : "all");
+    setQ("");
+    setCurrentPage(1);
+    if (key === "expiring" || key === "signedThisMonth") setFiltersOpen(true);
+  };
 
   return (
     <>
@@ -365,51 +394,31 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
       </header>
 
       <div className="ct-kpis">
-        {KPI_CARDS.map((c) => {
-          /* THE NUMBER WAS ALREADY HERE AND LED NOWHERE. "2 deposits to close"
-             told you a job existed and gave you no way to find which contracts
-             it meant — you had to already know the answer to look it up. The
-             card is now the way in. */
-          const opensWorklist = c.key === "depositsHeld" && kpis.depositsToClose > 0;
-          const openWorklist = () => {
-            setFilter("depositsToClose", "1");
-            setActiveTab("all");
-            setFiltersOpen(true);
-          };
-          return (
+        {KPI_CARDS.map((c) => (
           <StatCard
             key={c.key}
-            {...(opensWorklist
-              ? {
-                  className: "ct-kpi--action",
-                  role: "button",
-                  tabIndex: 0,
-                  title: t("admin.ct.filter.depositsToClose"),
-                  onClick: openWorklist,
-                  onKeyDown: (e: ReactKeyboardEvent) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openWorklist();
-                    }
-                  },
-                }
-              : {})}
+            className="ct-kpi--action"
+            role="button"
+            tabIndex={0}
+            title={t("admin.ct.kpiGo", { label: t(`admin.ct.kpi.${c.key}`) })}
+            onClick={() => showKpi(c.key)}
+            onKeyDown={(e: ReactKeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                showKpi(c.key);
+              }
+            }}
             label={t(`admin.ct.kpi.${c.key}`)}
             value={kpiValue(c.key)}
             icon={c.icon}
             tone={c.tone}
             sub={
-              c.key === "expiring"
-                ? t("admin.ct.kpiSub.expiring", { days: fmtNum(lang, EXPIRY_WINDOW_DAYS) })
-                : c.key === "depositsHeld"
-                  ? t(kpis.depositsToClose > 0 ? "admin.ct.kpiSub.depositsToClose" : "admin.ct.kpiSub.depositsHeld", { count: fmtNum(lang, kpis.depositsToClose) })
-                : c.key === "signedThisMonth" && kpis.excludedFromSigned > 0
-                  ? t("admin.ct.kpiSub.signedExcluded", { count: fmtNum(lang, kpis.excludedFromSigned) })
-                  : t(`admin.ct.kpiSub.${c.key}`)
+              c.key === "signedThisMonth" && kpis.excludedFromSigned > 0
+                ? t("admin.ct.kpiSub.signedExcluded", { count: fmtNum(lang, kpis.excludedFromSigned) })
+                : t(`admin.ct.kpiSub.${c.key}`)
             }
           />
-          );
-        })}
+        ))}
       </div>
 
       <section className="ct-tablecard">
@@ -493,15 +502,37 @@ export function ContractsApp({ scopeAgentId, basePath = "/admin/contracts" }: { 
                 <AdminSelect
                   value={filters.dateRange}
                   onChange={(v) => setFilter("dateRange", v)}
-                  options={DATE_RANGES.map((r) => ({ value: r.value, label: t("admin.ct.filter.lastDays", { days: fmtNum(lang, r.days) }) }))}
+                  options={DATE_RANGES.map((r) => ({
+                    value: r.value,
+                    label: r.days === undefined ? t("admin.ct.filter.thisMonth") : t("admin.ct.filter.lastDays", { days: fmtNum(lang, r.days) }),
+                  }))}
                   placeholder={t("admin.ct.filter.signed")}
                   ariaLabel={t("admin.ct.filter.signed")}
                 />
-                {/* A TOGGLE, not a dropdown — it has one meaningful state, and
-                    burying "an ended lease still holding money" inside a select
-                    would hide the only filter on this screen that is a job
-                    rather than a way of narrowing a list. */}
-                {kpis.depositsToClose > 0 && (
+                {/* TOGGLES, not dropdowns — each has one meaningful state, and
+                    burying "a renewal nobody has decided" or "an ended lease
+                    still holding money" inside a select would hide the only two
+                    filters on this screen that are jobs rather than ways of
+                    narrowing a list. Both are where the KPI cards land.
+
+                    Hidden at zero, because a job that does not exist is not
+                    worth a control — BUT never hidden while it is switched on.
+                    A card can be pressed when its count is zero, and a toggle
+                    that applies a filter and then vanishes leaves an empty list
+                    with nothing on screen explaining why. */}
+                {(kpis.expiring > 0 || filters.expiring) && (
+                  <button
+                    type="button"
+                    className={"ct-flagbtn" + (filters.expiring ? " is-active" : "")}
+                    aria-pressed={!!filters.expiring}
+                    onClick={() => setFilter("expiring", filters.expiring ? "" : "1")}
+                  >
+                    <Icon name="calendar-clock" size={15} />
+                    {t("admin.ct.filter.expiring")}
+                    <span className="ct-flagbtn__count">{fmtNum(lang, kpis.expiring)}</span>
+                  </button>
+                )}
+                {(kpis.depositsToClose > 0 || filters.depositsToClose) && (
                   <button
                     type="button"
                     className={"ct-flagbtn" + (filters.depositsToClose ? " is-active" : "")}

@@ -324,10 +324,19 @@
 
   /* Member / Agent */
   .vw-person { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .vw-person__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .vw-person__name {
     font-size: 13.5px; font-weight: 600; color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* "Booked online" — quiet by design. It qualifies the name above it rather
+     than competing with it, so it reads as a note, not a second status. */
+  .vw-person__src {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11.5px; font-weight: 600; color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+  .vw-person__src svg { flex: none; }
 
   /* Date & Time */
   .vw-dt { display: flex; flex-direction: column; gap: 3px; }

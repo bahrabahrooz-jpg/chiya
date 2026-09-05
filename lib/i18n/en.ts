@@ -285,6 +285,15 @@ export const en = {
   "pdp.bookDone": "Viewing requested",
   "pdp.bookConfirm": "A verified Chiya agent will confirm within 24 hours.",
   "pdp.requestAViewing": "Request a viewing",
+  "pdp.bookThanks": "Thank you. {agent} will contact you to confirm your viewing of {property}.",
+  "pdp.bookDateLabel": "Viewing date",
+  "pdp.bookDatePh": "Select date",
+  "pdp.bookTimeLabel": "Viewing time",
+  "pdp.bookTimePh": "Select time",
+  "pdp.bookTimePhLocked": "Pick a date first",
+  "pdp.bookAgentLabel": "Viewing agent",
+  "pdp.bookCancel": "Cancel",
+  "pdp.bookClose": "Done",
 
   // ---- Agent directory ----
   "agents.crumb": "Agents",
@@ -441,6 +450,7 @@ export const en = {
   "auth.gate.list": "Sign in or create an account to list your property.",
   "auth.gate.saveProperty": "Sign in or create an account to save this property to your shortlist.",
   "auth.gate.saveAgent": "Sign in or create an account to save this agent to your shortlist.",
+  "auth.gate.bookViewing": "Sign in or create an account to request a viewing, so the agent knows who to contact.",
 
   // ---- Account chip ----
   "acct.account": "Account",
@@ -1406,6 +1416,7 @@ export const en = {
   "admin.members.actions": "Member actions",
   "admin.members.dismissNotif": "Dismiss notification",
   "admin.members.th.member": "Member",
+  "admin.members.selfRegistered": "Signed up online",
   "admin.members.th.roles": "Roles",
   "admin.members.th.phone": "Phone",
   "admin.members.th.props": "Properties",
@@ -1428,6 +1439,43 @@ export const en = {
   "admin.members.optional": "(Optional)",
   "admin.members.notesPh": "Add context about this member — preferences, history, or anything the team should know.",
   "admin.members.notesHint": "Optional · visible only to staff and administrators.",
+
+  /* Reaching a member — how we write to them, who they are on paper, where
+     they live. Added when the member record stopped being a name and a number:
+     an invoice has to know what language to remind somebody in and whether to
+     remind them at all, and only the person's own record can answer that. */
+  "admin.members.msgTitle": "Messages",
+  "admin.members.msgDesc": "How the platform writes to this person about rent, payments and notices.",
+  "admin.members.onWhatsapp": "This number is on WhatsApp",
+  "admin.members.onWhatsappDesc": "Turn off if the number can be called but not messaged. Nothing automatic will be sent to it.",
+  "admin.members.reminders": "Send automatic messages",
+  "admin.members.remindersDesc": "Turn off for people who do not need them — a tenant who pays the landlord in cash, for example. You can still write to them by hand.",
+  "admin.members.msgLang": "Message language",
+  "admin.members.msgLangDefault": "Use the agency's language",
+  "admin.members.msgLangHint": "The language they read, not the one you are using now.",
+  "admin.members.msgLangSet": "Written to in {lang}",
+  "admin.members.idTitle": "Identity",
+  "admin.members.idDesc": "Add it when you have it. A contract keeps its own copy of whatever was signed.",
+  "admin.members.idKind": "Document",
+  "admin.members.idKindNone": "Not on file",
+  "admin.members.idKind.civil": "Civil ID",
+  "admin.members.idKind.passport": "Passport",
+  "admin.members.idNumber": "Number",
+  "admin.members.idNumberPh": "As written on the document",
+  "admin.members.copyId": "Copy ID number",
+  "admin.members.city": "City",
+  "admin.members.cityNone": "Not on file",
+  "admin.members.area": "Area",
+  "admin.members.areaPh": "Neighbourhood or project",
+  "admin.members.location": "Location",
+  "admin.members.notOnFile": "Not on file",
+  "admin.members.reach.noPhone": "No number on file",
+  "admin.members.reach.noWhatsapp": "Not on WhatsApp",
+  "admin.members.reach.optedOut": "Reminders off",
+  "admin.members.chip.whatsapp": "On WhatsApp",
+  "admin.members.chip.noWhatsapp": "Not on WhatsApp",
+  "admin.members.chip.langDefault": "Agency language",
+  "admin.members.chip.muted": "Reminders off",
   "admin.members.deleteTitle": "Delete member?",
   "admin.members.deleteBody": "Are you sure you want to delete “{name}”? This action cannot be undone and will permanently remove the account.",
   "admin.members.suspendBody": "Are you sure you want to suspend this member? The member will no longer be able to access their account until reactivated.",
@@ -1577,6 +1625,7 @@ export const en = {
   "admin.viewings.toast.deletedTitle": "Viewing deleted",
   "admin.viewings.toast.deletedMsg": "The viewing for “{title}” ({id}) has been removed.",
   "admin.viewings.th.dateTime": "Date & Time",
+  "admin.viewings.viaWebsite": "Booked online",
   "admin.viewings.editViewing": "Edit viewing",
   "admin.viewings.deleteViewing": "Delete viewing",
   "admin.viewings.moreActions": "More actions",
@@ -2882,6 +2931,27 @@ export const en = {
   "agent.settings.title": "Settings coming soon",
   "agent.settings.body": "Password changes, notification preferences, and account security will live here. This module isn’t part of the current build yet.",
   "agent.settings.back": "Back to dashboard",
+
+  // ---- Agent sign-in ----
+  "agent.auth.welcome": "Agent sign in",
+  "agent.auth.desc": "Sign in to reach your listings, viewings and reviews.",
+
+  // ---- Dead ends: 404 and crashes ----
+  "err.404.code": "Error 404",
+  "err.404.title": "We couldn’t find that page",
+  "err.404.body": "The link may be out of date, or the property it pointed to is no longer listed with us.",
+  "err.404.home": "Go to homepage",
+  "err.404.browse": "Browse properties",
+  "err.500.title": "Something went wrong",
+  "err.500.body": "That page failed to load. It is our side, not yours — trying again often works.",
+  "err.500.retry": "Try again",
+  "err.500.home": "Go to homepage",
+  "err.500.ref": "Reference: {digest}",
+  "admin.err.404.title": "We couldn’t find that page",
+  "admin.err.404.body": "The record may have been deleted, or the address is wrong.",
+  "admin.err.500.title": "Something went wrong",
+  "admin.err.500.body": "This screen failed to load. Trying again often works; if it keeps happening, note the reference below.",
+  "admin.err.back": "Back to dashboard",
   "agent.profile.verification": "Verification",
   "agent.profile.performance": "Performance",
   "agent.profile.performanceDesc": "Your live activity across the platform.",
@@ -2971,6 +3041,8 @@ export const en = {
   "audit.action.signedContract": "Signed contract",
   "audit.action.issuedInvoice": "Issued invoice",
   "audit.action.voidedInvoice": "Voided invoice",
+  "audit.action.postponedInvoice": "Moved an invoice's due date",
+  "audit.meta.postponed": "{from} → {to}",
   "audit.action.recordedPayment": "Recorded payment",
   "audit.desc.createdContract": "Wrote a contract on a property between the parties.",
   "audit.desc.updatedContract": "Edited a draft contract. Signed terms cannot be edited.",
@@ -3342,7 +3414,7 @@ export const en = {
   "audit.meta.spentFor": "{amount}",
   "audit.meta.paidOut": "{amount} across {count} tenancies",
   "admin.ct.title": "Contracts",
-  "admin.ct.sub": "Every sale and tenancy the agency has written, with the money demanded and received against it.",
+  "admin.ct.sub": "Every sale and tenancy the agency has written.",
   "admin.ct.new": "New contract",
   "admin.ct.tabsAria": "Filter contracts by status",
   "admin.ct.searchPh": "Search contracts…",
@@ -3363,21 +3435,24 @@ export const en = {
 
   // The one filter on this screen that is a JOB rather than a way of narrowing
   // a list: an ended tenancy whose deposit is still in the agency’s account.
-  "admin.ct.filter.depositsToClose": "Deposits to return",
+  "admin.ct.filter.depositsToClose": "Deposits to settle",
   "admin.ct.filter.kind": "Type",
   "admin.ct.filter.agent": "Agent",
   "admin.ct.filter.signed": "Signed",
   "admin.ct.filter.lastDays": "Last {days} days",
+  "admin.ct.filter.thisMonth": "This month",
+  "admin.ct.filter.expiring": "Renewals due",
 
-  "admin.ct.kpi.active": "Active contracts",
+  "admin.ct.kpi.active": "Active",
   "admin.ct.kpi.drafts": "Awaiting signature",
-  "admin.ct.kpi.expiring": "Expiring soon",
+  "admin.ct.kpi.expiring": "Renewals due",
   "admin.ct.kpi.signedThisMonth": "Signed this month",
-  "admin.ct.kpiSub.active": "Signed and still running",
+  "admin.ct.kpiSub.active": "Running right now",
   "admin.ct.kpiSub.drafts": "Drafts nobody has signed yet",
-  "admin.ct.kpiSub.expiring": "Terms ending within {days} days",
+  "admin.ct.kpiSub.expiring": "Inside their notice period",
   "admin.ct.kpiSub.signedThisMonth": "Total value signed this month",
   "admin.ct.kpiSub.signedExcluded": "{count} signed in another currency, not counted",
+  "admin.ct.kpiGo": "Show {label}",
 
   "admin.ct.empty.title": "No contracts match those filters",
   "admin.ct.empty.sub": "Try a different status, type or date range — or clear the filters to see everything.",
@@ -3387,8 +3462,12 @@ export const en = {
   // ---- kinds, statuses, cycles ----
   "admin.ct.kind.sale": "Sale",
   "admin.ct.kind.rent": "Tenancy",
+  /* The five words on the badge. "Signed" is not one of them — signing is an
+     event and the Signed On column carries its date; what a reader wants to
+     know is whether the thing is live. See displayStatus in _data/contracts. */
   "admin.ct.status.draft": "Draft",
-  "admin.ct.status.signed": "Signed",
+  "admin.ct.status.active": "Active",
+  "admin.ct.status.expired": "Expired",
   "admin.ct.status.completed": "Completed",
   "admin.ct.status.cancelled": "Cancelled",
   "admin.ct.cycle.monthly": "Monthly",
@@ -3407,6 +3486,7 @@ export const en = {
   "admin.ct.recordPayment": "Record payment",
   "admin.ct.cancelContract": "Cancel contract",
   "admin.ct.renew": "Renew",
+  "admin.ct.endTenancy": "End the tenancy",
   "admin.ct.edit": "Edit",
   "admin.ct.viewContract": "Open contract",
   "admin.ct.backToList": "Back to contracts",
@@ -3437,6 +3517,8 @@ export const en = {
   // A tenancy’s is "admin.ct.f.insuranceDeposit" and behaves nothing like it.
   "admin.ct.f.deposit": "Holding deposit",
   "admin.ct.f.totalValue": "Total over the term",
+  "admin.ct.f.frequency": "Payment frequency",
+  "admin.ct.f.totalWorking": "{rent} × {count}",
   "admin.ct.f.createdOn": "Written",
   "admin.ct.f.signedOn": "Signed",
   "admin.ct.f.handoverOn": "Handover",
@@ -3466,7 +3548,8 @@ export const en = {
   // helpers the Invoices tab reads, never a second copy.
   "admin.ct.summary": "Contract summary",
   "admin.ct.sum.note.draft": "Nobody has signed yet, so nothing is in force.",
-  "admin.ct.sum.note.signed": "Signed by both parties and in force.",
+  "admin.ct.sum.note.active": "Signed by both parties and in force.",
+  "admin.ct.sum.note.expired": "The term has ended. Renew it, or close it off.",
   "admin.ct.sum.note.completed": "The transaction is finished. Anything still owed is shown below.",
   "admin.ct.sum.note.cancelled": "Cancelled. Money already received stays recorded against it.",
   "admin.ct.sum.value": "Contract value",
@@ -3492,13 +3575,52 @@ export const en = {
   "admin.ct.tab.documents": "Documents",
   "admin.ct.tab.activity": "Activity",
   "admin.ct.documents": "Documents",
-  "admin.ct.documentsDesc": "Every paper this contract has produced. Each opens ready to print, two copies to a sheet.",
+  "admin.ct.documentsDesc": "Everything filed against this contract — what your team uploaded, and what Chiya printed.",
+  "admin.ct.doc.filesTitle": "Files",
+  "admin.ct.doc.filesDesc": "Scans and photos your team put here. These can be replaced or removed.",
+  "admin.ct.doc.upload": "Upload",
+  "admin.ct.doc.filesEmpty": "Nothing filed yet",
+  "admin.ct.doc.filesEmptyHint": "The signed contract, an ID copy, the title deed, a bank slip — anything on paper belongs here.",
+  "admin.ct.doc.printedTitle": "Printed by Chiya",
+  "admin.ct.doc.printedDesc": "Built from money that already moved. Always current, and they cannot be deleted.",
   "admin.ct.documentsEmpty": "No papers yet. They appear as money changes hands.",
   "admin.ct.doc.contract": "The contract itself",
-  "admin.ct.doc.contractPending": "Not available yet — the clause wording is with the lawyer.",
+  "admin.ct.doc.contractReady": "Chiya's own copy — opens ready to print.",
+  "admin.ct.doc.download": "Download",
+  "admin.ct.doc.remove": "Remove",
+  "admin.ct.doc.addedMeta": "Added by {who} · {date} · {size}",
+  "admin.ct.doc.kb": "{n} KB",
+  "admin.ct.doc.mb": "{n} MB",
+  "admin.ct.doc.kind.signedContract": "Signed contract",
+  "admin.ct.doc.kind.identity": "ID document",
+  "admin.ct.doc.kind.deed": "Title deed",
+  "admin.ct.doc.kind.transfer": "Bank slip",
+  "admin.ct.doc.kind.photo": "Photo",
+  "admin.ct.doc.kind.other": "Other",
+  "admin.ct.doc.pickKind": "What is this paper?",
+  "admin.ct.doc.uploadTitle": "Add a file",
+  "admin.ct.doc.uploadDesc": "PDF or picture. It is filed under your name, on today's date.",
+  "admin.ct.doc.chooseFile": "Choose a file",
+  "admin.ct.doc.removeConfirm": "Remove {name} from this contract?",
+  "admin.ct.doc.demoFile": "Demo record — there is no stored copy behind this row.",
   "admin.ct.activity": "Activity",
-  "admin.ct.activityDesc": "Everything that has happened to this contract, and who did it.",
+  "admin.ct.activityDesc": "Everything this contract has done, from the day it was written to the last rent taken.",
   "admin.ct.activityEmpty": "Nothing has happened to this contract yet.",
+  "admin.ct.act.created": "Contract written",
+  "admin.ct.act.amended": "Contract amended",
+  "admin.ct.act.signed": "Signed by both sides",
+  "admin.ct.act.handover": "Keys handed over",
+  "admin.ct.act.termStarted": "Term started",
+  "admin.ct.act.termEnded": "Term ended",
+  "admin.ct.act.invoiced": "Invoice raised — {total}",
+  "admin.ct.act.postponed": "Due date moved to {date}",
+  "admin.ct.act.voided": "Invoice {number} voided",
+  "admin.ct.act.paid": "Payment received — {amount}",
+  "admin.ct.act.ownerReceipted": "Landlord's receipt made",
+  "admin.ct.act.paidOwner": "Landlord paid — {amount}",
+  "admin.ct.act.adjusted": "Balance adjusted — {amount}",
+  "admin.ct.act.depositClosed": "Deposit settled",
+  "admin.ct.act.cancelled": "Contract cancelled",
   "admin.ct.provenance": "Paperwork",
   "admin.ct.provenanceDesc": "Where this contract sits in the chain, and where the signed document is held.",
   "admin.ct.replacesLine": "Replaces",
@@ -3665,6 +3787,15 @@ export const en = {
   "admin.fin.cc.reason": "Reason",
   "admin.fin.cc.reasonHint": "Required. Cancelled with no reason is unusable in a report.",
   "admin.fin.cc.propertyEffect": "The property goes back to {status} and its listing returns to where it was before this contract held it.",
+
+  /* End the tenancy — the exit from Expired that Cancel was standing in for. */
+  "admin.fin.et.title": "End the tenancy",
+  "admin.fin.et.sub": "The term has run out and the tenant is not renewing.",
+  "admin.fin.et.term": "The term ended on {date}.",
+  "admin.fin.et.termUnknown": "This tenancy states no end date.",
+  "admin.fin.et.effect": "The contract is recorded as {status}, and the property goes back to {availability}. Its listing stays off the website until somebody puts it back.",
+  "admin.fin.et.depositHeld": "We are still holding {amount} of the tenant's money. You will be asked what became of it next.",
+  "admin.fin.et.confirm": "End the tenancy",
   "admin.fin.cc.willVoid": "{count} invoices that had not fallen due are withdrawn.",
   "admin.fin.cc.paidUntouched": "{count} already paid are left untouched.",
   "admin.fin.cc.stillOwed": "{count} invoices are already due and stay owed. The debt is real — writing it off is a separate decision.",
@@ -3684,8 +3815,25 @@ export const en = {
   "admin.fin.toast.paidMsgPartial": "Recorded against {number}. A balance is still outstanding.",
   "admin.fin.toast.issuedTitle": "Invoice issued",
   "admin.fin.toast.issuedMsg": "{number} has gone out and can no longer be edited.",
+  // ---- postponing a demand ----
+  // "He asked for a week." What moves is the date and nothing else — see
+  // PostponeInvoiceModal for why this is not a void-and-reissue.
+  "admin.fin.pp.title": "Give this demand more time",
+  "admin.fin.pp.sub": "Moves when it falls due. The amount, the parties and the invoice number stay exactly as they are.",
+  "admin.fin.pp.newDate": "New due date",
+  "admin.fin.pp.currently": "Currently due {date}",
+  "admin.fin.pp.moves": "{count} days later",
+  "admin.fin.pp.mustBeLater": "Pick a date after the one it already carries — this extends time, it does not rewrite when the money was owed.",
+  "admin.fin.pp.reason": "Why",
+  "admin.fin.pp.reasonHint": "Kept on the invoice. It is what answers a landlord asking why his rent is late.",
+  "admin.fin.pp.penaltyStands": "A late charge already raised stands. This demand was late before the extension was agreed; waiving that charge is a separate decision.",
+  "admin.fin.pp.confirm": "Move the due date",
+  "admin.fin.toast.postponedTitle": "Due date moved",
+  "admin.fin.toast.postponedMsg": "{number} now falls due later. The trail is on the invoice.",
   "admin.fin.toast.voidedTitle": "Invoice voided",
   "admin.fin.toast.voidedMsg": "{number} has been withdrawn and a credit note raised against it.",
+  "admin.fin.toast.endedTitle": "Tenancy ended",
+  "admin.fin.toast.endedMsg": "The contract is completed and the property is available again.",
   "admin.fin.toast.cancelledTitle": "Contract cancelled",
   "admin.fin.toast.cancelledMsg": "{voided} invoices that were not yet due have been withdrawn.",
   "admin.fin.toast.cancelledMsgOwed": "{voided} withdrawn. {owed} were already due and stay owed.",
@@ -3704,11 +3852,8 @@ export const en = {
   "admin.ct.newSaleDesc": "Selling a property outright or on an instalment plan.",
   "admin.ct.newLease": "Lease contract",
   "admin.ct.newLeaseDesc": "Renting a property out for a fixed term.",
-  "admin.ct.flag.depositHeld": "Deposit to close",
+  "admin.ct.flag.depositHeld": "Deposit to settle",
   "admin.ct.flag.expiring": "Renewal due",
-  "admin.ct.kpi.depositsHeld": "Deposits held",
-  "admin.ct.kpiSub.depositsHeld": "Tenants' money in our account. Not income.",
-  "admin.ct.kpiSub.depositsToClose": "{count} ended tenancies still waiting on a decision",
   "admin.ct.amend": "Amend",
   // NOT "Close lease". Somebody looking for how to give a deposit back does not
   // search for the word "lease" — they search for the deposit. The button now
@@ -3722,6 +3867,9 @@ export const en = {
   "admin.ct.ownerOwed": "Still to hand over",
   "admin.ct.inv.penaltyOffer": "{days} days late · {amount} penalty may apply",
   "admin.ct.inv.addPenalty": "Add penalty",
+  // The late fee, once it has been raised. The row states what it did and names
+  // the charge instead of offering it again — see the penalty strip.
+  "admin.ct.inv.penaltyRaised": "Late penalty of {amount} raised · {number}",
   // Why the void button is dead on a paid demand. Voiding credits the FULL
   // invoice, so on one that has taken money it reverses a charge while the cash
   // stays in the account. See the guard in voidInvoice.
@@ -3730,8 +3878,87 @@ export const en = {
   // than "All" on its own, so the chip says what it is filtering.
   "admin.ct.inv.filterAria": "Show one kind of invoice",
   "admin.ct.inv.allKinds": "All kinds",
-  "admin.ct.inv.pressing": "{count} due now",
-  "admin.ct.inv.pressingOne": "Due now",
+  // The four figures across the head of the invoices card. They read ACROSS THE
+  // ROWS BELOW, not across the contract: invoiced is what has actually been
+  // demanded — a credit note subtracts — so invoiced = collected + outstanding
+  // and the strip can never disagree with the list under it. The rail's
+  // "Contract value" answers the other question, what the deal is worth.
+  "admin.ct.inv.sum.aria": "Invoice totals",
+  // "Billed", not "Invoiced": the same word the other two catalogues already
+  // use — Arabic reads "total demanded", Kurdish "demanded". It is every charge
+  // raised on this contract that has not been voided, which on an ordinary
+  // tenancy is the whole value of the lease.
+  "admin.ct.inv.sum.invoiced": "Billed",
+  "admin.ct.inv.sum.collected": "Collected",
+  "admin.ct.inv.sum.outstanding": "Outstanding",
+  "admin.ct.inv.sum.nextDue": "Next due",
+  // Next due is a DISTANCE, not a date: the date is already on the row. Zero
+  // and one get words, because "0 days" and "1 days" are both wrong.
+  "admin.ct.inv.sum.nothingDue": "Nothing due",
+  "admin.ct.inv.sum.dueToday": "Today",
+  "admin.ct.inv.sum.dueTomorrow": "Tomorrow",
+  "admin.ct.inv.sum.dueIn": "{count} days",
+  "admin.ct.inv.sum.lateOne": "1 day late",
+  "admin.ct.inv.sum.late": "{count} days late",
+  // ---- the invoice schedule ----
+  // One line per demand. The row says what it is, when it falls, what it costs
+  // and where it stands; everything that is filing rather than money — the
+  // number, the parties, the receipts, voiding — opens underneath it.
+  "admin.ct.row.paidLate": "Paid {count} days late",
+  "admin.ct.row.showDetails": "Show details",
+  "admin.ct.row.hideDetails": "Hide details",
+  "admin.ct.row.moreActions": "More actions",
+  // WHAT A ROW CALLS ITSELF. The frozen invoice line names the property, which
+  // is right on a document and wrong on a schedule for one flat — and on a
+  // signing the two commission rows are told apart by who pays, so that is what
+  // they lead with. See invoiceRowTitle.
+  //
+  // The month leads in English so a reader scanning twelve of these lands on
+  // the one part that differs; Arabic and Kurdish lead with the noun, as their
+  // grammar requires. Same rule, three word orders — which is exactly why it is
+  // a catalog key and not a string joined in code.
+  "admin.ct.row.kind.rent": "{period} rent",
+  "admin.ct.row.kind.deposit": "Insurance deposit",
+  "admin.ct.row.kind.commissionLandlord": "Landlord's commission",
+  "admin.ct.row.kind.commissionTenant": "Tenant's commission",
+  "admin.ct.row.kind.commissionSeller": "Seller's commission",
+  "admin.ct.row.kind.commissionBuyer": "Buyer's commission",
+  "admin.ct.row.postpone": "Postpone due date…",
+  "admin.ct.row.remind": "Send reminder…",
+  // The trail of extensions, in the open row. Both dates and the day it was
+  // agreed, because "moved to the 7th" with no date agreed cannot be defended.
+  "admin.ct.row.movedOn": "Moved from {from} to {to}, agreed {on}",
+  // The fold over the run of months nobody can act on yet. Two words, and they
+  // name the action rather than describing what is behind it: it used to carry
+  // a count, a date and the total of the hidden months, which put a sum of rent
+  // that has not been demanded in among the sums that have.
+  "admin.ct.row.showAll": "Show all",
+  "admin.ct.row.showLess": "Show less",
+  // ⚠ The landlord's receipt is dated the day HE collected, which is not the
+  // day the tenant paid. Until somebody records that day the row names the gap
+  // rather than offering a second paper — see the note on the row.
+  "admin.ct.rcpt.notCollected": "{name} has not collected this yet",
+  "admin.ct.rcpt.markCollected": "Mark collected…",
+  "admin.ct.rcpt.notCollectedShort": "not collected yet",
+  "admin.ct.rcpt.collectedOn": "collected {date}",
+  // Said once above the instalment groups, to explain why the drawer is about
+  // to repeat itself. "Received in", not "Paid in": the demand may still be
+  // short, and the row above is the thing that says whether it is settled.
+  "admin.ct.rcpt.instalments": "Received in {count} payments",
+  "admin.ct.row.receivedOn": "received {date} · {method}",
+  // The receipt row's buttons. Each one is split in two: the label does the
+  // ordinary thing, the caret beside it opens a language menu that acts on the
+  // spot — the paper is handed to a person, and which language that person
+  // reads has nothing to do with which language the clerk's console is set to.
+  // The caret labels are read aloud by a screen reader and shown on hover, so
+  // they have to name the language part; "Print" alone would be the button next
+  // to them.
+  "admin.ct.rcpt.print": "Print",
+  "admin.ct.rcpt.download": "Download",
+  "admin.ct.rcpt.printLang": "Print in a chosen language",
+  "admin.ct.rcpt.downloadLang": "Download in a chosen language",
+  "admin.ct.rcpt.inLanguage": "In which language?",
+  "admin.ct.rcpt.forOn": "{name} · {date}",
   "admin.ct.f.termMonths": "Term",
   "admin.ct.f.monthlyRent": "Monthly rent",
   "admin.ct.f.insuranceDeposit": "Insurance deposit",
@@ -3805,6 +4032,8 @@ export const en = {
   "admin.cn.noProperties": "Nothing matches. Check the id, or add the property first.",
   "admin.cn.notRegistered": "Not one of our members?",
   "admin.cn.enterDetails": "Type their details instead",
+  "admin.cn.addMember": "Add them as a member",
+  "admin.cn.memberAdded": "Member added and selected",
   "admin.cn.searchInstead": "Search our members instead",
   "admin.cn.notListed": "Property not listed yet?",
   "admin.cn.addProperty": "Add it first",
@@ -4082,7 +4311,7 @@ export const en = {
   "admin.wa.pageSub": "Rent reminders to tenants, payment notices to landlords, and every message the platform has sent.",
 
   "admin.wa.nav.log": "Message log",
-  "admin.wa.nav.logDesc": "Sent, waiting and failed",
+  "admin.wa.nav.logDesc": "What went out, and what is due",
   "admin.wa.nav.templates": "Templates",
   "admin.wa.nav.templatesDesc": "What each message says",
   "admin.wa.nav.whatsapp": "WhatsApp",
@@ -4114,7 +4343,7 @@ export const en = {
   "admin.wa.tpl.previewNone": "Write a tenancy contract and the previews will fill with real names and figures.",
 
   /* statuses */
-  "admin.wa.status.queued": "Waiting",
+  "admin.wa.status.queued": "Scheduled",
   "admin.wa.status.sent": "Sent",
   "admin.wa.status.delivered": "Delivered",
   "admin.wa.status.suppressed": "Not sent",
@@ -4125,6 +4354,8 @@ export const en = {
   "admin.wa.reason.templateOff": "This message is paused",
   "admin.wa.reason.invoiceVoided": "The invoice was cancelled",
   "admin.wa.reason.noPhone": "No number on the record",
+  "admin.wa.reason.noWhatsapp": "Their number is not on WhatsApp",
+  "admin.wa.reason.optedOut": "They asked not to be reminded",
   "admin.wa.reason.dryRun": "Test mode — nothing was delivered",
   "admin.wa.reason.quietHours": "Held for quiet hours",
 
@@ -4134,26 +4365,51 @@ export const en = {
   "admin.wa.kpi.delivered": "Delivered",
   "admin.wa.kpi.rate": "{pct}% of what has gone out",
   "admin.wa.kpi.noneYet": "Nothing has gone out yet",
-  "admin.wa.kpi.queued": "Waiting",
-  "admin.wa.kpi.queuedSub": "Scheduled, not sent yet",
+  "admin.wa.kpi.next30": "Next 30 days",
+  "admin.wa.kpi.next30People": "To {count} people",
+  "admin.wa.kpi.next30PeopleOne": "To one person",
+  "admin.wa.kpi.next30None": "Nothing due this month",
   "admin.wa.kpi.suppressed": "Not sent",
   "admin.wa.kpi.suppressedSub": "Held back on purpose",
   "admin.wa.kpi.failed": "Failed",
   "admin.wa.kpi.failedSub": "Usually a missing phone number",
-  "admin.wa.tabsAria": "Filter messages by status",
+  "admin.wa.tabsAria": "Upcoming messages, or what already happened to each one",
   "admin.wa.searchPh": "Search a name, number or message",
+  "admin.wa.filter.from": "From date",
+  "admin.wa.filter.to": "To date",
   "admin.wa.filter.template": "Message",
   "admin.wa.filter.audience": "Sent to",
   "admin.wa.tableTitle": "Messages",
+  "admin.wa.showingRange": "Showing {start}–{end} of {total} messages",
   "admin.wa.th.to": "To",
   "admin.wa.th.template": "Message",
   "admin.wa.th.message": "What it said",
+  "admin.wa.th.willSay": "What it will say",
   "admin.wa.th.when": "When",
   "admin.wa.th.status": "Status",
+  "admin.wa.th.goesOut": "Goes out",
   "admin.wa.empty.title": "No messages match",
-  "admin.wa.empty.sub": "Try another status, or clear the search and filters.",
-  "admin.wa.emptyAll.title": "No messages yet",
-  "admin.wa.emptyAll.sub": "Reminders appear here as soon as a tenancy has rent falling due.",
+  "admin.wa.empty.sub": "Try another tab, or clear the search and filters.",
+
+  /* An empty outcome tab is usually good news, and says so — the log's generic
+     "no messages yet" would read as a fault on a tab that is meant to be zero. */
+  "admin.wa.emptyStatus.sent.title": "Nothing sent yet",
+  "admin.wa.emptyStatus.sent.sub": "A message moves here the moment it leaves for WhatsApp.",
+  "admin.wa.emptyStatus.delivered.title": "Nothing confirmed yet",
+  "admin.wa.emptyStatus.delivered.sub": "WhatsApp confirms a message here once it reaches the phone.",
+  "admin.wa.emptyStatus.suppressed.title": "Nothing was held back",
+  "admin.wa.emptyStatus.suppressed.sub": "Messages land here when sending is switched off or quiet hours are on.",
+  "admin.wa.emptyStatus.failed.title": "Nothing has failed",
+  "admin.wa.emptyStatus.failed.sub": "A message lands here when it cannot go out — usually a missing phone number.",
+
+  // ---- the tabs: what is still to come, and how each finished message went ----
+  "admin.wa.view.upcoming": "Upcoming",
+  "admin.wa.up.title": "Upcoming messages",
+  "admin.wa.up.today": "Today",
+  "admin.wa.up.tomorrow": "Tomorrow",
+  "admin.wa.up.inDays": "In {count} days",
+  "admin.wa.emptyUp.title": "Nothing scheduled",
+  "admin.wa.emptyUp.sub": "Every message the platform knows about has already gone. New rent falling due will fill this back up.",
 
   /* one message, opened */
   "admin.wa.panel.sub": "To {name}",
@@ -4233,6 +4489,7 @@ export const en = {
   "admin.wa.send.action": "Open in WhatsApp",
   "admin.wa.send.handoff": "This opens WhatsApp on your device with the message ready. Nothing is sent until you press send there — and it is recorded in the message log either way.",
   "admin.wa.send.noPhone": "There is no phone number on this person's record, so there is nothing to open. Add one on their profile first.",
+  "admin.wa.send.noWhatsapp": "This number is marked as not on WhatsApp, so there is nothing to open. Call them instead, or correct it on their profile.",
 
   /* the contract page's contact card */
   "admin.wa.contacts.title": "Parties",
@@ -4245,6 +4502,8 @@ export const en = {
   "admin.wa.action.message": "Message",
   "admin.wa.note.noNumber": "No number on file — automatic messages to them cannot be sent.",
   "admin.wa.note.ownerCollects": "They take the rent from the tenant themselves, so no payment notice is sent.",
+  "admin.wa.note.noWhatsapp": "Their number is not on WhatsApp, so nothing automatic can reach them.",
+  "admin.wa.note.optedOut": "They asked not to receive automatic messages. You can still write to them by hand.",
   "admin.wa.note.reminderDue": "Next rent reminder goes out on {date}.",
   "admin.wa.note.reminderSent": "Last rent reminder went out on {date}.",
   "admin.wa.note.noticeDue": "We will tell them the rent has arrived on {date}.",

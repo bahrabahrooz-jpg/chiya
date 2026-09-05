@@ -10,24 +10,24 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/data/stat-card";
 import { useLang, isRtl } from "@/lib/i18n";
 import { fmtNum, fmtDate as fmtDateI18n, popupLeft } from "@/lib/fmt";
-import { toIso } from "@/lib/dates";
 import { adminMenuRoot } from "../_shared/menu-portal";
-import { AddMemberModal } from "./add-member-modal";
+import { AddMemberModal, type MemberValues } from "./add-member-modal";
 import {
   EMPTY_FILTERS,
   ITEMS_PER_PAGE,
   KPI_CARDS,
   MEMBER_STATUS,
-  MP_MONTHS,
   MP_TODAY,
   ROLE_META,
   ROLE_TABS,
   fmtDate,
+  newMemberRecord,
   type MemberFilters,
   type MemberRecord,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
 import { AdminSelect, AdminDatePicker } from "../_shared/filter-controls";
+import { reachBlock } from "../_shared/messaging";
 import { countMembers } from "../_data/catalog";
 
 function PaginationFooter({ currentPage, totalItems, onPageChange }: { currentPage: number; totalItems: number; onPageChange: (p: number) => void }) {
@@ -271,6 +271,7 @@ function MemberRow({
     return v === key ? fallback : v;
   };
   const st = MEMBER_STATUS[m.status] || { variant: "neutral" as const, dot: false };
+  const reach = reachBlock(m);
   return (
     <div
       className="mp-row"
@@ -291,6 +292,15 @@ function MemberRow({
           <div className="mp-member__body">
             <span className="mp-member__name">{m.name}</span>
             <span className="mp-member__id">{m.id}</span>
+            {/* Somebody who signed themselves up on the website. Worth saying:
+                a staff-entered member was usually sitting across a desk with an
+                ID in their hand, and this one typed a name into a form. */}
+            {m.source === "website" && (
+              <span className="mp-member__src">
+                <Icon name="globe" size={11} />
+                {t("admin.members.selfRegistered")}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -312,6 +322,13 @@ function MemberRow({
           <Icon name="phone" size={13} />
           {m.phone}
         </span>
+        {/* WHETHER THE PLATFORM CAN ACTUALLY REACH THIS PERSON, under their
+            number, because that is the question the number is here to answer.
+            Nothing renders when it can — a mark on every row is not a mark.
+            This is the list somebody scans before writing a contract, and the
+            three answers are the three reasons an automatic message will not
+            arrive. Same helper the message log and the contract page use. */}
+        {reach && <span className={"mp-reach mp-reach--" + reach}>{t(`admin.members.reach.${reach}`)}</span>}
       </div>
       <div className="mp-col--props">
         <span className="mp-celllabel">{t("admin.members.th.props")}</span>
@@ -620,27 +637,30 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
   const viewMember = (m: MemberRecord) => router.push(`${basePath}/${encodeURIComponent(m.id)}`);
   const viewProfile = () => router.push(basePath);
 
-  const handleAddMember = (v: { name: string; phone: string; email: string; agentId: string; notes: string }) => {
+  /* The half of a member that is the same whether they are being created or
+     corrected: how to reach them, how to write to them, who they are on paper.
+     Written once so the add and edit paths cannot drift — an edit that silently
+     dropped `remindersOn` would un-mute somebody who asked to be left alone. */
+  const contactFields = (v: MemberValues) => ({
+    name: v.name.trim(),
+    phone: v.phone.trim(),
+    email: v.email.trim(),
+    whatsapp: v.whatsapp,
+    msgLang: v.msgLang,
+    remindersOn: v.remindersOn,
+    idKind: v.idKind,
+    idNumber: v.idNumber || undefined,
+    city: v.city || undefined,
+    area: v.area || undefined,
+  });
+
+  const handleAddMember = (v: MemberValues) => {
     setAddOpen(false);
-    const now = new Date();
-    const joined = `${MP_MONTHS[now.getMonth()].slice(0, 3)} ${now.getDate()}, ${now.getFullYear()}`;
-    addMember({
-      id: "M-" + (6000 + Math.floor(Math.random() * 9000)),
-      name: v.name.trim() || "New member",
-      roles: ["Buyer"],
-      phone: v.phone.trim(),
-      email: v.email.trim(),
-      properties: 0,
-      joined,
-      daysAgo: 0,
-      joinedOn: toIso(now),
-      status: "Active",
-      img: null,
-    });
+    addMember(newMemberRecord(v));
     setToast({ title: t("admin.members.toast.addedTitle"), message: t("admin.members.toast.addedMsg") });
   };
-  const handleEditMember = (v: { name: string; phone: string; email: string }) => {
-    if (editTarget) updateMember(editTarget.id, { name: v.name.trim(), phone: v.phone.trim(), email: v.email.trim() });
+  const handleEditMember = (v: MemberValues) => {
+    if (editTarget) updateMember(editTarget.id, contactFields(v));
     setEditTarget(null);
     setToast({ title: t("admin.members.toast.updatedTitle"), message: t("admin.members.toast.updatedMsg") });
   };
@@ -740,7 +760,22 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
       <AddMemberModal
         open={!!editTarget}
         mode="edit"
-        initial={editTarget ? { name: editTarget.name, phone: editTarget.phone, email: editTarget.email } : null}
+        initial={
+          editTarget
+            ? {
+                name: editTarget.name,
+                phone: editTarget.phone,
+                email: editTarget.email,
+                whatsapp: editTarget.whatsapp,
+                msgLang: editTarget.msgLang,
+                remindersOn: editTarget.remindersOn,
+                idKind: editTarget.idKind,
+                idNumber: editTarget.idNumber,
+                city: editTarget.city,
+                area: editTarget.area,
+              }
+            : null
+        }
         onClose={() => setEditTarget(null)}
         onSubmit={handleEditMember}
       />

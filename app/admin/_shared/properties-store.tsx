@@ -30,6 +30,7 @@ import {
   type PropertyCounts,
   type PropertyRecord,
 } from "../_data/catalog";
+import { isRegistration, removeRegistration, restoreRegistration, updateRegistration, useRegistrations } from "../_members/registrations";
 import { logAudit } from "./audit-log";
 
 /* Infer a specific audit verb from a mutation patch so the log reads naturally
@@ -166,8 +167,24 @@ export function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
    v9: `price` is a `Money` ({ amount, currency }) instead of a bare number. A v8
    record's price is `850000`, so `price.currency` is undefined and every
    formatter throws on it — this is not a field that degrades quietly, it takes
-   the homepage down. */
-export const STORAGE_KEY = "chiya:admin-store:v9";
+   the homepage down.
+   v10: a member carries how to WRITE to them — `whatsapp`, `msgLang` and
+   `remindersOn`. A v9 record has none of the three, and reachBlock() reads a
+   missing field as the ordinary case on purpose (absence must mean reachable,
+   never a silent block). So a stale cache does not throw and does not look
+   wrong: it quietly makes everybody reachable, and the message log loses every
+   "Not sent" and every "Failed" row while still showing the ones that went
+   out. The whole point of those two states is that somebody notices them, so
+   this is the worst kind of stale cache — the kind that degrades into good
+   news.
+
+   v11 adds CH-3176, the property whose tenancy expired and was never closed —
+   still marked `rented` two months after the term ended, which is the state
+   that makes it impossible to re-list. A v10 cache does not have it, so the
+   contract seeded against it (CT-0213) resolves to no property at all. Bumped
+   together with the contracts store; the two seeds reference each other and a
+   cache that holds one but not the other is worse than either being stale. */
+export const STORAGE_KEY = "chiya:admin-store:v11";
 
 /* Same-tab change signal. The browser `storage` event only fires in OTHER tabs,
    so we dispatch this on every persist to let same-tab listeners (the public
@@ -186,11 +203,21 @@ export function PropertiesProvider({ children }: { children: React.ReactNode }) 
   const [agentRoster, setAgentRoster] = useState<AgentRecord[]>(AGENTS);
   const [locationDefs, setLocationDefs] = useState<CityDef[]>(() => cloneLocationDefs(LOCATION_DEF));
 
+  /* Members who signed themselves up on the website. They live in their own
+     module store (see ../_members/registrations) because the public site cannot
+     reach this context to call addMember, and they are merged in for READING
+     only — never folded into memberRoster, which would persist a second copy of
+     each under the admin's own storage key and let the two drift apart. Newest
+     first, ahead of the roster: a registration nobody has called yet is the one
+     worth seeing. */
+  const registered = useRegistrations();
+  const fullRoster = useMemo(() => [...registered, ...memberRoster], [registered, memberRoster]);
+
   const counts = useMemo(() => countProperties(properties), [properties]);
   /* Roles are derived live from property links (owner / buyer / tenant), so a
      role can never exist without a backing record. Roles set explicitly on a
      roster record (e.g. via Add member) are kept as a base. */
-  const members = useMemo(() => withMemberCounts(withMemberRoles(memberRoster, properties), properties), [memberRoster, properties]);
+  const members = useMemo(() => withMemberCounts(withMemberRoles(fullRoster, properties), properties), [fullRoster, properties]);
   const agents = useMemo(() => withAgentStats(agentRoster, properties), [agentRoster, properties]);
   const locationTree = useMemo(() => buildLocationTree(locationDefs, properties), [locationDefs, properties]);
   const memberCounts = useMemo(() => countMembers(members), [members]);
@@ -217,25 +244,42 @@ export function PropertiesProvider({ children }: { children: React.ReactNode }) 
     },
     [properties],
   );
+  /* A member edit has to land in the store that OWNS the record. A
+     self-registered member belongs to the registrations store for its whole
+     life; writing it into memberRoster instead would leave two copies of the
+     same person, one in each key, disagreeing from the next edit onwards. The
+     undo path (restoreMember) has the same fork for the same reason. */
   const addMember = useCallback((m: MemberRecord) => {
     logAudit({ category: "member", actionKey: "audit.action.addedMember", target: m.name, targetId: m.id });
+    if (m.source === "website") {
+      restoreRegistration(m);
+      return;
+    }
     setMemberRoster((prev) => [m, ...prev]);
   }, []);
   const removeMember = useCallback(
     (id: string) => {
-      const rec = memberRoster.find((m) => m.id === id);
+      const rec = fullRoster.find((m) => m.id === id);
       logAudit({ category: "member", actionKey: "audit.action.removedMember", target: rec?.name ?? id, targetId: id });
+      if (isRegistration(id)) {
+        removeRegistration(id);
+        return;
+      }
       setMemberRoster((prev) => prev.filter((m) => m.id !== id));
     },
-    [memberRoster],
+    [fullRoster],
   );
   const updateMember = useCallback(
     (id: string, patch: Partial<MemberRecord>) => {
-      const rec = memberRoster.find((m) => m.id === id);
+      const rec = fullRoster.find((m) => m.id === id);
       logAudit({ category: "member", actionKey: memberAction(patch), target: rec?.name ?? id, targetId: id });
+      if (isRegistration(id)) {
+        updateRegistration(id, patch);
+        return;
+      }
       setMemberRoster((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
     },
-    [memberRoster],
+    [fullRoster],
   );
   const addAgent = useCallback((a: AgentRecord) => {
     logAudit({ category: "agent", actionKey: "audit.action.onboardedAgent", target: a.name, targetId: a.id });

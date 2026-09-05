@@ -1,0 +1,142 @@
+  /* ============================================================
+     ADD MEMBER MODAL  (am- namespace)
+
+     ITS OWN FILE, imported by add-member-modal.tsx rather than by a page —
+     the same arrangement as _shared/messaging/messaging.css and
+     components/ui/modal.css. The modal used to live inside members.css, which
+     was fine while the members page was the only thing that opened it. The
+     contract form now opens it too, at the point where a tenant turns out not
+     to be registered, and a modal whose styling depends on which route you
+     happen to be on is a modal that renders unstyled on the second one.
+     ============================================================ */
+  .am-modal { max-width: 660px; }
+  /* Divider between header and content, matching the agent modals. */
+  .am-modal .cx-modal__head { padding-bottom: 20px; border-bottom: 1px solid var(--border-subtle); }
+
+  .am-form { display: flex; flex-direction: column; }
+  .am-label__opt { font-size: 12.5px; font-weight: 500; color: var(--text-tertiary); letter-spacing: 0; }
+
+  /* sections divided by hairlines, comfortable vertical rhythm */
+  .am-section { padding: 22px 0; }
+  .am-section:first-child { padding-top: 2px; }
+  .am-section:last-child { padding-bottom: 2px; }
+  .am-section + .am-section { border-top: none; }
+
+  .am-section__head { margin-bottom: 16px; }
+  .am-section__title {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 700;
+    letter-spacing: .07em; text-transform: uppercase; color: var(--text-tertiary);
+    margin: 0; line-height: 1;
+  }
+  .am-section__desc {
+    font-size: 14px; line-height: 1.5; color: var(--text-secondary);
+    margin: 8px 0 0; max-width: 56ch; text-wrap: pretty;
+  }
+
+  .am-grid { display: grid; gap: 16px; }
+  .am-grid--2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 560px) { .am-grid--2 { grid-template-columns: 1fr; } }
+
+  /* ---- a switch with a sentence beside it ----
+     Sunken rather than bordered: two of these sit next to a plain select in the
+     same section, and two outlined boxes there would read as a second kind of
+     field. The fill groups them without drawing another line. */
+  .am-toggle {
+    display: flex; align-items: center; gap: var(--space-4);
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-sunken);
+  }
+  /* The whole sentence is the label, so the tap target is the row and not the
+     20px switch — which is the difference between working and not on a phone. */
+  .am-toggle__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; cursor: pointer; }
+  .am-toggle__label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .am-toggle__desc { font-size: 12.5px; line-height: 1.45; color: var(--text-tertiary); text-wrap: pretty; }
+  /* The control keeps its own focus ring; the row shows it too, so tabbing to
+     the switch is visible from across the modal. */
+  .am-toggle:has(input:focus-visible) { box-shadow: var(--shadow-focus-brand); }
+
+  /* helper notes */
+  .am-note {
+    display: flex; align-items: flex-start; gap: 8px; margin-top: 12px;
+    font-size: 13px; line-height: 1.5; color: var(--text-tertiary);
+  }
+  .am-note svg { flex: none; margin-top: 1px; color: var(--text-tertiary); }
+  .am-note--info {
+    margin-top: 16px; padding: 11px 13px; border-radius: var(--radius-lg);
+    background: var(--brand-subtle); color: var(--text-brand);
+    font-size: 13px; line-height: 1.5;
+  }
+  .am-note--info svg { color: var(--gold-500); }
+  .am-fieldnote { font-size: 13px; color: var(--text-tertiary); margin: 10px 0 0; }
+
+  /* agent dropdown — mirrors Properties page agent picker */
+  .am-amodal__trigger {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; height: 44px; padding: 0 12px 0 12px;
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-md); cursor: pointer; text-align: start;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .am-amodal__trigger:hover { border-color: var(--border-strong); }
+  .am-amodal__trigger.is-open { border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand); }
+  .am-amodal__trigger-placeholder {
+    flex: 1 1 auto; display: flex; align-items: center; gap: 8px;
+    font-size: 15px; color: var(--text-placeholder);
+  }
+  .am-amodal__trigger-placeholder svg { color: var(--text-tertiary); flex: none; }
+  .am-amodal__trigger-chev { flex: none; color: var(--text-tertiary); transition: transform .15s; }
+  .am-amodal__trigger.is-open .am-amodal__trigger-chev { transform: rotate(180deg); }
+
+  .am-amodal__drop {
+    position: fixed; z-index: 1200; padding: 6px;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);
+    max-height: 280px; overflow: auto;
+    animation: am-amodal-pop .14s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes am-amodal-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .am-amodal__drop::-webkit-scrollbar { width: 5px; }
+  .am-amodal__drop::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 6px; }
+  .am-amodal__agent {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    padding: 9px 11px; background: transparent; cursor: pointer; text-align: start;
+    border: 1px solid transparent; border-radius: var(--radius-md);
+    transition: background .13s, border-color .13s;
+  }
+  .am-amodal__agent:hover { background: var(--gray-50); }
+  .am-amodal__agent:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .am-amodal__agent.is-selected { background: var(--brand-subtle); border-color: var(--green-200); }
+  .am-amodal__agent-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .am-amodal__agent-name {
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .am-amodal__agent-area { font-size: 12.5px; color: var(--text-tertiary); }
+  .am-amodal__check { flex: none; color: var(--text-brand); display: flex; }
+
+  /* selected-agent summary card */
+  .am-agentcard {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 14px 14px 16px;
+    background: var(--gray-25); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+  .am-agentcard__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .am-agentcard__name {
+    display: flex; align-items: center; gap: 9px; min-width: 0;
+    font-size: 15.5px; font-weight: 600; letter-spacing: -.005em; color: var(--text-primary);
+  }
+  .am-agentcard__phone {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums;
+  }
+  .am-agentcard__phone svg { color: var(--text-tertiary); flex: none; }
+  .am-agentcard__remove {
+    flex: none; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; background: transparent; cursor: pointer;
+    border-radius: var(--radius-md); color: var(--text-tertiary);
+    transition: background-color .15s, color .15s;
+  }
+  .am-agentcard__remove:hover { background: var(--gray-100); color: var(--gray-800); }
+  .am-agentcard__remove:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }

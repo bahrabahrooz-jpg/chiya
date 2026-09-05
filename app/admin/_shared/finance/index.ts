@@ -15,8 +15,10 @@
 export { RecordPaymentModal } from "./record-payment-modal";
 export { AddInvoiceModal } from "./add-invoice-modal";
 export { VoidInvoiceModal } from "./void-invoice-modal";
+export { PostponeInvoiceModal } from "./postpone-invoice-modal";
 export { CancelContractModal } from "./cancel-contract-modal";
 export { CloseLeaseModal } from "./close-lease-modal";
+export { EndTenancyModal } from "./end-tenancy-modal";
 export { SettleEarlyModal } from "./settle-early-modal";
 
 export { useFinanceActions, TODAY } from "./finance-actions";

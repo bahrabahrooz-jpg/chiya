@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { addDays, daysBetween, fromIso } from "@/lib/dates";
 import { fmtDate, fmtNum } from "@/lib/fmt";
-import { formatMoney, isZero } from "@/lib/money";
+import { formatMoney, isZero, type Money } from "@/lib/money";
 import type { Lang } from "@/lib/i18n";
 import { usePlatformSettings } from "@/lib/platform-settings";
 import { useContracts } from "../contracts-store";
@@ -14,8 +14,8 @@ import {
   NOW_ISO,
   TEMPLATE_AUDIENCE,
   applyQuietHours,
-  isDialable,
   isPast,
+  reachBlock,
   renderBody,
   type MessageLogRow,
   type MessageTemplate,
@@ -45,10 +45,29 @@ import {
    still raised there; only the message is not.
    ========================================================================== */
 
-/** What a party looks like once name and number have been resolved. */
-interface Party {
+/**
+ * What a party looks like once the record behind them has been resolved.
+ *
+ * Not just a name and a number any more: HOW to write to somebody is a fact
+ * about them, held on their member record, and this is where it enters the
+ * schedule. A party the platform only knows from a contract or an invoice
+ * snapshot has no such record, so the last three fields fall back to the
+ * ordinary case — reachable, no preference, remind them.
+ */
+export interface Party {
   name: string;
   phone: string;
+  /** Their own message language. `null` follows the agency's send language. */
+  lang: Lang | null;
+  /** `phone` is on WhatsApp. */
+  whatsapp: boolean;
+  /** Automatic messages may reach them. False = they asked not to be. */
+  remindersOn: boolean;
+}
+
+/** A party the platform knows only as a name on paper — no member behind them. */
+function offPlatform(name: string, phone: string): Party {
+  return { name, phone, lang: null, whatsapp: true, remindersOn: true };
 }
 
 /* ----------------------------------------------------------------------------
@@ -64,11 +83,19 @@ interface Party {
  * what the screen looks like in use. Hashing the row's own id keeps the answer
  * identical across reloads — the alternative, Math.random(), would reshuffle
  * the log on every render and make the whole screen look broken.
+ *
+ * THE CUT IS 16, not the 12 it started at, and the reason is how few rows sit
+ * behind the demo clock. At 12% the four history rows all came back delivered,
+ * which put the log right back where test mode had it: one word, repeated, and
+ * no way to see what an unconfirmed message even looks like. Sixteen is still
+ * a believable receipt rate and it puts one of those four on "sent", so the
+ * difference between "it left us" and "it arrived" is visible on the screen
+ * rather than only in this file.
  */
 function delivered(id: string): boolean {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return Math.abs(h) % 100 >= 12;
+  return Math.abs(h) % 100 >= 16;
 }
 
 /**
@@ -82,7 +109,8 @@ function statusFor(opts: {
   id: string;
   settings: WhatsAppSettings;
   template: MessageTemplate;
-  phone: string;
+  /** The resolved recipient — their number AND their answer about being written to. */
+  to: Party;
   on: string;
   hour: number;
   /** The demand this message is about was withdrawn. */
@@ -91,7 +119,12 @@ function statusFor(opts: {
   if (!opts.settings.enabled) return { status: "suppressed", reason: "deliveryOff" };
   if (!opts.template.enabled) return { status: "suppressed", reason: "templateOff" };
   if (opts.voided) return { status: "suppressed", reason: "invoiceVoided" };
-  if (!isDialable(opts.phone)) return { status: "failed", reason: "noPhone" };
+  /* The recipient's own record, before the clock: whether somebody asked not to
+     be reminded is a better answer than "queued for next Tuesday". */
+  const blocked = reachBlock(opts.to);
+  if (blocked === "noPhone") return { status: "failed", reason: "noPhone" };
+  if (blocked === "noWhatsapp") return { status: "failed", reason: "noWhatsapp" };
+  if (blocked === "optedOut") return { status: "suppressed", reason: "optedOut" };
   if (!isPast(opts.on, opts.hour)) return { status: "queued" };
   /* A dry run stops at "sent": the message was composed and handed nowhere. */
   if (opts.settings.dryRun) return { status: "sent", reason: "dryRun" };
@@ -124,7 +157,10 @@ export interface OutboxInput {
  */
 export function buildOutbox(input: OutboxInput): MessageLogRow[] {
   const { contracts, invoices, payments, templates, settings } = input;
-  const lang = settings.sendLanguage;
+  /* THE RECIPIENT'S LANGUAGE, NOT THE AGENCY'S — where they have said. The
+     agency setting stays the default rather than the rule, so it can still be
+     changed once and move everyone who never expressed a preference. */
+  const langOf = (p: Party): Lang => p.lang ?? settings.sendLanguage;
   const rows: MessageLogRow[] = [];
 
   const contractById = new Map(contracts.map((c) => [c.id, c]));
@@ -154,6 +190,7 @@ export function buildOutbox(input: OutboxInput): MessageLogRow[] {
     const property = input.propertyTitle(contract.propertyId);
     const id = `auto:rem:${invoice.id}`;
     const template = templates.payment_reminder;
+    const lang = langOf(tenant);
 
     rows.push({
       id,
@@ -175,7 +212,7 @@ export function buildOutbox(input: OutboxInput): MessageLogRow[] {
       on,
       hour,
       held,
-      ...statusFor({ id, settings, template, phone: tenant.phone, on, hour, voided: invoice.status === "void" }),
+      ...statusFor({ id, settings, template, to: tenant, on, hour, voided: invoice.status === "void" }),
       contractId: contract.id,
       invoiceId: invoice.id,
       propertyTitle: property,
@@ -203,6 +240,7 @@ export function buildOutbox(input: OutboxInput): MessageLogRow[] {
     const property = input.propertyTitle(contract.propertyId);
     const id = `auto:rec:${payment.id}`;
     const template = templates.payment_received;
+    const lang = langOf(owner);
 
     rows.push({
       id,
@@ -223,7 +261,7 @@ export function buildOutbox(input: OutboxInput): MessageLogRow[] {
       on,
       hour,
       held,
-      ...statusFor({ id, settings, template, phone: owner.phone, on, hour, voided: invoice.status === "void" }),
+      ...statusFor({ id, settings, template, to: owner, on, hour, voided: invoice.status === "void" }),
       contractId: contract.id,
       invoiceId: invoice.id,
       propertyTitle: property,
@@ -243,9 +281,13 @@ export function buildOutbox(input: OutboxInput): MessageLogRow[] {
  *
  * Sorting by distance from today puts the days either side of now at the top:
  * yesterday's reminder, this morning's payment notice, the one due on Thursday.
- * It gives the right answer on every tab without a second rule — the Waiting tab
- * reads soonest-first, the Sent tab reads most-recent-first — and the far future
- * sinks to the bottom, where it belongs.
+ * It gives the right answer on both halves of the log without a second rule —
+ * History reads most-recent-first, Upcoming reads soonest-first — and the far
+ * future sinks to the bottom, where it belongs.
+ *
+ * The messaging screen re-sorts the forecast into months on top of this (see
+ * groupUpcomingByMonth), but the contract screen shows the raw order, and any
+ * new reader of the log gets a sensible one for free.
  *
  * Ties break toward the future: a message somebody can still stop is more
  * actionable than one that has already gone.
@@ -271,7 +313,8 @@ export function useMessageParties() {
   const ownerOf = useCallback(
     (contract: ContractRecord): Party => {
       const m = members.find((x) => x.id === contract.ownerId);
-      return { name: m?.name ?? contract.ownerId, phone: m?.phone ?? "" };
+      if (!m) return offPlatform(contract.ownerId, "");
+      return { name: m.name, phone: m.phone, lang: m.msgLang, whatsapp: m.whatsapp, remindersOn: m.remindersOn };
     },
     [members],
   );
@@ -281,16 +324,22 @@ export function useMessageParties() {
    * off-platform party typed onto the contract, or — failing both — the party
    * snapshot frozen onto the invoice at issue time. The snapshot is last
    * because it is a copy; the live records win while they exist.
+   *
+   * ONLY THE FIRST BRANCH CAN CARRY A PREFERENCE. A name typed onto a contract
+   * never told us what language to write in or whether to write at all, so the
+   * other two branches get the ordinary answer and the person is written to in
+   * the agency's language. That is the practical argument for adding the tenant
+   * as a member rather than as free text — see the contract form.
    */
   const tenantOf = useCallback(
     (contract: ContractRecord, invoice?: InvoiceRecord): Party => {
       if (contract.buyerId) {
         const m = members.find((x) => x.id === contract.buyerId);
-        if (m) return { name: m.name, phone: m.phone };
+        if (m) return { name: m.name, phone: m.phone, lang: m.msgLang, whatsapp: m.whatsapp, remindersOn: m.remindersOn };
       }
-      if (contract.buyerExternal) return { name: contract.buyerExternal.name, phone: contract.buyerExternal.phone };
-      if (invoice) return { name: invoice.billTo.name, phone: invoice.billTo.phone };
-      return { name: "", phone: "" };
+      if (contract.buyerExternal) return offPlatform(contract.buyerExternal.name, contract.buyerExternal.phone);
+      if (invoice) return offPlatform(invoice.billTo.name, invoice.billTo.phone);
+      return offPlatform("", "");
     },
     [members],
   );
@@ -339,13 +388,16 @@ export function useTokenValues(): (opts: {
   contract: ContractRecord;
   audience: "tenant" | "landlord";
   lang: Lang;
+  /** The demand being chased, when the message is about one. See the prop of
+      the same name on SendMessageModal. */
+  invoice?: { owed: Money; dueOn: string };
 }) => Record<string, string> {
   const { properties, agents } = useProperties();
   const { settings: platform } = usePlatformSettings();
   const { ownerOf, tenantOf } = useMessageParties();
 
   return useCallback(
-    ({ contract, audience, lang }) => {
+    ({ contract, audience, lang, invoice }) => {
       const owner = ownerOf(contract);
       const tenant = tenantOf(contract);
       const agent = agents.find((a) => a.id === contract.agentId);
@@ -360,9 +412,12 @@ export function useTokenValues(): (opts: {
         agency_name: platform.general.platformName,
         agent_name: agent?.name ?? "",
         agent_phone: agent?.phone ?? platform.general.contactPhone,
-        amount: formatMoney(lang, contract.price),
-        currency: contract.price.currency,
-        due_date: contract.endsOn ? fmtDate(lang, fromIso(contract.endsOn)) : "",
+        /* THE DEMAND WINS WHERE THERE IS ONE. Off the contract alone, {amount}
+           is the monthly rent and {due_date} is the day the LEASE ends — which
+           in a chase for one late month is two wrong facts in one sentence. */
+        amount: formatMoney(lang, invoice ? invoice.owed : contract.price),
+        currency: (invoice ? invoice.owed : contract.price).currency,
+        due_date: invoice ? fmtDate(lang, fromIso(invoice.dueOn)) : contract.endsOn ? fmtDate(lang, fromIso(contract.endsOn)) : "",
         paid_date: "",
         days_before: "",
       };

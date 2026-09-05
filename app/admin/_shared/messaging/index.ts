@@ -21,7 +21,10 @@ export {
   TEMPLATE_TOKENS,
   hourLabel,
   isDialable,
+  isPast,
   maskKey,
+  phoneDigits,
+  reachBlock,
   renderBody,
   telLink,
   waLink,
@@ -32,6 +35,7 @@ export type {
   MsgAudience,
   MsgStatus,
   MsgTemplateId,
+  ReachBlock,
   WhatsAppSettings,
 } from "./types";
 

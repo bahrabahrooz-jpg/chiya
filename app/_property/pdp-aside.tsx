@@ -9,10 +9,12 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { AppointmentWidget } from "@/components/real-estate";
 import { useLang } from "@/lib/i18n";
-import { addViewing, useViewings } from "@/lib/viewings";
+import { useAuth } from "@/lib/auth";
+import { buildPropertyReservedIndexById } from "@/app/admin/_viewings/data";
+import { bookViewing, useViewingRecords } from "@/app/admin/_viewings/viewings-store";
 import { usePdp } from "./pdp-context";
 import { DatePicker, TimePicker } from "./datetime-picker";
-import { buildReservedIndex, seedReservedSlots, isSlot } from "./reservations";
+import { isSlot } from "./reservations";
 
 export interface ActionPanelProps {
   onBook: () => void;
@@ -85,19 +87,19 @@ export function ActionPanel({ onBook, onCall, onWhatsApp, className }: ActionPan
 export function BookModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLang();
   const { property, agent, gallery } = usePdp();
-  const { items } = useViewings();
+  const { user } = useAuth();
+  const diary = useViewingRecords();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [done, setDone] = useState(false);
 
-  /* Reserved slots = demo seed + the member's own requests for this property,
-     so a slot the member just booked immediately shows as taken. */
-  const { byDate, dayStatus } = useMemo(() => {
-    const own = items
-      .filter((v) => v.propertyId === property.id && isSlot(v.time))
-      .map((v) => ({ date: v.date, time: v.time }));
-    return buildReservedIndex([...seedReservedSlots(), ...own]);
-  }, [items, property.id]);
+  /* Reserved slots come from the agency's real diary, scoped to this property.
+     They used to come from a small demo seed plus the member's own requests,
+     which meant an hour staff had already given to somebody else still showed
+     as free here — the public page and the office were looking at different
+     calendars. Now there is one, so a slot booked in either place is taken in
+     both, including the one the member just picked. */
+  const { byDate, dayStatus } = useMemo(() => buildPropertyReservedIndexById(diary, property.id), [diary, property.id]);
   const reservedTimes = date ? byDate.get(date) : undefined;
 
   /* Picking a new date clears a time that is reserved (or not a valid slot). */
@@ -109,20 +111,19 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
 
   if (!open) return null;
 
+  /* The request goes into the agency's diary, where staff will see it and call
+     back. Who is asking comes off the session — the booking gate on the page
+     guarantees there is one — so nothing has to be typed twice, and the row
+     arrives attached to a member record rather than to a bare name. */
   const submit = () => {
-    addViewing({
-      id: "vw-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    bookViewing({
       propertyId: property.id,
-      title: property.title,
-      address: property.address,
-      cover: gallery[0],
-      agentId: agent.id,
-      agentName: agent.name,
-      agentPhoto: agent.avatar,
+      property: { title: property.title, location: property.address, img: gallery[0] },
+      agent: agent.name,
+      member: user?.name ?? "",
+      ...(user?.memberId ? { memberId: user.memberId } : {}),
       date,
       time,
-      status: "requested",
-      createdAt: Date.now(),
     });
     setDone(true);
   };
@@ -138,12 +139,12 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
       footer={
         done ? (
           <Button hierarchy="primary" size="md" type="button" onClick={onClose}>
-            Done
+            {t("pdp.bookClose")}
           </Button>
         ) : (
           <>
             <Button hierarchy="secondary" size="md" type="button" onClick={onClose}>
-              Cancel
+              {t("pdp.bookCancel")}
             </Button>
             <Button hierarchy="primary" size="md" type="button" iconLeading="calendar-check" disabled={!date || !time} onClick={submit}>
               {t("pdp.requestAViewing")}
@@ -155,7 +156,7 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
       {done ? (
         <div style={{ textAlign: "center", padding: "8px 4px 12px" }}>
           <div style={{ fontFamily: "var(--font-sans)", fontSize: 15, lineHeight: "23px", color: "var(--text-secondary)" }}>
-            Thank you. {agent.name} will contact you to confirm your viewing of {property.title}.
+            {t("pdp.bookThanks", { agent: agent.name, property: property.title })}
           </div>
         </div>
       ) : (
@@ -166,21 +167,21 @@ export function BookModal({ open, onClose }: { open: boolean; onClose: () => voi
                 <div className="pdp-book-dt__row">
                   <div className="pdp-book-dt__field">
                     <label className="pdp-book-dt__flabel" htmlFor="book-date">
-                      Viewing date
+                      {t("pdp.bookDateLabel")}
                     </label>
-                    <DatePicker id="book-date" value={date} onChange={pickDate} placeholder="Select date" dayStatus={dayStatus} />
+                    <DatePicker id="book-date" value={date} onChange={pickDate} placeholder={t("pdp.bookDatePh")} dayStatus={dayStatus} />
                   </div>
                   <div className="pdp-book-dt__field">
                     <label className="pdp-book-dt__flabel" htmlFor="book-time">
-                      Viewing time
+                      {t("pdp.bookTimeLabel")}
                     </label>
-                    <TimePicker id="book-time" value={time} onChange={setTime} placeholder={date ? "Select time" : "Pick a date first"} disabled={!date} reservedTimes={reservedTimes} />
+                    <TimePicker id="book-time" value={time} onChange={setTime} placeholder={date ? t("pdp.bookTimePh") : t("pdp.bookTimePhLocked")} disabled={!date} reservedTimes={reservedTimes} />
                   </div>
                 </div>
               </div>
             }
             agent={{ name: agent.name, avatar: agent.avatar, verified: agent.verified }}
-            agentLabel="Viewing agent"
+            agentLabel={t("pdp.bookAgentLabel")}
             hideCta
           />
         </div>

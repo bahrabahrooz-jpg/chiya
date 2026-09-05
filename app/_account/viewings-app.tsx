@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Icon } from "@/components/ui/icon";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { Container } from "@/components/layout/container";
 import { openAuth, useAuth } from "@/lib/auth";
-import { useViewings, type Viewing } from "@/lib/viewings";
-import { fmtDateLabel, fmtTimeLabel } from "@/app/admin/_viewings/data";
+import { canCancel, useViewings, type Viewing } from "@/lib/viewings";
+import { useLang } from "@/lib/i18n";
+import { valueKey } from "@/lib/fmt";
 import "./account.css";
 
 /**
@@ -100,8 +101,25 @@ export function ViewingsApp() {
   );
 }
 
+/* Status → badge modifier. Requested has no modifier: it is the base style, and
+   it is what every request starts as. */
+const BADGE_MOD: Record<string, string> = {
+  Confirmed: " acc-view__badge--confirmed",
+  Completed: " acc-view__badge--completed",
+  Cancelled: " acc-view__badge--cancelled",
+  "No Show": " acc-view__badge--noshow",
+};
+const BADGE_ICON: Record<string, IconName> = {
+  Requested: "clock",
+  Confirmed: "calendar-check",
+  Completed: "check-check",
+  Cancelled: "circle-x",
+  "No Show": "user-x",
+};
+
 function ViewingCard({ viewing: v, onCancel }: { viewing: Viewing; onCancel: () => void }) {
   const router = useRouter();
+  const { t } = useLang();
   return (
     <article
       className="acc-view"
@@ -119,9 +137,9 @@ function ViewingCard({ viewing: v, onCancel }: { viewing: Viewing; onCancel: () 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="acc-view__thumb" src={v.cover} alt={v.title} loading="lazy" />
         <div className="acc-view__info">
-          <span className="acc-view__badge">
-            <Icon name="clock" size={12} />
-            Requested
+          <span className={"acc-view__badge" + (BADGE_MOD[v.status] ?? "")}>
+            <Icon name={BADGE_ICON[v.status] ?? "clock"} size={12} />
+            {t(valueKey("status", v.status))}
           </span>
           <div className="acc-view__title">{v.title}</div>
           <div className="acc-view__addr">
@@ -129,23 +147,30 @@ function ViewingCard({ viewing: v, onCancel }: { viewing: Viewing; onCancel: () 
             <span>{v.address}</span>
           </div>
         </div>
-        <button
-          type="button"
-          className="acc-view__cancel"
-          aria-label="Cancel viewing"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCancel();
-          }}
-        >
-          <Icon name="x" size={16} />
-        </button>
+        {/* A viewing that has already happened, or has already been called off,
+            cannot be cancelled — the button would be one that cannot mean
+            anything, so it is not offered at all. */}
+        {canCancel(v) && (
+          <button
+            type="button"
+            className="acc-view__cancel"
+            aria-label="Cancel viewing"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel();
+            }}
+          >
+            <Icon name="x" size={16} />
+          </button>
+        )}
       </div>
 
       <div className="acc-view__when">
         <Icon name="calendar-check" size={16} />
-        <span className="acc-view__date">{fmtDateLabel(v.date) || v.date}</span>
-        <span className="acc-view__time">at {fmtTimeLabel(v.time) || v.time}</span>
+        {/* Already display strings — the diary stores them the way it shows
+            them, so there is nothing left to format here. */}
+        <span className="acc-view__date">{v.date}</span>
+        <span className="acc-view__time">at {v.time}</span>
       </div>
 
       <div className="acc-view__agent">

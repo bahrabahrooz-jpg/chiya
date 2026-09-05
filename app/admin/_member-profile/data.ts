@@ -1,7 +1,8 @@
 import type { IconName } from "@/components/ui/icon";
 import type { Money } from "@/lib/money";
+import type { Lang } from "@/lib/i18n/config";
 import type { BadgeVariant } from "@/components/ui/badge";
-import { getAgentByName, daysAgoFrom, type AgentRecord, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
+import { getAgentByName, daysAgoFrom, type AgentRecord, type IdKind, type MemberRecord as CatalogMember, type PropertyRecord } from "../_data/catalog";
 import { VIEWINGS as ALL_VIEWINGS, AGENT_IMG } from "../_viewings/data";
 
 export const ROLE_META: Record<string, { variant: BadgeVariant; cls: string }> = {
@@ -36,7 +37,18 @@ export interface MemberAgent { name: string; verified: boolean; phone: string; e
 
 export interface MemberRecord {
   id: string; name: string; status: string; types: string[]; joinedShort: string; joinedFull: string;
-  email: string; phone: string; language: string; contactMethod: string; img: string; agent: MemberAgent | null;
+  email: string; phone: string; img: string; agent: MemberAgent | null;
+  /* THESE REPLACED TWO INVENTED FIELDS. `language: "Kurdish (Sorani)"` and
+     `contactMethod: "Phone call"` were hardcoded here for every member and
+     rendered nowhere — a placeholder for a preference the platform could not
+     actually hold. It can now, so the answers come off the record. */
+  msgLang: Lang | null;
+  whatsapp: boolean;
+  remindersOn: boolean;
+  idKind: IdKind | null;
+  idNumber?: string;
+  city?: string;
+  area?: string;
 }
 
 export interface PortfolioRow { id: string; title: string; loc: string; type: string; img: string; rel: string; status: string; price: Money; per?: string; agent: string; agentImg: string; date: string }
@@ -108,8 +120,13 @@ export function toDetailMember(m: CatalogMember, properties: PropertyRecord[]): 
     joinedFull: full,
     email: m.email,
     phone: m.phone,
-    language: "Kurdish (Sorani)",
-    contactMethod: "Phone call",
+    msgLang: m.msgLang,
+    whatsapp: m.whatsapp,
+    remindersOn: m.remindersOn,
+    idKind: m.idKind,
+    idNumber: m.idNumber,
+    city: m.city,
+    area: m.area,
     img: m.img ?? "",
     agent: memberAgentFor(properties, m.name),
   };
