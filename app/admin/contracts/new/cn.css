@@ -742,3 +742,116 @@
     .cn-input, .cn-select, .cn-choice, .cn-money__field, .cn-search__input,
     .cn-textarea, .cn-dp__trigger, .cn-dp__day, .cn-dp__nav { transition: none; }
   }
+
+  /* ============================================================
+     THE PAPER BESIDE THE FORM
+
+     ⚠ READ THE NOTE AT THE TOP OF THIS FILE FIRST. A summary panel used to sit
+     in a second column here and was removed on purpose: it restated the
+     figures the form had just asked for, and the fix was to put each figure
+     next to the field that produces it, which is where they still are.
+
+     THIS IS NOT THAT PANEL. It holds the CONTRACT — the page the two parties
+     sign, the same <ContractSheet> the print route renders, filling in as the
+     questions are answered. The form asks twenty-odd questions and has never
+     once shown the thing they are for.
+
+     THE SHEET IS FLUID, NOT SCALED. cd.css is written in millimetres, but they
+     are padding and gaps — the sheet takes its width from whatever holds it.
+     So the panel renders it at FULL SIZE and lets it reflow, rather than
+     scaling a screenshot of a page down to seven-point type nobody can read.
+     The reflow is a container query in cd.css, asked of .cn-paper__stage
+     below, because the window is wide even when this column is not.
+     ============================================================ */
+
+  /* Narrow first: the fold below the form is the only version that exists
+     until there is room for a column. */
+  .cn-paper { display: none; }
+
+  @media (min-width: 1200px) {
+    /* The reading column widens only where a second column is actually shown.
+       Below this the wizard keeps ap.css's 900px and nothing moves. */
+    .ap-wrap.cn-wrap { max-width: 1560px; }
+
+    .cn-split {
+      display: grid;
+      /* The form stops growing at its own reading width and every extra pixel
+         goes to the paper — the one of the two that gets better with room. */
+      grid-template-columns: minmax(0, 720px) minmax(400px, 1fr);
+      gap: var(--space-10);
+      align-items: start;
+    }
+    /* The centring belonged to the one-column layout. */
+    .cn-form { max-inline-size: none; margin-inline: 0; }
+
+    .cn-paper { display: block; }
+    .cn-fold { display: none; }
+  }
+
+  /* STICKY, WITH ITS OWN SCROLL. The form is long and so is the contract;
+     tying them together would scroll the paper away while somebody was still
+     answering the question that fills it in.
+     The 68px is the admin topbar (.ax-topbar) — .ax-content is the scroll
+     port, so the space this panel has is the window less that bar. */
+  .cn-paper__inner {
+    position: sticky;
+    inset-block-start: var(--space-6);
+    display: flex; flex-direction: column; gap: var(--space-3);
+    max-block-size: calc(100dvh - 68px - var(--space-12));
+  }
+  .cn-paper__head { display: flex; flex-direction: column; gap: 2px; }
+  .cn-paper__title {
+    margin: 0; font-family: var(--font-display); font-weight: 600;
+    font-size: var(--display-xs-size); line-height: var(--display-xs-line);
+    letter-spacing: var(--tracking-tight); color: var(--text-primary);
+  }
+  .cn-paper__hint {
+    margin: 0; font-size: var(--text-xs-size); line-height: var(--text-xs-line);
+    color: var(--text-tertiary); text-wrap: pretty;
+  }
+  /* THE CONTAINER the sheet reflows against — see the @container block in
+     cd.css. Padding at the block ends so the sheet's own shadow is not clipped
+     against the scroll edges. */
+  .cn-paper__stage {
+    container-type: inline-size;
+    flex: 1 1 auto; min-block-size: 0;
+    overflow-y: auto; overflow-x: hidden;
+    padding-block: 2px 6px;
+  }
+
+  /* ---------- THE FOLD (narrow screens) ----------
+     A disclosure, not a dialog. A modal would need a focus trap, an Escape key
+     and a scroll lock to be honest about being one, and all three would be
+     machinery in front of something somebody wants to glance at. */
+  .cn-fold { margin-block-start: var(--space-6); }
+  .cn-fold__btn {
+    inline-size: 100%; min-block-size: 48px;
+    display: flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-card); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, background-color .15s;
+  }
+  .cn-fold__btn:hover { border-color: var(--border-strong); background: var(--surface-raised); }
+  .cn-fold__btn:focus-visible {
+    outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus-brand);
+  }
+  .cn-fold__btn > span:first-of-type { flex: 1 1 auto; text-align: start; }
+  .cn-fold__chev { display: inline-flex; transition: transform .15s; }
+  .cn-fold__chev.is-open { transform: rotate(180deg); }
+  .cn-fold__body { margin-block-start: var(--space-4); }
+  /* The sheet reflows against the fold too — a phone is 390px wide. */
+  .cn-paper__fit--fold { container-type: inline-size; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cn-fold__btn, .cn-fold__chev { transition: none; }
+  }
+
+  /* Printing the FORM prints the form. The live sheet is a preview of a
+     document that has not been agreed yet, and the print route is where a
+     contract gets printed — see the scoped rules at the end of cd.css. */
+  @media print {
+    .cn-paper, .cn-fold { display: none !important; }
+  }

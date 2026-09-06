@@ -95,14 +95,17 @@ import { logAudit } from "./audit-log";
    leaves the log with three months of history and three of its five states
    permanently empty. The screen looks broken and the data is the reason, which
    is precisely the case a version bump exists for.
-
    v10 adds CT-0213, the EXPIRED tenancy, with its commission invoice and the
    payment that settled it. A v9 cache holds none of the three, and the failure
    is the same shape as the one above: the Expired status chip, the End the
    tenancy action and the second deposit-to-settle all had nothing to act on, so
    three working features read as broken ones. Bumped alongside the properties
-   store, which gained the property CT-0213 sits on. */
-export const CONTRACTS_STORAGE_KEY = "chiya:admin-contracts:v10";
+   store, which gained the property CT-0213 sits on.
+   v11 drops `buyerExternal` from every contract and moves CT-0210 onto member
+   M-5015. A v10 cache still holds the external block on that record and the
+   field no longer exists to read it, so the tenant would simply vanish off the
+   contract. Bumped with the properties store, which gained the member. */
+export const CONTRACTS_STORAGE_KEY = "chiya:admin-contracts:v11";
 
 /* Same-tab change signal, like properties-store's STORE_EVENT: the browser
    `storage` event only fires in OTHER tabs. */

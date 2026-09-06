@@ -31,7 +31,6 @@ import { logAudit } from "../audit-log";
 import { useProperties } from "../properties-store";
 import { useContractTransitions } from "../contract-transitions";
 import {
-  billToFromExternal,
   billToFromMember,
   draftPrice,
   plannedInvoices,
@@ -314,14 +313,13 @@ export function useFinanceActions(): FinanceActions {
    * is thirteen chances for one of them to differ.
    */
   const planContextFor = useCallback(
-    (c: Pick<ContractRecord, "propertyId" | "ownerId" | "buyerId" | "buyerExternal">): PlanContext => {
+    (c: Pick<ContractRecord, "propertyId" | "ownerId" | "buyerId">): PlanContext => {
       const owner = memberById(c.ownerId);
       const buyer = memberById(c.buyerId);
-      const counterparty: BillTo | undefined = buyer
-        ? billToFromMember(buyer)
-        : c.buyerExternal
-          ? billToFromExternal(c.buyerExternal)
-          : undefined;
+      /* One source now that every counterparty is a member. It used to fall
+         back to an external block typed onto the contract, whose snapshot
+         carried no email and no address. */
+      const counterparty: BillTo | undefined = buyer ? billToFromMember(buyer) : undefined;
       return {
         lang,
         t,

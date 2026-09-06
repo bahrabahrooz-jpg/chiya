@@ -321,7 +321,7 @@ export function toRow(
     /* Falls back to the id rather than to an empty cell: an owner whose name
        will not resolve is a data problem worth seeing, not one worth hiding. */
     ownerName: memberName(c.ownerId) ?? c.ownerId,
-    counterparty: linked ?? c.buyerExternal?.name ?? null,
+    counterparty: linked ?? null,
     counterpartyId: linked ? c.buyerId : undefined,
     agentName: agentName(c.agentId),
     value: contractValue(c),

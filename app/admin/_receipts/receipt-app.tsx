@@ -602,7 +602,7 @@ export function ReceiptApp({ kind, id }: { kind: ReceiptKind; id: string }) {
       const back = deducted ? subtract(held, deducted) : held;
       /* The tenant, whether or not he holds an account — most never register,
          and the paper still has to name him. */
-      const tenant = (contract.buyerId ? members.find((m) => m.id === contract.buyerId)?.name : undefined) ?? contract.buyerExternal?.name ?? "";
+      const tenant = (contract.buyerId ? members.find((m) => m.id === contract.buyerId)?.name : undefined) ?? "";
       const roleKey = partyRoleKey(contract.kind, "counterparty");
       return {
         id: contract.id,

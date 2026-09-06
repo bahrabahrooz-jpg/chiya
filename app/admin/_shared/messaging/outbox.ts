@@ -320,16 +320,16 @@ export function useMessageParties() {
   );
 
   /**
-   * The tenant, however the contract holds them: a member account, an
-   * off-platform party typed onto the contract, or — failing both — the party
-   * snapshot frozen onto the invoice at issue time. The snapshot is last
-   * because it is a copy; the live records win while they exist.
+   * The tenant: their member record, or — where a contract has not named one
+   * yet — the party snapshot frozen onto the invoice at issue time. The
+   * snapshot is last because it is a copy; the live record wins while it
+   * exists.
    *
-   * ONLY THE FIRST BRANCH CAN CARRY A PREFERENCE. A name typed onto a contract
-   * never told us what language to write in or whether to write at all, so the
-   * other two branches get the ordinary answer and the person is written to in
-   * the agency's language. That is the practical argument for adding the tenant
-   * as a member rather than as free text — see the contract form.
+   * ONLY THE FIRST BRANCH CAN CARRY A PREFERENCE. An invoice snapshot never
+   * told us what language to write in or whether to write at all, so the
+   * fallback gets the ordinary answer and the person is written to in the
+   * agency's language. That gap is why every counterparty is now a member and
+   * the free-text one was removed — see buyerId in ../../_data/contracts.
    */
   const tenantOf = useCallback(
     (contract: ContractRecord, invoice?: InvoiceRecord): Party => {
@@ -337,7 +337,8 @@ export function useMessageParties() {
         const m = members.find((x) => x.id === contract.buyerId);
         if (m) return { name: m.name, phone: m.phone, lang: m.msgLang, whatsapp: m.whatsapp, remindersOn: m.remindersOn };
       }
-      if (contract.buyerExternal) return offPlatform(contract.buyerExternal.name, contract.buyerExternal.phone);
+      /* No member on the contract means a DRAFT nobody has been found for yet.
+         The invoice, if there is one, still froze a name and a number. */
       if (invoice) return offPlatform(invoice.billTo.name, invoice.billTo.phone);
       return offPlatform("", "");
     },

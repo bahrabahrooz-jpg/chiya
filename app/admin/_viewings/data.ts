@@ -160,7 +160,7 @@ export const TOTAL_VIEWINGS = VIEWINGS.length;
    role — they're a prospective looker. A looker must at least appear in one
    viewing; a member with zero activity anywhere is a seed bug. */
 for (const m of CAT_MEMBERS) {
-  if (deriveMemberRoles(m.name, CAT_PROPS).length === 0 && !VIEWINGS.some((v) => v.member === m.name)) {
+  if (deriveMemberRoles(m.id, m.name, CAT_PROPS).length === 0 && !VIEWINGS.some((v) => v.member === m.name)) {
     throw new Error(`viewings: member "${m.name}" has no property link and no viewing — dead seed record`);
   }
 }

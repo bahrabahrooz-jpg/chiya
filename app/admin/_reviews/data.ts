@@ -112,6 +112,11 @@ const REVIEW_SPECS: ReviewSpec[] = [
 function isGrounded(member: string, agent: string, reviewDaysAgo: number): boolean {
   for (const p of PROPERTIES) {
     if (p.agent?.name !== agent) continue;
+    /* NAME, deliberately, unlike everywhere else. This is a seed-time
+       grounding check whose whole contract is names — the agent, the member and
+       the viewings below all match by name — so converting this one line to ids
+       would buy nothing while the other three stayed. If reviews ever key on
+       member ids, convert the function, not the line. */
     if (p.owner.name === member && p.daysAgo >= reviewDaysAgo) return true;
     const closedAgo = daysAgoFrom(p.updated);
     if (closedAgo != null && closedAgo >= reviewDaysAgo && (p.buyer === member || p.tenant === member)) return true;

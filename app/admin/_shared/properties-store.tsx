@@ -183,8 +183,22 @@ export function normalizeProperties(list: PropertyRecord[]): PropertyRecord[] {
    that makes it impossible to re-list. A v10 cache does not have it, so the
    contract seeded against it (CT-0213) resolves to no property at all. Bumped
    together with the contracts store; the two seeds reference each other and a
-   cache that holds one but not the other is worse than either being stale. */
-export const STORAGE_KEY = "chiya:admin-store:v11";
+   cache that holds one but not the other is worse than either being stale.
+
+   v12 adds M-5015 (Renas Faiq), the counterparty who used to live as free text
+   on CT-0210, and the roster's only member with NO email — the case the
+   add-member form dropped its email requirement for. A v11 cache has neither,
+   so that contract points at a member who does not exist.
+
+   v13 puts the OWNER LINK on every property. `ownerId` was only ever set by the
+   seed — the add-property wizard typed a name, a phone and an email into a blob
+   and set no id at all — so a property created through the app could never have
+   a contract written on it (the form blocks on the missing owner) and half the
+   screens matched owners by NAME, which merged namesakes and detached anyone
+   renamed. A v12 cache is full of exactly those id-less records, and no amount
+   of reading them would recover which member each one meant. Company-owner also
+   moved off the property and onto the member in the same pass. */
+export const STORAGE_KEY = "chiya:admin-store:v13";
 
 /* Same-tab change signal. The browser `storage` event only fires in OTHER tabs,
    so we dispatch this on every persist to let same-tab listeners (the public

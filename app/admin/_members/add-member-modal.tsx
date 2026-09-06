@@ -184,12 +184,23 @@ function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: A
   const [area, setArea] = useState(initial?.area || "");
 
   const agent = AM_AGENTS.find((a) => a.id === agentId) || null;
-  /* NAME, NUMBER AND EMAIL, as before. The ID is deliberately NOT required: a
-     tenant is usually created off a phone call days before anybody sees their
-     civil ID, and a form that refuses to save without one gets fed a row of
-     zeros. The contract is where an unidentified party actually costs
-     something, and that is where to ask for it. */
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && email.trim().length > 0;
+  /**
+   * A NAME AND A NUMBER. Nothing else is required.
+   *
+   * The ID never was: a tenant is usually created off a phone call days before
+   * anybody sees their civil ID, and a form that refuses to save without one
+   * gets fed a row of zeros. The contract is where an unidentified party
+   * actually costs something, and that is where to ask for it.
+   *
+   * EMAIL USED TO BE, and that requirement is what kept the external-party
+   * escape hatch alive. This modal is now the only way to put a counterparty on
+   * a contract, and plenty of tenants here have no email at all — so demanding
+   * one meant either inventing an address or writing the person down as a
+   * string on one contract instead of a person on the platform. The whole point
+   * of removing the escape hatch was to make this form as cheap as typing a
+   * name and a number. It has to actually be that.
+   */
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0;
 
   const values = (): MemberValues => ({
     name,
@@ -244,7 +255,21 @@ function MemberForm({ open, onClose, onSubmit, mode = "add", initial = null }: A
             <Input label={t("admin.members.fullName")} value={name} autoFocus iconLeading="user" placeholder={t("admin.members.namePh")} onChange={(e) => setName(e.target.value)} />
             <div className="am-grid am-grid--2">
               <Input label={t("admin.members.phone")} value={phone} iconLeading="phone" inputMode="tel" placeholder="+964 750 000 0000" onChange={(e) => setPhone(e.target.value)} />
-              <Input label={t("admin.members.emailAddr")} value={email} iconLeading="mail" type="email" placeholder="name@email.com" onChange={(e) => setEmail(e.target.value)} />
+              {/* Marked optional in the label, not merely permitted to be
+                  blank: a required-looking field that silently accepts nothing
+                  still makes people invent an address. */}
+              <Input
+                label={
+                  <>
+                    {t("admin.members.emailAddr")} <span className="am-label__opt">{t("admin.members.optional")}</span>
+                  </>
+                }
+                value={email}
+                iconLeading="mail"
+                type="email"
+                placeholder="name@email.com"
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
           </div>
         </section>

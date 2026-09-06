@@ -55,7 +55,6 @@ import {
   type ContractRecord,
   type ContractTemplate,
   type ExpectedPaymentMethod,
-  type ExternalParty,
   type InstallmentFrequency,
   type InstallmentsPaidTo,
   type InvoiceCategory,
@@ -109,9 +108,9 @@ export interface ContractDraft {
   signerOverride?: SignerOverride;
   /** …and when it was not the buyer or tenant either. */
   buyerSignerOverride?: SignerOverride;
-  /** Set when the counterparty holds an account. Never alongside the next one. */
+  /** The buyer or tenant. A member, like every counterparty — absent only on a
+      draft written before the other side was found. */
   buyerId?: string;
-  buyerExternal?: ExternalParty;
   agentId: string;
 
   /* ---- sale ---- */
@@ -317,7 +316,6 @@ export function toContractRecord(
     ...(draft.signerOverride ? { signerOverride: draft.signerOverride } : {}),
     ...(draft.buyerSignerOverride ? { buyerSignerOverride: draft.buyerSignerOverride } : {}),
     ...(draft.buyerId ? { buyerId: draft.buyerId } : {}),
-    ...(draft.buyerExternal ? { buyerExternal: draft.buyerExternal } : {}),
     agentId: draft.agentId,
     price,
     /* `commission` stays the OWNER's side on every record — see the note on
@@ -411,13 +409,6 @@ export function billToFromMember(m: MemberRecord): BillTo {
      this block: correcting a typo on the profile leaves last year's invoice
      saying what it said. */
   return { name: m.name, phone: m.phone, email: m.email, address: "", ...(m.idNumber ? { idNumber: m.idNumber } : {}) };
-}
-
-/** The same snapshot for a counterparty with no account. Their ID number is the
-    only identifying detail the platform holds about them at all, so it travels
-    onto the document — see the note above about members. */
-export function billToFromExternal(p: ExternalParty): BillTo {
-  return { name: p.name, phone: p.phone, email: "", address: "", ...(p.idNumber ? { idNumber: p.idNumber } : {}) };
 }
 
 /* ----------------------------------------------------------------------------

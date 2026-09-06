@@ -120,9 +120,23 @@ export interface ApForm {
   lng: string;
   locNotes: string;
   tourUrl: string;
-  ownerName: string;
-  ownerPhone: string;
-  ownerEmail: string;
+  /**
+   * THE OWNER, AS A MEMBER ID. Not a typed name.
+   *
+   * This was three free-text fields — name, phone, email — written onto the
+   * property as a blob, and it created a property no contract could ever be
+   * written on: the contract form needs `ownerId` and nothing here ever set
+   * one, so the form blocked with "missing owner" and neither screen could fix
+   * it. Half the app also matched owners by NAME, so two people called the same
+   * thing were one owner and renaming somebody detached their properties.
+   *
+   * The owner is picked from the member roster, exactly as the agent below is
+   * picked from the agent roster — the two halves of this step used to disagree
+   * with each other. Not on the list means add them as a member first; that
+   * costs a name and a phone number (see canSubmit in
+   * _members/add-member-modal).
+   */
+  ownerId: string;
   agent: string;
   internalNotes: string;
 }
@@ -158,9 +172,7 @@ export const EMPTY_FORM: ApForm = {
   lng: "",
   locNotes: "",
   tourUrl: "",
-  ownerName: "",
-  ownerPhone: "",
-  ownerEmail: "",
+  ownerId: "",
   agent: "",
   internalNotes: "",
 };

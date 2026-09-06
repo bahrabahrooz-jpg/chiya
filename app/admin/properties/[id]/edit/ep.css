@@ -706,6 +706,43 @@
   .ap-agentcard__lock { flex: none; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-tertiary); }
   .ap-lockhint { margin: 10px 0 0; font-size: 13px; color: var(--text-tertiary); }
 
+  /* An inline action inside a hint line — "Add them as a member". A button, not
+     a link, because it opens a modal rather than navigating. */
+  .ap-linkbtn {
+    padding: 0; border: none; background: none; cursor: pointer;
+    font: inherit; font-weight: 600; color: var(--text-brand);
+    text-decoration: underline; text-underline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  .ap-linkbtn:hover { color: var(--brand-primary-hover); }
+  .ap-linkbtn:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+
+  /* OWNER PICKER — search a member, or add one. The picked state reuses
+     .ap-agentcard, because the owner and the agent are the same kind of thing
+     on this step and looked different for far too long. */
+  .ap-ownerpick { position: relative; }
+  .ap-ownerpick__results {
+    position: absolute; inset-inline: 0; inset-block-start: calc(100% + 4px); z-index: 20;
+    margin: 0; padding: var(--space-1); list-style: none;
+    max-block-size: 268px; overflow-y: auto;
+    background: var(--surface-raised); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-lg);
+  }
+  .ap-ownerpick__result {
+    display: flex; align-items: baseline; gap: var(--space-2);
+    inline-size: 100%; min-block-size: 44px; padding: var(--space-2) var(--space-3);
+    border: none; background: none; cursor: pointer; text-align: start;
+    border-radius: var(--radius-sm); font: inherit;
+  }
+  .ap-ownerpick__result:hover { background: var(--brand-subtle); }
+  .ap-ownerpick__result:focus-visible { outline: none; box-shadow: var(--shadow-focus-brand); }
+  .ap-ownerpick__name { font-weight: 600; color: var(--text-primary); }
+  .ap-ownerpick__phone { font-size: 13px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ap-linkbtn { transition: none; }
+  }
+
   /* assigned-agent picker (before selection) — mirrors Members modal */
   .ap-agentsel__trigger {
     display: flex; align-items: center; gap: 10px; width: 100%; height: 48px;

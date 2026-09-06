@@ -34,8 +34,10 @@ import {
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
 import { toIso } from "@/lib/dates";
-import { buildMandate, legacyStatus, type Publication, type PropertyRecord } from "../_data/catalog";
+import { buildMandate, legacyStatus, ownerTypeOf, type MemberRecord, type Publication, type PropertyRecord } from "../_data/catalog";
 import { useListings, type MemberListing } from "@/lib/listings";
+import { AddMemberModal } from "../_members/add-member-modal";
+import { newMemberRecord } from "../_members/new-member";
 
 export type Opt = { value: string; label: string };
 
@@ -56,7 +58,7 @@ let addedSeq = 0;
  * being sold the moment it is created never belongs on the website.
  * `availability` is always "available": only a contract may change it.
  */
-function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader, publication?: Publication): PropertyRecord {
+function formToProperty(f: ApForm, agent: ApAgent | null, owner: MemberRecord | null, photos: PhotoUploader, publication?: Publication): PropertyRecord {
   const listing: "sale" | "rent" = f.listing === "rent" ? "rent" : "sale";
   const district = f.district || "Ankawa";
   const area = f.project || district; // most specific location (project → district)
@@ -83,7 +85,12 @@ function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader,
     city: f.city || "Erbil",
     type: f.type || "Villa",
     img: cover,
-    owner: { name: f.ownerName || "New owner", phone: f.ownerPhone || "", type: "Individual owner" },
+    /* THE LINK IS THE RECORD. `ownerId` is what every other screen resolves
+       through; the `owner` blob beside it is a display copy kept in step with
+       it, never typed. A property created without the id could never have a
+       contract written on it — see ownerId in ./data. */
+    ownerId: owner?.id,
+    owner: { name: owner?.name || "New owner", phone: owner?.phone || "", type: ownerTypeOf(owner) },
     agent: agent ? { name: agent.name, verified: true, img: agent.avatar } : null,
     listing,
     ...state,
@@ -105,8 +112,11 @@ function formToProperty(f: ApForm, agent: ApAgent | null, photos: PhotoUploader,
     details: {
       description: f.description || undefined,
       areaUnit: f.areaUnit,
-      ownerEmail: f.ownerEmail || undefined,
-      ownerType: "Individual owner",
+      ownerEmail: owner?.email || undefined,
+      /* Read off the member, not hardcoded. Being a company is a fact about the
+         PERSON — the same owner is a company on every listing they hold — so it
+         lives on their record and every property they own agrees. */
+      ownerType: ownerTypeOf(owner),
       agentPhone: agent?.phone,
       project: f.project || undefined,
       street: f.street || undefined,
@@ -960,6 +970,43 @@ export function AgentSelect({ id, value, onChange }: { id?: string; value: strin
   );
 }
 
+/**
+ * The picked owner. Deliberately the same card as AgentSummary below, because
+ * the owner and the agent are the same kind of thing on this step — a record
+ * chosen from a roster — and for a long time only one of them looked like it.
+ *
+ * No "verified" badge: that is an agent's status, not a customer's. A company
+ * gets a badge saying so instead, read off the member (see `company` on
+ * MemberRecord), which is the only place that fact lives now.
+ */
+export function OwnerSummary({ owner, onClear }: { owner: MemberRecord; onClear?: () => void }) {
+  const { t } = useLang();
+  return (
+    <div className="ap-agentcard">
+      <Avatar src={owner.img || undefined} name={owner.name} size="lg" />
+      <div className="ap-agentcard__meta">
+        <span className="ap-agentcard__name">
+          {owner.name}
+          {owner.company && (
+            <Badge variant="neutral" size="sm" icon="building-2">
+              {t("admin.pd.ownerType.companyowner")}
+            </Badge>
+          )}
+        </span>
+        {owner.phone && (
+          <span className="ap-agentcard__phone">
+            <Icon name="phone" size={14} />
+            {owner.phone}
+          </span>
+        )}
+      </div>
+      <button type="button" className="ap-agentcard__remove" aria-label={t("admin.ap.changeOwner")} onClick={onClear}>
+        <Icon name="x" size={17} />
+      </button>
+    </div>
+  );
+}
+
 export function AgentSummary({ agent, onClear, locked }: { agent: ApAgent; onClear?: () => void; locked?: boolean }) {
   const { t } = useLang();
   return (
@@ -1368,7 +1415,7 @@ export function AddPropertyApp({
     const out = t(key);
     return out === key ? fallback : out;
   };
-  const { addProperty, updateProperty, locationTree } = useProperties();
+  const { addProperty, updateProperty, locationTree, members, addMember } = useProperties();
   const { items: memberListings, add: addMemberListing, update: updateMemberListing } = useListings();
   const member = mode === "member";
   // Agents publish directly, same as admins — agentMode only changes the
@@ -1402,6 +1449,18 @@ export function AddPropertyApp({
     ...(lockedAgentId ? { agent: lockedAgentId } : {}),
   }));
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
+  /* THE OWNER, RESOLVED. `f.ownerId` is what the form holds; this is the record
+     behind it, and every place that used to read a typed name reads this. */
+  const selectedOwner = useMemo(() => members.find((m) => m.id === f.ownerId) ?? null, [members, f.ownerId]);
+  const [ownerQuery, setOwnerQuery] = useState("");
+  const [addOwnerOpen, setAddOwnerOpen] = useState(false);
+  /* Same shape as the contract form's party search: name or phone, capped, and
+     only once there is something to match on. */
+  const ownerResults = useMemo(() => {
+    const q = ownerQuery.trim().toLowerCase();
+    if (!q) return [];
+    return members.filter((m) => (m.name + " " + m.phone).toLowerCase().includes(q)).slice(0, 6);
+  }, [members, ownerQuery]);
   const [step, setStep] = useState(0);
   const [preview, setPreview] = useState<PublishPreview | null>(null);
   const [submitted, setSubmitted] = useState<MemberListing | null>(null);
@@ -1467,9 +1526,9 @@ export function AddPropertyApp({
     lng: localizeDigits(lang, f.lng),
     year: f.year ? localizeDigits(lang, String(f.year)) : "",
     orientation: tOr(valueKey("admin.ap.orient", f.orientation), f.orientation),
-    ownerName: f.ownerName,
-    ownerPhone: localizeDigits(lang, f.ownerPhone),
-    ownerEmail: f.ownerEmail,
+    ownerName: selectedOwner?.name ?? "",
+    ownerPhone: localizeDigits(lang, selectedOwner?.phone ?? ""),
+    ownerEmail: selectedOwner?.email ?? "",
   };
   const revAgent = assignableAgents.find((a) => a.id === f.agent) || null;
   const AMEN_IC: Record<string, IconName> = Object.fromEntries(AMENITIES.map((a) => [a.label, a.icon]));
@@ -1492,7 +1551,7 @@ export function AddPropertyApp({
       router.push("/my-listings");
       return;
     }
-    const rec: PropertyRecord = formToProperty(f, f.agent ? revAgent : null, photos, "draft");
+    const rec: PropertyRecord = formToProperty(f, f.agent ? revAgent : null, selectedOwner, photos, "draft");
     if (draftIdRef.current) {
       updateProperty(draftIdRef.current, { ...rec, id: draftIdRef.current });
     } else {
@@ -1816,23 +1875,63 @@ export function AddPropertyApp({
       {step === 4 && (
         <section className="ap-card">
           <div className="ap-card__head">
-            <h2 className="ap-card__title">Ownership &amp; assignment</h2>
+            <h2 className="ap-card__title">{t("admin.ap.step.ownership")}</h2>
             <p className="ap-card__desc">{t("admin.ap.ownershipDesc")}</p>
           </div>
           <div className="ap-card__body">
+            {/* THE OWNER IS PICKED, NOT TYPED — the same move the agent field
+                below already made, and the two halves of this step used to
+                disagree with each other.
+
+                It was three text boxes (name, phone, email) written onto the
+                property as a blob, and it produced a property NO CONTRACT COULD
+                EVER BE WRITTEN ON: the contract form needs `ownerId`, nothing
+                here ever set one, so it blocked with "missing owner" and
+                neither screen could fix it. Half the app also matched owners by
+                name, so two people called the same thing were one owner.
+
+                Not on the list means add them as a member first. That costs a
+                name and a phone number — see canSubmit in
+                _members/add-member-modal — which is the whole reason a
+                free-text fallback is not offered here either. */}
             <div className="ap-sect ap-sect--flush">
               <div className="ap-grid">
                 <div className="ap-field ap-col-full">
-                  <FieldLabel htmlFor="ap-owner-name">{t("admin.ap.f.ownerName")}</FieldLabel>
-                  <Input id="ap-owner-name" size="lg" iconLeading="user" placeholder="e.g. Hêmin Abdullah" value={f.ownerName} onChange={(e) => set("ownerName", e.target.value)} />
-                </div>
-                <div className="ap-field">
-                  <FieldLabel htmlFor="ap-owner-phone">{t("admin.mp.phoneNumber")}</FieldLabel>
-                  <Input id="ap-owner-phone" size="lg" type="tel" iconLeading="phone" placeholder="+964 750 000 0000" value={f.ownerPhone} onChange={(e) => set("ownerPhone", e.target.value)} />
-                </div>
-                <div className="ap-field">
-                  <FieldLabel htmlFor="ap-owner-email">{t("admin.mp.emailAddress")}</FieldLabel>
-                  <Input id="ap-owner-email" size="lg" type="email" iconLeading="mail" placeholder="owner@email.com" value={f.ownerEmail} onChange={(e) => set("ownerEmail", e.target.value)} />
+                  <FieldLabel htmlFor="ap-owner">{t("admin.ap.f.ownerName")}</FieldLabel>
+                  {selectedOwner ? (
+                    <OwnerSummary owner={selectedOwner} onClear={() => { set("ownerId", ""); setOwnerQuery(""); }} />
+                  ) : (
+                    <div className="ap-ownerpick">
+                      <Input
+                        id="ap-owner"
+                        size="lg"
+                        iconLeading="search"
+                        placeholder={t("admin.cn.memberSearchPh")}
+                        value={ownerQuery}
+                        onChange={(e) => setOwnerQuery(e.target.value)}
+                      />
+                      {ownerResults.length > 0 && (
+                        <ul className="ap-ownerpick__results" role="listbox" aria-label={t("admin.cn.memberResults")}>
+                          {ownerResults.map((m) => (
+                            <li key={m.id}>
+                              <button type="button" className="ap-ownerpick__result" onClick={() => { set("ownerId", m.id); setOwnerQuery(""); }}>
+                                <span className="ap-ownerpick__name">{m.name}</span>
+                                <span className="ap-ownerpick__phone">{m.phone}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                  {!selectedOwner && (
+                    <p className="ap-lockhint">
+                      {t("admin.cn.notRegistered")}{" "}
+                      <button type="button" className="ap-linkbtn" onClick={() => setAddOwnerOpen(true)}>
+                        {t("admin.cn.addMember")}
+                      </button>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -2030,7 +2129,7 @@ export function AddPropertyApp({
                   size="lg"
                   iconLeading="file-signature"
                   onClick={() => {
-                    const rec = formToProperty(f, f.agent ? revAgent : null, photos, "unpublished");
+                    const rec = formToProperty(f, f.agent ? revAgent : null, selectedOwner, photos, "unpublished");
                     addProperty(rec);
                     router.push(`/admin/contracts/new?type=${f.listing}&property=${encodeURIComponent(rec.id)}`);
                   }}
@@ -2055,7 +2154,7 @@ export function AddPropertyApp({
                     goTo(6);
                     return;
                   }
-                  const rec = formToProperty(f, f.agent ? revAgent : null, photos);
+                  const rec = formToProperty(f, f.agent ? revAgent : null, selectedOwner, photos);
                   addProperty(rec);
                   setPreview({
                     id: rec.id,
@@ -2084,6 +2183,24 @@ export function AddPropertyApp({
           </div>
         </section>
       )}
+
+      {/* The same modal the members page and the contract form open, so an owner
+          created here gets the same record — language, consent, ID and all —
+          and SELECTS on the way out. Whatever was typed into the search box
+          comes with them as the name; somebody who searched and found nothing
+          has already written the first field. */}
+      <AddMemberModal
+        open={addOwnerOpen}
+        onClose={() => setAddOwnerOpen(false)}
+        initial={{ name: ownerQuery.trim() }}
+        onSubmit={(v) => {
+          const created = newMemberRecord(v);
+          addMember(created);
+          setAddOwnerOpen(false);
+          set("ownerId", created.id);
+          setOwnerQuery("");
+        }}
+      />
     </div>
   );
 }

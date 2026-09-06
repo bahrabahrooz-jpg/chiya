@@ -217,6 +217,13 @@ export interface PropertyRecord {
 /** How a person is identified on paper. `null` = nothing captured yet. */
 export type IdKind = "civil" | "passport";
 
+/** The words a screen shows for what kind of owner somebody is. One place, so
+    a property page, the add-property review and a printed contract cannot
+    disagree about the same landlord. */
+export function ownerTypeOf(m?: Pick<MemberRecord, "company"> | null): string {
+  return m?.company ? "Company owner" : "Individual owner";
+}
+
 export interface MemberRecord {
   id: string;
   name: string;
@@ -240,11 +247,12 @@ export interface MemberRecord {
      every tenancy they are on follows.
 
      The one field that does NOT work that way is `idNumber`. A contract keeps
-     its own copy of the ID as signed (see the signer overrides and
-     `buyerExternal` in ../_data/contracts) because that copy is a record of
-     paper and must not move when somebody fixes a typo on a profile two years
-     later. THIS is the live master; THAT is the snapshot. They are allowed to
-     disagree, and when they do the contract is right about the past.
+     its own copy of the ID as signed (see the signer overrides in
+     ../_data/contracts, and `billTo.idNumber` frozen onto every invoice)
+     because that copy is a record of paper and must not move when somebody
+     fixes a typo on a profile two years later. THIS is the live master; THAT is
+     the snapshot. They are allowed to disagree, and when they do the contract
+     is right about the past.
      ----------------------------------------------------------------------- */
 
   /**
@@ -256,6 +264,20 @@ export interface MemberRecord {
    * says so on the row instead of leaving a message that looks sent.
    */
   whatsapp: boolean;
+
+  /**
+   * THIS PARTY IS A COMPANY, not a person.
+   *
+   * A fact about the PARTY, which is why it is here and not on a property. The
+   * same owner is a company on every listing they hold, and it used to be
+   * stored per-property (a `companyOwner` flag on the seed spec, hardcoded to
+   * "Individual owner" by the add-property wizard) — so three listings could
+   * disagree about one landlord, and a company added through the wizard could
+   * not be recorded as one at all.
+   *
+   * `ownerTypeOf` above is the one place that turns it into words on a screen.
+   */
+  company?: boolean;
 
   /**
    * The language THIS person is written to in. `null` follows the agency
@@ -578,12 +600,31 @@ interface MemberSpec {
   whatsapp?: boolean; // default true
   msgLang?: Lang; // default null = follow the agency's send language
   remindersOn?: boolean; // default true
+  /** A company rather than a person. On the MEMBER, because the same owner is a
+      company on every listing they hold — see `company` on MemberRecord. */
+  company?: boolean;
   idKind?: IdKind;
   idNumber?: string;
   city?: string;
   area?: string;
+  /**
+   * NO EMAIL ON FILE. Set for a member who genuinely has none — not a gap in
+   * the seed, a fact about the person.
+   *
+   * Every other member gets one derived from their name below, which is fine
+   * for a demo and wrong as the only case. Email stopped being required on the
+   * add-member form when the external-party escape hatch was removed (see
+   * canSubmit in _members/add-member-modal, and buyerId in _data/contracts):
+   * a tenant added off a phone call often has a number and nothing else. A
+   * roster where everybody has an address never exercises that.
+   */
+  noEmail?: boolean;
 }
 const MEMBER_SPECS: MemberSpec[] = [
+  /* Added off the phone call that agreed CT-0210, with a number and an ID and
+     no email — he was the seed's off-platform counterparty before every
+     counterparty became a member. */
+  { id: "M-5015", name: "Renas Faiq", daysAgo: 20, phone: "+964 750 902 4417", noEmail: true, idKind: "civil", idNumber: "00219884471", city: "Erbil", area: "Empire World" },
   // No ID on file, and that is the point: a prospective buyer who has been to
   // two viewings has produced nothing but a phone number, so every screen that
   // shows identity has to survive having none.
@@ -609,7 +650,10 @@ const MEMBER_SPECS: MemberSpec[] = [
   // payment, so the failure reads as one row and not as a red column.
   // He is also written to in Arabic, so the log shows a language that is not
   // the agency default even on a row that never leaves.
-  { id: "M-5007", name: "Awat Faraj", daysAgo: 610, phone: "", msgLang: "ar", idKind: "civil", idNumber: "00151882073", city: "Erbil", area: "Ankawa" },
+  /* THE COMPANY. Owns the Gulan office, the Gulan tower unit and the Nizarke
+     plot — one party, three listings, and the flag sits here once instead of
+     three times where they could disagree. */
+  { id: "M-5007", name: "Awat Faraj", daysAgo: 610, phone: "", msgLang: "ar", company: true, idKind: "civil", idNumber: "00151882073", city: "Erbil", area: "Ankawa" },
   { id: "M-5006", name: "Berivan Salar", daysAgo: 150, phone: "+964 750 491 8256", idKind: "civil", idNumber: "00295337120", city: "Duhok", area: "Malta" },
   { id: "M-5005", name: "Rebwar Tofiq", status: "Suspended", daysAgo: 330, phone: "+964 770 883 4471", idKind: "civil", idNumber: "00243718865", city: "Sulaymaniyah", area: "Sarchinar" },
   // THE PASSPORT. Every other record here is a civil ID; one is not, because a
@@ -627,7 +671,7 @@ export const MEMBERS: MemberRecord[] = MEMBER_SPECS.map((s) => ({
   name: s.name,
   roles: [], // derived from property links after PROPERTIES is built
   phone: s.phone,
-  email: s.name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@gmail.com",
+  email: s.noEmail ? "" : s.name.toLowerCase().replace(/[^a-z ]/g, "").trim().replace(/\s+/g, ".") + "@gmail.com",
   properties: 0, // filled in by withMemberCounts
   joined: dateFromDaysAgo(s.daysAgo),
   daysAgo: s.daysAgo,
@@ -635,6 +679,7 @@ export const MEMBERS: MemberRecord[] = MEMBER_SPECS.map((s) => ({
   status: s.status ?? "Active",
   img: null, // members never carry a photo — initials avatars everywhere
   whatsapp: s.whatsapp ?? true,
+  ...(s.company ? { company: true } : {}),
   msgLang: s.msgLang ?? null,
   remindersOn: s.remindersOn ?? true,
   idKind: s.idKind ?? null,
@@ -773,8 +818,7 @@ interface PropSpec {
   agent: string | null; // agent name — Published/Sold/Rented must have one
   owner: string; // member name — owning makes them a Seller (sale) / Landlord (rent)
   buyer?: string; // member name — required on Sold, makes them a Buyer
-  tenant?: string; // member name — optional on Rented (may be off-platform), makes them a Tenant
-  companyOwner?: boolean;
+  tenant?: string; // member name — optional on Rented, makes them a Tenant
   /* Whole units as a human would quote them — 850000, or 900000000 for a dinar
      listing — converted to minor units by buildProperty. Writing the seed in
      minor units would make every row unreadable and every edit a trap.
@@ -805,7 +849,7 @@ const PROP_SPECS: PropSpec[] = [
   { id: "CH-3199", title: "Dream City Garden Flat", area: "Dream City", unit: "DC-B4-0902", type: "Apartment", listing: "rent", status: "Published", agent: "Lana Aziz", owner: "Nma Rashid", price: 1400, beds: 2, baths: 2, size: 130, featured: true, daysAgo: 18, updatedDaysAgo: 5, img: 1, exclusive: true },
   { id: "CH-3198", title: "Naz City Sky Suite", area: "Naz City", unit: "NC-T2-1704", type: "Apartment", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Berivan Salar", price: 690000, beds: 3, baths: 3, size: 300, daysAgo: 60, updatedDaysAgo: 12 },
   { id: "CH-3197", title: "English Village Court", area: "English Village", type: "House", listing: "sale", status: "Published", agent: "Karwan Mahmoud", owner: "Chiman Rasul", price: 420000, beds: 4, baths: 3, size: 260, daysAgo: 90, updatedDaysAgo: 15, img: 1 },
-  { id: "CH-3196", title: "Gulan Business Suite", area: "Gulan", type: "Office", listing: "rent", status: "Published", agent: "Karwan Mahmoud", owner: "Awat Faraj", companyOwner: true, price: 2800, beds: 0, baths: 1, size: 210, daysAgo: 45, updatedDaysAgo: 8, mandateRate: 4 },
+  { id: "CH-3196", title: "Gulan Business Suite", area: "Gulan", type: "Office", listing: "rent", status: "Published", agent: "Karwan Mahmoud", owner: "Awat Faraj", price: 2800, beds: 0, baths: 1, size: 210, daysAgo: 45, updatedDaysAgo: 8, mandateRate: 4 },
   { id: "CH-3195", title: "Ankawa Olive Grove Land", area: "Ankawa", type: "Land", listing: "sale", status: "Published", agent: "Lana Aziz", owner: "Hersh Qadir", price: 320000, beds: 0, baths: 0, size: 1200, daysAgo: 120, updatedDaysAgo: 20 },
   { id: "CH-3194", title: "Cedar Court Apartments", area: "Salim Street", unit: "CC-A-0301", type: "Apartment", listing: "sale", status: "Published", agent: "Sara Hama", owner: "Shilan Aziz", price: 210000, beds: 3, baths: 2, size: 150, featured: true, daysAgo: 25, updatedDaysAgo: 18, img: 2, exclusive: true },
   { id: "CH-3193", title: "Sarchnar Hillside Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Published", agent: "Sara Hama", owner: "Kani Omar", price: 2200, beds: 4, baths: 3, size: 380, daysAgo: 30, updatedDaysAgo: 6, img: 2 },
@@ -814,18 +858,20 @@ const PROP_SPECS: PropSpec[] = [
   /* -------- Pending (3: sale+agent, rent+no agent, land sale) -------- */
   { id: "CH-3190", title: "Italian Village Rose Flat", area: "Italian Village", type: "Apartment", listing: "sale", status: "Pending", agent: "Lana Aziz", owner: "Berivan Salar", price: 260000, beds: 2, baths: 2, size: 140, daysAgo: 3, updatedDaysAgo: 3 },
   { id: "CH-3189", title: "Raparin Terrace House", area: "Raparin", type: "House", listing: "rent", status: "Pending", agent: null, owner: "Nma Rashid", price: 1100, beds: 3, baths: 2, size: 220, daysAgo: 2, updatedDaysAgo: 2, img: 2 },
-  { id: "CH-3188", title: "Nizarke Vineyard Plot", area: "Nizarke", type: "Land", listing: "sale", status: "Pending", agent: "Rawa Jamal", owner: "Awat Faraj", companyOwner: true, price: 180000, beds: 0, baths: 0, size: 800, daysAgo: 7, updatedDaysAgo: 7, img: 1 },
+  { id: "CH-3188", title: "Nizarke Vineyard Plot", area: "Nizarke", type: "Land", listing: "sale", status: "Pending", agent: "Rawa Jamal", owner: "Awat Faraj", price: 180000, beds: 0, baths: 0, size: 800, daysAgo: 7, updatedDaysAgo: 7, img: 1 },
   /* -------- Sold (4, sale only) — updated: today / week / month / year --------
      Every Sold record links its buyer; buyers must have joined before the sale
      closed (buyer joined-daysAgo ≥ updatedDaysAgo, validated in buildProperty). */
   { id: "CH-3187", title: "Olive Grove Estate", area: "Italian Village", unit: "IV-24", type: "Villa", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Shilan Aziz", buyer: "Berivan Salar", price: 720000, beds: 5, baths: 4, size: 520, daysAgo: 200, updatedDaysAgo: 0, exclusive: true },
   { id: "CH-3186", title: "Bakhtiari Pearl Flat", area: "Bakhtiari", type: "Apartment", listing: "sale", status: "Sold", agent: "Sara Hama", owner: "Chiman Rasul", buyer: "Avan Mustafa", price: 195000, beds: 2, baths: 1, size: 120, daysAgo: 160, updatedDaysAgo: 4, mandateRate: 3 },
-  { id: "CH-3185", title: "Gulan Tower Office", area: "Gulan", type: "Office", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Awat Faraj", buyer: "Zana Ibrahim", companyOwner: true, price: 540000, beds: 0, baths: 2, size: 320, daysAgo: 240, updatedDaysAgo: 18, img: 1, exclusive: true },
+  { id: "CH-3185", title: "Gulan Tower Office", area: "Gulan", type: "Office", listing: "sale", status: "Sold", agent: "Lana Aziz", owner: "Awat Faraj", buyer: "Zana Ibrahim", price: 540000, beds: 0, baths: 2, size: 320, daysAgo: 240, updatedDaysAgo: 18, img: 1, exclusive: true },
   { id: "CH-3184", title: "Malta Summit Grounds", area: "Malta", type: "Land", listing: "sale", status: "Sold", agent: "Rawa Jamal", owner: "Zana Ibrahim", buyer: "Rebwar Tofiq", price: 260000, beds: 0, baths: 0, size: 1600, daysAgo: 400, updatedDaysAgo: 140 },
   /* -------- Rented (5, rent only) — updated: today / week / month / year --------
-     Tenants link like buyers but are optional: CH-3183 is deliberately rented to
-     an off-platform tenant so the "looker with viewings but no tenancy" members
-     (Dara, Sara) stay prospective.
+     Tenants link like buyers. CH-3183's tenant, Renas Faiq, used to be the one
+     OFF-PLATFORM counterparty here — a name typed onto CT-0210 and recorded
+     nowhere else. Every counterparty is a member now, so he is M-5015 and the
+     link is real; what makes him the interesting one is that he has no email.
+     Dara and Sara stay prospective (viewings, no tenancy) on their own.
 
      CH-3176 is the fifth and the odd one: its tenancy EXPIRED two months ago and
      nobody closed it, so the property is still marked rented and cannot be
@@ -833,7 +879,7 @@ const PROP_SPECS: PropSpec[] = [
      there to show. See CT-0213. Its id sits out of the descending run because
      the rented range (3183–3180) was already full; a new scenario needed a new
      record rather than the repurposing of a curated one. */
-  { id: "CH-3183", title: "Empire World Loft", area: "Empire World", type: "Apartment", listing: "rent", status: "Rented", agent: "Lana Aziz", owner: "Nma Rashid", price: 1600, beds: 2, baths: 2, size: 125, daysAgo: 80, updatedDaysAgo: 0 },
+  { id: "CH-3183", title: "Empire World Loft", area: "Empire World", type: "Apartment", listing: "rent", status: "Rented", agent: "Lana Aziz", owner: "Nma Rashid", tenant: "Renas Faiq", price: 1600, beds: 2, baths: 2, size: 125, daysAgo: 80, updatedDaysAgo: 0 },
   { id: "CH-3182", title: "Sarchnar Cypress Villa", area: "Sarchnar", type: "Villa", listing: "rent", status: "Rented", agent: "Sara Hama", owner: "Kani Omar", tenant: "Aland Tariq", price: 2600, beds: 4, baths: 4, size: 420, daysAgo: 110, updatedDaysAgo: 5, img: 1 },
   { id: "CH-3181", title: "Ankawa Tower Suite", area: "Ankawa", type: "Apartment", listing: "rent", status: "Rented", agent: "Karwan Mahmoud", owner: "Awat Faraj", tenant: "Kani Omar", price: 3400, beds: 3, baths: 3, size: 280, daysAgo: 140, updatedDaysAgo: 25, img: 1, mandateRate: 4 },
   { id: "CH-3180", title: "Nizarke Sunset Terrace", area: "Nizarke", type: "House", listing: "rent", status: "Rented", agent: "Rawa Jamal", owner: "Tara Botan", tenant: "Zana Ibrahim", price: 850, beds: 3, baths: 2, size: 230, daysAgo: 380, updatedDaysAgo: 258 },
@@ -932,7 +978,7 @@ function buildProperty(s: PropSpec): PropertyRecord {
     city: place.city,
     type: s.type,
     img: PROP_IMG[s.type][(s.img ?? 0) % PROP_IMG[s.type].length],
-    owner: { name: owner.name, phone: owner.phone, type: s.companyOwner ? "Company owner" : "Individual owner" },
+    owner: { name: owner.name, phone: owner.phone, type: ownerTypeOf(owner) },
     ownerId: owner.id,
     agent,
     buyer: s.buyer,
@@ -968,12 +1014,24 @@ export const PROPERTIES: PropertyRecord[] = PROP_SPECS.map(buildProperty);
    `base` preserves roles set explicitly through the UI (e.g. Add member).
    ------------------------------------------------------------------------- */
 const ROLE_ORDER = ["Buyer", "Seller", "Landlord", "Tenant"];
-export function deriveMemberRoles(name: string, list: PropertyRecord[], base: string[] = []): string[] {
+/**
+ * ⚠ MATCHED ON IDS, NEVER ON NAMES.
+ *
+ * Every one of these three used to compare a member's NAME against a name
+ * stored on the property. Two people called the same thing were one person, and
+ * renaming somebody silently detached them from everything they owned. The ids
+ * have been on the record all along; nothing was reading them.
+ *
+ * The name parameter is kept only as the fallback for records that predate
+ * `ownerId` — see ownerId on PropertyRecord.
+ */
+export function deriveMemberRoles(id: string, name: string, list: PropertyRecord[], base: string[] = []): string[] {
   const roles = new Set(base);
+  const is = (recordId: string | undefined, recordName: string | undefined) => (recordId ? recordId === id : recordName === name);
   for (const p of list) {
-    if (p.owner.name === name) roles.add(p.listing === "rent" ? "Landlord" : "Seller");
-    if (p.buyer === name) roles.add("Buyer");
-    if (p.tenant === name) roles.add("Tenant");
+    if (is(p.ownerId, p.owner.name)) roles.add(p.listing === "rent" ? "Landlord" : "Seller");
+    if (is(p.buyerId, p.buyer)) roles.add("Buyer");
+    if (is(p.tenantId, p.tenant)) roles.add("Tenant");
   }
   return ROLE_ORDER.filter((r) => roles.has(r));
 }
@@ -981,7 +1039,7 @@ export function deriveMemberRoles(name: string, list: PropertyRecord[], base: st
    withMemberRoles so they always track the current property list. Consumers
    needing roles for the raw seed call deriveMemberRoles(name, PROPERTIES). */
 export function withMemberRoles(members: MemberRecord[], list: PropertyRecord[]): MemberRecord[] {
-  return members.map((m) => ({ ...m, roles: deriveMemberRoles(m.name, list, m.roles) }));
+  return members.map((m) => ({ ...m, roles: deriveMemberRoles(m.id, m.name, list, m.roles) }));
 }
 
 /* The verified agent holding the most assigned listings. The agent surface signs
@@ -1079,16 +1137,18 @@ export function countSoldRentedInPeriod(list: PropertyRecord[], period: CountPer
 /** Overlay each member's related-property count (owned + bought + renting)
     from the live property list — the members page shows "{n} related". */
 export function withMemberCounts(members: MemberRecord[], list: PropertyRecord[]): MemberRecord[] {
+  /* Keyed by member id. Keyed by NAME, two landlords called the same thing
+     shared one count and both cards showed the sum. */
   const related: Record<string, number> = {};
-  const add = (name: string | undefined) => {
-    if (name) related[name] = (related[name] || 0) + 1;
+  const add = (id: string | undefined) => {
+    if (id) related[id] = (related[id] || 0) + 1;
   };
   for (const p of list) {
-    add(p.owner.name);
-    add(p.buyer);
-    add(p.tenant);
+    add(p.ownerId);
+    add(p.buyerId);
+    add(p.tenantId);
   }
-  return members.map((m) => ({ ...m, properties: related[m.name] || 0 }));
+  return members.map((m) => ({ ...m, properties: related[m.id] || 0 }));
 }
 export interface MemberCounts {
   total: number;
@@ -1122,9 +1182,11 @@ export function withAgentStats(agents: AgentRecord[], list: PropertyRecord[]): A
     if (p.availability === "sold") s.sold++;
     else if (p.availability === "rented") s.rented++;
     else if (p.publication === "published" || p.publication === "pending") s.listings++;
-    s.clients.add(p.owner.name);
-    if (p.buyer) s.clients.add(p.buyer);
-    if (p.tenant) s.clients.add(p.tenant);
+    /* Ids, so "how many clients" counts PEOPLE. Two namesakes used to be one
+       client and an agent's number came out low. */
+    if (p.ownerId) s.clients.add(p.ownerId);
+    if (p.buyerId) s.clients.add(p.buyerId);
+    if (p.tenantId) s.clients.add(p.tenantId);
   }
   return agents.map((a) => {
     const s = stats[a.name];

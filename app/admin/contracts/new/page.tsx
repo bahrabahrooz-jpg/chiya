@@ -5,6 +5,10 @@ import { ContractFormApp } from "../../_contract-form/contract-form-app";
    workflows are the same product rather than two designs that resemble each
    other. Same pattern as the contract detail page importing pd.css. */
 import "../../properties/new/ap.css";
+/* The contract document's own stylesheet. The form shows the real sheet as a
+   live preview, so it needs the sheet's styles — the print route's screen
+   furniture and its @media print block are scoped to .cd-page and stay there. */
+import "../[id]/print/cd.css";
 import "./cn.css";
 
 /**

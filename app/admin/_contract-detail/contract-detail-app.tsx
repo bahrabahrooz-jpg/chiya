@@ -408,10 +408,10 @@ function CancelledBanner({ c }: { c: ContractRecord }) {
  * One of the two customers, resolved off the member record behind them.
  *
  * The last three fields are optional and that is load-bearing: undefined means
- * "nobody has told us", which is a different thing from `false`. A tenant typed
- * onto the contract as an ExternalParty has no record to hold a preference, and
- * every reader has to treat that silence as the ordinary case rather than as a
- * person who refused.
+ * "nobody has told us", which is a different thing from `false`. A member who
+ * has never been asked their language holds no preference, and every reader has
+ * to treat that silence as the ordinary case rather than as a person who
+ * refused.
  */
 interface PartyContact {
   name: string;
@@ -443,21 +443,11 @@ interface ContactParty {
    */
   img?: string | null;
   phone: string;
-  /** Members and agents both carry one; a party typed onto the contract as an
-      ExternalParty has no account and therefore no address. */
+  /** Optional on both: email stopped being required when it stopped being the
+      thing that made adding a member slower than typing a name. */
   email?: string;
   /** Set when they hold a member account, so the name links to their profile. */
   memberId?: string;
-  /**
-   * Mark a named party who holds NO member account.
-   *
-   * Only meaningful on a customer: a tenant typed straight onto the contract as
-   * an ExternalParty exists nowhere else in the system, and the difference
-   * between "this name is not a link" and "this person has no account" is a
-   * thing the office needs told rather than left to infer from a missing
-   * underline. Never set on the agent, who is staff and never a member.
-   */
-  external?: boolean;
   /** Staff, not a customer — quieter row, and the icon opens WhatsApp direct
       rather than the template composer, which is written about customers. */
   staff?: boolean;
@@ -527,7 +517,6 @@ function PartyLine({ party, basePath, onSend }: { party: ContactParty; basePath:
           <Badge variant={party.tone} size="sm">
             {party.role}
           </Badge>
-          {party.external && party.name && <span className="ctd-pty__ext">{t("admin.pd.externalParty")}</span>}
           {party.msgLang && (
             <span className="ctd-pty__lang" title={t("admin.members.msgLangSet", { lang: t(`lang.${party.msgLang}`) })}>
               <Icon name="languages" size={12} />
@@ -779,7 +768,6 @@ function Contacts({
       email: tenant.email,
       memberId: tenant.memberId,
       msgLang: tenant.msgLang,
-      external: !tenant.memberId,
       note: lease ? noteFor("tenant", tenant) : undefined,
     });
   }
@@ -3175,26 +3163,26 @@ export function ContractDetailApp({ id, agentSurface }: { id: string; agentSurfa
   const propertyTitle = property?.title ?? contract.propertyId;
   const ownerName = members.find((m) => m.id === contract.ownerId)?.name ?? contract.ownerId;
   const linked = contract.buyerId ? members.find((m) => m.id === contract.buyerId)?.name : undefined;
-  const counterparty = linked ?? contract.buyerExternal?.name ?? null;
+  const counterparty = linked ?? null;
   const agentName = agents.find((a) => a.id === contract.agentId)?.name ?? contract.agentId;
 
   /* The same three people the Terms card names, resolved down to a NUMBER.
-     A tenant with no member account still has one — it was typed onto the
-     contract as an ExternalParty — and a party with no number at all is a real
-     state the contact card has to show rather than hide. */
+     All three are records now — a counterparty is a member like the owner — so
+     the only party with no number is one on a draft nobody has been found for
+     yet, which the contact card shows rather than hides. */
   const ownerMember = members.find((m) => m.id === contract.ownerId);
   const tenantMember = contract.buyerId ? members.find((m) => m.id === contract.buyerId) : undefined;
   const agentRecord = agents.find((a) => a.id === contract.agentId);
   /* Email comes off the member and agent records, which have carried one all
      along — this screen simply never showed it, so writing to a landlord meant
-     opening his profile in another tab. A party typed onto the contract as an
-     ExternalParty has no account and therefore no address: undefined, and the
-     row omits the line rather than printing an empty one. */
-  /* HOW WE WRITE TO THEM comes off the member record and nowhere else: the
+     opening his profile in another tab. It is OPTIONAL on a member, so the row
+     omits the line rather than printing an empty one.
+
+     HOW WE WRITE TO THEM comes off the member record and nowhere else: the
      language they chose, whether their number is on WhatsApp, and whether they
-     asked to be left alone. A party typed straight onto the contract has told
-     us none of that, so the fields stay undefined and every reader treats the
-     absence as the ordinary case — see `reachBlock` in _shared/messaging. */
+     asked to be left alone. Somebody nobody has asked has told us none of that,
+     so the fields stay undefined and every reader treats the absence as the
+     ordinary case — see `reachBlock` in _shared/messaging. */
   const landlordParty = {
     name: ownerName,
     phone: ownerMember?.phone ?? "",
@@ -3207,7 +3195,7 @@ export function ContractDetailApp({ id, agentSurface }: { id: string; agentSurfa
   const tenantParty = counterparty
     ? {
         name: counterparty,
-        phone: tenantMember?.phone ?? contract.buyerExternal?.phone ?? "",
+        phone: tenantMember?.phone ?? "",
         email: tenantMember?.email,
         memberId: tenantMember?.id,
         msgLang: tenantMember?.msgLang ?? null,

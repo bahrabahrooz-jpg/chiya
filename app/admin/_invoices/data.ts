@@ -269,7 +269,7 @@ export function toListRows(
            reprint shows what it showed on the day, while these two are context
            for the demand and should follow a member who was renamed since. */
         ownerName: (contract && memberName(contract.ownerId)) || contract?.ownerId || "",
-        counterpartyName: contract ? (memberName(contract.buyerId) ?? contract.buyerExternal?.name ?? null) : null,
+        counterpartyName: contract ? (memberName(contract.buyerId) ?? null) : null,
       };
     })
     .sort((a, b) => {

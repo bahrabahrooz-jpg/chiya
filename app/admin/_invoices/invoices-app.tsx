@@ -321,7 +321,7 @@ export function InvoicesApp() {
      resolution the contract page does, so the name on the charge form is the
      name on the contract. */
   const counterpartyName = useMemo(
-    () => (c: ContractRecord) => memberName(c.buyerId) ?? c.buyerExternal?.name ?? null,
+    () => (c: ContractRecord) => memberName(c.buyerId) ?? null,
     [memberName],
   );
 

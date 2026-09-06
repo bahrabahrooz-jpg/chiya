@@ -500,7 +500,7 @@ export function reportDeposits(c: ReportCtx): ReportTable {
       id: k.id,
       cells: [
         { text: c.propertyTitle(k.id), sub: k.id, href: `/admin/contracts/${encodeURIComponent(k.id)}` },
-        { text: k.buyerId ? c.memberName(k.buyerId) : (k.buyerExternal?.name ?? "—") },
+        { text: (k.buyerId ? c.memberName(k.buyerId) : null) ?? "—" },
         { text: c.money(k.insuranceDeposit!), tone: "strong" as const },
         { text: c.label("dep." + (k.depositStatus ?? "held")), tone: k.depositStatus === "held" ? ("warn" as const) : undefined },
         { text: k.depositDeduction ? c.money(k.depositDeduction) : "—", sub: k.depositDeductionReason },

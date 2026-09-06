@@ -94,9 +94,14 @@ function parseJoined(s: string): { short: string; full: string } {
 /** The relationship agent for a member, by strength of the relationship: the
     agent on one of their listings, else the agent who closed their purchase /
     tenancy, else the agent who hosted a viewing for them; null when none. */
-export function memberAgentFor(properties: PropertyRecord[], name: string): MemberAgent | null {
-  const owned = properties.find((p) => p.owner.name === name && p.agent);
-  const dealt = properties.find((p) => (p.buyer === name || p.tenant === name) && p.agent);
+/* `id` decides who this is; `name` is only the fallback for records written
+   before the links existed, and the viewing lookup below, which still keys on
+   names. Matching on name alone made two namesakes one person. */
+export function memberAgentFor(properties: PropertyRecord[], id: string, name: string): MemberAgent | null {
+  const isOwner = (p: PropertyRecord) => (p.ownerId ? p.ownerId === id : p.owner.name === name);
+  const isParty = (p: PropertyRecord) => (p.buyerId ?? p.tenantId ? p.buyerId === id || p.tenantId === id : p.buyer === name || p.tenant === name);
+  const owned = properties.find((p) => isOwner(p) && p.agent);
+  const dealt = properties.find((p) => isParty(p) && p.agent);
   const agentName = owned?.agent?.name ?? dealt?.agent?.name ?? ALL_VIEWINGS.find((v) => v.member === name)?.agent;
   if (!agentName) return null;
   const roster = getAgentByName(agentName);
@@ -128,14 +133,14 @@ export function toDetailMember(m: CatalogMember, properties: PropertyRecord[]): 
     city: m.city,
     area: m.area,
     img: m.img ?? "",
-    agent: memberAgentFor(properties, m.name),
+    agent: memberAgentFor(properties, m.id, m.name),
   };
 }
 
 /** Every property connected to this member: listings they own (seller /
     landlord side) plus properties they bought or rent (counterparty side).
     Bought / renting rows date from when the deal closed (p.updated). */
-export function buildPortfolio(properties: PropertyRecord[], name: string): PortfolioRow[] {
+export function buildPortfolio(properties: PropertyRecord[], id: string, name: string): PortfolioRow[] {
   const row = (p: PropertyRecord, rel: string, date: string): PortfolioRow => ({
     id: p.id,
     title: p.title,
@@ -152,9 +157,10 @@ export function buildPortfolio(properties: PropertyRecord[], name: string): Port
   });
   const rows: PortfolioRow[] = [];
   for (const p of properties) {
-    if (p.owner.name === name) rows.push(row(p, p.listing === "rent" ? "Landlord" : "Seller", p.date));
-    if (p.buyer === name) rows.push(row(p, "Buyer", p.updated));
-    if (p.tenant === name) rows.push(row(p, "Tenant", p.updated));
+    /* Ids, with the name as the pre-link fallback — see memberAgentFor. */
+    if (p.ownerId ? p.ownerId === id : p.owner.name === name) rows.push(row(p, p.listing === "rent" ? "Landlord" : "Seller", p.date));
+    if (p.buyerId ? p.buyerId === id : p.buyer === name) rows.push(row(p, "Buyer", p.updated));
+    if (p.tenantId ? p.tenantId === id : p.tenant === name) rows.push(row(p, "Tenant", p.updated));
   }
   return rows;
 }
@@ -186,7 +192,7 @@ export function buildMemberTimeline(properties: PropertyRecord[], member: Catalo
   const events: Ev[] = [];
   for (const p of properties) {
     const updatedAgo = daysAgoFrom(p.updated);
-    if (p.owner.name === member.name) {
+    if (p.ownerId ? p.ownerId === member.id : p.owner.name === member.name) {
       events.push({ item: { icon: "building-2", tone: "brand", titleKey: "admin.mp.tl.listed", descKey: p.listing === "rent" ? "admin.mp.tl.listedRentDesc" : "admin.mp.tl.listedSaleDesc", params: { title: p.title }, price: p.price, per: p.per, time: p.date }, ago: p.daysAgo });
       if (p.status === "Sold" && updatedAgo != null) {
         events.push({ item: { icon: "key", tone: "error", titleKey: "admin.mp.tl.sold", descKey: "admin.mp.tl.soldDesc", params: { title: p.title }, price: p.price, time: p.updated }, ago: updatedAgo });
@@ -213,7 +219,7 @@ export function buildMemberTimeline(properties: PropertyRecord[], member: Catalo
   }
   events.sort((a, b) => a.ago - b.ago);
   const items = events.slice(0, 7).map((e) => e.item);
-  const agent = memberAgentFor(properties, member.name);
+  const agent = memberAgentFor(properties, member.id, member.name);
   if (agent) items.push({ icon: "user-check", tone: "brand", titleKey: "admin.mp.tl.agent", descKey: "admin.mp.tl.agentDesc", params: { name: agent.name }, time: member.joined });
   items.push({ icon: "user-plus", tone: "neutral", titleKey: "admin.mp.tl.created", descKey: "admin.mp.tl.createdDesc", time: member.joined });
   return items;

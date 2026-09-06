@@ -493,6 +493,9 @@
     font-variant-numeric: tabular-nums;
   }
   .adh__detail__value > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A contact detail the member simply does not have — email is optional now.
+     Lighter and unbolded so it reads as an absence rather than a value. */
+  .adh__detail__value--none { font-weight: 500; color: var(--text-tertiary); }
   .adh__copy {
     flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
     border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer;

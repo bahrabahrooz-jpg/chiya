@@ -216,7 +216,7 @@ export function getViewingDetail(id: string): ViewingDetail {
       name: real.member,
       // Roles are derived from property links; a link-less member is a
       // prospective looker and shows as plain "Member".
-      role: (catMember ? deriveMemberRoles(catMember.name, CAT_PROPS)[0] : undefined) ?? "Member",
+      role: (catMember ? deriveMemberRoles(catMember.id, catMember.name, CAT_PROPS)[0] : undefined) ?? "Member",
       phone: catMember?.phone ?? VIEWING.member.phone,
       email: catMember?.email ?? VIEWING.member.email,
     },

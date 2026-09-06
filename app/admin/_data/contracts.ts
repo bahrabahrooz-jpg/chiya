@@ -102,16 +102,6 @@ export interface ManagementFee {
   value: number;
 }
 
-/** A counterparty with no member account — most buyers and tenants never
-    register, and requiring an account first would push the agency back to
-    recording the transaction on paper. */
-export interface ExternalParty {
-  name: string;
-  phone: string;
-  /** Civil ID / passport number, when the paperwork captured one. */
-  idNumber?: string;
-}
-
 /* ----------------------------------------------------------------------------
    Templates — which DOCUMENT is being written
 
@@ -329,10 +319,27 @@ export interface ContractRecord {
   propertyId: string;
   /** The seller (sale) or landlord (rent) — always the property's owner. */
   ownerId: string;
-  /** The buyer or tenant, when they hold a member account. */
+  /**
+   * The buyer or tenant. A MEMBER, ALWAYS — like `ownerId` above.
+   *
+   * There used to be a second way to name this person: `buyerExternal`, a name
+   * and a phone number typed straight onto the contract for anyone without an
+   * account. It is gone, and so is the escape hatch on the form that produced
+   * it. The argument for it was speed at the desk — but a member record here is
+   * a CONTACT CARD, not a login, and the only thing actually making it slower
+   * to create was the add-member form demanding an email address. That is now
+   * optional, so both paths cost a name and a number, and there is no reason
+   * for two.
+   *
+   * What the second way cost: a tenant written as a string could not be sent a
+   * rent reminder, could not mute one, had no profile, no history, and never
+   * appeared in Members. Half of every contract was a person and the other half
+   * might be text. Now both sides are people.
+   *
+   * Optional only because a DRAFT is written before the other side is found —
+   * see `isEditable`. A signed contract always names one.
+   */
   buyerId?: string;
-  /** The buyer or tenant when they do not. Never set alongside `buyerId`. */
-  buyerExternal?: ExternalParty;
   /** Who signed for the owner, when it was not the owner. See SignerOverride. */
   signerOverride?: SignerOverride;
   /**
@@ -1005,10 +1012,10 @@ export interface BillTo {
   /**
    * Civil ID / passport number, when the paperwork captured one.
    *
-   * The only identifying detail an off-platform counterparty leaves anywhere in
-   * the system is their ExternalParty block on the contract, and a contract can
-   * be superseded. Freezing the number onto the document means a receipt still
-   * says who paid after the contract it came from has been replaced.
+   * Frozen onto the document like the rest of this block. The member it was
+   * copied from can be renamed, re-identified or merged, and a contract can be
+   * superseded — a receipt has to keep saying who paid on the day it was
+   * issued, not who that person is now. See the snapshot rule in the header.
    */
   idNumber?: string;
 }
@@ -1492,7 +1499,8 @@ export function nextContractNumber(kind: ContractKind, year: number, contracts: 
      CT-0207  the tenancy CT-0206 renewed, run to completion
      CT-0208  completed sale held on EXTERNAL PAPERWORK — commission overdue
      CT-0209  completed sale in dinars, commission split into two instalments
-     CT-0210  tenancy to an OFF-PLATFORM tenant (buyerExternal, no member id)
+     CT-0210  tenancy whose tenant has NO EMAIL on file (M-5015) — the case the
+              add-member form dropped its email requirement for
      CT-0211  completed sale, settled long ago
      CT-0212  DRAFT tenancy, agency-collected, with a management fee
      CT-0213  EXPIRED tenancy — the term ran out and NOBODY DID ANYTHING. Not
@@ -1805,15 +1813,19 @@ export const CONTRACTS: ContractRecord[] = [
     notes: "Commission split into two equal instalments at the seller's request.",
   },
   {
-    /* The tenant never registered, so `buyerId` is absent and `buyerExternal`
-       is the only record of who they are anywhere in the system. */
+    /* THE TENANT WITH NO EMAIL. He was the off-platform counterparty for a
+       while — a name and a number typed onto this contract and recorded nowhere
+       else — which meant no reminder could reach him and no screen but this one
+       knew he existed. He is a member now like everybody else (M-5015), added
+       off the phone call that agreed the lease, and he still has no email:
+       that is what the add-member form dropping its email requirement is for. */
     id: "CT-0210",
     template: "lease",
     kind: "rent",
     status: "signed",
     propertyId: "CH-3183",
     ownerId: "M-5011",
-    buyerExternal: { name: "Renas Faiq", phone: "+964 750 902 4417", idNumber: "00219884471" },
+    buyerId: "M-5015",
     agentId: "A-2107",
     ...fees(usd(1_600), 100, { basis: "half_month" }),
     /* The other way a late charge can be expressed — a percentage of the rent
@@ -2479,9 +2491,10 @@ export const LEDGER: OwnerLedgerEntry[] = [
       throw new Error(`contracts: ${c.id} is priced in ${c.price.currency} on a ${property.price.currency} listing`);
     }
 
-    /* A counterparty is either a member or an external block, never both — two
-       records of who the same person is will disagree eventually. */
-    if (c.buyerId && c.buyerExternal) throw new Error(`contracts: ${c.id} has both a linked and an external counterparty`);
+    /* Every counterparty is a member — the external-party block is gone, so a
+       signed contract names a real person on both sides. A draft may not have
+       found the other side yet; anything past draft has. */
+    if (c.status !== "draft" && !c.buyerId) throw new Error(`contracts: ${c.id} is ${c.status} but names no buyer or tenant`);
 
     /* Dates. The three are independent facts, and each state needs its own. */
     if (c.status === "draft" && c.signedOn) throw new Error(`contracts: draft ${c.id} carries a signedOn — a draft is by definition unsigned`);
@@ -2799,7 +2812,6 @@ export const LEDGER: OwnerLedgerEntry[] = [
      listing comes back. */
   if (!CONTRACTS.some((c) => c.replacesContractId)) throw new Error("contracts: seed no longer contains a renewal chain");
   if (!CONTRACTS.some((c) => c.externalPaperwork)) throw new Error("contracts: seed no longer contains an externally-papered contract");
-  if (!CONTRACTS.some((c) => c.buyerExternal)) throw new Error("contracts: seed no longer contains an off-platform counterparty");
   if (!CONTRACTS.some((c) => c.rentPaidTo === "agency" && c.managementFee)) throw new Error("contracts: seed no longer contains an agency-collected tenancy");
   /* The pass-through case has to stay reachable, or the one rule that keeps the
      rent roll out of revenue ships with nothing exercising it. */

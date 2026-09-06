@@ -2580,6 +2580,7 @@ export const en = {
   "admin.mp.basicDesc": "Identity, contact details, and preferences for this member.",
   "admin.mp.phoneNumber": "Phone number",
   "admin.mp.emailAddress": "Email address",
+  "admin.mp.noEmail": "None on file",
   "admin.mp.memberTypes": "Member types",
   "admin.mp.copyPhone": "Copy phone number",
   "admin.mp.copyEmail": "Copy email address",
@@ -2758,7 +2759,8 @@ export const en = {
   "admin.ap.f.lat": "Latitude",
   "admin.ap.f.lng": "Longitude",
   "admin.ap.f.tourUrl": "Virtual tour URL",
-  "admin.ap.f.ownerName": "Owner full name",
+  "admin.ap.f.ownerName": "Owner",
+  "admin.ap.changeOwner": "Change owner",
   "admin.ap.f.ownerPhone": "Owner phone",
   "admin.ap.f.ownerEmail": "Owner email",
   "admin.ap.selectPh": "Select…",
@@ -3074,7 +3076,6 @@ export const en = {
 
   // ---- property detail: deals, mandate, recording a deal ----
   "admin.pd.availabilityDerived": "Set by the contracts on this property — not editable here.",
-  "admin.pd.externalParty": "External party",
   "admin.pd.noCounterparty": "No buyer yet",
   // Its tenancy twin. Now that the row states the role beside the name,
   // "No buyer yet" under a Tenant label reads as the wrong kind of contract.
@@ -3323,6 +3324,9 @@ export const en = {
   "admin.cd.title.sale_full": "Sale agreement",
   "admin.cd.title.sale_installments": "Sale agreement — paid in instalments",
   "admin.cd.madeAt": "Made at {city} on {date}",
+  /* THE SAME LINE WITHOUT A PLACE. The form shows this sheet before a property
+     has been chosen, and "Made at on 30/06/2026" is not a sentence. */
+  "admin.cd.madeOn": "Made on {date}",
   "admin.cd.s.parties": "The parties",
   "admin.cd.s.property": "The property",
   "admin.cd.s.rent": "Rent and term",
@@ -3694,7 +3698,6 @@ export const en = {
   "admin.fin.nc.noOwner": "This property has no owner on record. A contract needs one before it can be written.",
   "admin.fin.nc.agentHint": "This property has no agent assigned, so name the one who wrote the contract.",
   "admin.fin.nc.chooseAgent": "Choose an agent",
-  "admin.fin.nc.partyMode": "How to record the counterparty",
   "admin.fin.nc.findMember": "Find member",
   "admin.fin.nc.newPerson": "New person",
   "admin.fin.nc.searchMembers": "Search by name or phone…",
@@ -3983,6 +3986,15 @@ export const en = {
   "admin.cn.partiesDesc": "Pick the property, then say who is on each side of the agreement.",
   "admin.cn.moneyDescSale": "The price, the dates, what we earn, the charges if either side breaks it, and how it is signed.",
   "admin.cn.moneyDescLease": "The rent, the dates, what we earn, the charges if either side breaks it, and how it is signed.",
+
+  /* THE LIVE PAPER beside the form — the contract itself, filling in as the
+     questions are answered. Not a summary of the answers: the same sheet the
+     print page renders. See app/admin/_contract-doc/contract-sheet.tsx. */
+  "admin.cn.paper.title": "The contract",
+  "admin.cn.paper.hint": "This is the page you will print. It fills in as you answer.",
+  "admin.cn.paper.open": "See the contract",
+  "admin.cn.paper.close": "Close the contract",
+  "admin.cn.paper.aria": "Live preview of the contract",
   "admin.cn.signingDesc": "When it is signed, where, and who arranged it.",
   "admin.cn.reviewDesc": "The whole contract, and what signing it will do. Nothing has been saved yet.",
   "admin.cn.saveAndSign": "Save and sign",
@@ -4031,10 +4043,8 @@ export const en = {
   "admin.cn.memberResults": "Matching members",
   "admin.cn.noProperties": "Nothing matches. Check the id, or add the property first.",
   "admin.cn.notRegistered": "Not one of our members?",
-  "admin.cn.enterDetails": "Type their details instead",
   "admin.cn.addMember": "Add them as a member",
   "admin.cn.memberAdded": "Member added and selected",
-  "admin.cn.searchInstead": "Search our members instead",
   "admin.cn.notListed": "Property not listed yet?",
   "admin.cn.addProperty": "Add it first",
   "admin.cn.f.seller": "Seller",
@@ -4060,8 +4070,6 @@ export const en = {
   "admin.cn.h.findMember": "Type a name or phone number. The owner of this property is never offered.",
   "admin.cn.f.partyName": "Full name",
   "admin.cn.h.partyName": "As it should print on the contract. A company name is fine.",
-  "admin.cn.f.partyPhone": "Phone number",
-  "admin.cn.f.partyId": "ID number",
   "admin.cn.h.partyId": "Civil ID or passport. It also prints on every receipt.",
   "admin.cn.h.agent": "This property has no agent assigned, so the contract needs one named on it.",
   "admin.cn.ph.name": "Full name",
@@ -4172,7 +4180,6 @@ export const en = {
   "admin.cn.missing.property": "Pick the property this contract is written on",
   "admin.cn.missing.owner": "This property has no registered owner, so there is nobody to sign for it",
   "admin.cn.missing.counterparty": "Choose the member on the other side",
-  "admin.cn.missing.partyName": "Give the other party's full name",
   "admin.cn.missing.signerName": "Name the person signing instead of the owner",
   "admin.cn.missing.signerReason": "Say why they are signing instead of the owner",
   "admin.cn.missing.agent": "Name the agent who wrote this contract",

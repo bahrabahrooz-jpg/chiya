@@ -36,8 +36,11 @@ import { useProperties } from "../_shared/properties-store";
    the middle of a contract is the same member as one created from the list. */
 import { AddMemberModal } from "../_members/add-member-modal";
 import { newMemberRecord } from "../_members/data";
-import { useFinanceActions } from "../_shared/finance";
-import { draftEndsOn, draftPrice, type ContractDraft } from "../_shared/finance/invoice-generation";
+import { useFinanceActions, TODAY } from "../_shared/finance";
+import { draftEndsOn, draftPrice, toContractRecord, type ContractDraft } from "../_shared/finance/invoice-generation";
+/* THE PAPER, LIVE. The same sheet the print page renders — not a second,
+   simpler drawing of it. See the header note in contract-sheet.tsx. */
+import { ContractSheet } from "../_contract-doc/contract-sheet";
 import { FinanceToaster, useFinanceToasts } from "../_shared/finance/toaster";
 /* The review step is the add-property wizard's, not a second one that looks
    like it — same components, same CSS, already imported by the route. */
@@ -199,7 +202,6 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
   const [signerPhone, setSignerPhone] = useState(existing?.signerOverride?.phone ?? "");
   const [signerId, setSignerId] = useState(existing?.signerOverride?.idNumber ?? "");
   const [signerReason, setSignerReason] = useState(existing?.signerOverride?.reason ?? "");
-  const [partyMode, setPartyMode] = useState<"member" | "external">(existing?.buyerExternal ? "external" : "member");
   const [buyerId, setBuyerId] = useState(existing?.buyerId ?? "");
   const [partyQuery, setPartyQuery] = useState("");
   /* The add-member modal, opened from either half of the counterparty field.
@@ -208,6 +210,9 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
      the user to /admin/members to type them in and then back again is how the
      free-text box wins. */
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  /* The paper, on a screen too narrow to hold it beside the form. Wide screens
+     never read this — the panel is always there and there is nothing to open. */
+  const [paperOpen, setPaperOpen] = useState(false);
   /**
    * The chosen counterparty owns the property that was chosen afterwards.
    *
@@ -218,9 +223,6 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
    * the same person on both sides is not a contract.
    */
   const [ownerClash, setOwnerClash] = useState(false);
-  const [extName, setExtName] = useState(existing?.buyerExternal?.name ?? "");
-  const [extPhone, setExtPhone] = useState(existing?.buyerExternal?.phone ?? "");
-  const [extId, setExtId] = useState(existing?.buyerExternal?.idNumber ?? "");
   const [agentId, setAgentId] = useState(existing?.agentId ?? "");
 
   /* step 2 — money */
@@ -487,10 +489,7 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
       ...(signerOpen && signerName.trim() && signerReason.trim()
         ? { signerOverride: { name: signerName.trim(), phone: signerPhone.trim(), idNumber: signerId.trim() || undefined, reason: signerReason.trim() } }
         : {}),
-      ...(partyMode === "member" && buyerId ? { buyerId } : {}),
-      ...(partyMode === "external" && extName.trim()
-        ? { buyerExternal: { name: extName.trim(), phone: extPhone.trim(), ...(extId.trim() ? { idNumber: extId.trim() } : {}) } }
-        : {}),
+      ...(buyerId ? { buyerId } : {}),
       agentId: effectiveAgentId,
       ...(lease
         ? {
@@ -549,8 +548,7 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
     };
   }, [
     template, propertyId, property, signerOpen, signerName, signerPhone, signerId, signerReason,
-    bSignerOpen, bSignerName, bSignerPhone, bSignerId, bSignerReason, partyMode, buyerId, extName,
-    extPhone, extId, effectiveAgentId, lease, monthlyRent, cycle, termMonths, startsOn, insuranceDeposit, payMethod, rentPaidTo,
+    bSignerOpen, bSignerName, bSignerPhone, bSignerId, bSignerReason, buyerId, effectiveAgentId, lease, monthlyRent, cycle, termMonths, startsOn, insuranceDeposit, payMethod, rentPaidTo,
     feeType, feeText, salePrice, saleDeposit, downPayment, installmentCount, instFreq, firstInstOn, instPaidTo, ownerBasis, ownerPct,
     tenantBasis, tenantPct, overrideReason, clauses, mustBeOutBy, lateText, signingDate, handoverOn, signedCity, copies, organizerId, currency,
     externalPaperwork, notes, dualCurrency, renewing, existing,
@@ -558,6 +556,29 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
 
   const price = draftPrice(draft);
   const endsOn = draftEndsOn(draft);
+
+  /**
+   * THE PAPER, AS IT STANDS RIGHT NOW.
+   *
+   * The same record `save` would write, built from the same draft by the same
+   * function — so what the panel shows and what the printer prints cannot
+   * disagree. It is rebuilt on every keystroke and stored nowhere.
+   *
+   * ⚠ THIS IS NOT THE SUMMARY PANEL THAT WAS REMOVED. That one repeated the
+   * form's own figures back in a second column, which is why it went: the term
+   * end belongs beside the dates and each commission beside its own field, and
+   * they live there now. This is the DOCUMENT — the page two people sign,
+   * which the form has never shown and which is the only reason any of these
+   * questions are being asked.
+   *
+   * The id is blank unless a saved draft is being reopened. A contract nobody
+   * has saved has no number, and inventing one on the paper would be the one
+   * figure on it that is not true.
+   */
+  const paper = useMemo(
+    () => toContractRecord(draft, { id: editingId && existing ? existing.id : "", createdOn: TODAY }),
+    [draft, editingId, existing],
+  );
 
   const commissionOf = (basis: CommissionBasis, value: string): Money => {
     if (!price) return zeroMoney(currency);
@@ -646,11 +667,7 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
     if (n === 0) {
       if (!property) gaps.push({ key: "admin.cn.missing.property", id: "cn-prop" });
       if (property && !property.ownerId) gaps.push({ key: "admin.cn.missing.owner" });
-      if (partyMode === "member") {
-        if (!buyerId) gaps.push({ key: "admin.cn.missing.counterparty", id: "cn-member" });
-      } else if (!extName.trim()) {
-        gaps.push({ key: "admin.cn.missing.partyName", id: "cn-extname" });
-      }
+      if (!buyerId) gaps.push({ key: "admin.cn.missing.counterparty", id: "cn-member" });
       if (signerOpen && !signerName.trim()) gaps.push({ key: "admin.cn.missing.signerName", id: "cn-signer" });
       if (signerOpen && signerName.trim() && !signerReason.trim()) gaps.push({ key: "admin.cn.missing.signerReason", id: "cn-signerwhy" });
       if (bSignerOpen && !bSignerName.trim()) gaps.push({ key: "admin.cn.missing.signerName", id: "cn-bsigner" });
@@ -930,7 +947,7 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
 
   const selectedMember = useMemo(() => members.find((m) => m.id === buyerId), [members, buyerId]);
   /** Is there a buyer or tenant yet — by account, or by name typed in? */
-  const counterpartyChosen = partyMode === "member" ? !!selectedMember : !!extName.trim();
+  const counterpartyChosen = !!selectedMember;
 
   /* ------------------------------------------------------------------------ */
 
@@ -1058,14 +1075,23 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
         <ProgressStepper active={step} steps={STEP_KEYS} />
       </div>
 
-      {/* ONE COLUMN. There was a summary panel beside the form holding every
-          figure at once; it is gone, and so is the second column it needed.
-          What it carried has moved into the form itself over time — the term
-          end sits with the dates, each commission shows its own amount, and
-          what signing will do is on the review step where the decision is. A
-          panel repeating all of that was a second place to read the same
-          numbers. */}
-      <div className="cn-form">
+      {/* TWO COLUMNS, AND THE SECOND ONE IS THE DOCUMENT.
+
+          ⚠ THE SUMMARY PANEL IS NOT BACK. That one held every figure the form
+          had just asked for, restated in a second column, which is exactly why
+          it went: the term end belongs beside the dates, each commission
+          beside its own field, and what signing will do on the review step
+          where the decision is. All of that stays where it is.
+
+          What is in the second column now is the CONTRACT — the page the two
+          parties sign, the same sheet the printer prints, filling in as the
+          questions are answered. It is not a restatement of the answers; it is
+          the thing the answers are for, and the form has never shown it.
+
+          A panel on a wide screen, a fold below the form on a narrow one. See
+          .cn-split in cn.css. */}
+      <div className="cn-split">
+        <div className="cn-form">
 
           {/* ================= STEP 1 — property and parties ================= */}
           {step === 0 && (
@@ -1273,108 +1299,65 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                     </p>
                   )}
 
-                  {partyMode === "member" ? (
-                    <>
-                      <Row label={counterpartyLabel} htmlFor="cn-member" error={gapOn("cn-member")}>
-                        {selectedMember ? (
-                          <PickedParty
-                            img={selectedMember.img}
-                            name={selectedMember.name}
-                            phone={selectedMember.phone}
-                            changeLabel={t("admin.cn.change")}
-                            onChange={() => { setBuyerId(""); setOwnerClash(false); }}
-                          />
-                        ) : (
-                          <div className="cn-search">
-                            <span className="cn-search__ic" aria-hidden="true">
-                              <Icon name="search" size={17} />
-                            </span>
-                            <input
-                              id="cn-member"
-                              className="cn-search__input"
-                              value={partyQuery}
-                              placeholder={t("admin.cn.memberSearchPh")}
-                              onChange={(e) => setPartyQuery(e.target.value)}
-                            />
-                            {memberResults.length > 0 && (
-                              <ul className="cn-results" role="listbox" aria-label={t("admin.cn.memberResults")}>
-                                {memberResults.map((m) => (
-                                  <li key={m.id}>
-                                    <button type="button" className="cn-result" onClick={() => { setBuyerId(m.id); setPartyQuery(""); setOwnerClash(false); }}>
-                                      <span className="cn-result__main">
-                                        <span className="cn-result__title">{m.name}</span>
-                                        <span className="cn-result__meta">{m.phone}</span>
-                                      </span>
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
+                  <Row label={counterpartyLabel} htmlFor="cn-member" error={gapOn("cn-member")}>
+                    {selectedMember ? (
+                      <PickedParty
+                        img={selectedMember.img}
+                        name={selectedMember.name}
+                        phone={selectedMember.phone}
+                        changeLabel={t("admin.cn.change")}
+                        onChange={() => { setBuyerId(""); setOwnerClash(false); }}
+                      />
+                    ) : (
+                      <div className="cn-search">
+                        <span className="cn-search__ic" aria-hidden="true">
+                          <Icon name="search" size={17} />
+                        </span>
+                        <input
+                          id="cn-member"
+                          className="cn-search__input"
+                          value={partyQuery}
+                          placeholder={t("admin.cn.memberSearchPh")}
+                          onChange={(e) => setPartyQuery(e.target.value)}
+                        />
+                        {memberResults.length > 0 && (
+                          <ul className="cn-results" role="listbox" aria-label={t("admin.cn.memberResults")}>
+                            {memberResults.map((m) => (
+                              <li key={m.id}>
+                                <button type="button" className="cn-result" onClick={() => { setBuyerId(m.id); setPartyQuery(""); setOwnerClash(false); }}>
+                                  <span className="cn-result__main">
+                                    <span className="cn-result__title">{m.name}</span>
+                                    <span className="cn-result__meta">{m.phone}</span>
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
                         )}
-                      </Row>
-                      {/* TWO WAYS OUT OF "THEY ARE NOT IN THE LIST", and they
-                          are not the same choice.
+                      </div>
+                    )}
+                  </Row>
+                  {/* ONE WAY OUT OF "THEY ARE NOT IN THE LIST", because there
+                      is only one truth. This used to offer a second — type a
+                      name and a phone number straight onto the contract — and
+                      that person then existed nowhere else in the system: no
+                      language, no consent, no ID, no profile, no history. The
+                      rent reminders this contract raises went out in the
+                      agency's default language and nobody could mute them,
+                      because there was nothing to mute.
 
-                          Adding them as a member is offered FIRST and is the
-                          one to take: a member record can hold a language, a
-                          consent and an ID, so the invoices this contract
-                          raises can actually reach them. A name typed onto the
-                          contract can hold none of that — the reminders go out
-                          in the agency's default language and nobody can mute
-                          them, because there is nothing to mute.
-
-                          The second is still here because it is sometimes the
-                          truth: a tenant who will not register is a real
-                          tenant, and a form that refuses to write the contract
-                          gets worked around on paper. */}
-                      {!selectedMember && (
-                        <p className="cn-aside">
-                          {t("admin.cn.notRegistered")}{" "}
-                          <button type="button" className="cn-aside__link" onClick={() => setAddMemberOpen(true)}>
-                            {t("admin.cn.addMember")}
-                          </button>
-                          {" · "}
-                          <button type="button" className="cn-aside__link cn-aside__link--quiet" onClick={() => setPartyMode("external")}>
-                            {t("admin.cn.enterDetails")}
-                          </button>
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {/* The name takes the row — a lessee is often a company and
-                          company names here are long. The phone and the ID are
-                          both short and both about the same person, so they sit
-                          together rather than stacking down the page. */}
-                      <Grid>
-                        <Full>
-                          <Row label={counterpartyLabel} htmlFor="cn-extname" error={gapOn("cn-extname")}>
-                            <TextInput id="cn-extname" value={extName} onChange={setExtName} placeholder={t("admin.cn.ph.name")} />
-                          </Row>
-                        </Full>
-                        <Row label={t("admin.cn.f.partyPhone")} htmlFor="cn-extphone">
-                          <TextInput id="cn-extphone" value={extPhone} onChange={setExtPhone} placeholder={t("admin.cn.ph.phone")} />
-                        </Row>
-                        <Row label={t("admin.cn.f.partyId")} htmlFor="cn-extid" optional={t("admin.fin.optional")}>
-                          <TextInput id="cn-extid" value={extId} onChange={setExtId} placeholder={t("admin.cn.ph.idNumber")} />
-                        </Row>
-                      </Grid>
-                      {/* The way back, plus the offer again — somebody halfway
-                          through typing a name and a number has already done
-                          most of the work of adding a member, and this is the
-                          last moment before that work becomes a string on one
-                          contract instead of a person on the platform. */}
-                      <p className="cn-aside">
-                        <button type="button" className="cn-aside__link" onClick={() => setAddMemberOpen(true)}>
-                          {t("admin.cn.addMember")}
-                        </button>
-                        {" · "}
-                        <button type="button" className="cn-aside__link cn-aside__link--quiet" onClick={() => setPartyMode("member")}>
-                          {t("admin.cn.searchInstead")}
-                        </button>
-                      </p>
-                    </>
+                      It survived as long as it did because adding a member was
+                      genuinely slower — that form demanded an email address.
+                      It does not any more, so both doors cost a name and a
+                      number and there is no reason for two. See canSubmit in
+                      _members/add-member-modal. */}
+                  {!selectedMember && (
+                    <p className="cn-aside">
+                      {t("admin.cn.notRegistered")}{" "}
+                      <button type="button" className="cn-aside__link" onClick={() => setAddMemberOpen(true)}>
+                        {t("admin.cn.addMember")}
+                      </button>
+                    </p>
                   )}
 
                   {/* ONLY ONCE SOMEBODY IS CHOSEN. "Someone else is signing for
@@ -2001,7 +1984,7 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
                   <div className="ap-rev__grid">
                     <RevItem k={t("admin.ct.f.property")} v={property?.title} full />
                     <RevItem k={ownerLabel} v={owner?.name ?? property?.owner.name} />
-                    <RevItem k={counterpartyLabel} v={partyMode === "member" ? selectedMember?.name : extName.trim()} />
+                    <RevItem k={counterpartyLabel} v={selectedMember?.name} />
                     {/* Named by the side they signed for, so two proxies on one
                         contract do not read as the same person twice. */}
                     {signerOpen && signerName.trim() && (
@@ -2165,6 +2148,62 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
             </section>
           )}
 
+        </div>
+
+        {/* THE PAPER, LIVE.
+
+            `blanks` is what makes it read as a document being written rather
+            than one that came out short: a term nobody has reached yet is a
+            ruled line, not a missing row. It is never passed on the printed
+            page — see the note in contract-sheet.tsx.
+
+            STICKY, AND WITH ITS OWN SCROLL. The form is long and the sheet is
+            long, and locking them together would mean the paper scrolled past
+            while somebody was still answering the question that fills it in. */}
+        <aside className="cn-paper" aria-label={t("admin.cn.paper.aria")}>
+          <div className="cn-paper__inner">
+            <div className="cn-paper__head">
+              <h2 className="cn-paper__title">{t("admin.cn.paper.title")}</h2>
+              <p className="cn-paper__hint">{t("admin.cn.paper.hint")}</p>
+            </div>
+            <div className="cn-paper__stage">
+              <div className="cn-paper__fit">
+                <ContractSheet c={paper} lang={lang} blanks />
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* THE SAME PAPER ON A NARROW SCREEN — a disclosure, not a dialog.
+
+          A modal would need a focus trap, an Escape key and a scroll lock to
+          be honest about being one, and all three would be machinery in the
+          way of a thing somebody wants to glance at. Folded open in place, it
+          is just more page, and the browser already knows how to scroll. */}
+      <div className="cn-fold">
+        <button
+          type="button"
+          className="cn-fold__btn"
+          aria-expanded={paperOpen}
+          aria-controls="cn-fold-body"
+          onClick={() => setPaperOpen((v) => !v)}
+        >
+          <Icon name="file-text" size={16} />
+          <span>{t(paperOpen ? "admin.cn.paper.close" : "admin.cn.paper.open")}</span>
+          <span className={"cn-fold__chev" + (paperOpen ? " is-open" : "")}>
+            <Icon name="chevron-down" size={16} />
+          </span>
+        </button>
+        <div className="cn-fold__body" id="cn-fold-body" hidden={!paperOpen}>
+          {/* Mounted only while open: on a wide screen the button above is
+              display:none, so this never becomes a second copy of the sheet. */}
+          {paperOpen && (
+            <div className="cn-paper__fit cn-paper__fit--fold">
+              <ContractSheet c={paper} lang={lang} blanks />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Adding the counterparty without leaving the contract.
@@ -2173,20 +2212,19 @@ export function ContractFormApp({ kind, lockedPropertyId, editingId, amendingId,
           the same record — language, consent, ID and all. It SELECTS them on
           the way out: the reason somebody opened it was to fill this field, and
           leaving them to search for the person they just typed in is how a
-          shortcut turns back into a chore. Also switches the field out of
-          free-text mode, in case they got there through the other door. */}
+          shortcut turns back into a chore. */}
       <AddMemberModal
         open={addMemberOpen}
         onClose={() => setAddMemberOpen(false)}
-        /* Whatever they had already typed comes with them — the name and number
-           are usually half-entered by the time somebody realises this person
-           should be a member. */
-        initial={{ name: extName, phone: extPhone, idNumber: extId, idKind: extId.trim() ? "civil" : null }}
+        /* Whatever they typed into the search box comes with them. Somebody
+           who has searched for "Renas" and found nothing has already written
+           the first field of this form; asking for it again is the small
+           friction that used to send people to the free-text door. */
+        initial={{ name: partyQuery.trim() }}
         onSubmit={(v) => {
           const created = newMemberRecord(v);
           addMember(created);
           setAddMemberOpen(false);
-          setPartyMode("member");
           setBuyerId(created.id);
           setPartyQuery("");
           setOwnerClash(false);

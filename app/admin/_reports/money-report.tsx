@@ -185,7 +185,7 @@ export function MoneyReport({
   const rentRoll = useMemo(
     () =>
       buildRentRoll(contracts, invoices, payments, (pid) => properties.find((p) => p.id === pid)?.title ?? pid, (c) =>
-        c.buyerId ? memberName(c.buyerId) : (c.buyerExternal?.name ?? "—"),
+        (c.buyerId ? memberName(c.buyerId) : null) ?? "—",
       ),
     [contracts, invoices, payments, properties, memberName],
   );

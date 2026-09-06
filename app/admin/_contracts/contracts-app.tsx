@@ -169,10 +169,10 @@ function ContractTableRow({ row, basePath }: { row: ContractRow; basePath: strin
         {row.counterparty ? (
           <>
             <span className="ct-party__name">{row.counterparty}</span>
-            <span className="ct-party__meta">
-              <span className="ct-party__role">{t(c.kind === "sale" ? "admin.pd.buyer" : "admin.pd.tenant")}</span>
-              {!row.counterpartyId && <span className="ct-party__ext">{t("admin.pd.externalParty")}</span>}
-            </span>
+            {/* The role, and nothing else. An "External party" tag used to ride
+                here on anyone without an account; there is no such person now,
+                so the tag would have been true of nobody. */}
+            <span className="ct-party__role">{t(c.kind === "sale" ? "admin.pd.buyer" : "admin.pd.tenant")}</span>
           </>
         ) : (
           <span className="ct-party ct-party--none">{t(c.kind === "sale" ? "admin.pd.noCounterparty" : "admin.ct.noTenantYet")}</span>

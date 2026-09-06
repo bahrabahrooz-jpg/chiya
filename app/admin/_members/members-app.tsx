@@ -610,9 +610,10 @@ export function MembersApp({ scopeAgent, basePath = "/admin/members" }: { scopeA
     if (!scopeAgent) return members;
     const ownCount: Record<string, number> = {};
     for (const p of properties) {
-      if (p.agent?.name === scopeAgent) ownCount[p.owner.name] = (ownCount[p.owner.name] || 0) + 1;
+      /* Keyed by owner id, so two landlords with the same name are two. */
+      if (p.agent?.name === scopeAgent && p.ownerId) ownCount[p.ownerId] = (ownCount[p.ownerId] || 0) + 1;
     }
-    return members.filter((m) => ownCount[m.name] > 0).map((m) => ({ ...m, properties: ownCount[m.name] }));
+    return members.filter((m) => ownCount[m.id] > 0).map((m) => ({ ...m, properties: ownCount[m.id] }));
   }, [scopeAgent, properties, members]);
   const effCounts = useMemo(() => (scopeAgent ? countMembers(baseMembers) : memberCounts), [scopeAgent, baseMembers, memberCounts]);
   const [filters, setFilters] = useState<MemberFilters>(EMPTY_FILTERS);

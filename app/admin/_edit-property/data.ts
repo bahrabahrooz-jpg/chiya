@@ -33,9 +33,9 @@ export const INITIAL: ApForm = {
   lng: "44.00947",
   locNotes: "Set back from the main road behind the olive grove; gated entrance on the north side.",
   tourUrl: "https://my.matterport.com/show/?m=olive-grove",
-  ownerName: "Hêmin Abdullah",
-  ownerPhone: "+964 750 412 8890",
-  ownerEmail: "hemin@email.com",
+  /* Seeded to a real member rather than a typed name — see ownerId in
+     ../_add-property/data. */
+  ownerId: "M-5013",
   agent: "lana",
   internalNotes: "Owner is flexible on price for a quick close. Keys held at the Ankawa office; 24h notice for viewings.",
 };

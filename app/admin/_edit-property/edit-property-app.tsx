@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -26,6 +26,9 @@ import {
   type ApForm,
 } from "./data";
 import { useProperties } from "../_shared/properties-store";
+import { AddMemberModal } from "../_members/add-member-modal";
+import { newMemberRecord } from "../_members/new-member";
+import { OwnerSummary } from "../_add-property/add-property-app";
 import {
   AgentSelect,
   AgentSummary,
@@ -60,7 +63,17 @@ export function EditPropertyApp({ id, lockedAgentId }: { id: string; lockedAgent
   const set = <K extends keyof ApForm>(k: K, v: ApForm[K]) => setF((s) => ({ ...s, [k]: v }));
   const [step, setStep] = useState(0);
   const photos = usePhotoUploader(true);
-  const { locationTree } = useProperties();
+  const { locationTree, members, addMember } = useProperties();
+  /* Owner picker state, mirroring the add-property wizard — the two screens are
+     the same form and must not disagree about how an owner is chosen. */
+  const selectedOwner = useMemo(() => members.find((m) => m.id === f.ownerId) ?? null, [members, f.ownerId]);
+  const [ownerQuery, setOwnerQuery] = useState("");
+  const [addOwnerOpen, setAddOwnerOpen] = useState(false);
+  const ownerResults = useMemo(() => {
+    const q = ownerQuery.trim().toLowerCase();
+    if (!q) return [];
+    return members.filter((m) => (m.name + " " + m.phone).toLowerCase().includes(q)).slice(0, 6);
+  }, [members, ownerQuery]);
   const assignableAgents = useAssignableAgents();
   const { settings } = usePlatformSettings();
   const currencyOptions = enabledCurrencies(settings);
@@ -128,9 +141,9 @@ export function EditPropertyApp({ id, lockedAgentId }: { id: string; lockedAgent
     lng: localizeDigits(lang, f.lng || "44.00947"),
     year: localizeDigits(lang, f.year || "2022"),
     orientation: tOr(valueKey("admin.ap.orient", f.orientation || "South facing"), f.orientation || "South facing"),
-    ownerName: f.ownerName || "Hêmin Abdullah",
-    ownerPhone: localizeDigits(lang, f.ownerPhone || "+964 750 412 8890"),
-    ownerEmail: f.ownerEmail || "hemin@email.com",
+    ownerName: selectedOwner?.name ?? "",
+    ownerPhone: localizeDigits(lang, selectedOwner?.phone ?? ""),
+    ownerEmail: selectedOwner?.email ?? "",
   };
   const revAgent = assignableAgents.find((a) => a.id === f.agent) || assignableAgents[0];
   const AMEN_IC: Record<string, IconName> = Object.fromEntries(AMENITIES.map((a) => [a.label, a.icon]));
@@ -471,23 +484,50 @@ export function EditPropertyApp({ id, lockedAgentId }: { id: string; lockedAgent
       {step === 4 && (
         <section className="ap-card">
           <div className="ap-card__head">
-            <h2 className="ap-card__title">Ownership &amp; assignment</h2>
+            <h2 className="ap-card__title">{t("admin.ap.step.ownership")}</h2>
             <p className="ap-card__desc">{t("admin.ap.ownershipDesc")}</p>
           </div>
           <div className="ap-card__body">
             <div className="ap-sect ap-sect--flush">
               <div className="ap-grid">
+                {/* Picked, not typed — the same control as the add-property
+                    wizard, because this is the same form. See the note there. */}
                 <div className="ap-field ap-col-full">
-                  <FieldLabel htmlFor="ap-owner-name">{t("admin.ap.f.ownerName")}</FieldLabel>
-                  <Input id="ap-owner-name" size="lg" iconLeading="user" placeholder="e.g. Hêmin Abdullah" value={f.ownerName} onChange={(e) => set("ownerName", e.target.value)} />
-                </div>
-                <div className="ap-field">
-                  <FieldLabel htmlFor="ap-owner-phone">{t("admin.mp.phoneNumber")}</FieldLabel>
-                  <Input id="ap-owner-phone" size="lg" type="tel" iconLeading="phone" placeholder="+964 750 000 0000" value={f.ownerPhone} onChange={(e) => set("ownerPhone", e.target.value)} />
-                </div>
-                <div className="ap-field">
-                  <FieldLabel htmlFor="ap-owner-email">{t("admin.mp.emailAddress")}</FieldLabel>
-                  <Input id="ap-owner-email" size="lg" type="email" iconLeading="mail" placeholder="owner@email.com" value={f.ownerEmail} onChange={(e) => set("ownerEmail", e.target.value)} />
+                  <FieldLabel htmlFor="ap-owner">{t("admin.ap.f.ownerName")}</FieldLabel>
+                  {selectedOwner ? (
+                    <OwnerSummary owner={selectedOwner} onClear={() => { set("ownerId", ""); setOwnerQuery(""); }} />
+                  ) : (
+                    <div className="ap-ownerpick">
+                      <Input
+                        id="ap-owner"
+                        size="lg"
+                        iconLeading="search"
+                        placeholder={t("admin.cn.memberSearchPh")}
+                        value={ownerQuery}
+                        onChange={(e) => setOwnerQuery(e.target.value)}
+                      />
+                      {ownerResults.length > 0 && (
+                        <ul className="ap-ownerpick__results" role="listbox" aria-label={t("admin.cn.memberResults")}>
+                          {ownerResults.map((m) => (
+                            <li key={m.id}>
+                              <button type="button" className="ap-ownerpick__result" onClick={() => { set("ownerId", m.id); setOwnerQuery(""); }}>
+                                <span className="ap-ownerpick__name">{m.name}</span>
+                                <span className="ap-ownerpick__phone">{m.phone}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                  {!selectedOwner && (
+                    <p className="ap-lockhint">
+                      {t("admin.cn.notRegistered")}{" "}
+                      <button type="button" className="ap-linkbtn" onClick={() => setAddOwnerOpen(true)}>
+                        {t("admin.cn.addMember")}
+                      </button>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -690,6 +730,21 @@ export function EditPropertyApp({ id, lockedAgentId }: { id: string; lockedAgent
       >
         If you leave now, the changes you made to this listing won&apos;t be saved.
       </Modal>
+
+      {/* The same modal the wizard, the members page and the contract form all
+          open — one way to create a person, wherever you are standing. */}
+      <AddMemberModal
+        open={addOwnerOpen}
+        onClose={() => setAddOwnerOpen(false)}
+        initial={{ name: ownerQuery.trim() }}
+        onSubmit={(v) => {
+          const created = newMemberRecord(v);
+          addMember(created);
+          setAddOwnerOpen(false);
+          set("ownerId", created.id);
+          setOwnerQuery("");
+        }}
+      />
     </div>
   );
 }

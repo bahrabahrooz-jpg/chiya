@@ -451,12 +451,20 @@ function BasicInfo({ member, pushToast }: { member: MemberRecord; pushToast: (t:
         </span>
         <div className="adh__detail__text">
           <span className="adh__detail__label">{t("admin.mp.emailAddress")}</span>
-          <span className="adh__detail__value">
-            <span>{member.email}</span>
-            <button type="button" className="adh__copy" title={t("admin.mp.copyEmail")} aria-label={t("admin.mp.copyEmail")} onClick={() => copy("admin.mp.emailAddress", member.email)}>
-              <Icon name="copy" size={13} />
-            </button>
-          </span>
+          {/* Email is optional on a member — plenty of tenants here have none,
+              and the add form stopped pretending otherwise. So the row says so
+              rather than rendering an empty line with a copy button that copies
+              nothing. See canSubmit in _members/add-member-modal. */}
+          {member.email ? (
+            <span className="adh__detail__value">
+              <span>{member.email}</span>
+              <button type="button" className="adh__copy" title={t("admin.mp.copyEmail")} aria-label={t("admin.mp.copyEmail")} onClick={() => copy("admin.mp.emailAddress", member.email)}>
+                <Icon name="copy" size={13} />
+              </button>
+            </span>
+          ) : (
+            <span className="adh__detail__value adh__detail__value--none">{t("admin.mp.noEmail")}</span>
+          )}
         </div>
       </div>
       <div className="adh__detail">
@@ -909,7 +917,7 @@ export function MemberProfileApp({ scopeAgent }: { scopeAgent?: string } = {}) {
   // renders a real, catalog-consistent record.
   const catalogMember = useMemo(() => members.find((mm) => mm.id === id) ?? members[0], [members, id]);
   const resolved = useMemo(() => toDetailMember(catalogMember, properties), [catalogMember, properties]);
-  const portfolio = useMemo(() => buildPortfolio(properties, catalogMember.name), [catalogMember, properties]);
+  const portfolio = useMemo(() => buildPortfolio(properties, catalogMember.id, catalogMember.name), [catalogMember, properties]);
   const timeline = useMemo(() => buildMemberTimeline(properties, catalogMember), [catalogMember, properties]);
   const reassignAgents = useMemo(() => buildReassignAgents(agents), [agents]);
 

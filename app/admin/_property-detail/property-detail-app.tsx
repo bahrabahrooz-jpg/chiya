@@ -1065,7 +1065,9 @@ function Ownership({ p, agentSurface }: { p: DetailProperty; agentSurface?: bool
   // the assigned-agent card. Fall back to a plain block when the owner has no
   // matching member record (e.g. a listing created with a free-typed owner).
   const { members } = useProperties();
-  const member = members.find((m) => m.name === p.owner.name);
+  /* By id. Matched by name, a second landlord with the same name sent this
+     link to the wrong profile. */
+  const member = members.find((m) => (p.ownerId ? m.id === p.ownerId : m.name === p.owner.name));
   const href = member ? `${agentSurface ? "/agent" : "/admin"}/members/${encodeURIComponent(member.id)}` : null;
   return (
     <SectionCard title={t("admin.pd.ownership")} desc={t("admin.pd.ownershipDesc")} id="owner">
@@ -1173,13 +1175,11 @@ function Mandate({ p }: { p: DetailProperty }) {
 /* ---------------- contracts tab ---------------- */
 
 /** Who the property changed hands with, on one contract. A member link when
-    they have an account, a plain name when they do not — most buyers never
-    register — and a dash where nobody has committed yet. */
+    they have committed, and a dash where nobody has yet. Every counterparty is
+    a member now, so the name always links somewhere. */
 function counterpartyOf(c: ContractRecord, memberName: (id?: string) => string | undefined): { name: string; id?: string } | null {
   const linked = memberName(c.buyerId);
-  if (linked) return { name: linked, id: c.buyerId };
-  if (c.buyerExternal) return { name: c.buyerExternal.name };
-  return null;
+  return linked ? { name: linked, id: c.buyerId } : null;
 }
 
 function ContractsPanel({ p, agentSurface, onCreateContract }: { p: DetailProperty; agentSurface?: boolean; onCreateContract: () => void }) {
@@ -1245,15 +1245,12 @@ function ContractsPanel({ p, agentSurface, onCreateContract }: { p: DetailProper
                   {t(`admin.ct.kind.${c.kind}`)}
                 </Badge>
                 <span className="pd-deal__party">
-                  {party ? (
-                    party.id ? (
-                      <Link href={`${base}/members/${encodeURIComponent(party.id)}`}>{party.name}</Link>
-                    ) : (
-                      <>
-                        {party.name}
-                        <span className="pd-deal__ext">{t("admin.pd.externalParty")}</span>
-                      </>
-                    )
+                  {/* Always a link when there is a party at all — a counterparty
+                      is a member, so there is always a profile behind the name.
+                      The unlinked "External party" branch this used to carry is
+                      gone with the external block itself. */}
+                  {party?.id ? (
+                    <Link href={`${base}/members/${encodeURIComponent(party.id)}`}>{party.name}</Link>
                   ) : (
                     t("admin.pd.noCounterparty")
                   )}

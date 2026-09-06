@@ -26,8 +26,9 @@ export function useAgentData() {
   const name = agent.name;
 
   const properties = useMemo(() => store.properties.filter((p) => p.agent?.name === name), [store.properties, name]);
-  const ownerNames = useMemo(() => new Set(properties.map((p) => p.owner.name)), [properties]);
-  const members = useMemo(() => store.members.filter((m) => ownerNames.has(m.name)), [store.members, ownerNames]);
+  /* Ids, not names — two owners called the same thing were one entry here. */
+  const ownerIds = useMemo(() => new Set(properties.map((p) => p.ownerId).filter(Boolean) as string[]), [properties]);
+  const members = useMemo(() => store.members.filter((m) => ownerIds.has(m.id)), [store.members, ownerIds]);
   const viewings = useMemo(() => VIEWINGS.filter((v) => v.agent === name), [name]);
   const contracts = useMemo(() => contractsStore.contracts.filter((c) => c.agentId === agent.id), [contractsStore.contracts, agent.id]);
   // this agent's record enriched with live stats (listings / sold / rented / members)
