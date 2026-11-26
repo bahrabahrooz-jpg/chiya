@@ -997,6 +997,7 @@ export const ku: Catalog = {
   "admin.psettings.notif.event.viewingCancelled": "بینین هەڵوەشێنراوەوە",
   "admin.psettings.notif.event.newReview": "پێداچوونەوەی نوێ",
   "admin.psettings.notif.event.newMember": "ئەندامی نوێ بەشدار بوو",
+  "admin.psettings.notif.event.agentActivity": "چالاکی بریکار",
   "admin.psettings.notif.sender": "نێردەر",
   "admin.psettings.notif.senderDesc": "ئەو ناو و ناونیشانەی ئیمەیڵی دەرچوو لێیەوە دەنێردرێت.",
   "admin.psettings.notif.senderName": "ناوی نێردەر",

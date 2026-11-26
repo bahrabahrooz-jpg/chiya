@@ -2,10 +2,20 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { IconName } from "@/components/ui/icon";
-import { NOTIFICATIONS, type NotificationDef } from "@/components/admin/admin-data";
+import { NOTIFICATIONS, AGENT_NOTIFICATIONS, type NotificationDef } from "@/components/admin/admin-data";
+import { useAuditLog, resolveAuditParams, type AuditCategory, type AuditEvent } from "@/app/admin/_shared/audit-log";
+import { usePlatformSettings } from "@/lib/platform-settings";
+import { useLang } from "@/lib/i18n";
+import { timeAgo } from "@/lib/notifications";
 
 /**
  * Admin / Agent notifications store.
+ *
+ * The admin feed is the static seed plus one live notification for every
+ * action an agent takes (read off the audit log, which already records who did
+ * what). Super-admin actions never notify the admin — you don't need telling
+ * about your own work. The "Agent activity" row of Settings → Notifications
+ * switches the live part off.
  *
  * The internal-app counterpart of the member `lib/notifications.ts` store, so
  * the admin & agent topbar bell and their full Notifications screens share the
@@ -38,7 +48,31 @@ const EMPTY: NotifState = { read: {}, removed: [] };
  * Returns a hook exposing the derived feed plus mutators — mirrors the shape of
  * the member `useNotifications`.
  */
-function createNotifStore(storageKey: string, seed: NotificationDef[]) {
+/** One feed entry before read/removed state is applied. */
+interface NotifSource {
+  id: string;
+  icon: IconName;
+  title: string;
+  desc: string;
+  time: string;
+  href?: string;
+  /** Read by default (until the user marks it otherwise)? */
+  readByDefault: boolean;
+}
+
+const fromSeed = (n: NotificationDef): NotifSource => ({
+  id: String(n.id),
+  icon: n.icon,
+  title: n.title,
+  desc: n.desc,
+  time: n.time,
+  readByDefault: !n.unread,
+});
+
+const noDerived = (): NotifSource[] => [];
+
+function createNotifStore(storageKey: string, seed: NotificationDef[], useDerived: () => NotifSource[] = noDerived) {
+  const seedSources = seed.map(fromSeed);
   let state: NotifState = EMPTY;
   let hydrated = false;
   const listeners = new Set<() => void>();
@@ -87,23 +121,15 @@ function createNotifStore(storageKey: string, seed: NotificationDef[]) {
 
   return function useNotifStore() {
     const st = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+    const derived = useDerived();
 
     const all = useMemo<AdminNotification[]>(() => {
       const removed = new Set(st.removed);
-      return seed
-        .filter((n) => !removed.has(String(n.id)))
-        .map((n) => {
-          const id = String(n.id);
-          return {
-            id,
-            icon: n.icon,
-            title: n.title,
-            desc: n.desc,
-            time: n.time,
-            read: st.read[id] ?? !n.unread,
-          };
-        });
-    }, [st]);
+      // Live entries are newest-first already and newer than any seed.
+      return [...derived, ...seedSources]
+        .filter((n) => !removed.has(n.id))
+        .map(({ readByDefault, ...n }) => ({ ...n, read: st.read[n.id] ?? readByDefault }));
+    }, [st, derived]);
 
     const unread = all.filter((n) => !n.read).length;
 
@@ -138,5 +164,61 @@ function createNotifStore(storageKey: string, seed: NotificationDef[]) {
 
 export type NotifStore = ReturnType<typeof createNotifStore>;
 
-export const useAdminNotifications = createNotifStore("chiya_admin_notif_state_v1", NOTIFICATIONS);
-export const useAgentNotifications = createNotifStore("chiya_agent_notif_state_v1", NOTIFICATIONS);
+/* ------------------------- agent activity → admin ------------------------- */
+
+const CATEGORY_ICON: Record<AuditCategory, IconName> = {
+  property: "building-2",
+  member: "user-round",
+  agent: "id-card",
+  review: "star",
+  message: "message-circle",
+  location: "map-pin",
+  role: "shield",
+  settings: "settings",
+};
+
+/** Where clicking the notification should land: the record itself when we can
+    tell what it is from its id, else the audit log (which always has the row). */
+function hrefFor(e: AuditEvent): string {
+  const id = e.targetId;
+  if (id?.startsWith("CT-")) return `/admin/contracts/${id}`;
+  if (id?.startsWith("CH-")) return `/admin/properties/${id}`;
+  if (id && e.category === "member") return `/admin/members/${id}`;
+  if (id && e.category === "agent") return `/admin/agents/${id}`;
+  return "/admin/audit";
+}
+
+/** Same caps as the audit store keeps — the bell is not the archive. */
+const MAX_LIVE = 50;
+
+function useAgentActivity(): NotifSource[] {
+  const events = useAuditLog();
+  const { settings } = usePlatformSettings();
+  const { t } = useLang();
+  const enabled = settings.notifications.matrix.agentActivity?.inApp ?? true;
+
+  return useMemo(() => {
+    if (!enabled) return [];
+    return events
+      // Seed events are dated against the catalog's fixed "today"; only
+      // actions taken in this browser are news.
+      .filter((e) => e.actor.role === "agent" && !e.id.startsWith("AUD-SEED-"))
+      .slice(0, MAX_LIVE)
+      .map((e) => {
+        const action = t(e.actionKey, resolveAuditParams(e.actionParams, t));
+        const meta = e.metaKey ? t(e.metaKey, resolveAuditParams(e.metaParams, t)) : e.meta;
+        return {
+          id: `aud:${e.id}`,
+          icon: CATEGORY_ICON[e.category],
+          title: `${e.actor.name} · ${action}`,
+          desc: meta ? `${e.target} — ${meta}` : e.target,
+          time: timeAgo(new Date(e.at).getTime()),
+          href: hrefFor(e),
+          readByDefault: false,
+        };
+      });
+  }, [events, enabled, t]);
+}
+
+export const useAdminNotifications = createNotifStore("chiya_admin_notif_state_v1", NOTIFICATIONS, useAgentActivity);
+export const useAgentNotifications = createNotifStore("chiya_agent_notif_state_v1", AGENT_NOTIFICATIONS);

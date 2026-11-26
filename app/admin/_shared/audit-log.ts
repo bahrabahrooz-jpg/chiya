@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { ADMIN } from "@/components/admin/admin-data";
+import { currentAgent } from "@/lib/agent-session";
 
 /* ----------------------------------------------------------------------------
    Audit log — a module singleton that records *who did what, when* across the
@@ -120,9 +121,15 @@ export function descKeyOf(actionKey: string): string {
 const STORAGE_KEY = "chiya:admin-audit:v3";
 const MAX_EVENTS = 500;
 
-/* Default actor for anything emitted by the current admin session — the only
-   admin login in the demo is the platform's single super admin. */
+/* Default actor for an emitted event. The agent console reuses the admin's
+   screens and stores, so the surface the action came from is what says who
+   did it: anything fired under /agent belongs to the signed-in agent, the rest
+   to the platform's single super admin (the only admin login in the demo).
+   Without this every agent edit was logged — and would notify — as the admin. */
 function currentActor(): AuditActor {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/agent")) {
+    return { name: currentAgent().name, role: "agent" };
+  }
   return { name: ADMIN.name, role: "superAdmin" };
 }
 

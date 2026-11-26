@@ -139,4 +139,13 @@ export const NOTIFICATIONS: NotificationDef[] = [
   { id: 4, kind: "info", icon: "calendar-check", unread: false, title: "Viewing confirmed", desc: "12 viewings confirmed across Erbil this week.", time: "Yesterday" },
 ];
 
+/* The agent's own feed — things that happen *to* an agent's work, not the
+   admin's moderation queue (which the agent can't act on). */
+export const AGENT_NOTIFICATIONS: NotificationDef[] = [
+  { id: 1, kind: "brand", icon: "calendar-plus", unread: true, title: "New viewing request", desc: "Zana Ibrahim asked to see Marble Hill Villa on Thursday.", time: "15 minutes ago" },
+  { id: 2, kind: "gold", icon: "circle-check", unread: true, title: "Listing approved", desc: "Dream City Garden Flat is now live.", time: "1 hour ago" },
+  { id: 3, kind: "info", icon: "star", unread: false, title: "New review", desc: "A buyer left you a 5-star review.", time: "Yesterday" },
+  { id: 4, kind: "warn", icon: "calendar-x", unread: false, title: "Viewing cancelled", desc: "Naz City Sky Suite — the member cancelled Saturday's viewing.", time: "2 days ago" },
+];
+
 export const ADMIN = { name: "Rêbîn Kawa", role: "Super Admin", email: "rebin@chiya.estate", first: "Rêbin" };

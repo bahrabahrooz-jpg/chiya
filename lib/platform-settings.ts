@@ -261,6 +261,7 @@ export const NOTIF_EVENTS = [
   "viewingCancelled",
   "newReview",
   "newMember",
+  "agentActivity",
 ] as const;
 
 /** Seed the matrix from the screenshot's ticked cells. */
@@ -276,6 +277,7 @@ function seedMatrix(): NotificationsSettings["matrix"] {
     viewingCancelled: { ...inAppEmail },
     newReview: { ...inAppOnly },
     newMember: { ...off },
+    agentActivity: { ...inAppOnly },
   };
 }
 
@@ -423,7 +425,9 @@ function parse(raw: string | null): PlatformSettings {
       notifications: {
         ...d.notifications,
         ...p.notifications,
-        matrix: p.notifications?.matrix ?? d.notifications.matrix,
+        // Per event, so a row added in a later build (agentActivity) gets its
+        // default instead of reading as "every channel off".
+        matrix: { ...d.notifications.matrix, ...p.notifications?.matrix },
       },
       localization: { ...d.localization, ...p.localization },
       integrations: { ...d.integrations, ...p.integrations },

@@ -994,6 +994,7 @@ export const ar: Catalog = {
   "admin.psettings.notif.event.viewingCancelled": "تم إلغاء معاينة",
   "admin.psettings.notif.event.newReview": "مراجعة جديدة",
   "admin.psettings.notif.event.newMember": "انضم عضو جديد",
+  "admin.psettings.notif.event.agentActivity": "نشاط الوكلاء",
   "admin.psettings.notif.sender": "المرسِل",
   "admin.psettings.notif.senderDesc": "الاسم والعنوان اللذان يُرسَل منهما البريد الصادر.",
   "admin.psettings.notif.senderName": "اسم المرسِل",
