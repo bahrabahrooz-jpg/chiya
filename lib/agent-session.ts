@@ -79,6 +79,16 @@ export function agentById(id: string): AgentRecord | undefined {
   return AGENTS.find((a) => a.id === id);
 }
 
+/**
+ * The signed-in agent, read outside React. The audit log calls this when an
+ * action fires on the agent surface, so the event names the agent who did it
+ * rather than the super admin.
+ */
+export function currentAgent(): AgentRecord {
+  if (typeof window !== "undefined") hydrate();
+  return agentById(current.agentId) ?? AGENTS[0];
+}
+
 export function useAgentSession() {
   const session = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const agent = agentById(session.agentId) ?? AGENTS[0];

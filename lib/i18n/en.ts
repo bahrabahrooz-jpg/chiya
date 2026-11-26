@@ -1013,6 +1013,7 @@ export const en = {
   "admin.psettings.notif.event.viewingCancelled": "Viewing cancelled",
   "admin.psettings.notif.event.newReview": "New review",
   "admin.psettings.notif.event.newMember": "New member joined",
+  "admin.psettings.notif.event.agentActivity": "Agent activity",
   "admin.psettings.notif.sender": "Sender",
   "admin.psettings.notif.senderDesc": "The name and address outgoing email is sent from.",
   "admin.psettings.notif.senderName": "Sender name",
